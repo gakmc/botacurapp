@@ -1,7 +1,7 @@
 <!DOCTYPE html>
 <html>
     <head>
-        <title>Confirmacion de Reserva</title>
+        <title>Confirmación de Reserva</title>
     </head>
     <body
         style="
@@ -12,7 +12,7 @@
         "
     >
         <div class="card">
-            <div class="card-content">
+            {{-- <div class="card-content"> --}}
                 <div
                     class="encabezado"
                     style="
@@ -162,8 +162,8 @@
 
                             Infórmate de esto ☝️ y más en nuestras "<strong><a style="color: #039b7b; text-decoration: none;" href="https://drive.google.com/file/d/1Ude_RCZpFNAgVFPp0Qqj15-w3EGKlKhQ/view" target="_blank">Políticas y condiciones</a></strong>"
 
-                            ❌<strong style="color: #F92F60;">Recordamos que está prohibido el ingreso de alcohol al recinto. </strong>
-                            🚧<strong style="color: #FCD53F;">Solo atendemos con previa reserva </strong>
+                            ❌<strong style="color: #F92F60;"> Recordamos que está prohibido el ingreso de alcohol al recinto. </strong>
+                            🚧<strong style="color: #FCD53F;"> Solo atendemos con previa reserva </strong>
                             
                             📍 Te comparto el link con nuestra ubicación:
                             En google maps encuentras nuestra ubicación como 
@@ -186,7 +186,7 @@
                         Gracias por elegirnos. ¡Te Esperamos!
                     </p>
                 </div>
-            </div>
+            {{-- </div> --}}
         </div>
     </body>
 </html>

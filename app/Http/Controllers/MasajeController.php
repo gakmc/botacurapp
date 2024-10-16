@@ -7,6 +7,7 @@ use App\Reserva;
 use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Pagination\LengthAwarePaginator;
 use RealRashid\SweetAlert\Facades\Alert;
 
 
@@ -19,37 +20,38 @@ class MasajeController extends Controller
      */
     public function index()
     {
-        // Asignacion de dias Hoy y Mañana
-        $hoy = Carbon::today();
-        $manana = Carbon::tomorrow();
+        // Asignación de la fecha actual
+        $fechaActual = Carbon::now()->startOfDay();
     
-        // Filtrar las reservas que tienen visitas y cuya fecha de visita es hoy o mañana
-        $reservas = Reserva::with('visitas', 'cliente', 'programa', 'user')
-            ->whereBetween('fecha_visita', [$hoy, $manana])
-            ->get();
+        // Obtener todas las reservas con visitas cuya fecha de visita es hoy o posterior
+        $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
+        ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
+        ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+        ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
+        ->orderBy('v.horario_sauna', 'asc')
+        ->get();
     
-        // Ordenar las reservas por horario_masaje de la visita
-        $reservas = $reservas->sortBy(function ($reserva) {
-            return optional($reserva->visitas->first())->horario_masaje;
+        // Agrupar reservas por fecha
+        $reservasPorDia = $reservas->groupBy(function ($reserva) {
+            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
         });
     
-        // Filtrar por visitas de Hoy
-        $reservasHoy = $reservas->filter(function ($reserva) use ($hoy) {
-            return Carbon::parse($reserva->fecha_visita)->isSameDay($hoy);
-        });
+        // Paginación manual por días
+        $perPage = 1; // Número de días por página
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
     
-        // Filtrar por visitas de Mañana
-        $reservasManana = $reservas->filter(function ($reserva) use ($manana) {
-            return Carbon::parse($reserva->fecha_visita)->isSameDay($manana);
-        });
+        // Crear el paginador manualmente
+        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage, [
+            'path' => request()->url(),
+        ]);
     
-    
-        //Retorno de la vista
+        // Retorno de la vista
         return view('themes.backoffice.pages.masaje.index', [
-            'reservasHoy' => $reservasHoy,
-            'reservasManana' => $reservasManana,
+            'reservasPaginadas' => $reservasPaginadas,
         ]);
     }
+    
     
 
     /**

@@ -105,39 +105,10 @@
 
 
 @section('foot')
-<script>
-    <script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/1.9.3/countUp.min.js">
-</script>
-</script>
-<script>
-    document.addEventListener('DOMContentLoaded', function() {
-    // Asegurar que los valores se conviertan correctamente en números
-    var totalReservas = parseInt("{{ $totalReservas }}", 10) || 0;
-    var totalClientes = parseInt("{{ $totalClientes }}", 10) || 0;
 
-
-    // Inicializar el conteo para reservas
-    var reservasCountUp = new CountUp('reservas-count',0, totalReservas);
-    if (!reservasCountUp.error) {
-        reservasCountUp.start();
-    } else {
-        console.error(reservasCountUp.error);
-    }
-
-    // Inicializar el conteo para clientes
-    var clientesCountUp = new CountUp('clientes-count',0, totalClientes);
-    if (!clientesCountUp.error) {
-        clientesCountUp.start();
-    } else {
-        console.error(clientesCountUp.error);
-    }
-});
-
-</script>
 
 
 @if($insumosCriticos->isNotEmpty())
-{{-- <script src="https://cdn.jsdelivr.net/npm/sweetalert2@11"></script> --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         Swal.fire({

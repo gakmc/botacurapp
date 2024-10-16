@@ -45,13 +45,19 @@ class ReservaController extends Controller
         // Vista actual
         $fechaActual = Carbon::now()->startOfDay();
 
+        // $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
+        //     ->with(['cliente', 'visitas', 'programa.servicios'])
+        //     ->orderBy('fecha_visita')
+        //     ->get();
+
+
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-            ->with(['cliente', 'visitas', 'programa.servicios'])
-            ->orderBy('fecha_visita')
-            ->get();
-        // ->groupBy(function ($reserva) {
-        //     return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
-        // });
+        ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
+        ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+        ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
+        ->orderBy('v.horario_sauna', 'asc')
+        ->get();
+
 
         // Agrupar reservas por fecha
         $reservasPorDia = $reservas->groupBy(function ($reserva) {

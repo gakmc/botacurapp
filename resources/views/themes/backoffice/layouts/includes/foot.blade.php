@@ -1,4 +1,3 @@
-<script src="https://cdnjs.cloudflare.com/ajax/libs/countup.js/1.9.3/countUp.min.js"></script>
 <script src="{{ asset('assents/plugins/jquery-3.2.1.min.js') }}"></script>
 <script src="{{ asset('assents/plugins/perfect-scrollbar/perfect-scrollbar.min.js') }}"></script>
 <script src="{{ asset('assents/backoffice/js/plugins.js') }}"></script>

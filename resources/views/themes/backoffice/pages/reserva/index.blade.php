@@ -29,29 +29,30 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($reservas as $reserva)
-                                    @foreach ($reserva->visitas->sortBy('horario_sauna') as $visita)
+                            @foreach($reservas as $reserva)
+                                @foreach ($reserva->visitas->sortBy('horario_sauna') as $visita)
                                     @if ($visita->horario_sauna)
-                                    <tr>
-                                        <td>
-                                            <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                <strong style="color:#FF4081;">{{ $visita->horario_sauna }} - {{
-                                                    $visita->hora_fin_sauna }}</strong>
-                                                <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
-                                                {{$visita->ubicacion->nombre}} -
-                                                {{ $reserva->programa->nombre_programa }} -
-                                                {{ $reserva->cantidad_personas }} personas -
-                                                @if (is_null($reserva->observacion))
-                                                Sin Observaciones
-                                                @else
-                                                <strong style="color:#FF4081;">{{$reserva->observacion}}</strong>
-                                                @endif
-                                            </a>
-                                        </td>
-                                    </tr>
+                                        <tr>
+                                            <td>
+                                                <a href="{{ route('backoffice.reserva.show', $reserva) }}">
+                                                    <strong style="color:#FF4081;">
+                                                        {{ $visita->horario_sauna }} - {{ $visita->hora_fin_sauna }}
+                                                    </strong>
+                                                    <strong>{{ $reserva->cliente->nombre_cliente }} -</strong>
+                                                    {{ $visita->ubicacion->nombre }} -
+                                                    {{ $reserva->programa->nombre_programa }} -
+                                                    {{ $reserva->cantidad_personas }} personas -
+                                                    @if (is_null($reserva->observacion))
+                                                        Sin Observaciones
+                                                    @else
+                                                        <strong style="color:#FF4081;">{{ $reserva->observacion }}</strong>
+                                                    @endif
+                                                </a>
+                                            </td>
+                                        </tr>
                                     @endif
-                                    @endforeach
-                                    @endforeach
+                                @endforeach
+                            @endforeach
                                 </tbody>
                             </table>
                         </div>
@@ -111,8 +112,13 @@
                                     <tr>
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                <strong style="color: #FF4081">{{ $visita->horario_masaje }} - {{
-                                                    $visita->hora_fin_masaje }}</strong>
+                                                <strong style="color: #FF4081">{{ $visita->horario_masaje }} - 
+                                                    @if (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje)
+                                                        {{$visita->hora_fin_masaje_extra}}
+                                                    @else
+                                                        {{$visita->hora_fin_masaje }}    
+                                                    @endif
+                                                </strong>
                                                 <strong>{{ $reserva->cliente->nombre_cliente }} -</strong>
                                                 {{$visita->ubicacion->nombre}} -
                                                 {{ $reserva->programa->nombre_programa }} -

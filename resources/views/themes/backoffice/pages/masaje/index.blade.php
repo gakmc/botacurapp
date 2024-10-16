@@ -10,12 +10,10 @@
 
 @section('content')
 <div class="section">
-    <p class="caption"><strong>Masajes {{ now()->format('d-m-Y') }}</strong></p>
+    <p class="caption"><strong>Masajes desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
-        <div class="card-panel ">
-
-
+        <div class="card-panel">
 
             <table class="responsive-table">
                 <thead>
@@ -29,94 +27,79 @@
                         <th>Asignación</th>
                     </tr>
                 </thead>
-            
+
                 <tbody>
-
-                    @foreach ($reservasHoy as $fecha => $reserva)
-                    @foreach ($reserva->visitas as $visita)
-                        @if (!is_null($visita->horario_masaje))
-                            @for ($i = 1; $i <= $reserva->cantidad_personas; $i++)
-                                <tr>
-                                    <td>
-                                        {{$visita->horario_masaje}} -
-                                        @if ($visita->hora_fin_masaje)
-                                            {{$visita->hora_fin_masaje}}
-                                        @else
-                                            {{$visita->hora_fin_masaje_extra}}
-                                        @endif
-                                    </td>
-                                    <td>{{$reserva->cliente->nombre_cliente}}</td>
-                                    <td>Persona {{ $i }}</td>
-                                    <td>{{$visita->tipo_masaje}}</td>
-                                    <td>{{$visita->lugarMasaje->nombre}}</td>
-                                    <td>
-                                        <span class="estado badge white-text cyan" 
-                                              data-inicio="{{$visita->horario_masaje}}"
-                                              @if ($visita->hora_fin_masaje)
-                                                  data-fin="{{$visita->hora_fin_masaje}}"
-                                              @else
-                                                  data-fin="{{$visita->hora_fin_masaje_extra}}"
-                                              @endif
-                                              ></span>
-                                    </td>
-                                    <td>
-                                        @php
-                                            // Buscar el masaje correspondiente a la persona actual ($i)
-                                            $masajeAsignado = $visita->masajes->firstWhere('persona', $i);
-                                        @endphp
+                    @foreach ($reservasPaginadas as $fecha=>$reservasPorFecha)
+                    <h5>@if (now()->format('d-m-Y') == $fecha)
+                        <strong>Hoy</strong>
+                      @endif
+                      {{$fecha}}</h5>
+                        @foreach ($reservasPorFecha as $reserva)
+                            @foreach ($reserva->visitas as $visita)
+                                @if (!is_null($visita->horario_masaje))
+                                    @for ($i = 1; $i <= $reserva->cantidad_personas; $i++)
+                                        <tr>
+                                            <td>
+                                                {{$visita->horario_masaje}} -
+                                                @if ($visita->hora_fin_masaje)
+                                                    {{$visita->hora_fin_masaje}}
+                                                @else
+                                                    {{$visita->hora_fin_masaje_extra}}
+                                                @endif
+                                            </td>
+                                            <td>{{ $reserva->cliente->nombre_cliente }}</td>
+                                            <td>Persona {{ $i }}</td>
+                                            <td>{{ $visita->tipo_masaje }}</td>
+                                            <td>{{ $visita->lugarMasaje->nombre }}</td>
+                                            <td>
+                                                <span class="estado badge white-text cyan" 
+                                                      data-inicio="{{ $visita->horario_masaje }}"
+                                                      @if ($visita->hora_fin_masaje)
+                                                          data-fin="{{ $visita->hora_fin_masaje }}"
+                                                      @else
+                                                          data-fin="{{ $visita->hora_fin_masaje_extra }}"
+                                                      @endif
+                                                      ></span>
+                                            </td>
+                                            <td>
+                                                @php
+                                                    // Buscar el masaje correspondiente a la persona actual ($i)
+                                                    $masajeAsignado = $visita->masajes->firstWhere('persona', $i);
+                                                @endphp
                 
-                                        @if ($masajeAsignado && $masajeAsignado->user)
-                                            <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
-                                        @else
-                                        @if (Auth::user()->has_role(config('app.admin_role')))
-                                            <strong class="red-text">No asignado</strong>
-                                        @else
-                                            
-                                        <!-- Mostrar el botón si no hay masoterapeuta asignada -->
-                                        <form action="{{ route('backoffice.masaje.store') }}" method="POST">
-                                            @csrf
-                                            <input type="hidden" name="id_visita" value="{{ $visita->id }}">
-                                            <input type="hidden" name="persona_numero" value="{{ $i }}">
-                                            <button type="submit" class="btn-floating">
-                                                <i class="material-icons">pan_tool</i>
-                                            </button>
-                                        </form>
-                                        @endif
-                                        @endif
-                                    </td>
-                                </tr>
-                            @endfor
-                        @endif
+                                                @if ($masajeAsignado && $masajeAsignado->user)
+                                                    <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
+                                                @else
+                                                    @if (Auth::user()->has_role(config('app.admin_role')))
+                                                        <strong class="red-text">No asignado</strong>
+                                                    @else
+                                                        <!-- Mostrar el botón si no hay masoterapeuta asignada -->
+                                                        <form action="{{ route('backoffice.masaje.store') }}" method="POST">
+                                                            @csrf
+                                                            <input type="hidden" name="id_visita" value="{{ $visita->id }}">
+                                                            <input type="hidden" name="persona_numero" value="{{ $i }}">
+                                                            <button type="submit" class="btn-floating">
+                                                                <i class="material-icons">pan_tool</i>
+                                                            </button>
+                                                        </form>
+                                                    @endif
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endfor
+                                @endif
+                            @endforeach
+                        @endforeach
                     @endforeach
-                @endforeach
-                
-
-                                        {{-- @if ($visita->masaje->user_id)
-                                            <!-- Mostrar el nombre del usuario que tiene el rol de masoterapeuta -->
-                                            Asignado a: {{ \App\User::find($masaje->user_id)->name }}
-                                        @else
-                                            <!-- Mostrar el botón si no hay masoterapeuta asignada -->
-                                            <form action="{{ route('asignar.masaje') }}" method="POST">
-                                                @csrf
-                                                <input type="" name="visita_id" value="{{ $visita->id }}">
-                                                <input type="" name="persona_numero" value="{{ $i }}">
-                                                <button type="submit" class="btn-floating">
-                                                    <i class="material-icons">pan_tool</i>
-                                                </button>
-                                            </form>
-                                        @endif --}}
-
                 </tbody>
             </table>
-        {{-- Paginación --}}
-        {{-- <div class="center">
-            {{ $MasajesPaginados->links('vendor.pagination.materialize') }}
-        </div> --}}
 
-
-
+            {{-- Paginación --}}
+            <div class="center">
+                {{ $reservasPaginadas->links('vendor.pagination.materialize') }}
+            </div>
+        </div>
     </div>
-</div>
 </div>
 @endsection
 
@@ -155,6 +138,4 @@
         setInterval(actualizarEstado, 1000);
     });
 </script>
-
-
 @endsection
