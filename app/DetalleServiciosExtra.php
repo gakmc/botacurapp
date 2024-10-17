@@ -19,4 +19,9 @@ class DetalleServiciosExtra extends Model
     {
         return $this->belongsTo(Consumo::class, 'id_consumo');
     }
+
+    public function servicio()
+    {
+        return $this->belongsTo(Servicio::class, 'id_servicio_extra');
+    }
 }

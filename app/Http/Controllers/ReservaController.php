@@ -231,7 +231,7 @@ class ReservaController extends Controller
      */
     public function show(Reserva $reserva)
     {
-        $reserva->load('venta.consumos.detallesConsumos.producto', 'visitas.menus','visitas.menus.productoEntrada','visitas.menus.productoFondo','visitas.menus.productoacompanamiento');
+        $reserva->load('venta.consumos.detallesConsumos.producto','venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus','visitas.menus.productoEntrada','visitas.menus.productoFondo','visitas.menus.productoacompanamiento');
 
         return view('themes.backoffice.pages.reserva.show', [
             'reserva' => $reserva,
@@ -245,7 +245,7 @@ class ReservaController extends Controller
         // Verificar si el archivo de abono existe
         if (Storage::disk('imagen_abono')->exists($reserva->venta->imagen_abono)) {
             $file = Storage::disk('imagen_abono')->get($reserva->venta->imagen_abono);
-            $mimeType = Storage::disk('imagen_abono')->Storage::mimeType($reserva->venta->imagen_abono);
+            $mimeType = Storage::disk('imagen_abono')->mimeType($reserva->venta->imagen_abono);
 
             return response($file, 200)->header('Content-Type', $mimeType);
         }
@@ -260,7 +260,7 @@ class ReservaController extends Controller
         // Verificar si el archivo de diferencia existe
         if (Storage::disk('imagen_diferencia')->exists($reserva->venta->imagen_diferencia)) {
             $file = Storage::disk('imagen_diferencia')->get($reserva->venta->imagen_diferencia);
-            $mimeType = Storage::disk('imagen_diferencia')->Storage::mimeType($reserva->venta->imagen_diferencia);
+            $mimeType = Storage::disk('imagen_diferencia')->mimeType($reserva->venta->imagen_diferencia);
 
             return response($file, 200)->header('Content-Type', $mimeType);
         }

@@ -22,7 +22,7 @@ class Consumo extends Model
         return $this->hasMany(DetalleConsumo::class, 'id_consumo');
     }
 
-    public function detallesServiciosExtra()
+    public function detalleServiciosExtra()
     {
         return $this->hasMany(DetalleServiciosExtra::class, 'id_consumo');
     }

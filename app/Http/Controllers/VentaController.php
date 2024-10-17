@@ -115,6 +115,20 @@ class VentaController extends Controller
         ]);
     }
 
+    public function cerrar(Venta $venta, Reserva $reserva)
+    {
+        $reserva->load('cliente', 'venta.tipoTransaccionAbono'); 
+        $tipos = TipoTransaccion::all();
+
+        // dd($reserva);
+
+        return view('themes.backoffice.pages.venta.cerrar', [
+            'reserva' => $reserva,
+            'tipos' => $tipos,
+            'venta' => $venta
+        ]);
+    }
+
     /**
      * Update the specified resource in storage.
      *

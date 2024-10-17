@@ -47,11 +47,12 @@
         data-diferenciaimg="{{$reserva->venta->imagen_diferencia ? route('backoffice.reserva.diferencia.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" data-descuento="{{$reserva->venta->descuento}}"
         data-totalpagar="{{$reserva->venta->total_pagar}}" data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
         data-tipodiferencia="{{$reserva->venta->tipoTransaccionDiferencia->nombre ?? 'No registra'}}"
+        data-consumo="{{$reserva->venta->consumos}}"
 
         >
         <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Venta">remove_red_eye</i>
     </a>
-    <a href="{{route('backoffice.reserva.venta.edit', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}" class="collection-item center-align valign-wrapper left">
+    <a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}" class="collection-item center-align valign-wrapper left">
         <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
     </a>
     {{-- @endforeach --}}

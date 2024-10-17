@@ -102,7 +102,7 @@
         </div>
 
         @elseif (Auth::user()->has_role(config('app.anfitriona_role')))
-        
+
         <div class="col s12 m12">
           <ul id="projects-collection" class="collection z-depth-1">
             <li class="collection-item avatar">
@@ -143,11 +143,11 @@
 
                     {{ $menu->productoAcompanamiento->nombre }}
                   </td>
-                  
-                    @if ($menu->observacion == null)
-                      <td> No Registra</td>
-                    @endif
-                    <td style="color: red">{{ $menu->observacion }}</td>
+
+                  @if ($menu->observacion == null)
+                  <td> No Registra</td>
+                  @endif
+                  <td style="color: red">{{ $menu->observacion }}</td>
 
                 </tr>
                 @endforeach
@@ -232,9 +232,9 @@
                   @foreach ($reserva->visitas as $visita)
                   <p>@if (is_null($visita->id_lugar_masaje))
                     No Registra Masajes
-                  @else
+                    @else
                     {{$visita->lugarMasaje->nombre}}
-                  @endif - {{$visita->ubicacion->nombre}}</p>
+                    @endif - {{$visita->ubicacion->nombre}}</p>
                 </li>
 
 
@@ -348,8 +348,8 @@
                   <h6 class="collection-header m-0">Menú</h6>
                   <p>Selecciones</p>
                 </li>
-    
-    
+
+
                 <table class="responsive-table">
                   <thead>
                     <tr>
@@ -361,12 +361,12 @@
                     </tr>
                   </thead>
                   <tbody>
-    
+
                     @foreach($reserva->visitas as $visita)
                     @foreach($visita->menus as $index => $menu)
                     <tr>
-    
-    
+
+
                       <td>
                         <strong>Menú {{$index + 1}}:</strong>
                       </td>
@@ -374,28 +374,28 @@
                         {{ $menu->productoEntrada->nombre }}
                       </td>
                       <td>
-    
+
                         {{ $menu->productoFondo->nombre }}
                       </td>
                       <td>
-    
+
                         {{ $menu->productoAcompanamiento->nombre }}
                       </td>
-                      
-                        @if ($menu->observacion == null)
-                          <td> No Registra</td>
-                        @endif
-                        <td style="color: red">{{ $menu->observacion }}</td>
-    
+
+                      @if ($menu->observacion == null)
+                      <td> No Registra</td>
+                      @endif
+                      <td style="color: red">{{ $menu->observacion }}</td>
+
                     </tr>
                     @endforeach
                     @endforeach
-    
-    
+
+
                   </tbody>
                 </table>
-    
-    
+
+
               </ul>
             </div>
             @endif
@@ -558,6 +558,8 @@ $('.modal-trigger').on('click', function(){
       var totalPagar = $(this).data('totalpagar');
       var tipoAbono = $(this).data('tipoabono');
       var tipoDiferencia = $(this).data('tipodiferencia');
+      var consumos = $(this).data('consumo');
+      
 
       // Insertar los datos en los elementos del modal
       $('#modalAbono').text(abono);
@@ -578,6 +580,94 @@ $('.modal-trigger').on('click', function(){
       $('#modalTotalPagar').text(totalPagar);
       $('#modalTipoAbono').text(tipoAbono);
       $('#modalTipoDiferencia').text(tipoDiferencia);
+      
+
+      console.log(consumos);
+      
+      // Limpiar el contenido anterior de consumos en el modal
+      $('#modalConsumo').empty();
+
+      // Crear la tabla para los consumos
+      var subtotalConsumo=0;
+      var totalConsumo = 0;
+      var subtotalServicio=0;
+      var tablaConsumos = '<table class="highlight responsive-table centered">';
+
+      tablaConsumos += '<thead><tr><th>Producto</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th><th>Propina</th></tr></thead>';
+      tablaConsumos += '<tbody>';
+
+      // Iterar sobre los consumos y agregar filas a la tabla
+      if (Array.isArray(consumos) && consumos.length > 0) {
+          consumos.forEach(function(consumo, index) {
+              if (Array.isArray(consumo.detalles_consumos) && consumo.detalles_consumos.length > 0) {
+                  consumo.detalles_consumos.forEach(function(detalle, detalleIndex) {
+                      tablaConsumos += '<tr>';
+                      tablaConsumos += '<td>' + detalle.producto.nombre + '</td>';  // Cambia si tienes un nombre específico del producto
+                      tablaConsumos += '<td>$' + detalle.producto.valor + '</td>';
+                      tablaConsumos += '<td>'+'X' + detalle.cantidad_producto + '</td>';
+                      tablaConsumos += '<td>$' + detalle.subtotal + '</td>';
+                      tablaConsumos += '<td>$' + detalle.subtotal * 0.1 +'</td>';
+                      subtotalConsumo += detalle.subtotal;
+                      totalConsumo += detalle.subtotal*1.1;
+                      tablaConsumos += '</tr>';
+                  });
+              }
+          });
+          tablaConsumos += '<tr>';
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '<strong>SubTotal: $'+subtotalConsumo+'</strong>' + '</td>'; 
+          tablaConsumos += '<td>' + '<strong>Total: $'+Math.trunc(totalConsumo)+'</strong>' + '</td>'; 
+          tablaConsumos += '</tr>';
+
+      } else {
+          tablaConsumos += '<tr><td colspan="4">No hay consumos registrados.</td></tr>';
+      }
+
+      tablaConsumos += '</tbody></table>';
+
+      // Añadir la tabla al modal
+      $('#modalConsumo').append(tablaConsumos);
+
+
+      // Limpiar el contenido anterior de consumos en el modal
+      $('#modalServicio').empty();
+
+      var tablaServicios = '<table class="highlight responsive-table centered">';
+      tablaServicios += '<thead><tr><th>Servicio</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
+      tablaServicios += '<tbody>';
+
+            // Iterar sobre los consumos y agregar filas a la tabla
+            if (Array.isArray(consumos) && consumos.length > 0) {
+          consumos.forEach(function(consumo, index) {
+              if (Array.isArray(consumo.detalle_servicios_extra) && consumo.detalle_servicios_extra.length > 0) {
+                  consumo.detalle_servicios_extra.forEach(function(detalle, detalleIndex) {
+                      tablaServicios += '<tr>';
+                      tablaServicios += '<td>' + detalle.servicio.nombre_servicio + '</td>';
+                      tablaServicios += '<td>$' + detalle.servicio.valor_servicio + '</td>';
+                      tablaServicios += '<td>' +'X'+ detalle.cantidad_servicio + '</td>';
+                      tablaServicios += '<td>$' + detalle.subtotal + '</td>';
+                      subtotalServicio += detalle.subtotal;
+                      tablaServicios += '</tr>';
+                  });
+              }
+          });
+          tablaServicios += '<tr>';
+          tablaServicios += '<td>' + '</td>'; 
+          tablaServicios += '<td>' + '</td>'; 
+          tablaServicios += '<td>' + '</td>'; 
+          tablaServicios += '<td>' + '<strong>Total:'+subtotalServicio+'</strong>' + '</td>'; 
+          tablaServicios += '</tr>';
+
+      } else {
+          tablaServicios += '<tr><td colspan="4">No hay servicios registrados.</td></tr>';
+      }
+
+      tablaServicios += '</tbody></table>';
+
+      // Añadir la tabla al modal
+      $('#modalServicio').append(tablaServicios);
 
   // Abrir el modal
   var modal = M.Modal.getInstance($('#modalVenta'));

@@ -21,6 +21,11 @@ class Servicio extends Model
         return $this->belongsToMany(Programa::class, 'programa_servicio', 'id_servicio', 'id_programa');
     }
 
+    public function detalleServicioExtra()
+    {
+        return $this->hasMany(DetalleServiciosExtra::class, 'id_servicio_extra');
+    }
+
 //ALMACENAMIENTO
 
     // Mutador para convertir los minutos en formato HH:MM:SS

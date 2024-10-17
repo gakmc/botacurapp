@@ -4,13 +4,13 @@ namespace App\Http\Controllers;
 
 use App\Consumo;
 use App\DetalleConsumo;
-use App\TipoProducto;
+use App\DetalleServiciosExtra;
 use App\Servicio;
+use App\TipoProducto;
 use App\Venta;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
-
 
 class ConsumoController extends Controller
 {
@@ -24,7 +24,7 @@ class ConsumoController extends Controller
         //
     }
 
-    public function create_service($venta)
+    public function service_create($venta)
     {
         $venta = Venta::findOrFail($venta);
         $servicios = Servicio::all();
@@ -34,9 +34,56 @@ class ConsumoController extends Controller
         ]);
     }
 
-    function store_service(Request $request, Venta $venta) 
+    public function service_store(Request $request, Venta $venta)
     {
-        dd($venta->reserva->visitas);    
+
+        DB::transaction(function () use ($request, &$venta) {
+            // Verificar si ya existe un consumo para esta venta
+            $consumo = Consumo::where('id_venta', $request->id_venta)->first();
+
+            // Si no existe, creamos el consumo con valores iniciales
+            if (!$consumo) {
+                $consumo = Consumo::create([
+                    'id_venta' => $request->id_venta,
+                    'subtotal' => 0,
+                    'total_consumo' => 0,
+                ]);
+            }
+
+            // Inicializar variables
+            $totalSubtotal = 0;
+            $nuevoSubtotal = 0;
+
+            // Filtrar los productos del request con cantidad válida (mayor que 0)
+            $serviciosValidos = array_filter($request->servicios, function ($servicio) {
+                return isset($servicio['cantidad']) && $servicio['cantidad'] > 0;
+            });
+
+            // Recorrer los productos válidos y crear los detalles de consumo
+            foreach ($serviciosValidos as $servicio_id => $servicio) {
+                DetalleServiciosExtra::create([
+                    'id_consumo' => $consumo->id,
+                    'id_servicio_extra' => $servicio_id,
+                    'cantidad_servicio' => $servicio['cantidad'],
+                    'subtotal' => $servicio['precio'] * $servicio['cantidad'],
+                ]);
+
+                // Sumar al subtotal del nuevo consumo
+                $nuevoSubtotal += $servicio['cantidad'] * $servicio['precio'];
+
+            }
+
+            $consumo->subtotal += $nuevoSubtotal;
+            $consumo->total_consumo += $nuevoSubtotal;
+
+            $consumo->save();
+
+        });
+
+        $venta = Venta::where('id', $request->id_venta)->first();
+
+        Alert::success('Éxito', 'Servicio extra ingresado correctamente', 'Confirmar')->showConfirmButton();
+        return redirect()->route('backoffice.reserva.show', $venta->reserva->id);
     }
 
     public function create($venta)

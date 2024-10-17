@@ -24,7 +24,7 @@
                     </h4>
                     <div class="row">
                         <form class="col s12" method="post"
-                            action="{{route('backoffice.venta.consumo.store_service', $venta)}}">
+                            action="{{route('backoffice.venta.consumo.service_store', $venta)}}">
                             {{csrf_field()}}
 
 

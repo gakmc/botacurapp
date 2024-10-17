@@ -160,19 +160,21 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/generar-pdf/{reserva}', 'ClienteController@generarPDF')->name('cliente.pdf');
 
+    Route::get('venta/{ventum}/verconsumo', 'VentaController@verconsumo')->name('reserva.venta.verconsumo');
 
     
+    Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
     
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
-    Route::get('venta/{venta}/consumo', 'ConsumoController@create_service')->name('venta.consumo.create_service');
+    Route::get('venta/{venta}/consumo/ingresar', 'ConsumoController@service_create')->name('venta.consumo.service_create');
     // Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
     
     // // Create - Ingresa al formulario para nueva reserva
     // Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
     
     // Store - Guardar la nueva reserva
-    Route::post('venta/{venta}/consumo', 'ConsumoController@store_service')->name('venta.consumo.store_service');
+    Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
     
     // // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');

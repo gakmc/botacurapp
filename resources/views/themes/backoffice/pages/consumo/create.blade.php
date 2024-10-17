@@ -93,14 +93,17 @@
                                     <div class="card-tabs">
                                         <ul class="tabs tabs-fixed-width">
                                             @foreach($tipos as $tipo)
+                                            @if(in_array($tipo->nombre, ['Bebestibles']))
                                             <li class="tab"><a href="#tipo_{{$tipo->id}}"
                                                     id="seleccion">{{$tipo->nombre}}</a></li>
+                                            @endif
                                             @endforeach
                                         </ul>
                                     </div>
 
                                     <div class="card-content grey lighten-4">
                                         @foreach($tipos as $tipo)
+                                        @if(in_array($tipo->nombre, ['Bebestibles']))
                                         <div id="tipo_{{$tipo->id}}" class="tipo-section">
                                             <div class="row">
                                                 @foreach($tipo->productos as $producto)
@@ -125,6 +128,7 @@
                                                 @endforeach
                                             </div>
                                         </div>
+                                        @endif
                                         @endforeach
                                     </div>
                                 </div>
