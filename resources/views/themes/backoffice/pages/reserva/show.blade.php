@@ -542,7 +542,24 @@
 
   document.addEventListener('DOMContentLoaded', function() {
     var elems = document.querySelectorAll('.tooltipped');
-    var instances = M.Tooltip.init(elems);
+    M.Tooltip.init(elems, {
+      position: 'top',
+    });
+  });
+</script>
+
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+    var elems = document.querySelectorAll('.dropdown-trigger');
+    M.Dropdown.init(elems, {
+      alignment: 'right', // Alinea a la derecha
+      constrainWidth: false, // No limita el ancho del dropdown
+      coverTrigger: true, // No cubre el botón
+      hover: false, // Solo abre al hacer clic
+      inDuration: 300, // Duración de la animación al abrir
+      outDuration: 200, // Duración de la animación al cerrar
+      belowOrigin: true // Aparece hacia arriba
+    });
   });
 </script>
 
@@ -565,6 +582,8 @@ $('.modal-trigger').on('click', function(){
       $('#modalAbono').text(abono);
       $('#modalDiferencia').text(diferencia);
       
+      $('#linkAbono').attr('href',abonoImg);
+      $('#linkDiferencia').attr('href',diferenciaImg);
       $('#modalAbonoImg').attr('src',abonoImg);
       $('#modalDiferenciaImg').attr('src',diferenciaImg);
       
@@ -581,8 +600,6 @@ $('.modal-trigger').on('click', function(){
       $('#modalTipoAbono').text(tipoAbono);
       $('#modalTipoDiferencia').text(tipoDiferencia);
       
-
-      console.log(consumos);
       
       // Limpiar el contenido anterior de consumos en el modal
       $('#modalConsumo').empty();
@@ -591,6 +608,7 @@ $('.modal-trigger').on('click', function(){
       var subtotalConsumo=0;
       var totalConsumo = 0;
       var subtotalServicio=0;
+
       var tablaConsumos = '<table class="highlight responsive-table centered">';
 
       tablaConsumos += '<thead><tr><th>Producto</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th><th>Propina</th></tr></thead>';
@@ -668,6 +686,32 @@ $('.modal-trigger').on('click', function(){
 
       // Añadir la tabla al modal
       $('#modalServicio').append(tablaServicios);
+      
+      
+      // Limpiar el contenido anterior de consumos en el modal
+      $('#modalResumen').empty();
+      
+      var SubTotalPagar = subtotalConsumo+subtotalServicio+totalPagar;
+      var TotalPagarCP = Math.trunc(totalConsumo)+subtotalServicio+totalPagar;
+
+      var tablaResumen = '<table class="highlight responsive-table centered">';
+        
+        tablaResumen += '<thead><tr><th>Subtotal Consumo</th><th>Total Consumo</th><th>Total Servicios</th><th>Diferencia</th><th>SubTotal</th><th>Total</th></tr></thead>';
+        tablaResumen += '<tbody>';
+
+        tablaResumen += '<tr>';
+        tablaResumen += '<td>' +'$'+ subtotalConsumo + '</td>'; 
+        tablaResumen += '<td>' +'$'+ Math.trunc(totalConsumo) + '</td>'; 
+        tablaResumen += '<td>' +'$'+ subtotalServicio + '</td>'; 
+        tablaResumen += '<td>' +'$'+ totalPagar + '</td>'; 
+        tablaResumen += '<td>' + '<strong> $' + SubTotalPagar+ '</strong>' + '</td>'; 
+        tablaResumen += '<td>' + '<strong> $'+TotalPagarCP+'</strong>' + '</td>'; 
+        tablaResumen += '</tr>';
+
+        tablaResumen += '</tbody></table>';
+          
+          // Añadir la tabla al modal
+          $('#modalResumen').append(tablaResumen);
 
   // Abrir el modal
   var modal = M.Modal.getInstance($('#modalVenta'));

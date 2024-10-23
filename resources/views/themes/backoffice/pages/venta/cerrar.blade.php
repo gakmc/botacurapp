@@ -27,7 +27,7 @@
           </h4>
           <div class="row">
             <form class="col s12" method="post" enctype="multipart/form-data"
-              action="{{route('backoffice.reserva.venta.update', ['reserva' => $reserva->id, 'ventum' => $reserva->venta->id])}}">
+              action="{{route('backoffice.reserva.venta.cerrarventa', ['reserva' => $reserva->id, 'ventum' => $reserva->venta->id])}}">
 
 
               {{csrf_field() }}
@@ -72,9 +72,17 @@
 
 
                 <div class="input-field col s12 m4">
+                  @if (is_null($reserva->venta->tipoTransaccionAbono))
+                  <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono">
+                    
+                    <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" selected>
+                      No Registrada</option>
+                      @else
                   <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono" disabled>
                     <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" disabled selected>
                       {{$reserva->venta->tipoTransaccionAbono->nombre}}</option>
+                      
+                    @endif
                     @foreach ($tipos as $tipo)
                     <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
                     @endforeach
@@ -137,10 +145,13 @@
 
               </div>
 
+              
               <div class="row">
-
+                
+                
+                
                 {{-- <div class="input-field col s12 m3">
-
+                  
                   <label for="descuento">Descuento</label>
                   <input id="descuento" type="number" name="descuento" class="" value="{{ old('descuento') }}">
                   @error('descuento')
@@ -148,14 +159,75 @@
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
-
+                  
                 </div> --}}
+                
+                
 
+                @if ($reserva->venta->consumos->isEmpty())
+
+                <div class="input-field col s12 m3" id="noPropina">
+                  
+                  <label for="sinPropina">Consumo Sin Propina</label>
+                  <input id="sinPropina" type="text" name="sinPropina" class=""
+                  value="0" readonly>
+                  @error('sinPropina')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+                  
+                </div>
+
+                
+                @else
+                
+                @foreach ($reserva->venta->consumos as $consumo)
+                
+                <p id="check">
+                  <label>
+                    <input type="checkbox" id="propina" name="propina"/>
+                    <span>Incluye Propina?</span>
+                  </label>
+                </p>
+                  
+                  
+                <div class="input-field col s12 m3" id="noPropina">
+                  
+                  <label for="sinPropina">Consumo Sin Propina</label>
+                  <input id="sinPropina" type="text" name="sinPropina" class=""
+                  value="{{$consumo->subtotal}}" readonly>
+                  @error('sinPropina')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+                  
+                </div>
+
+                <div class="input-field col s12 m3" id="siPropina" hidden>
+                  
+                  <label for="conPropina">Consumo Con Propina</label>
+                  <input id="conPropina" type="text" name="conPropina" class=""
+                  value="{{$consumo->total_consumo}}" readonly>
+                  @error('conPropina')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
+                @endforeach
+                @endif
+                
                 <div class="input-field col s12 m3">
 
-                  <label for="total_pagar">Total a pagar</label>
+                  <label for="total_pagar">Total a Pagar</label>
                   <input id="total_pagar" type="text" name="total_pagar" class=""
-                    value="{{$reserva->venta->total_pagar}}" readonly>
+                  readonly
+                  data-total-pagar="{{$reserva->venta->total_pagar}}"
+                  >
                   @error('total_pagar')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -171,13 +243,13 @@
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaAbono">Imagen Abono</label>
                   <img class="center-text" id="imagenSeleccionadaAbono" src="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" alt=""
-                    style="max-height: 200px">
+                    style="max-height: 200px; max-width:300px;">
                 </div>
 
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaDiferencia">Imagen Diferencia</label>
                   <img class="center-text" id="imagenSeleccionadaDiferencia" src="/images/gallary/no-image.png"
-                    alt="" style="max-height: 200px">
+                    alt="" style="max-height: 200px; max-width:300px;">
                 </div>
               </div>
 
@@ -224,14 +296,47 @@
 </script>
 
 <script>
-  var total = 0;
+    var total = parseInt($('#total_pagar').data('total-pagar'));
     var diferenciaInput = 0;
+    var ConPropina = parseInt($('#conPropina').val());
+    var SinPropina = parseInt($('#sinPropina').val());
+    var propina = false;
+    var nuevoTotal = 0;
+    var checkbox = $('#check');
+    
     
     $(document).ready(function(){
-      total = $('#total_pagar').val();
+      
+      $('#total_pagar').val(total+SinPropina);
+
+      if (ConPropina <= 0) {
+        checkbox.attr('hidden', true);
+      }
+
+    })
+    
+    
+    $(document).change(function(){
+      
+      nuevoTotal = total;
+      propina = $('#propina').is(':checked');
+      
+      if (propina) {
+        $('#noPropina').attr('hidden', true);
+        $('#sinPropina').attr('disabled', true);
+        $('#siPropina').removeAttr('hidden');
+        $('#conPropina').removeAttr('disabled');
+        nuevoTotal += ConPropina;
+      } else {
+        $('#siPropina').attr('hidden', true);
+        $('#conPropina').attr('disabled', true);
+        $('#noPropina').removeAttr('hidden');
+        $('#sinPropina').removeAttr('disabled');
+        nuevoTotal += SinPropina;
+      }
       calcularTotal();
     })
-
+    
     $('#diferencia_programa').change(function () { 
       diferenciaInput = $('#diferencia_programa').val();
       calcularTotal();
@@ -239,8 +344,8 @@
     
 
     function calcularTotal() {
-      
-      $('#total_pagar').val(total-diferenciaInput);
+
+      $('#total_pagar').val(nuevoTotal-diferenciaInput);
       
     }
 

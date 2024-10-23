@@ -31,36 +31,40 @@
                             <div class="row mt-1">
                                 <!-- Tarjeta para mostrar el número de Reservas -->
                                 <div class="col s12 m6 l3">
-                                    <div class="animate__animated animate__backInLeft card gradient-45deg-light-blue-cyan gradient-shadow min-height-100 white-text"
-                                        style="--animate-delay: 1s; --animate-duration: 2s; ">
-                                        <div class="padding-4">
-                                            <div class="col s7 m7">
-                                                <i class="material-icons background-round mt-5">assignment</i>
-                                                <p>Reservas</p>
-                                            </div>
-                                            <div class="col s5 m5 right-align">
-                                                <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
-                                                <p class="no-margin">Total</p>
+                                    <a href="{{route('backoffice.reserva.index')}}">
+                                        <div class="animate__animated animate__backInLeft card gradient-45deg-light-blue-cyan gradient-shadow min-height-100 white-text"
+                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                            <div class="padding-4">
+                                                <div class="col s7 m7">
+                                                    <i class="material-icons background-round mt-5">assignment</i>
+                                                    <p>Reservas</p>
+                                                </div>
+                                                <div class="col s5 m5 right-align">
+                                                    <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
+                                                    <p class="no-margin">Total</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </div>
 
                                 <!-- Tarjeta para mostrar el número de Clientes -->
                                 <div class="col s12 m6 l3">
-                                    <div class="animate__animated animate__backInLeft card gradient-45deg-red-pink gradient-shadow min-height-100 white-text"
-                                        style="--animate-delay: 1s; --animate-duration: 2s;">
-                                        <div class="padding-4">
-                                            <div class="col s7 m7">
-                                                <i class="material-icons background-round mt-5">airport_shuttle</i>
-                                                <p>Clientes</p>
-                                            </div>
-                                            <div class="col s5 m5 right-align">
-                                                <h5 id="clientes-count" class="mb-0">{{$totalClientes}}</h5>
-                                                <p class="no-margin">Total</p>
+                                    <a href="{{route('backoffice.cliente.index')}}">
+                                        <div class="animate__animated animate__backInLeft card gradient-45deg-red-pink gradient-shadow min-height-100 white-text"
+                                            style="--animate-delay: 1s; --animate-duration: 2s;">
+                                            <div class="padding-4">
+                                                <div class="col s7 m7">
+                                                    <i class="material-icons background-round mt-5">airport_shuttle</i>
+                                                    <p>Clientes</p>
+                                                </div>
+                                                <div class="col s5 m5 right-align">
+                                                    <h5 id="clientes-count" class="mb-0">{{$totalClientes}}</h5>
+                                                    <p class="no-margin">Total</p>
+                                                </div>
                                             </div>
                                         </div>
-                                    </div>
+                                    </a>
                                 </div>
 
 

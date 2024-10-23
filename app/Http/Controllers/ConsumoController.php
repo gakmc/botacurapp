@@ -145,8 +145,11 @@ class ConsumoController extends Controller
             // Sumar el nuevo subtotal al subtotal actual del consumo
             $consumo->subtotal += $nuevoSubtotal;
 
+            // Calcular la propina solo del nuevo subtotal
+            $propina = $nuevoSubtotal * 0.1;
+
             // Recalcular el total del consumo (se añade un 10% en propina)
-            $totalConPropina = $consumo->subtotal * 1.1;
+            $totalConPropina = $consumo->subtotal + $propina;
 
             // Actualizar el consumo con los nuevos totales
             $consumo->total_consumo = $totalConPropina;

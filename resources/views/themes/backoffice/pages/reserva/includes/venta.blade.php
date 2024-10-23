@@ -1,6 +1,6 @@
 <div class="collection">
 
-    
+
     <a href="" class="collection-item active @if (is_null($reserva->venta))
         ''
     @else
@@ -12,14 +12,14 @@
     @endif
     ">
 
-        <h5 >Venta: @if (is_null($reserva->venta))
-            
+        <h5>Venta: @if (is_null($reserva->venta))
+
             @else
             @if ($reserva->venta->total_pagar === 0)
             Pagado
             @endif
             @endif </h5>
-        </a>
+    </a>
 
 
     @if(is_null($reserva->venta))
@@ -41,20 +41,36 @@
         @endif
     </a>
     <a href="#modal-venta{{$reserva->venta->id}}" class="modal-trigger collection-item center-align valign-wrapper left"
-        data-id="{{ $reserva->venta->id }}" 
-        data-abono="{{ $reserva->venta->abono_programa }}"
-        data-abonoimg="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" data-diferencia="{{ $reserva->venta->diferencia_programa }}"
-        data-diferenciaimg="{{$reserva->venta->imagen_diferencia ? route('backoffice.reserva.diferencia.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" data-descuento="{{$reserva->venta->descuento}}"
-        data-totalpagar="{{$reserva->venta->total_pagar}}" data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
+        data-id="{{ $reserva->venta->id }}" data-abono="{{ $reserva->venta->abono_programa }}"
+        data-abonoimg="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
+        data-diferencia="{{ $reserva->venta->diferencia_programa }}"
+        data-diferenciaimg="{{$reserva->venta->imagen_diferencia ? route('backoffice.reserva.diferencia.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
+        data-descuento="{{$reserva->venta->descuento}}" data-totalpagar="{{$reserva->venta->total_pagar}}"
+        data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
         data-tipodiferencia="{{$reserva->venta->tipoTransaccionDiferencia->nombre ?? 'No registra'}}"
-        data-consumo="{{$reserva->venta->consumos}}"
-
-        >
+        data-consumo="{{$reserva->venta->consumos}}">
         <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Venta">remove_red_eye</i>
     </a>
-    <a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}" class="collection-item center-align valign-wrapper left">
+    @if (is_null($reserva->venta->diferencia_programa))
+    <a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
+        class="collection-item center-align valign-wrapper left">
         <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
     </a>
+
+    @else
+
+    <a class="collection-item center-align valign-wrapper left dropdown-trigger" href="#" data-target="dropdown1">
+        <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF">picture_as_pdf</i>
+    </a>
+
+    <!-- Dropdown hacia arriba -->
+    <ul id="dropdown1" class="dropdown-content">
+        <li><a href="{{route('backoffice.venta.pdf', $reserva)}}" target="_blank"><i class="material-icons">remove_red_eye</i>Ver</a></li>
+        <li><a href="#!"><i class="material-icons">share</i>Compartir</a></li>
+    </ul>
+
+    @endif
+
     {{-- @endforeach --}}
     @endif
 

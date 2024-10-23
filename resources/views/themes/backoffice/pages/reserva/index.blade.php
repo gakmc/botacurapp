@@ -5,12 +5,16 @@
 @section('breadcrumbs')
 @endsection
 
+@section('dropdown_settings')
+<li><a href="{{route ('backoffice.reserva.listar') }}" class="grey-text text-darken-2">Todas las Reservas</a></li>
+@endsection
+
 @section('head')
 @endsection
 
 @section('content')
 <div class="section">
-    <p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p>
+    <a href="?page=1"><p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p></a>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="card-panel ">

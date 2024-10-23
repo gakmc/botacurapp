@@ -68,7 +68,7 @@ class ClienteController extends Controller
             'personas' => $reserva->cantidad_personas,
         ];
 
-        $pdf = PDF::loadView('themes.backoffice.pages.cliente.viewPDF', $data);
+        $pdf = PDF::loadView('pdf.cliente.viewPDF', $data);
         // return $pdf->download('factura.pdf');
         return $pdf->stream('Visita'.'_'.$saveName.'_'.$reserva->fecha_visita.'.pdf');
 

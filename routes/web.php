@@ -77,6 +77,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Edit - Mostrar el formulario para editar una reserva
     // Route::get('reserva/{id}/edit', 'ReservaController@edit')->name('reserva.edit');
 
+    Route::get('reservas', 'ReservaController@indexall')->name('reserva.listar');
+    
+
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     // Update - Actualizar una reserva específica
@@ -157,13 +160,17 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         return view('themes.backoffice.pages.tipo_producto.edit', compact('producto'));
     })->name('tipo_producto.edit');
 
-
+    // PDF
     Route::get('/generar-pdf/{reserva}', 'ClienteController@generarPDF')->name('cliente.pdf');
+    Route::get('/ver-pdf/{reserva}', 'ReservaController@generarPDF')->name('venta.pdf');
+
+    //Fin PDF
 
     Route::get('venta/{ventum}/verconsumo', 'VentaController@verconsumo')->name('reserva.venta.verconsumo');
 
     
     Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
+    Route::match(['put', 'patch'],'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
     
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
@@ -172,6 +179,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     // // Create - Ingresa al formulario para nueva reserva
     // Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
+
     
     // Store - Guardar la nueva reserva
     Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');

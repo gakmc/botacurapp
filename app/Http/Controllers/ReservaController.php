@@ -6,12 +6,14 @@ use App\Cliente;
 use App\Consumo;
 use App\DetalleServiciosExtra;
 use App\Http\Requests\Reserva\StoreRequest;
+use App\Menu;
 use App\Programa;
 use App\Reserva;
 use App\Servicio;
 use App\TipoTransaccion;
 use App\User;
 use App\Venta;
+use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -19,6 +21,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
 use RealRashid\SweetAlert\Facades\Alert;
+use PDF;
 
 class ReservaController extends Controller
 {
@@ -301,5 +304,75 @@ class ReservaController extends Controller
     public function destroy(Reserva $reserva)
     {
         //
+    }
+
+    public function generarPDF(Reserva $reserva)
+    {
+        $reserva->load('venta.consumos.detallesConsumos.producto','venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus','visitas.menus.productoEntrada','visitas.menus.productoFondo','visitas.menus.productoacompanamiento');
+
+        $total = 0;
+        $propina = 'No Aplica';
+        $visita = $reserva->visitas->first();
+        $visita->load(['menus']);
+        $menus = $visita->menus;
+        $consumos = $reserva->venta->consumos;
+
+        if(empty($consumos)){
+            $propina = 'No Aplica';
+        }else{
+            foreach($consumos as $consumo){
+                foreach($consumo->detallesConsumos as $detalles){
+                    if ($detalles->genera_propina) {
+                        $total = $consumo->total_consumo;
+                        $propina = 'Si';
+                    }else{
+                        $total = $consumo->subtotal;
+                        $propina = 'No';
+                    }
+                }
+            }
+        }
+
+        $saveName = str_replace(' ','_',$reserva->cliente->nombre_cliente);
+        
+        $data = [
+            'nombre'=>$reserva->cliente->nombre_cliente,
+            'numero'=>$reserva->cliente->whatsapp_cliente,
+            'observacion'=>$reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+            'fecha_visita'=>$reserva->fecha_visita,
+            'programa' => $reserva->programa->nombre_programa,
+            'personas' => $reserva->cantidad_personas,
+            'menus'=> $menus,
+            'consumos'=> $consumos,
+            'venta' => $reserva->venta,
+            'total' => $total,
+            'propina' => $propina,
+        ];
+
+        // dd($data);
+
+        $pdf = PDF::loadView('pdf.venta.viewPDF', $data);
+        // return $pdf->download('factura.pdf');
+        return $pdf->stream('Detalle_Venta'.'_'.$saveName.'_'.$reserva->fecha_visita.'.pdf');
+
+    }
+
+
+    public function indexall()
+    {
+        Carbon::setLocale('es');
+
+        // Vista anterior
+        $currentMonth = Carbon::now()->month;
+        $currentYear = Carbon::now()->year;
+
+        $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios'])
+            ->orderBy('fecha_visita')
+            ->get()
+            ->groupBy(function ($date) {
+                return Carbon::parse($date->fecha_visita)->format('Y-m');
+            });
+
+        return view('themes.backoffice.pages.reserva.index_all', compact('reservasPorMes'));
     }
 }
