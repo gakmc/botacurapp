@@ -52,10 +52,17 @@ class User extends Authenticatable implements MustVerifyEmail
 
     }
 
-    public function reservaciones()
+    public function reservas()
     {
         return $this->hasMany('App\Reserva');
     }
+
+    public function asignaciones()
+    {
+        return $this->belongsToMany(Asignacion::class, 'asignacion_user', 'user_id', 'asignacion_id');
+    }
+
+
 
 //ALMACENAMIENTO
 

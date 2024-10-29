@@ -8,6 +8,7 @@ use App\TipoTransaccion;
 use App\Ubicacion;
 use App\UnidadMedida;
 use App\Venta;
+use Illuminate\Support\Facades\Route;
 
 /*
 |--------------------------------------------------------------------------
@@ -202,4 +203,5 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('visita', 'VisitaController');
     Route::resource('menu', 'MenuController');
     Route::resource('masaje', 'MasajeController');
+    Route::resource('asignacion', 'AsignacionController');
 });

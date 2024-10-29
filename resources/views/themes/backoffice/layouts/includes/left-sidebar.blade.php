@@ -197,6 +197,17 @@
                 </li>
 
                 <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.asignacion.index') }}">
+                        <i class="material-icons">
+                            person_add
+                        </i>
+                        <span class="nav-text">
+                            Asignacion de turno
+                        </span>
+                    </a>
+                </li>
+
+                <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
                         <i class="material-icons">
                             data_usage

@@ -3,7 +3,7 @@
 @section('title', 'Reservas')
 
 @section('breadcrumbs')
-<li><a href="{{route('backoffice.reserva.index')}}">Reservas de la semana</a></li>
+<li><a href="{{route('backoffice.reserva.index')}}">Todas las Reservas</a></li>
 @endsection
 
 @section('head')
@@ -86,8 +86,8 @@ document.addEventListener('DOMContentLoaded', function() {
 
             eventos.push({
                 title: 'Sauna - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
-                start: formatoFecha+ ' {{ $visita->horario_sauna }}',
-                end: formatoFecha+' {{ $visita->hora_fin_sauna }}',
+                start: formatoFecha + ' {{ $visita->horario_sauna }}',
+                end: formatoFecha +' {{ $visita->hora_fin_sauna }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
                 description: '{{ addslashes($reserva->observacion) }}'
             });
