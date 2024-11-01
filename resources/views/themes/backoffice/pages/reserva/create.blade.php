@@ -43,6 +43,7 @@
 
                       @endif data-valor="{{$programa->valor_programa}}"
                       data-incluye-masajes="{{ $programa->incluye_masajes ? '1' : '0' }}"
+                      data-incluye-almuerzos="{{ $programa->incluye_almuerzos ? '1' : '0' }}"
                       >{{$programa->nombre_programa}}</option>
                     @endforeach
                   </select>
@@ -175,7 +176,10 @@
                 </div>
 
 
-
+                <label id="checkbox-almuerzos-container" class="input-field col s12 m3">
+                  <input style="display: none" type="checkbox" id="agregar_almuerzos" name="agregar_almuerzos" />
+                  <span>¿Desea agregar almuerzos?</span>
+                </label>
 
               </div>
 
@@ -287,12 +291,15 @@ function calcularValorTotal(){
   const inputCantidadMasajesContainer = $('#input-cantidad-masajes-container');
   const agregarMasajesCheckbox = $('#agregar_masajes');
   const cantidadMasajesExtraInput = $('#cantidad_masajes_extra');
+  const checkboxAlmuerzosContainer = $('#checkbox-almuerzos-container');
+  const agregarAlmuerzosCheckbox = $('#agregar_almuerzos');
 
 
   function toggleMasajesField() {
     const selectedOption = selectPrograma.find('option:selected');
     const incluyeMasajes = selectedOption.data('incluye-masajes');
     const inputMasajes = $('#cantidad_masajes');
+    console.log(incluyeMasajes);
     
     if (incluyeMasajes === 1) {
       // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
@@ -313,6 +320,19 @@ function calcularValorTotal(){
     }
   }
 
+  function toggleAlmuerzosField(){
+    const selectedOption = selectPrograma.find('option:selected');
+    const incluyeAlmuerzos = selectedOption.data('incluye-almuerzos');
+    console.log(incluyeAlmuerzos);
+    
+    if (incluyeAlmuerzos === 1) {
+      checkboxAlmuerzosContainer.hide();
+      agregarAlmuerzosCheckbox.prop('checked', false);
+    } else {
+      checkboxAlmuerzosContainer.show();
+    }
+  }
+
   // Mostrar el input de cantidad de masajes solo si el checkbox está marcado
   agregarMasajesCheckbox.on('change', function() {
     if ($(this).is(':checked')) {
@@ -325,9 +345,11 @@ function calcularValorTotal(){
 
   // Escucha el evento change del select para detectar cuando cambie
   selectPrograma.on('change', toggleMasajesField);
+  selectPrograma.on('change', toggleAlmuerzosField);
 
   // Inicializa el estado del campo en la carga de la página
   toggleMasajesField(); // Para verificar la selección inicial
+  toggleAlmuerzosField();
   
 });
 

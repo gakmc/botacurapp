@@ -145,6 +145,11 @@
 
 
       @foreach($reservas as $reserva)
+      @foreach($reserva->visitas as $visita)
+@if ($visita->menus->isNotEmpty())
+  
+
+
       <div class="card-panel">
         <div class="card-content gradient-45deg-light-blue-cyan">
           <h5 class="card-title center white-text"><i class='material-icons white-text'>restaurant_menu</i> Menús para
@@ -163,7 +168,6 @@
               </tr>
             </thead>
             <tbody>
-              @foreach($reserva->visitas as $visita)
               @foreach($visita->menus as $index => $menu)
               <tr>
 
@@ -190,13 +194,18 @@
 
               </tr>
               @endforeach
-              @endforeach
-
+              
             </tbody>
           </table>
         </div>
       </div>
+
+      @endif
       @endforeach
+      @endforeach
+
+
+
       @endforeach
 
       {{-- Paginación --}}

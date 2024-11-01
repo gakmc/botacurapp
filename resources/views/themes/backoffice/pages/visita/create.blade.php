@@ -234,12 +234,14 @@
                             </div>
 
                             <div class="row"><br></div>
-
+                            @if (!in_array('Almuerzo', $servicios) && !$almuerzosExtra)
+                            <h6><strong> No registra almuerzos como servicios ni Extras</strong></h6>
+                            @else
                             <div class="row">
                                 <h6><strong> Menús por asistente</strong></h6>
-                                {{-- GENERAR 3 selects por cantidad_personas en tabla reservas --}}
+                                    
                                 @for ($i = 1; $i <= $reserva->cantidad_personas; $i++)
-
+                                    
                                     <div class="input-field col s12 m6 l3">
                                         <select name="menus[{{ $i }}][id_producto_entrada]"
                                             id="id_producto_entrada_{{ $i }}">
@@ -302,6 +304,8 @@
                                     </div>
 
                                     @endfor
+
+                                    @endif
                             </div>
 
 

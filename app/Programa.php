@@ -75,6 +75,13 @@ public function getIncluyeMasajesAttribute()
     return $this->servicios->contains('nombre_servicio', 'Masaje');
 }
 
+public function getIncluyeAlmuerzosAttribute()
+{
+    return $this->servicios->contains(function ($servicio) {
+        return in_array(strtolower($servicio->nombre_servicio), ['almuerzo', 'almuerzos']);
+    });
+}
+
 //RECUPERACION DE INFORMACION
 
 //OTRAS OPERACIONES

@@ -103,6 +103,10 @@
 
         @elseif (Auth::user()->has_role(config('app.anfitriona_role')))
 
+        @foreach($reserva->visitas as $visita)
+        @if ($visita->menus->isNotEmpty())
+
+
         <div class="col s12 m12">
           <ul id="projects-collection" class="collection z-depth-1">
             <li class="collection-item avatar">
@@ -124,7 +128,6 @@
               </thead>
               <tbody>
 
-                @foreach($reserva->visitas as $visita)
                 @foreach($visita->menus as $index => $menu)
                 <tr>
 
@@ -151,7 +154,8 @@
 
                 </tr>
                 @endforeach
-                @endforeach
+
+
 
 
               </tbody>
@@ -160,6 +164,8 @@
 
           </ul>
         </div>
+        @endif
+        @endforeach
 
         @endif
 
@@ -212,6 +218,7 @@
                   </div>
                 </li>
                 @endforeach
+
 
               </ul>
             </div>
@@ -341,6 +348,8 @@
 
             {{-- Menus --}}
             @if(Auth::user()->has_role(config('app.admin_role')))
+            @foreach($reserva->visitas as $visita)
+            @if ($visita->menus->isNotEmpty())
             <div class="col s12 m12">
               <ul id="projects-collection" class="collection z-depth-1">
                 <li class="collection-item avatar">
@@ -362,8 +371,9 @@
                   </thead>
                   <tbody>
 
-                    @foreach($reserva->visitas as $visita)
                     @foreach($visita->menus as $index => $menu)
+
+
                     <tr>
 
 
@@ -389,7 +399,7 @@
 
                     </tr>
                     @endforeach
-                    @endforeach
+
 
 
                   </tbody>
@@ -398,6 +408,10 @@
 
               </ul>
             </div>
+
+            @endif
+
+            @endforeach
             @endif
 
 

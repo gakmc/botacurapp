@@ -60,6 +60,7 @@ class VisitaController extends Controller
     public function create($reserva)
     {
         $masajesExtra = session()->get('masajesExtra');
+        $almuerzosExtra = session()->get('almuerzosExtra');
 
         $reserva = Reserva::findOrFail($reserva);
         $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
@@ -146,6 +147,7 @@ class VisitaController extends Controller
             'fondos' => $fondos,
             'acompañamientos' => $acompañamientos,
             'masajesExtra' => $masajesExtra,
+            'almuerzosExtra' => $almuerzosExtra,
         ]);
     }
 
@@ -163,6 +165,7 @@ class VisitaController extends Controller
         $visita = null;
         $cliente = null;
         $programa = $reserva->programa;
+        $almuerzosExtra = session()->get('almuerzosExtra');
 
         if ($request->has('horario_sauna')) {
             $sauna = Carbon::CreateFromFormat('H:i', $request->input('horario_sauna'));
@@ -176,8 +179,10 @@ class VisitaController extends Controller
             $tipoMasaje = $request->tipo_masaje;
         }
 
+        $almuerzoIncluido = $programa->servicios->pluck('nombre_servicio')->toArray();
+
         try {
-            DB::transaction(function () use ($request, &$reserva, $sauna, $masaje, &$visita, &$cliente, $tipoMasaje) {
+            DB::transaction(function () use ($request, &$reserva, $sauna, $masaje, &$visita, &$cliente, $tipoMasaje, $almuerzoIncluido, $almuerzosExtra) {
 
                 $cliente = $reserva->cliente;
 
@@ -199,14 +204,19 @@ class VisitaController extends Controller
                     'horario_tinaja' => $tinaja,
                 ]);
 
-                foreach ($request->menus as $menu) {
-                    Menu::create([
-                        'id_visita' => $visita->id,
-                        'id_producto_entrada' => $menu['id_producto_entrada'],
-                        'id_producto_fondo' => $menu['id_producto_fondo'],
-                        'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'],
-                        'observacion' => $menu['observacion'],
-                    ]);
+                if (!in_array('Almuerzo',$almuerzoIncluido) && !$almuerzosExtra) {
+                    
+                }else {
+                    
+                    foreach ($request->menus as $menu) {
+                        Menu::create([
+                            'id_visita' => $visita->id,
+                            'id_producto_entrada' => $menu['id_producto_entrada'],
+                            'id_producto_fondo' => $menu['id_producto_fondo'],
+                            'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'],
+                            'observacion' => $menu['observacion'],
+                        ]);
+                    }
                 }
 
             });
@@ -217,7 +227,7 @@ class VisitaController extends Controller
 
             Alert::success('Éxito', 'Se ha generado la visita')->showConfirmButton();
 
-            session()->forget('masajesExtra');
+            session()->forget(['masajesExtra', 'almuerzosExtra']);
 
             return redirect()->route('backoffice.reserva.show', ['reserva' => $request->input('id_reserva')]);
 
@@ -234,9 +244,9 @@ class VisitaController extends Controller
      * @param  \App\Visita  $visita
      * @return \Illuminate\Http\Response
      */
-    public function show(Visita $visita)
+    public function show(Visita $visitum)
     {
-        //
+        dd($visitum->reserva->programa->servicios()->whereIn('nombre_servicio', ['Sauna', 'Saunas', 'sauna', 'saunas'])->exists());
     }
 
     /**
@@ -245,7 +255,7 @@ class VisitaController extends Controller
      * @param  \App\Visita  $visita
      * @return \Illuminate\Http\Response
      */
-    public function edit(Visita $visita)
+    public function edit(Visita $visitum)
     {
         //
     }
@@ -257,7 +267,7 @@ class VisitaController extends Controller
      * @param  \App\Visita  $visita
      * @return \Illuminate\Http\Response
      */
-    public function update(Request $request, Visita $visita)
+    public function update(Request $request, Visita $visitum)
     {
         //
     }
@@ -268,7 +278,7 @@ class VisitaController extends Controller
      * @param  \App\Visita  $visita
      * @return \Illuminate\Http\Response
      */
-    public function destroy(Visita $visita)
+    public function destroy(Visita $visitum)
     {
         //
     }
