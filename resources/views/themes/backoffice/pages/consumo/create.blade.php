@@ -85,15 +85,15 @@
                                 </div> --}}
 
 
-                                <div class="card">
+                                <div class="card col s12">
                                     <div class="card-content gradient-45deg-light-blue-cyan">
                                         <h5 class="white-text" id="nombreSeleccion">nombre tipo</h5>
                                     </div>
 
                                     <div class="card-tabs">
                                         <ul class="tabs tabs-fixed-width">
-                                            @foreach($tipos as $tipo)
-                                            @if(in_array($tipo->nombre, ['Bebestibles']))
+                                            @foreach($tipos->sortBy('nombre') as $tipo)
+                                            @if(in_array($tipo->nombre, $listado))
                                             <li class="tab"><a href="#tipo_{{$tipo->id}}"
                                                     id="seleccion">{{$tipo->nombre}}</a></li>
                                             @endif
@@ -102,11 +102,11 @@
                                     </div>
 
                                     <div class="card-content grey lighten-4">
-                                        @foreach($tipos as $tipo)
-                                        @if(in_array($tipo->nombre, ['Bebestibles']))
+                                        @foreach($tipos->sortBy('nombre') as $tipo)
+                                        @if(in_array($tipo->nombre, $listado))
                                         <div id="tipo_{{$tipo->id}}" class="tipo-section">
                                             <div class="row">
-                                                @foreach($tipo->productos as $producto)
+                                                @foreach($tipo->productos->sortBy('nombre') as $producto)
                                                 <div class="col s12 m6">
                                                     <blockquote>
                                                         <h5>{{ $producto->nombre }}</h5>

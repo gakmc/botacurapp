@@ -65,7 +65,7 @@
 
                           <div class="row">
                               <div class="input-field col s12">
-                                <button class="btn waves-effect waves-light right" name="table" type="submit" value="tipos_documentos">Actualizar
+                                <button class="btn waves-effect waves-light right" name="table" type="submit" value="tipos_productos">Actualizar
                                   <i class="material-icons right">send</i>
                                 </button>
                               </div>

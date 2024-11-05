@@ -162,6 +162,11 @@ class ComplementoController extends Controller
                 $actualizar = CategoriaCompra::findOrFail($id);
                 $actualizar->update($request->all());
                 break;
+
+            case 'tipos_productos':
+                $actualizar = TipoProducto::findOrFail($id);
+                $actualizar->update($request->all());
+                break;
         }
 
         $elemento = $request->input('nombre');
@@ -199,8 +204,14 @@ class ComplementoController extends Controller
                 $eliminar = UnidadMedida::findOrFail($id);
                 $eliminar->delete();
                 break;
+
             case 'tipos_documentos':
                 $eliminar = TipoDocumento::findOrFail($id);
+                $eliminar->delete();
+                break;
+
+            case 'tipos_productos':
+                $eliminar = TipoProducto::findOrFail($id);
                 $eliminar->delete();
                 break;
 
@@ -215,12 +226,12 @@ class ComplementoController extends Controller
                 break;
         }
 
-        $elemento = $request->input('nombre');
-        $registro = $request->input('table');
+        // $elemento = $request->input('nombre');
+        // $registro = $request->input('table');
 
-        $registro = str_replace('_', ' ', $registro);
+        // $registro = str_replace('_', ' ', $registro);
 
-        $registro = ucwords($registro);
+        // $registro = ucwords($registro);
 
         Alert::success('Éxito', "Elemento eliminado correctamente")->showConfirmButton();
         return redirect()->route('backoffice.complemento.index');

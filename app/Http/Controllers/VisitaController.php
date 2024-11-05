@@ -61,12 +61,31 @@ class VisitaController extends Controller
     {
         $masajesExtra = session()->get('masajesExtra');
         $almuerzosExtra = session()->get('almuerzosExtra');
-
+        
         $reserva = Reserva::findOrFail($reserva);
         $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
-
+        
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+        
+        $ubicacionesOcupadas = DB::table('visitas')
+                                ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+                                ->join('ubicaciones','visitas.id_ubicacion','=','ubicaciones.id')
+                                ->where('reservas.fecha_visita', $fechaSeleccionada)
+                                ->pluck('ubicaciones.nombre')
+                                ->map(function ($nombre) {
+                                    return $nombre;
+                                })
+                                ->toArray();
+
+        $ubicacionesAll = DB::table('ubicaciones')
+                        ->select('id','nombre')
+                        ->get();
+
+
+        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
+        })->values();
 
         // ===============================HORAS=SPA==============================================
         // Horarios disponibles de 10:00 a 18:30 SPA
@@ -138,7 +157,7 @@ class VisitaController extends Controller
 
         return view('themes.backoffice.pages.visita.create', [
             'reserva' => $reserva,
-            'ubicaciones' => Ubicacion::all(),
+            'ubicaciones' => $ubicaciones,
             'lugares' => LugarMasaje::all(),
             'servicios' => $serviciosDisponibles,
             'horarios' => $horariosDisponiblesSPA,

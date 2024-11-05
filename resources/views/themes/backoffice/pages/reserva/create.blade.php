@@ -357,4 +357,47 @@ function calcularValorTotal(){
 </script>
 
 
+<script>
+  $(document).ready(function () {
+    $('#fecha_visita').on('change',function () { 
+      const fechaSeleccionada = $(this).val();
+
+      // Hacer una solicitud AJAX para verificar la disponibilidad de ubicaciones
+      $.ajax({
+        url: '{{ route("backoffice.verificar.ubicaciones") }}',
+        type: 'GET',
+        data: { fecha: fechaSeleccionada },
+        success: function (response) {
+          
+          if (response.length == 0) {
+            // Mostrar una alerta si no hay ubicaciones Disponibles
+            const Toast = Swal.mixin({
+                      toast: true,
+                      position: "center",
+                      showConfirmButton: false,
+                      timer: 3000,
+                      timerProgressBar: true,
+                      didOpen: (toast) => {
+                          toast.onmouseenter = Swal.stopTimer;
+                          toast.onmouseleave = Swal.resumeTimer;
+                      }
+                  });
+                  
+                  Toast.fire({
+                      icon: "error",
+                      title: "Este dia, no cuenta con ubicaciones disponibles"
+                  });
+                
+                  $('#fecha_visita').val('');
+          } 
+        },
+        error: function () {
+          alert('Hubo un error al verificar la disponibilidad.');
+        }
+      });
+
+    });
+  });
+</script>
+
 @endsection

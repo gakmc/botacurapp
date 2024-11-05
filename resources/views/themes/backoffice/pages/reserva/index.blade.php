@@ -15,9 +15,79 @@
 @section('content')
 <div class="section">
     <a href="?page=1"><p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p></a>
+    
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="card-panel ">
+            <a href="{{ route('backoffice.reserva.index', ['alternative' => !$alternativeView]) }}" class="waves-effect waves-light btn right">
+                @if ($alternativeView)
+                Horarios <i class='material-icons right'>list</i>
+            @else
+                Ubicación <i class='material-icons right'>apps</i>
+            @endif</a>
+
+            @if ($alternativeView)
+
+
+            @foreach($reservasPaginadas as $fecha => $reservas)
+            <div class="col s12">
+                <h5>Horarios: {{ $fecha }}</h5>
+                <div class="row">
+                    @foreach($reservas as $reserva)
+                        @foreach ($reserva->visitas->sortBy('id_ubicacion') as $visita)
+                        <a href="{{ route('backoffice.reserva.show', $reserva) }}">
+                    <div class="col s12 m6 l3">
+                        <div class="card-panel z-depth-5 animate__animated animate__backInDown"
+                            style="--animate-delay: 1s; --animate-duration: 2s; ">
+                            <table class="highlight">
+                                <thead>
+                                    <tr>
+                                        <th><h5>{{$visita->ubicacion->nombre}}</h5></th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+
+                                        <tr>
+                                            <td>
+                                                    <strong>Nombre: </strong><strong style="color:#FF4081;">
+                                                        {{ $reserva->cliente->nombre_cliente}}
+                                                    </strong>
+                                                    <p><strong>Programa: </strong>{{ $reserva->programa->nombre_programa }}</p>
+                                                    <p><strong>Asistentes: </strong>{{ $reserva->cantidad_personas }} personas</p>
+                                                    @if (is_null($reserva->observacion))
+                                                        Sin Observaciones
+                                                    @else
+                                                        <strong style="color:#FF4081;">{{ $reserva->observacion }}</strong>
+                                                    @endif
+                                                </td>
+                                            </tr>
+                                            
+                                        </tbody>
+                                    </table>
+                                </div>
+                            </div>
+                        </a>
+                        @endforeach
+                @endforeach
+
+
+
+
+
+                </div>
+            </div>
+            @endforeach
+
+            
+            <!-- Paginación -->
+            <div class="center-align">
+                {{ $reservasPaginadas->appends(['alternative' => 1])->links('vendor.pagination.materialize') }}
+            </div>
+
+                
+            @else
+                
+
 
             @foreach($reservasPaginadas as $fecha => $reservas)
             <div class="col s12">
@@ -160,6 +230,10 @@
             <div class="center-align">
                 {{ $reservasPaginadas->links('vendor.pagination.materialize') }}
             </div>
+
+
+
+            @endif
         </div>
     </div>
 </div>

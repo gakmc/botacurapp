@@ -28,51 +28,41 @@ class ReservaController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function index(Request $request)
     {
         Carbon::setLocale('es');
-
-        // Vista anterior
-        // $currentMonth = Carbon::now()->month;
-        // $currentYear = Carbon::now()->year;
-
-        // $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios'])
-        //     ->orderBy('fecha_visita')
-        //     ->get()
-        //     ->groupBy(function ($date) {
-        //         return Carbon::parse($date->fecha_visita)->format('Y-m');
-        //     });
-
-        // Vista actual
+        $alternativeView = $request->query('alternative', false);
         $fechaActual = Carbon::now()->startOfDay();
 
-        // $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-        //     ->with(['cliente', 'visitas', 'programa.servicios'])
-        //     ->orderBy('fecha_visita')
-        //     ->get();
+        if (!$alternativeView) {
+            $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
+                ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
+                ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+                ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
+                ->orderBy('v.horario_sauna', 'asc')
+                ->get();
+        } else {
 
-        $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-            ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-            ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-            ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
-            ->orderBy('v.horario_sauna', 'asc')
-            ->get();
+            $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
+                ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
+                ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+                ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
+                ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente', 'u.nombre')
+                ->orderBy('u.nombre', 'asc')
+                ->get();
+        }
 
-        // Agrupar reservas por fecha
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
             return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
         });
 
-        // Paginación manual de los días
-        $perPage = 1; // Número de días por página
+        $perPage = 1;
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
         $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
-
-        // Crear el paginador manualmente
         $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
         $reservasPaginadas->setPath(request()->url());
 
-        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas'));
+        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView'));
     }
 
     /**
@@ -94,6 +84,32 @@ class ReservaController extends Controller
         ]);
     }
 
+    public function verificarUbicaciones(Request $request)
+    {
+        $fechaSeleccionada = $request->input('fecha');
+
+        $ubicacionesOcupadas = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->pluck('ubicaciones.nombre')
+            ->map(function ($nombre) {
+                return $nombre;
+            })
+            ->toArray();
+
+        $ubicacionesAll = DB::table('ubicaciones')
+            ->select('id', 'nombre')
+            ->get();
+
+        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
+        })->values();
+
+
+        return response()->json($ubicaciones);
+    }
+
     /**
      * Store a newly created resource in storage.
      *
@@ -104,7 +120,6 @@ class ReservaController extends Controller
     {
         $masajesExtra = null;
         $almuerzosExtra = null;
-
 
         // Verificar si el programa seleccionado incluye un masaje
         $programa = Programa::find($request->id_programa);
@@ -148,7 +163,6 @@ class ReservaController extends Controller
                     $url_abono = 'temp/' . $filename; // Almacenamiento temporal
                     Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
                 }
-
 
                 // Crear la venta relacionada con la reserva
                 $venta = Venta::create([

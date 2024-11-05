@@ -90,14 +90,18 @@ class ConsumoController extends Controller
     {
         $venta = Venta::findOrFail($venta);
         $tipos = TipoProducto::all();
+        $listado = ['Bebestibles','Cócteles','Sandwich y Pastelería'];
+
         return view('themes.backoffice.pages.consumo.create', [
             'venta' => $venta,
             'tipos' => $tipos,
+            'listado' => $listado,
         ]);
     }
 
     public function store(Request $request, Venta $venta)
     {
+        // dd($request);
         // Iniciar una transacción en la base de datos
         DB::transaction(function () use ($request, &$venta) {
 

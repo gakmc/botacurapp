@@ -61,7 +61,7 @@
                                     <select id="id_tipo_producto" name="id_tipo_producto" class=""
                                         value="{{ old('id_tipo_producto') }}">
                                         <option value="">-- Seleccione --</option>
-                                        @foreach ($tipos as $tipo)
+                                        @foreach ($tipos->sortBy('nombre') as $tipo)
                                         <option value="{{$tipo->id}}" {{ old('id_tipo_producto') == $tipo->id ? 'selected' : '' }}>{{$tipo->nombre}}</option>
                                         @endforeach
                                     </select>
@@ -209,6 +209,12 @@
 
                                 <button type="button" id="add-insumo-btn" class="btn">Agregar Insumo</button>
                                 <button id="remove-insumo-btn" type="button" class="btn">Eliminar Insumo</button>
+
+                                @error('insumos')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong style="color:red">{{ $message }}</strong>
+                                </span>
+                                @enderror
                             </div>
                             <div class="row">
 <br>

@@ -79,7 +79,7 @@
                             assignment
                         </i>
                         <span class="nav-text">
-                            Reservas
+                            Horarios
                         </span>
                     </a>
                 </li>

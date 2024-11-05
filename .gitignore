@@ -17,5 +17,6 @@ yarn-error.log
 **/*.git
 **/*.DS_Store
 /resources/views/themes/backoffice/pages/reserva/OLDindex.blade.php
+/resources/views/themes/backoffice/pages/reserva/OldOldindex.blade.php
 /storage/imagenes
 phpunit.xml*
