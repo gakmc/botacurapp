@@ -48,6 +48,7 @@ class ReservaController extends Controller
                 ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
                 ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
                 ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente', 'u.nombre')
+                ->orderBy('reservas.fecha_visita', 'asc')
                 ->orderBy('u.nombre', 'asc')
                 ->get();
         }

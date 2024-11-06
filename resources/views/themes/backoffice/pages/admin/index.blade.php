@@ -43,12 +43,12 @@
                                 <div class="card-content grey lighten-4">
                                     @foreach ($masoterapeutas as $masoterapeuta)
                                         <div id="masoterapeuta-{{ $masoterapeuta->id }}">
-                                            <p><strong>Total de esta Semana: {{ $cantidadMasajesPorSemana[$masoterapeuta->id] }}</strong></p>
+                                            <p><strong>Total de esta Semana: {{ $cantidadMasajesPorSemana[$masoterapeuta->id] }}</strong></p> <p><strong>Total a pagar: {{ $cantidadMasajesPorSemana[$masoterapeuta->id]*8000}}</strong></p>
                         
                                             <h6>Masajes Realizados por Día</h6>
                                             <ul>
                                                 @foreach ($cantidadMasajesPorDia[$masoterapeuta->id] as $dia => $cantidad)
-                                                    <li>{{ $dia }}: {{ $cantidad }} masajes</li>
+                                                    <li>{{ $dia }}: {{ $cantidad }} masajes - ${{$cantidad*8000}}</li>
                                                 @endforeach
                                             </ul>
                                         </div>

@@ -70,19 +70,19 @@
                                 @if ($masajeAsignado && $masajeAsignado->user)
                                 <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
                                 @else
-                                @if (Auth::user()->has_role(config('app.admin_role')))
-                                <strong class="red-text">No asignado</strong>
-                                @else
-                                <!-- Mostrar el botón si no hay masoterapeuta asignada -->
+                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
+                                <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
                                 <form action="{{ route('backoffice.masaje.store') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="id_visita" value="{{ $visita->id }}">
                                     <input type="hidden" name="persona_numero" value="{{ $i }}">
-                                    <button type="submit" class="btn-floating">
+                                    <button type="submit" class="btn-floating" {{$fecha == now()->format('d-m-Y') ? '' : 'disabled'}}>
                                         <i class="material-icons">pan_tool</i>
                                     </button>
                                 </form>
-                                @endif
+                            @elseif (Auth::user()->has_role(config('app.admin_role')))
+                                <strong class="red-text">No asignado</strong>
+                            @endif
                                 @endif
                             </td>
                         </tr>

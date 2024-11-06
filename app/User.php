@@ -59,7 +59,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function asignaciones()
     {
-        return $this->belongsToMany(Asignacion::class, 'asignacion_user', 'user_id', 'asignacion_id');
+        return $this->belongsToMany(Asignacion::class, 'asignacion_user', 'user_id', 'asignacion_id')->withTimestamps();
     }
 
 

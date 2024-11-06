@@ -54,6 +54,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('home','AdminController@show')->name('admin.show');
     Route::get('home', 'AdminController@show')->name('admin.show');
     Route::get('home/masajes', 'AdminController@index')->name('admin.index');
+    Route::get('home/equipos', 'AdminController@team')->name('admin.team');
 
     Route::resource('user', 'UserController');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
