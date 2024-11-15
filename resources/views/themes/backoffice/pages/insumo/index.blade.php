@@ -43,7 +43,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($cocinaInsumos as $insumo)
+                                @foreach ($cocinaInsumos->sortBy('nombre') as $insumo)
                                 <tr @if ($insumo->cantidad <= $insumo->stock_critico)
                                     style="background-color: red; color:white;"
                                 @endif>
@@ -99,7 +99,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach ($barraInsumos as $insumo)
+                                @foreach ($barraInsumos->sortBy('nombre') as $insumo)
                                 <tr @if ($insumo->cantidad <= $insumo->stock_critico)
                                     style="background-color: red; color:white;"
                                 @endif>

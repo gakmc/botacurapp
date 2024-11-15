@@ -43,7 +43,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($productos as $producto )
+                                @foreach($productos->sortBy('nombre')->sortBy('id_tipo_producto') as $producto )
                                 <tr>
                                     <td><a
                                             href="{{route('backoffice.producto.show' ,$producto )}}">{{$producto->nombre}}</a>

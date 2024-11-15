@@ -36,7 +36,7 @@
 
                   <select name="id_programa" id="id_programa">
                     <option value="" disabled selected>-- Seleccione un programa --</option>
-                    @foreach ($programas as $programa)
+                    @foreach ($programas->sortBy('valor_programa') as $programa)
                     <option value="{{$programa->id}}" @if (old('id_programa')==$programa->id)
                       selected
                       @else
@@ -299,7 +299,6 @@ function calcularValorTotal(){
     const selectedOption = selectPrograma.find('option:selected');
     const incluyeMasajes = selectedOption.data('incluye-masajes');
     const inputMasajes = $('#cantidad_masajes');
-    console.log(incluyeMasajes);
     
     if (incluyeMasajes === 1) {
       // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
@@ -323,7 +322,6 @@ function calcularValorTotal(){
   function toggleAlmuerzosField(){
     const selectedOption = selectPrograma.find('option:selected');
     const incluyeAlmuerzos = selectedOption.data('incluye-almuerzos');
-    console.log(incluyeAlmuerzos);
     
     if (incluyeAlmuerzos === 1) {
       checkboxAlmuerzosContainer.hide();
@@ -392,7 +390,9 @@ function calcularValorTotal(){
           } 
         },
         error: function () {
-          alert('Hubo un error al verificar la disponibilidad.');
+          // alert('Hubo un error al verificar la disponibilidad.');
+          console.log('Se produjo un error en la fecha');
+          
         }
       });
 

@@ -75,10 +75,12 @@ class MenuController extends Controller
             foreach ($reservasPorFecha as $reserva) {
                 foreach ($reserva->visitas as $visita) {
                     foreach ($visita->menus as $menu) {
-                        if (isset($platosContados[$menu->productoAcompanamiento->nombre])) {
-                            $platosContados[$menu->productoAcompanamiento->nombre]++;
-                        } else {
-                            $platosContados[$menu->productoAcompanamiento->nombre] = 1;
+                        if ($menu->productoAcompanamiento !== null) {
+                            if (isset($platosContados[$menu->productoAcompanamiento->nombre])) {
+                                $platosContados[$menu->productoAcompanamiento->nombre]++;
+                            } else {
+                                $platosContados[$menu->productoAcompanamiento->nombre] = 1;
+                            }
                         }
                     }
                 }

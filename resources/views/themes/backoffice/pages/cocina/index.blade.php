@@ -183,8 +183,13 @@
                   {{ $menu->productoFondo->nombre }}
                 </td>
                 <td>
+                  @if ($menu->productoAcompanamiento == null)
+                  Sin Acompañamiento
+                @else
+                  
+                {{ $menu->productoAcompanamiento->nombre }}
+                @endif
 
-                  {{ $menu->productoAcompanamiento->nombre }}
                 </td>
 
                 @if ($menu->observacion == null)

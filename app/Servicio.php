@@ -18,7 +18,7 @@ class Servicio extends Model
 
     public function programas()
     {
-        return $this->belongsToMany(Programa::class, 'programa_servicio', 'id_servicio', 'id_programa');
+        return $this->belongsToMany(Programa::class, 'programa_servicio', 'id_servicio', 'id_programa')->withTimestamps();
     }
 
     public function detalleServicioExtra()

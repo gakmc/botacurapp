@@ -279,6 +279,7 @@
                                     <div class="input-field col s12 m6 l3">
                                         <select name="menus[{{$i}}][id_producto_acompanamiento]" id="id_producto_acompanamiento_{{$i}}">
                                             <option value="" disabled selected> -- Seleccione --</option>
+                                            <option value="" >Sin Acompañamiento</option>
                                             @foreach ($acompañamientos as $acompañamiento)
                                             <option value="{{$acompañamiento->id}}">{{$acompañamiento->nombre}}</option>
                                         @endforeach

@@ -144,7 +144,12 @@
                   </td>
                   <td>
 
-                    {{ $menu->productoAcompanamiento->nombre }}
+                    @if ($menu->productoAcompanamiento == null)
+                    Sin Acompañamiento
+                  @else
+                    
+                  {{ $menu->productoAcompanamiento->nombre }}
+                  @endif
                   </td>
 
                   @if ($menu->observacion == null)
@@ -388,8 +393,12 @@
                         {{ $menu->productoFondo->nombre }}
                       </td>
                       <td>
-
+                        @if ($menu->productoAcompanamiento == null)
+                          Sin Acompañamiento
+                        @else
+                          
                         {{ $menu->productoAcompanamiento->nombre }}
+                        @endif
                       </td>
 
                       @if ($menu->observacion == null)

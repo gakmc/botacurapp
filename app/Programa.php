@@ -17,7 +17,7 @@ class Programa extends Model
 
     public function servicios()
     {
-        return $this->belongsToMany(Servicio::class, 'programa_servicio', 'id_programa', 'id_servicio');
+        return $this->belongsToMany(Servicio::class, 'programa_servicio', 'id_programa', 'id_servicio')->withTimestamps();
     }
 
     public function reservas()

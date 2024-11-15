@@ -80,12 +80,24 @@ class ServicioController extends Controller
     public function update(UpdateRequest $request, Servicio $servicio)
     {
         $servicio = Servicio::findOrFail($servicio->id);
+        // asignar el servicio actual con el valor anterior
+        $valorServicioAnterior = $servicio->valor_servicio;
 
         $servicio->nombre_servicio = $request->input('nombre_servicio');
         $servicio->valor_servicio = $request->input('valor_servicio');
         $servicio->costo_servicio = $request->input('costo_servicio');
         $servicio->duracion = $request->input('duracion');
         $servicio->save();
+
+        foreach ($servicio->programas as $programa) {
+            //Restar valor anterior
+            $programa->valor_programa -= $valorServicioAnterior;
+
+            //Sumar nuevo Valor
+            $programa->valor_programa += $servicio->valor_servicio;
+
+            $programa->save();
+        }
 
         Alert::success('Éxito', 'Se ha Actualizado el servicio correctamente')->showConfirmButton('Confirmar');
         return redirect()->route('backoffice.servicio.show', $servicio);

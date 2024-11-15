@@ -72,8 +72,15 @@
                 <tr>
                     <td class="primario">Menú {{$index+1}}</td>
                     <td>{{$menu->productoEntrada->nombre}}</td>
-                    <td>{{$menu->productoAcompanamiento->nombre}}</td>
                     <td>{{$menu->productoFondo->nombre}}</td>
+                    <td>
+                        @if ($menu->productoAcompanamiento == null)
+                        Sin Acompañamiento
+                        @else
+                        {{ $menu->productoAcompanamiento->nombre }}
+                        @endif
+
+                    </td>
                     <td>
                         @if (is_null($menu->observacion))
                         No registra
@@ -152,12 +159,14 @@
     <div>
         <h5 class="primario">Información de Pagos</h5>
         <h6 class="left"><span class="primario">Pago con propina:</span>{{$propina}}</h6>
-        <h6 class="right "><span class="primario">Diferencia:</span> ${{number_format($venta->diferencia_programa,0,'','.')}}</h6>
+        <h6 class="right "><span class="primario">Diferencia:</span>
+            ${{number_format($venta->diferencia_programa,0,'','.')}}</h6>
         <h6 class="center"><span class="primario">Abono:</span> ${{number_format($venta->abono_programa,0,'','.')}}</h6>
     </div>
     <div>
         <h6 class="center"></h6>
-        <h6 class="right"><span class="primario">Total:</span> ${{number_format($venta->abono_programa+$venta->diferencia_programa,0,'','.')}}</h6>
+        <h6 class="right"><span class="primario">Total:</span>
+            ${{number_format($venta->abono_programa+$venta->diferencia_programa,0,'','.')}}</h6>
     </div>
     <br>
 

@@ -43,7 +43,7 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function permissions()
     {
-        return $this->belongsToMany('App\Permission');
+        return $this->belongsToMany('App\Permission')->withTimestamps();
     }
 
     public function roles()
@@ -60,6 +60,18 @@ class User extends Authenticatable implements MustVerifyEmail
     public function asignaciones()
     {
         return $this->belongsToMany(Asignacion::class, 'asignacion_user', 'user_id', 'asignacion_id')->withTimestamps();
+    }
+
+    public function propinas()
+    {
+        return $this->belongsToMany(Propina::class, 'propina_user', 'id_user', 'id_propina')
+                    ->withPivot('monto_asignado')
+                    ->withTimestamps();
+    }
+
+    public function sueldos()
+    {
+        return $this->hasMany(Sueldo::class, 'id_user');
     }
 
 

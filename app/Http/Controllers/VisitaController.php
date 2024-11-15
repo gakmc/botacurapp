@@ -67,33 +67,32 @@ class VisitaController extends Controller
         
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-        
         $ubicacionesOcupadas = DB::table('visitas')
-                                ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-                                ->join('ubicaciones','visitas.id_ubicacion','=','ubicaciones.id')
-                                ->where('reservas.fecha_visita', $fechaSeleccionada)
-                                ->pluck('ubicaciones.nombre')
-                                ->map(function ($nombre) {
-                                    return $nombre;
-                                })
-                                ->toArray();
-
+        ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        ->join('ubicaciones','visitas.id_ubicacion','=','ubicaciones.id')
+        ->where('reservas.fecha_visita', $fechaSeleccionada)
+        ->pluck('ubicaciones.nombre')
+        ->map(function ($nombre) {
+            return $nombre;
+        })
+        ->toArray();
+        
         $ubicacionesAll = DB::table('ubicaciones')
-                        ->select('id','nombre')
-                        ->get();
-
-
+        ->select('id','nombre')
+        ->get();
+        
+        
         $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
             return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
-
+        
         // ===============================HORAS=SPA==============================================
         // Horarios disponibles de 10:00 a 18:30 SPA
         $horaInicio = new \DateTime('10:00');
         $horaFin = new \DateTime('18:30');
         $intervalo = new \DateInterval('PT30M');
         $horarios = [];
-
+        
         while ($horaInicio <= $horaFin) {
             $horarios[] = $horaInicio->format('H:i');
             $horaInicio->add($intervalo);
@@ -101,44 +100,47 @@ class VisitaController extends Controller
 
         // Obtener horarios ocupados de la tabla 'visitas'
         $horariosOcupados = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('visitas.horario_sauna')
-            ->map(function ($hora) {
-                return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-            })
-            ->toArray();
-
+        ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        ->where('reservas.fecha_visita', $fechaSeleccionada)
+        ->pluck('visitas.horario_sauna')
+        ->map(function ($hora) {
+            return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+        })
+        ->toArray();
+        
         // Filtrar horarios disponibles
         $horariosDisponiblesSPA = array_diff($horarios, $horariosOcupados);
-
+        
         //=================================HORAS=MASAJES=========================================
-
+        
         // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
-        $horaInicio = new \DateTime('10:20');
-        $horaFin = new \DateTime('19:00');
+        $horaInicioMasajes = new \DateTime('10:20');
+        $horaFinMasajes = new \DateTime('19:00');
         $duracionMasaje = new \DateInterval('PT30M'); // 30 minutos de duración
-        $intervalo = new \DateInterval('PT10M'); // 10 minutos de intervalo entre sesiones
+        $intervalos = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
         $horarios = [];
-
-        while ($horaInicio <= $horaFin) {
-            $horarios[] = $horaInicio->format('H:i');
-            $horaInicio->add($duracionMasaje);
-            $horaInicio->add($intervalo);
+        
+        while ($horaInicioMasajes <= $horaFinMasajes) {
+            $horarios[] = $horaInicioMasajes->format('H:i');
+            $horaInicioMasajes->add($duracionMasaje);
+            $horaInicioMasajes->add($intervalos);
         }
-
+        
         // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
-        $horariosOcupados = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('visitas.horario_masaje')
-            ->map(function ($hora) {
-                return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-            })
-            ->toArray();
-
+        $horariosOcupadosMasajes = DB::table('visitas')
+        ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        ->where('reservas.fecha_visita', $fechaSeleccionada)
+        ->pluck('visitas.horario_masaje')
+        ->filter(function ($hora) {
+            return !is_null($hora); // Filtra valores nulos
+        })
+        ->map(function ($hora) {
+            return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+        })
+        ->toArray();
+        
         // Filtrar horarios disponibles (ajusta si ocupas rangos completos)
-        $horariosDisponiblesMasajes = array_diff($horarios, $horariosOcupados);
+        $horariosDisponiblesMasajes = array_diff($horarios, $horariosOcupadosMasajes);
 
         // Obtener productos de tipo "entrada"
         $entradas = Producto::whereHas('tipoProducto', function ($query) {

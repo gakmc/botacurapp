@@ -81,99 +81,13 @@
                             <div class="row">
                                 <!-- Insumos y detalles -->
                                 <div id="insumos-wrapper" class="col s12">
-                                    {{-- <div class="insumo-item row">
-                                        <div class="input-field col s12 m6 l4">
-                                            <select name="insumos[0][id_insumo]" required>
-                                                <option value="" disabled selected>Selecciona un insumo</option>
-                                                @foreach($insumos as $insumo)
-                                                <option value="{{ $insumo->id }}" {{old("insumos[0][id_insumo]") ==  $insumo->nombre ? 'selected' : ''}}>{{ $insumo->nombre
-                                                    }}</option>
-                                                @endforeach
-                                            </select>
-                                            <label for="insumos[0][id_insumo]">Insumo:</label>
-                                            @error('insumos[0][id_insumo]')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong style="color:red">{{ $message }}</strong>
-                                            </span>
-                                            @enderror
-                                        </div>
-
-
-                                        <div class="input-field col s12 m6 l4">
-                                            <label for="cantidad_insumo_usar_0">Cantidad Usar:</label>
-                                            <input type="number" id="cantidad_insumo_usar_0"
-                                                name="insumos[0][cantidad_insumo_usar]" required
-                                                value="{{old('insumos[0][cantidad_insumo_usar_0]')}}">
-                                            @error('insumos[0][cantidad_insumo_usar]')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong style="color:red">{{ $message }}</strong>
-                                            </span>
-                                            @enderror
-                                        </div>
-
-                                        <div class="input-field col s12 m6 l4">
-                                            <select name="insumos[0][id_unidad_medida]" required>
-                                                <option value="" disabled selected>-- Seleccione --</option>
-                                                @foreach($unidades as $unidad)
-                                                <option value="{{ $unidad->id }}" {{$unidad->id ==
-                                                    old('insumos[0][id_unidad_medida]') ? 'selected' : ''}}>{{
-                                                    $unidad->nombre }}</option>
-                                                @endforeach
-                                            </select>
-                                            <label for="insumos[0][id_unidad_medida]">Unidad de medida:</label>
-                                            @error('insumos[0][id_unidad_medida]')
-                                            <span class="invalid-feedback" role="alert">
-                                                <strong style="color:red">{{ $message }}</strong>
-                                            </span>
-                                            @enderror
-                                        </div>
-
-                                    </div> --}}
-
-
-                                    
-                                        {{-- @if(old('insumos'))
-                                            @foreach(old('insumos') as $index => $insumo)
-                                                <div class="insumo-item row">
-                                                    <div class="input-field col s12 m6 l4">
-                                                        <select name="insumos[{{ $index }}][id_insumo]" required>
-                                                            <option value="" disabled>Selecciona un insumo</option>
-                                                            @foreach($insumos as $insumoOption)
-                                                                <option value="{{ $insumoOption->id }}" {{ $insumo['id_insumo'] == $insumoOption->id  ? 'selected' : '' }}>
-                                                                    {{ $insumoOption->nombre }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <label for="insumos[{{ $index }}][id_insumo]">Insumo:</label>
-                                                    </div>
-                                    
-                                                    <div class="input-field col s12 m6 l4">
-                                                        <label for="cantidad_insumo_usar_{{ $index }}">Cantidad Usar:</label>
-                                                        <input type="number" id="cantidad_insumo_usar_{{ $index }}" name="insumos[{{ $index }}][cantidad_insumo_usar]" value="{{ $insumo['cantidad_insumo_usar'] }}" required>
-                                                    </div>
-                                    
-                                                    <div class="input-field col s12 m6 l4">
-                                                        <select name="insumos[{{ $index }}][id_unidad_medida]" required>
-                                                            <option value="" disabled>-- Seleccione --</option>
-                                                            @foreach($unidades as $unidad)
-                                                                <option value="{{ $unidad->id }}" {{ $unidad->id == $insumo['id_unidad_medida'] ? 'selected' : '' }}>
-                                                                    {{ $unidad->nombre }}
-                                                                </option>
-                                                            @endforeach
-                                                        </select>
-                                                        <label for="id_unidad_medida_{{ $index }}">Unidad de medida:</label>
-                                                    </div>
-                                                </div>
-                                            @endforeach
-                                        @endif --}}
-
                                         @if(old('insumos'))
                                         @foreach(old('insumos') as $index => $insumo)
                                             <div class="insumo-item row">
                                                 <div class="input-field col s12 m6 l4">
                                                     <select id="id_insumo_{{ $index }}" name="insumos[{{ $index }}][id_insumo]" required>
                                                         <option value="" disabled>Selecciona un insumo</option>
-                                                        @foreach($insumos as $insumoOption)
+                                                        @foreach($insumos->sortBy('nombre') as $insumoOption)
                                                             <option value="{{ $insumoOption->id }}" {{ $insumoOption->id == $insumo['id_insumo'] ? 'selected' : '' }}>
                                                                 {{ $insumoOption->nombre }}
                                                             </option>
@@ -277,7 +191,7 @@ $(document).ready(function() {
                 <div class="input-field col s12 m6 l4">
                     <select id="id_insumo_${nuevoIndex}" name="insumos[${nuevoIndex}][id_insumo]" required>
                         <option value="" disabled selected>Selecciona un insumo</option>
-                        @foreach($insumos as $insumoOption)
+                        @foreach($insumos->sortBy('nombre') as $insumoOption)
                             <option value="{{ $insumoOption->id }}" >{{ $insumoOption->nombre }}</option>
                         @endforeach
                     </select>

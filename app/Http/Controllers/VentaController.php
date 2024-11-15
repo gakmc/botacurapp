@@ -2,11 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\Asignacion;
 use App\DetalleConsumo;
 use App\Mail\VentaCerradaMailable;
+use App\Propina;
 use App\Reserva;
 use App\TipoTransaccion;
 use App\Venta;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
@@ -138,7 +141,7 @@ class VentaController extends Controller
         $consumo = $venta->consumos->first();
         $cliente = $reserva->cliente->nombre_cliente;
 
-
+        
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo) {
 
             // Verifica si el campo está en el request y luego asignar campo
@@ -182,11 +185,42 @@ class VentaController extends Controller
             // Guarda los cambios
             $venta->save();
 
+            
             if (!is_null($consumo)) {
+                
+                $detalles = $consumo->detallesConsumos;
+                $totalPropinas = 0;
                 
                 if (!$request->has('propina')) {
                     DetalleConsumo::where('id_consumo', $consumo->id)
-                        ->update(['genera_propina' => 0]);
+                    ->update(['genera_propina' => 0]);
+                }else{
+                    $fecha = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+                    foreach ($detalles as $detalle) {
+                        $totalPropinas += $detalle->subtotal*0.1;
+                    }
+
+                    $propina = Propina::create([
+                        'fecha'=>$fecha,
+                        'cantidad'=>$totalPropinas,
+                        'id_consumo'=>$consumo->id
+                    ]);
+
+                    $asignacion = Asignacion::where('fecha', $fecha)->first();
+
+                    if ($asignacion) {
+                        $usuarios = $asignacion->users;
+                        foreach ($usuarios as $user) {
+                            DB::table('propina_user')->insert([
+                                'id_user' => $user->id,
+                                'id_propina' => $propina->id,
+                                'monto_asignado' => $totalPropinas/count($usuarios),
+                                'created_at' => now(),
+                                'updated_at' => now()
+                            ]);
+                        }
+                    }
+
                 }
             }
 
