@@ -106,16 +106,18 @@
         <br>
         @else
 
-
+@php
+    $propina = 0;
+@endphp
 
         <table class="striped">
             <thead>
                 <tr>
                     <th class="primario">Producto o Servicio</th>
-                    <th class="primario">Cantidad</th>
                     <th class="primario">Valor</th>
+                    <th class="primario">Cantidad</th>
                     <th class="primario">Subtotal</th>
-                    <th class="primario">Total</th>
+
                 </tr>
             </thead>
 
@@ -124,29 +126,37 @@
                 @foreach ( $consumo->detallesConsumos as $detalles)
                 <tr>
                     <td class="primario">{{$detalles->producto->nombre}}</td>
-                    <td>X{{$detalles->cantidad_producto}}</td>
                     <td>${{number_format($detalles->producto->valor,0,'','.')}}</td>
+                    <td>X{{$detalles->cantidad_producto}}</td>
                     <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
-                    @if ($detalles->genera_propina)
-                    <td>${{number_format($detalles->subtotal * 1.1,0,'','.')}}</td>
-                    @else
-                    <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
-                    @endif
+                    @php
+                        $propina += $detalles->subtotal*0.1;
+                    @endphp
+
                 </tr>
                 @endforeach
                 @foreach ($consumo->detalleServiciosExtra as $servicios)
                 <tr>
                     <td class="primario">{{$servicios->servicio->nombre_servicio}}</td>
-                    <td>X{{$servicios->cantidad_servicio}}</td>
                     <td>${{number_format($servicios->servicio->valor_servicio,0,'','.')}}</td>
+                    <td>X{{$servicios->cantidad_servicio}}</td>
                     <td>${{number_format($servicios->subtotal,0,'','.')}}</td>
-                    <td>${{number_format($servicios->subtotal,0,'','.')}}</td>
+
                 </tr>
                 @endforeach
                 <tr>
                     <td colspan="3"></td>
-                    <td style="font-weight: bold">${{number_format($consumo->subtotal,0,'','.')}}</td>
-                    <td style="font-weight: bold">${{number_format($total,0,'','.')}}</td>
+                    <td style="font-weight: bold; text-align:right;">Subtotal:
+                        ${{number_format($consumo->subtotal,0,'','.')}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3"></td>
+                    <td style="font-weight: bold; text-align:right;">Propinas:
+                        ${{number_format($propina,0,'','.')}}</td>
+                </tr>
+                <tr>
+                    <td colspan="3"></td>
+                    <td style="font-weight: bold; text-align:right;">Total: ${{number_format($total,0,'','.')}}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -159,14 +169,29 @@
     <div>
         <h5 class="primario">Información de Pagos</h5>
         <h6 class="left"><span class="primario">Pago con propina:</span>{{$propina}}</h6>
-        <h6 class="right "><span class="primario">Diferencia:</span>
-            ${{number_format($venta->diferencia_programa,0,'','.')}}</h6>
-        <h6 class="center"><span class="primario">Abono:</span> ${{number_format($venta->abono_programa,0,'','.')}}</h6>
+        <h6 class="right"><span class="primario">Propina Pagada:</span>
+
+            @if ($propinaPagada == "No Aplica")
+                {{$propinaPagada}}
+            @else
+                
+            ${{number_format($propinaPagada,0,'','.')}}</h6>
+            @endif
+        <h6 class="center">  </h6>
     </div>
+<br>
     <div>
-        <h6 class="center"></h6>
-        <h6 class="right"><span class="primario">Total:</span>
+        <h6 class="left"><span class="primario">Abono: </span> ${{number_format($venta->abono_programa,0,'','.')}}</h6>
+        <h6 class="right"><span class="primario">Total: </span>
             ${{number_format($venta->abono_programa+$venta->diferencia_programa,0,'','.')}}</h6>
+            @if ($venta->diferencia_programa !== 0)
+            <h6 class="center "><span class="primario">Diferencia: </span>
+                ${{number_format($venta->diferencia_programa,0,'','.')}}
+            </h6>
+            @else
+                
+            
+            @endif
     </div>
     <br>
 

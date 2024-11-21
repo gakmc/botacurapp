@@ -7,8 +7,11 @@ use Illuminate\Database\Eloquent\Model;
 class Sueldo extends Model
 {
     protected $table = 'sueldos';
+    protected $casts = [
+        'dia_trabajado' => 'date',
+    ];
     protected $fillable = [
-        'dia_trabajado', 'valor_dia', 'sub_sueldo', 'total_pagar', 'id_user', 'id_propina_user'
+        'dia_trabajado', 'valor_dia', 'sub_sueldo', 'total_pagar', 'id_user'
     ];
 
         // Relación con User

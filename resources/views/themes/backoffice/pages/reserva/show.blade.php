@@ -146,10 +146,10 @@
 
                     @if ($menu->productoAcompanamiento == null)
                     Sin Acompañamiento
-                  @else
-                    
-                  {{ $menu->productoAcompanamiento->nombre }}
-                  @endif
+                    @else
+
+                    {{ $menu->productoAcompanamiento->nombre }}
+                    @endif
                   </td>
 
                   @if ($menu->observacion == null)
@@ -236,7 +236,7 @@
               <ul id="issues-collection" class="collection z-depth-1">
                 <li class="collection-item avatar">
                   <i class="material-icons green accent-2 circle">spa</i>
-                  <h6 class="collection-header m-0">Visita</h6>
+                  <h6 class="collection-header m-0">Visita <a class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
                   @if ($reserva->visitas->isEmpty())
 
                   <h6>Aún no se registra la visita para esta reserva</h6>
@@ -371,6 +371,7 @@
                       <th>Entrada</th>
                       <th>Fondo</th>
                       <th>Acompañamiento</th>
+                      <th>Alérgias</th>
                       <th>Observaciones</th>
                     </tr>
                   </thead>
@@ -394,17 +395,24 @@
                       </td>
                       <td>
                         @if ($menu->productoAcompanamiento == null)
-                          Sin Acompañamiento
+                        Sin Acompañamiento
                         @else
-                          
+
                         {{ $menu->productoAcompanamiento->nombre }}
                         @endif
                       </td>
 
+                      @if ($menu->alergias == null)
+                      <td> No Registra</td>
+                      @else
+                      <td style="color: red">{{ $menu->alergias }}</td>
+                      @endif
+
                       @if ($menu->observacion == null)
                       <td> No Registra</td>
-                      @endif
+                      @else
                       <td style="color: red">{{ $menu->observacion }}</td>
+                      @endif
 
                     </tr>
                     @endforeach
@@ -634,7 +642,7 @@ $('.modal-trigger').on('click', function(){
 
       var tablaConsumos = '<table class="highlight responsive-table centered">';
 
-      tablaConsumos += '<thead><tr><th>Producto</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th><th>Propina</th></tr></thead>';
+      tablaConsumos += '<thead><tr><th>Producto</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
       tablaConsumos += '<tbody>';
 
       // Iterar sobre los consumos y agregar filas a la tabla
@@ -645,9 +653,8 @@ $('.modal-trigger').on('click', function(){
                       tablaConsumos += '<tr>';
                       tablaConsumos += '<td>' + detalle.producto.nombre + '</td>';  // Cambia si tienes un nombre específico del producto
                       tablaConsumos += '<td>$' + detalle.producto.valor + '</td>';
-                      tablaConsumos += '<td>'+'X' + detalle.cantidad_producto + '</td>';
+                      tablaConsumos += '<td>X' + detalle.cantidad_producto + '</td>';
                       tablaConsumos += '<td>$' + detalle.subtotal + '</td>';
-                      tablaConsumos += '<td>$' + detalle.subtotal * 0.1 +'</td>';
                       subtotalConsumo += detalle.subtotal;
                       totalConsumo += detalle.subtotal*1.1;
                       tablaConsumos += '</tr>';
@@ -658,8 +665,21 @@ $('.modal-trigger').on('click', function(){
           tablaConsumos += '<td>' + '</td>'; 
           tablaConsumos += '<td>' + '</td>'; 
           tablaConsumos += '<td>' + '</td>'; 
-          tablaConsumos += '<td>' + '<strong>SubTotal: $'+subtotalConsumo+'</strong>' + '</td>'; 
-          tablaConsumos += '<td>' + '<strong>Total: $'+Math.trunc(totalConsumo)+'</strong>' + '</td>'; 
+          tablaConsumos += '<td class="right">' + '<strong>SubTotal: $'+subtotalConsumo+'</strong>' + '</td>'; 
+          tablaConsumos += '</tr>';
+
+          tablaConsumos += '<tr>';
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td class="right">' + '<strong>Propinas: $'+subtotalConsumo*0.1+'</strong>' + '</td>'; 
+          tablaConsumos += '</tr>';
+          
+          tablaConsumos += '<tr>';
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td>' + '</td>'; 
+          tablaConsumos += '<td class="right">' + '<strong>Total: $'+Math.trunc(totalConsumo)+'</strong>' + '</td>'; 
           tablaConsumos += '</tr>';
 
       } else {
@@ -719,15 +739,13 @@ $('.modal-trigger').on('click', function(){
 
       var tablaResumen = '<table class="highlight responsive-table centered">';
         
-        tablaResumen += '<thead><tr><th>Subtotal Consumo</th><th>Total Consumo</th><th>Total Servicios</th><th>Diferencia</th><th>SubTotal</th><th>Total</th></tr></thead>';
+        tablaResumen += '<thead><tr><th>Total Consumo</th><th>Total Servicios</th><th>Diferencia</th><th>Total</th></tr></thead>';
         tablaResumen += '<tbody>';
 
         tablaResumen += '<tr>';
-        tablaResumen += '<td>' +'$'+ subtotalConsumo + '</td>'; 
         tablaResumen += '<td>' +'$'+ Math.trunc(totalConsumo) + '</td>'; 
         tablaResumen += '<td>' +'$'+ subtotalServicio + '</td>'; 
         tablaResumen += '<td>' +'$'+ totalPagar + '</td>'; 
-        tablaResumen += '<td>' + '<strong> $' + SubTotalPagar+ '</strong>' + '</td>'; 
         tablaResumen += '<td>' + '<strong> $'+TotalPagarCP+'</strong>' + '</td>'; 
         tablaResumen += '</tr>';
 

@@ -8,6 +8,7 @@ use App\TipoTransaccion;
 use App\Ubicacion;
 use App\UnidadMedida;
 use App\Venta;
+use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
 /*
@@ -55,11 +56,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home', 'AdminController@show')->name('admin.show');
     Route::get('home/masajes', 'AdminController@index')->name('admin.index');
     Route::get('home/equipos', 'AdminController@team')->name('admin.team');
-
+    
     Route::resource('user', 'UserController');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::post('user/{user}/role_assignment', 'UserController@role_assignment')->name('user.role_assignment');
-
     Route::get('user/{user}/assign_permission', 'UserController@assign_permission')->name('user.assign_permission');
     Route::post('user/{user}/permission_assignment', 'UserController@permission_assignment')->name('user.permission_assignment');
 
@@ -80,15 +80,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('reserva/{id}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     Route::get('reservas', 'ReservaController@indexall')->name('reserva.listar');
-    
-
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     // Update - Actualizar una reserva específica
     Route::put('reserva/{reserva}', 'ReservaController@update')->name('reserva.update');
-
     Route::delete('reserva/{reserva}', 'ReservaController@destroy')->name('reserva.destroy');
-
     Route::get('reserva/{reserva}/abono', 'ReservaController@showAbonoImage')->name('reserva.abono.imagen');
     Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
 
@@ -179,7 +175,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('venta/{venta}/consumo/ingresar', 'ConsumoController@service_create')->name('venta.consumo.service_create');
     // Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
     
-    // // Create - Ingresa al formulario para nueva reserva
+    // Create - Ingresa al formulario para nueva reserva
     // Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
 
     Route::get('/verificar-ubicaciones', 'ReservaController@verificarUbicaciones')->name('verificar.ubicaciones');
@@ -187,12 +183,19 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Store - Guardar la nueva reserva
     Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
     
-    // // Show - Mostrar una reserva específica
+    Route::get('visita/{visitum}/ubicacion_edit', 'VisitaController@edit_ubicacion')->name('visita.edit_ubicacion');
+    Route::match(['put', 'patch'],'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');
+    // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
+
+    Route::get('sueldo/{user}','SueldoController@view')->name('sueldo.view');
     
+    Route::resource('asignacion', 'AsignacionController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');
     Route::resource('insumo', 'InsumoController');
+    Route::resource('masaje', 'MasajeController');
+    Route::resource('menu', 'MenuController');
     Route::resource('permission', 'PermissionController');
     Route::resource('producto', 'ProductoController');
     Route::resource('programa', 'ProgramaController');
@@ -201,9 +204,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('reserva.visitas', 'VisitaController');
     Route::resource('role', 'RoleController');
     Route::resource('servicio', 'ServicioController');
+    Route::resource('sueldos', 'SueldoController');
     Route::resource('venta.consumo', 'ConsumoController');
     Route::resource('visita', 'VisitaController');
-    Route::resource('menu', 'MenuController');
-    Route::resource('masaje', 'MasajeController');
-    Route::resource('asignacion', 'AsignacionController');
 });

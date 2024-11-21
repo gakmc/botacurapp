@@ -43,9 +43,13 @@ class AsignacionController extends Controller
         $fecha = array_key_first($params);
         $fecha = Carbon::parse($fecha)->format('d-m-Y');
 
-        $rolesExcluidos = ['Mantencion', 'Masoterapeuta', 'Administrador']; // IDs de los roles que deseas excluir
-        $users = User::whereDoesntHave('roles', function ($query) use ($rolesExcluidos) {
-            $query->whereIn('name', $rolesExcluidos);
+        // $rolesExcluidos = ['Mantencion', 'Masoterapeuta', 'Administrador']; // IDs de los roles que deseas excluir
+        // $users = User::whereDoesntHave('roles', function ($query) use ($rolesExcluidos) {
+        //     $query->whereIn('name', $rolesExcluidos);
+        // })->get();
+
+        $users = User::whereHas('roles', function ($query) {
+            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
         })->get();
 
         return view('themes.backoffice.pages.asignacion.create', ['fecha'=>$fecha, 'users'=>$users]);

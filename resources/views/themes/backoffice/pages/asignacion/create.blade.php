@@ -48,7 +48,7 @@
                                 <p>
                                     <label>
                                         <input name="users[]" type="checkbox" class="filled-in" value="{{$user->id}}" />
-                                        <span>{{$user->name}}</span>
+                                        <span class="black-text">{{$user->name}} - ({{$user->list_roles()}})</span>
                                     </label>
                                 </p>
                                 @endforeach

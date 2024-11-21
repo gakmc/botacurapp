@@ -89,7 +89,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 start: formatoFecha + ' {{ $visita->horario_sauna }}',
                 end: formatoFecha +' {{ $visita->hora_fin_sauna }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
-                description: '{{ addslashes($reserva->observacion) }}'
+                description: '{{ addslashes($reserva->observacion) }}',
+                @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                    color:'orange'
+                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                    color:'green'
+                @else
+                    color:'primary'
+                @endif
             });
 
             @else
@@ -105,7 +112,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 start: formatoFecha+' '+horaTinaja,
                 end: formatoFecha+ ' {{ $visita->hora_fin_tinaja }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
-                description: '{{ addslashes($reserva->observacion) }}'
+                description: '{{ addslashes($reserva->observacion) }}',
+                @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                    color:'orange'
+                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                    color:'green'
+                @else
+                    color:'primary'
+                @endif
             });
             
             
@@ -120,7 +134,14 @@ document.addEventListener('DOMContentLoaded', function() {
                 start: formatoFecha+' '+horaMasaje,
                 end: formatoFecha+ ' {{ $visita->hora_fin_masaje_extra }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
-                description: '{{ addslashes($reserva->observacion) }}'
+                description: '{{ addslashes($reserva->observacion) }}',
+                @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                    color:'orange'
+                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                    color:'green'
+                @else
+                    color:'primary'
+                @endif
             });
 
             

@@ -58,10 +58,12 @@
                 <div class="file-field input-field col s12 m5">
                   {{-- <div class="btn">
                     <span>Imagen Abono</span>
-                    <input type="file" id="imagen_abono" name="imagen_abono" value="{{$reserva->venta->imagen_abono}}" disabled>
+                    <input type="file" id="imagen_abono" name="imagen_abono" value="{{$reserva->venta->imagen_abono}}"
+                      disabled>
                   </div> --}}
                   <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="{{$reserva->venta->imagen_abono}}" value="{{$reserva->venta->imagen_abono}}" readonly>
+                    <input class="file-path validate" type="text" placeholder="{{$reserva->venta->imagen_abono}}"
+                      value="{{$reserva->venta->imagen_abono}}" readonly>
                   </div>
                   @error('imagen_abono')
                   <span class="invalid-feedback" role="alert">
@@ -74,20 +76,20 @@
                 <div class="input-field col s12 m4">
                   @if (is_null($reserva->venta->tipoTransaccionAbono))
                   <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono">
-                    
+
                     <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" selected>
                       No Registrada</option>
-                      @else
-                  <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono" disabled>
-                    <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" disabled selected>
-                      {{$reserva->venta->tipoTransaccionAbono->nombre}}</option>
-                      
-                    @endif
-                    @foreach ($tipos as $tipo)
-                    <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
-                    @endforeach
-                  </select>
-                  <label for="id_tipo_transaccion_abono">Tipo Transaccion Abono</label>
+                    @else
+                    <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono" disabled>
+                      <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" disabled selected>
+                        {{$reserva->venta->tipoTransaccionAbono->nombre}}</option>
+
+                      @endif
+                      @foreach ($tipos as $tipo)
+                      <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
+                      @endforeach
+                    </select>
+                    <label for="id_tipo_transaccion_abono">Tipo Transaccion Abono</label>
                 </div>
 
 
@@ -145,13 +147,13 @@
 
               </div>
 
-              
+
               <div class="row">
-                
-                
-                
+
+
+
                 {{-- <div class="input-field col s12 m3">
-                  
+
                   <label for="descuento">Descuento</label>
                   <input id="descuento" type="number" name="descuento" class="" value="{{ old('descuento') }}">
                   @error('descuento')
@@ -159,57 +161,71 @@
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
-                  
+
                 </div> --}}
-                
-                
+
+
 
                 @if ($reserva->venta->consumos->isEmpty())
 
                 <div class="input-field col s12 m3" id="noPropina">
-                  
+
                   <label for="sinPropina">Consumo Sin Propina</label>
-                  <input id="sinPropina" type="text" name="sinPropina" class=""
-                  value="0" readonly>
+                  <input id="sinPropina" type="text" name="sinPropina" class="" value="0" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
-                  
+
                 </div>
 
-                
+
                 @else
-                
+
                 @foreach ($reserva->venta->consumos as $consumo)
-                
+
                 <p id="check">
                   <label>
-                    <input type="checkbox" id="propina" name="propina"/>
+                    <input type="checkbox" id="propina" name="propina" />
                     <span>Incluye Propina?</span>
                   </label>
                 </p>
-                  
-                  
+
+
                 <div class="input-field col s12 m3" id="noPropina">
-                  
+
                   <label for="sinPropina">Consumo Sin Propina</label>
-                  <input id="sinPropina" type="text" name="sinPropina" class=""
-                  value="{{$consumo->subtotal}}" readonly>
+                  <input id="sinPropina" type="text" name="sinPropina" class="" value="{{$consumo->subtotal}}" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
-                  
+
                 </div>
 
+
+
+                <div class="input-field col s12 m3" id="propinaBruta" hidden>
+
+                  <label for="propinaValue">ingrese Propina</label>
+                  <input id="propinaValue" type="text" name="propinaValue" class=""
+                    value="{{$consumo->subtotal * 0.1}}">
+                  @error('propinaValue')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
+
                 <div class="input-field col s12 m3" id="siPropina" hidden>
-                  
+
                   <label for="conPropina">Consumo Con Propina</label>
-                  <input id="conPropina" type="text" name="conPropina" class=""
-                  value="{{$consumo->total_consumo}}" readonly>
+                  <input id="conPropina" type="text" name="conPropina" class="" value="{{$consumo->total_consumo}}"
+                    readonly>
                   @error('conPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -220,14 +236,12 @@
 
                 @endforeach
                 @endif
-                
+
                 <div class="input-field col s12 m3">
 
                   <label for="total_pagar">Total a Pagar</label>
-                  <input id="total_pagar" type="text" name="total_pagar" class=""
-                  readonly
-                  data-total-pagar="{{$reserva->venta->total_pagar}}"
-                  >
+                  <input id="total_pagar" type="text" name="total_pagar" class="" readonly
+                    data-total-pagar="{{$reserva->venta->total_pagar}}">
                   @error('total_pagar')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -242,14 +256,15 @@
               <div class="row">
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaAbono">Imagen Abono</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono" src="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" alt=""
-                    style="max-height: 200px; max-width:300px;">
+                  <img class="center-text" id="imagenSeleccionadaAbono"
+                    src="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
+                    alt="" style="max-height: 200px; max-width:300px;">
                 </div>
 
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaDiferencia">Imagen Diferencia</label>
-                  <img class="center-text" id="imagenSeleccionadaDiferencia" src="/images/gallary/no-image.png"
-                    alt="" style="max-height: 200px; max-width:300px;">
+                  <img class="center-text" id="imagenSeleccionadaDiferencia" src="/images/gallary/no-image.png" alt=""
+                    style="max-height: 200px; max-width:300px;">
                 </div>
               </div>
 
@@ -296,10 +311,12 @@
 </script>
 
 <script>
-    var total = parseInt($('#total_pagar').data('total-pagar'));
+  var total = parseInt($('#total_pagar').data('total-pagar'));
+    var propinaOriginal = parseInt($('#propinaValue').val());
     var diferenciaInput = 0;
     var ConPropina = parseInt($('#conPropina').val());
     var SinPropina = parseInt($('#sinPropina').val());
+    var propinaValue = parseInt($('#propinaValue').val());
     var propina = false;
     var nuevoTotal = 0;
     var checkbox = $('#check');
@@ -316,22 +333,44 @@
     })
     
     
+    
     $(document).change(function(){
       
       nuevoTotal = total;
       propina = $('#propina').is(':checked');
+      
+      
       
       if (propina) {
         $('#noPropina').attr('hidden', true);
         $('#sinPropina').attr('disabled', true);
         $('#siPropina').removeAttr('hidden');
         $('#conPropina').removeAttr('disabled');
+        $('#propinaBruta').removeAttr('hidden');
+        $('#propinaValue').removeAttr('disabled');
+        
+        var nuevaPropinaValue = parseInt($('#propinaValue').val());
+            if (!isNaN(nuevaPropinaValue)) {
+              // Calcular ConPropina dinámicamente basado en la diferencia
+              ConPropina = ConPropina - propinaValue + nuevaPropinaValue; // Resta el valor previo y suma el nuevo
+
+              // Actualizar el valor actual de propinaValue
+              propinaValue = nuevaPropinaValue;
+
+              $('#conPropina').val(ConPropina);
+        
+                
+            }
+
         nuevoTotal += ConPropina;
       } else {
         $('#siPropina').attr('hidden', true);
         $('#conPropina').attr('disabled', true);
         $('#noPropina').removeAttr('hidden');
         $('#sinPropina').removeAttr('disabled');
+        $('#propinaValue').val(propinaOriginal);
+        $('#propinaBruta').attr('hidden',true);
+        $('#propinaValue').attr('disabled', true);
         nuevoTotal += SinPropina;
       }
       calcularTotal();

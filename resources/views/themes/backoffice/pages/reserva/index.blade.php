@@ -15,6 +15,7 @@
 @section('content')
 <div class="section">
     <a href="?page=1"><p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p></a>
+    <div class="row"><div class="col s2 green-text"><i class='material-icons left'>fiber_manual_record</i>Pagado</div><div class="col s2 orange-text"><i class='material-icons left'>fiber_manual_record</i>Por pagar Consumo</div> <div class="col s2 blue-text"><i class='material-icons left'>fiber_manual_record</i>Por Pagar</div></div>
     
     <div class="divider"></div>
     <div id="basic-form" class="section">
@@ -28,21 +29,39 @@
 
             @if ($alternativeView)
 
-
+@php
+    $color = "";
+@endphp
             @foreach($reservasPaginadas as $fecha => $reservas)
             <div class="col s12">
                 <h5>Horarios: {{ $fecha }}</h5>
                 <div class="row">
                     @foreach($reservas as $reserva)
                         @foreach ($reserva->visitas->sortBy('id_ubicacion') as $visita)
+
+                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                        @php
+                            $color = "orange";
+                        @endphp
+                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                        @php
+                            $color = "green";
+                        @endphp
+                        @else
+                        @php
+                            $color = "blue";
+                        @endphp
+                        @endif
+
                         <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                     <div class="col s12 m6 l3">
                         <div class="card-panel z-depth-5 animate__animated animate__backInDown"
-                            style="--animate-delay: 1s; --animate-duration: 2s; ">
+                            style="--animate-delay: 1s; --animate-duration: 2s;" >
+                            
                             <table class="highlight">
                                 <thead>
                                     <tr>
-                                        <th><h5>{{$visita->ubicacion->nombre}}</h5></th>
+                                        <th><h5><i class='material-icons right {{$color}}-text'>fiber_manual_record</i>{{$visita->ubicacion->nombre}}</h5></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -55,10 +74,16 @@
                                                     <p><strong>Programa: </strong>{{ $reserva->programa->nombre_programa }}</p>
                                                     <p><strong>Asistentes: </strong>{{ $reserva->cantidad_personas }} personas</p>
                                                     @if (is_null($reserva->observacion))
-                                                        Sin Observaciones
+                                                        <p><strong>Evento: </strong>Sin Observaciones</p>
                                                     @else
-                                                        <strong style="color:#FF4081;">{{ $reserva->observacion }}</strong>
+                                                        <p><strong>Evento: </strong><strong style="color:#FF4081;">{{ $reserva->observacion }}</strong></p>
                                                     @endif
+                                                    @if (is_null($visita->observacion))
+                                                        <p><strong>Requisitos: </strong>Sin Observaciones</p>
+                                                    @else
+                                                        <p><strong>Requisitos: </strong><strong style="color:#FF4081;">{{ $visita->observacion }}</strong></p>
+                                                    @endif
+                                                    
                                                 </td>
                                             </tr>
                                             
@@ -99,6 +124,7 @@
                             <table class="highlight">
                                 <thead>
                                     <tr>
+                                        <th></th>
                                         <th>Sauna</th>
                                     </tr>
                                 </thead>
@@ -107,6 +133,13 @@
                                 @foreach ($reserva->visitas->sortBy('horario_sauna') as $visita)
                                     @if ($visita->horario_sauna)
                                         <tr>
+                                            @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                                            <td class="orange"></td>
+                                            @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                                            <td class="green"></td>
+                                            @else
+                                            <td class="blue"></td>
+                                            @endif
                                             <td>
                                                 <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                     <strong style="color:#FF4081;">
@@ -138,6 +171,7 @@
                             <table class="highlight">
                                 <thead>
                                     <tr>
+                                        <th></th>
                                         <th>Tinaja</th>
                                     </tr>
                                 </thead>
@@ -146,6 +180,14 @@
                                     @foreach ($reserva->visitas as $visita)
                                     @if ($visita->horario_tinaja)
                                     <tr>
+                                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                                        <td class="orange"></td>
+                                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                                        <td class="green"></td>
+                                        @else
+                                        <td class="blue"></td>
+                                        @endif
+                                        
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                 <strong style="color:#FF4081;">{{ $visita->horario_tinaja }} - {{
@@ -176,6 +218,7 @@
                             <table class="highlight">
                                 <thead>
                                     <tr>
+                                        <th></th>
                                         <th>Masaje</th>
                                     </tr>
                                 </thead>
@@ -184,6 +227,13 @@
                                     @foreach ($reserva->visitas as $visita)
                                     @if ($visita->horario_masaje)
                                     <tr>
+                                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                                        <td class="orange"></td>
+                                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                                        <td class="green"></td>
+                                        @else
+                                        <td class="blue"></td>
+                                        @endif
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                 <strong style="color: #FF4081">{{ $visita->horario_masaje }} - 

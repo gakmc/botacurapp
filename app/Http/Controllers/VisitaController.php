@@ -210,7 +210,6 @@ class VisitaController extends Controller
                 $visita = Visita::create([
                     'id_reserva' => $request->input('id_reserva'),
                     'trago_cortesia' => $request->input('trago_cortesia'),
-                    'alergias' => $request->input('alergias'),
                     'observacion' => $request->input('observacion'),
                     'id_ubicacion' => $request->input('id_ubicacion'),
                     'id_lugar_masaje' => $request->input('id_lugar_masaje'),
@@ -235,6 +234,7 @@ class VisitaController extends Controller
                             'id_producto_entrada' => $menu['id_producto_entrada'],
                             'id_producto_fondo' => $menu['id_producto_fondo'],
                             'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'],
+                            'alergias' => $menu['alergias'],
                             'observacion' => $menu['observacion'],
                         ]);
                     }
@@ -281,27 +281,60 @@ class VisitaController extends Controller
         //
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Visita  $visita
-     * @return \Illuminate\Http\Response
-     */
+
     public function update(Request $request, Visita $visitum)
     {
         //
     }
-
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Visita  $visita
-     * @return \Illuminate\Http\Response
-     */
+    
+    
     public function destroy(Visita $visitum)
     {
         //
     }
+    
 
+    public function edit_ubicacion(Visita $visitum)
+    {
+        $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $visitum->reserva->fecha_visita)->format('Y-m-d');
+        $ubicacionesOcupadas = DB::table('visitas')
+        ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        ->join('ubicaciones','visitas.id_ubicacion','=','ubicaciones.id')
+        ->where('reservas.fecha_visita', $fechaSeleccionada)
+        ->pluck('ubicaciones.nombre')
+        ->map(function ($nombre) {
+            return $nombre;
+        })
+        ->toArray();
+        
+        $ubicacionesAll = DB::table('ubicaciones')
+        ->select('id','nombre')
+        ->get();
+        
+        
+        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
+        })->values();
+
+
+        return view('themes.backoffice.pages.visita.edit_ubicacion',[
+            'visita'=>$visitum,
+            'ubicaciones'=>$ubicaciones
+        ]);
+    }
+
+    public function update_ubicacion(Request $request, Visita $visitum)
+    {
+        $ubicacionNueva = Ubicacion::where('id','=',$request->ubicacion)
+                            ->first();
+
+        $visita = Visita::findOrFail($visitum->id);
+        $visita->update([
+            'id_ubicacion' => $request->ubicacion,
+        ]);
+        
+        
+        Alert::success('Éxito','Ubicacion cambiada a '.$ubicacionNueva->nombre)->showConfirmButton('Confirmar');
+        return redirect()->route('backoffice.reserva.show', ['reserva' => $visitum->id_reserva]);
+    }
 }

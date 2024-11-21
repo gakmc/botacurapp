@@ -13,7 +13,6 @@ class Visita extends Model
         'horario_masaje',
         'tipo_masaje',
         'trago_cortesia',
-        'alergias',
         'observacion',
         'id_reserva',
         'id_ubicacion',

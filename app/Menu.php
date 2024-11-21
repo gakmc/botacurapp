@@ -11,6 +11,7 @@ class Menu extends Model
         'id_producto_entrada',
         'id_producto_fondo',
         'id_producto_acompanamiento',
+        'alergias',
         'observacion',
     ];
 

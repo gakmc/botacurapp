@@ -164,6 +164,7 @@
                 <th>Entrada</th>
                 <th>Fondo</th>
                 <th>Acompañamiento</th>
+                <th>Alérgias</th>
                 <th>Observaciones</th>
               </tr>
             </thead>
@@ -192,10 +193,19 @@
 
                 </td>
 
+                @if ($menu->alergias == null)
+                <td> No Registra</td>
+                @else
+
+                <td style="color: red">{{ $menu->alergias }}</td>
+                @endif
+
                 @if ($menu->observacion == null)
                 <td> No Registra</td>
-                @endif
+                @else
+
                 <td style="color: red">{{ $menu->observacion }}</td>
+                @endif
 
               </tr>
               @endforeach

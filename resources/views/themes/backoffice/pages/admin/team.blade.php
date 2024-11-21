@@ -17,31 +17,60 @@
                 <div class="card-panel">
 
                     <div class="row">
-                        @foreach ($diasSemana as $dia)
+                        <form method="POST" action="{{ route('backoffice.sueldos.store') }}">
+                            @csrf
+
+                            @php
+                                $counter = 0;
+                            @endphp
+                            @foreach ($diasSemana as $dia)
                             <div class="col m4 l6">
                                 <div class="card z-depth-0">
                                     <div class="card-header">
-                                        <strong>{{ $dia }}</strong>
+                                        <h5><strong>{{ $dia }}</strong></h5>
                                     </div>
                                     <div class="card-body">
                                         {{-- Mostrar asignaciones por día --}}
                                         @if (isset($asignacionesPorDia[$dia]))
-                                            @foreach ($asignacionesPorDia[$dia] as $asignacion)
-                                                @foreach ($asignacion->users as $user)
-                                                    <p>{{ $user->name }} - $40.000 
-                                                        @if (isset($propinasPorDia[$dia]) && $propinasPorDia[$dia] > 0)
-                                                            - Propina: ${{ number_format($propinasPorDia[$dia], 0) }}
-                                                        @endif
-                                                    </p>
-                                                @endforeach
-                                            @endforeach
+                                        @foreach ($asignacionesPorDia[$dia] as $asignacion)
+                                        @foreach ($asignacion->users as $user)
+                                        <p><strong>{{ $user->name }}</strong> - $40.000
+
+                                            @if (isset($propinasPorDia[$dia]))
+                                            - Propinas del dia: ${{ number_format($propinasPorDia[$dia]['propina'], 0,
+                                            ',', '.')
+                                            }}
+
+
+                                            {{-- Campos ocultos para el envío del formulario --}}
+                                            <input type="hidden"
+                                                name="sueldos[{{ $counter }}][dia_trabajado]"
+                                                value="{{ $propinasPorDia[$dia]['dia_trabajado'] }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]"
+                                                value="40000">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
+                                                value="{{ number_format(40000 + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
+                                                value="{{ number_format(40000 + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
+                                                value="{{ $user->id }}">
+
+                                            @php
+                                                $counter++
+                                            @endphp
+                                            @endif
+                                        </p>
+                                        @endforeach
+                                        @endforeach
                                         @else
-                                            <p>No hay asignaciones.</p>
+                                        <p>No hay asignaciones.</p>
                                         @endif
                                     </div>
                                 </div>
                             </div>
-                        @endforeach
+                            @endforeach
+                            <button type="submit" class="btn btn-primary right"><i class='material-icons right'>account_balance_wallet</i>Cerrar sueldos de la semana</button>
+                        </form>
                     </div>
                 </div>
             </div>

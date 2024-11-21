@@ -9,6 +9,7 @@ use App\Masaje;
 use App\Reserva;
 use App\User;
 use Carbon\Carbon;
+use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
@@ -115,7 +116,7 @@ class AdminController extends Controller
     public function team()
     {
         Carbon::setLocale('es');
-        // Obtener usuarios con el rol de masoterapeuta
+        // Obtener usuarios con roles especificos
         $usuarios = User::whereHas('roles', function ($query) {
             $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
         })->get();
@@ -140,38 +141,43 @@ class AdminController extends Controller
         });
 
         // Obtener los detalles de consumo junto con la fecha de la visita relacionada
-        $detallesPorFecha = DB::table('detalles_consumos')
-            ->selectRaw('reservas.fecha_visita AS fecha, SUM(IF(detalles_consumos.genera_propina = true, detalles_consumos.subtotal * 0.1, 0)) AS total_subtotal')
-            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
-            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->whereBetween('reservas.fecha_visita', [$inicioSemana, $finSemana])
-            ->groupBy('reservas.fecha_visita')
+        $detallesPorFecha = DB::table('propinas')
+            ->selectRaw('fecha, SUM(cantidad) as total_subtotal')
+            ->whereBetween('fecha', [$inicioSemana, $finSemana])
+            ->groupBy('fecha')
             ->get();
+
 
         // Crear un array para almacenar las propinas por día y dividirlas entre los usuarios asignados
         $propinasPorDia = [];
         $totalPropinasSemana = 0;
+        $diaTrabajado = null;
 
         foreach ($detallesPorFecha as $detalle) {
-            $fecha = Carbon::parse($detalle->fecha)->locale('es')->isoFormat('dddd');
+            $fecha = Carbon::parse($detalle->fecha)->locale('es')->isoFormat('dddd'); 
             $fecha = ucfirst($fecha); // Convertir la primera letra a mayúscula para coincidir
+            $diaTrabajado = Carbon::parse($detalle->fecha)->format('Y-m-d');
             if (isset($asignacionesPorDia[$fecha])) {
                 $totalUsuarios = $asignacionesPorDia[$fecha]->pluck('users')->flatten()->count();
-
-                // $propinasPorDia[$fecha] = $totalUsuarios > 0 ? ($detalle->total_subtotal / $totalUsuarios) : 0;
-
                 $propinaPorUsuario = $totalUsuarios > 0 ? ($detalle->total_subtotal / $totalUsuarios) : 0;
-                $propinasPorDia[$fecha] = $propinaPorUsuario;
-                $totalPropinasSemana += $detalle->total_subtotal;
 
+                // $propinasPorDia[$fecha] = $propinaPorUsuario;
+                $propinasPorDia[$fecha] = ['propina'=>$propinaPorUsuario, 'dia_trabajado'=>$diaTrabajado];
+
+                $totalPropinasSemana += $detalle->total_subtotal;
+                
             } else {
-                $propinasPorDia[$fecha] = 0;
+                // $propinasPorDia[$fecha] = 0;
+                $propinasPorDia[$fecha] = [ 'propina' => 0,
+                'dia_trabajado' => $diaTrabajado,];
             }
         }
 
+        
+
+
         // Calcular el total a pagar por usuario en la semana
-        $pagoBasePorUsuario = 40000; // Asume que todos los roles tienen un pago base de $40,000 por día trabajado
+        $pagoBasePorUsuario = 40000;
         $totalPorUsuario = [];
 
         foreach ($usuarios as $usuario) {
@@ -185,7 +191,8 @@ class AdminController extends Controller
                     // Verifica si el usuario está asignado en este día
                     if ($usuariosDia->contains('id', $usuario->id)) {
                         $totalDiasAsignados++;
-                        $propinaUsuario += $propinasPorDia[$dia] ?? 0;
+                        $propinaUsuario += $propinasPorDia[$dia]['propina'] ?? 0;
+
                     }
                 }
             }
@@ -196,13 +203,17 @@ class AdminController extends Controller
 
         $totalSueldoGeneral = array_sum($totalPorUsuario);
 
+        
         return view('themes.backoffice.pages.admin.team', [
             'diasSemana' => $diasSemana,
             'asignacionesPorDia' => $asignacionesPorDia,
             'propinasPorDia' => $propinasPorDia,
             'totalPorUsuario' => $totalPorUsuario,
-            'totalSueldos' => $totalSueldoGeneral
+            'totalSueldos' => $totalSueldoGeneral,
+            'usuarios' => $usuarios,
+            'diaT'=> $diaTrabajado
         ]);
     }
+
 
 }

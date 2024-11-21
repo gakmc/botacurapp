@@ -147,8 +147,9 @@
                 </div>
 
                 <div class="input-field col s12 m3">
-                  <input id="observacion" name="observacion" type="text" class="" value="{{ old('observacion') }}" />
-                  <label for="observacion">Observaciones</label>
+                  <input id="observacion" name="observacion" type="text" class="" value="{{ old('observacion') }}"
+                    placeholder="" />
+                  <label for="observacion">Observaciones - "Cumpleaños,Aniversario,etc."</label>
                   @error('observacion')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -160,7 +161,7 @@
 
                 <label id="checkbox-masajes-container" class="input-field col s12 m3">
                   <input style="display: none" type="checkbox" id="agregar_masajes" name="agregar_masajes" />
-                  <span>¿Desea agregar masajes?</span>
+                  <span class="black-text">¿Desea agregar masajes?</span>
                 </label>
 
 
@@ -178,7 +179,7 @@
 
                 <label id="checkbox-almuerzos-container" class="input-field col s12 m3">
                   <input style="display: none" type="checkbox" id="agregar_almuerzos" name="agregar_almuerzos" />
-                  <span>¿Desea agregar almuerzos?</span>
+                  <span class="black-text">¿Desea agregar almuerzos?</span>
                 </label>
 
               </div>
@@ -232,7 +233,7 @@
 
 @section('foot')
 <script>
-  $(document).ready(function (e) {   
+$(document).ready(function (e) {   
   $('#imagen_abono').change(function(){            
       let reader = new FileReader();
       reader.onload = (e) => { 

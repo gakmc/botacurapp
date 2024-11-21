@@ -15,8 +15,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use RealRashid\SweetAlert\Facades\Alert;
 use PDF;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class VentaController extends Controller
 {
@@ -141,7 +141,7 @@ class VentaController extends Controller
         $consumo = $venta->consumos->first();
         $cliente = $reserva->cliente->nombre_cliente;
 
-        
+
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo) {
 
             // Verifica si el campo está en el request y luego asignar campo
@@ -185,25 +185,25 @@ class VentaController extends Controller
             // Guarda los cambios
             $venta->save();
 
-            
             if (!is_null($consumo)) {
-                
+
                 $detalles = $consumo->detallesConsumos;
                 $totalPropinas = 0;
-                
+
                 if (!$request->has('propina')) {
                     DetalleConsumo::where('id_consumo', $consumo->id)
-                    ->update(['genera_propina' => 0]);
-                }else{
+                        ->update(['genera_propina' => 0]);
+                } else {
                     $fecha = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-                    foreach ($detalles as $detalle) {
-                        $totalPropinas += $detalle->subtotal*0.1;
-                    }
+                    // foreach ($detalles as $detalle) {
+                    //     $totalPropinas += $detalle->subtotal*0.1;
+                    // }
+                    $totalPropinas += $request->propinaValue;
 
                     $propina = Propina::create([
-                        'fecha'=>$fecha,
-                        'cantidad'=>$totalPropinas,
-                        'id_consumo'=>$consumo->id
+                        'fecha' => $fecha,
+                        'cantidad' => $totalPropinas,
+                        'id_consumo' => $consumo->id,
                     ]);
 
                     $asignacion = Asignacion::where('fecha', $fecha)->first();
@@ -214,9 +214,9 @@ class VentaController extends Controller
                             DB::table('propina_user')->insert([
                                 'id_user' => $user->id,
                                 'id_propina' => $propina->id,
-                                'monto_asignado' => $totalPropinas/count($usuarios),
+                                'monto_asignado' => $totalPropinas / count($usuarios),
                                 'created_at' => now(),
-                                'updated_at' => now()
+                                'updated_at' => now(),
                             ]);
                         }
                     }
@@ -232,11 +232,13 @@ class VentaController extends Controller
         $visita->load(['menus']);
         $menus = $visita->menus;
         $consumos = $venta->consumos;
+        $idConsumo = null;
 
-        if (empty($consumos)) {
+        if ($consumos->isEmpty()) {
             $propina = 'No Aplica';
         } else {
             foreach ($consumos as $consumo) {
+                $idConsumo = $consumo->id;
                 foreach ($consumo->detallesConsumos as $detalles) {
 
                     if ($detalles->genera_propina) {
@@ -248,6 +250,13 @@ class VentaController extends Controller
                     }
                 }
             }
+
+            
+            $cantidadPropina = DB::table('propinas')
+                ->where('id_consumo', '=', $idConsumo)
+                ->first();
+    
+            $cantidadPropina = $cantidadPropina->cantidad;
         }
 
         $data = [
@@ -262,13 +271,14 @@ class VentaController extends Controller
             'venta' => $reserva->venta,
             'total' => $total,
             'propina' => $propina,
+            'propinaPagada' => isset($cantidadPropina) && $cantidadPropina !== null ? $cantidadPropina : 'No Aplica',
         ];
 
         // Generar el PDF
         $pdf = PDF::loadView('pdf.venta.viewPDF', $data);
         $pdfPath = storage_path('app/public/') . 'Detalle_Venta_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
         $pdf->save($pdfPath);
-        $data['pdfPath']=$pdfPath;
+        $data['pdfPath'] = $pdfPath;
 
         // Enviar el correo con el PDF adjunto
         Mail::to($reserva->cliente->correo)->send(new VentaCerradaMailable($data, $pdfPath));

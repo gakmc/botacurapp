@@ -88,8 +88,8 @@
                                     @enderror
                                 </div> --}}
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;"
-                                    @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) style="display: none;" @endif>
 
                                     <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje',
                                         $servicios) && !$masajesExtra) disabled hidden @endif>
@@ -112,51 +112,38 @@
 
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;"
-                                @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) style="display: none;" @endif>
 
-                                <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje',
-                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+                                    <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje', $servicios) &&
+                                        !$masajesExtra) disabled hidden @endif>
 
-                                    <option value="" disabled selected >-- Seleccione --</option>
-                                    <option value="Relajante" {{ old('tipo_masaje') == 'Relajante' ? 'selected'
-                                        : '' }}>
-                                        Relajante
-                                    </option>
-                                    <option value="Descontracturante" {{ old('tipo_masaje') == 'Descontracturante' ? 'selected'
-                                        : '' }}>
-                                        Descontracturante
-                                    </option>
-                                    
-
-
-                                </select>
-                                <label for="tipo_masaje">Tipo Masaje</label>
-                                @error('tipo_masaje')
-                                <span class="invalid-feedback" role="alert">
-                                    <strong style="color:red">{{ $message }}</strong>
-                                </span>
-                                @enderror
-
-                            </div>
+                                        <option value="" disabled selected>-- Seleccione --</option>
+                                        <option value="Relajante" {{ old('tipo_masaje')=='Relajante' ? 'selected' : ''
+                                            }}>
+                                            Relajante
+                                        </option>
+                                        <option value="Descontracturante" {{ old('tipo_masaje')=='Descontracturante'
+                                            ? 'selected' : '' }}>
+                                            Descontracturante
+                                        </option>
 
 
 
-                                <div class="input-field col s12 m6 l4">
-
-                                    <label for="alergias">Alérgias</label>
-                                    <input id="alergias" type="text" name="alergias" class=""
-                                        value="{{ old('alergias') }}">
-                                    @error('alergias')
+                                    </select>
+                                    <label for="tipo_masaje">Tipo Masaje</label>
+                                    @error('tipo_masaje')
                                     <span class="invalid-feedback" role="alert">
                                         <strong style="color:red">{{ $message }}</strong>
                                     </span>
                                     @enderror
+
                                 </div>
+
 
                                 <div class="input-field col s12 m6 l4">
 
-                                    <label for="observacion">Observaciones</label>
+                                    <label for="observacion">Observaciones - "Decoraciones"</label>
                                     <input id="observacion" type="text" name="observacion" class=""
                                         value="{{ old('observacion') }}">
                                     @error('observacion')
@@ -184,10 +171,10 @@
                                     <label for="id_ubicacion">Ubicación</label>
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;"
-                                @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) style="display: none;" @endif>
                                     <select name="id_lugar_masaje" id="id_lugar_masaje" @if(!in_array('Masaje',
-                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+                                        $servicios) && !$masajesExtra) disabled hidden @endif>
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         @foreach ($lugares as $lugar)
                                         <option value="{{$lugar->id}}" {{ old('id_lugar_masaje')==$lugar->nombre ?
@@ -211,13 +198,13 @@
                                         <label>
                                             <input name="trago_cortesia" id="trago_cortesia" type="radio"
                                                 class="with-gap" value="Si" />
-                                            <span>Si</span>
+                                            <span class="black-text">Si</span>
                                         </label>
 
                                         <label>
                                             <input name="trago_cortesia" id="trago_cortesia" type="radio"
                                                 class="with-gap" value="No" checked />
-                                            <span>No</span>
+                                            <span class="black-text">No</span>
                                         </label>
                                     </p>
 
@@ -239,15 +226,15 @@
                             @else
                             <div class="row">
                                 <h6><strong> Menús por asistente</strong></h6>
-                                    
+
                                 @for ($i = 1; $i <= $reserva->cantidad_personas; $i++)
-                                    
+
                                     <div class="input-field col s12 m6 l3">
                                         <select name="menus[{{ $i }}][id_producto_entrada]"
                                             id="id_producto_entrada_{{ $i }}">
                                             <option value="" disabled selected> -- Seleccione --</option>
                                             @foreach ($entradas as $entrada)
-                                                <option value="{{$entrada->id}}">{{$entrada->nombre}}</option>
+                                            <option value="{{$entrada->id}}">{{$entrada->nombre}}</option>
                                             @endforeach
                                         </select>
                                         @error('id_producto_entrada')
@@ -260,12 +247,12 @@
 
 
 
-                                    <div class="input-field col s12 m6 l3">
+                                    <div class="input-field col s12 m6 l2">
                                         <select name="menus[{{$i}}][id_producto_fondo]" id="id_producto_fondo_{{$i}}">
                                             <option value="" disabled selected> -- Seleccione --</option>
                                             @foreach ($fondos as $fondo)
                                             <option value="{{$fondo->id}}">{{$fondo->nombre}}</option>
-                                        @endforeach
+                                            @endforeach
                                         </select>
                                         @error('id_producto_fondo_{{$i}}')
                                         <span class="invalid-feedback" role="alert">
@@ -276,13 +263,14 @@
                                     </div>
 
 
-                                    <div class="input-field col s12 m6 l3">
-                                        <select name="menus[{{$i}}][id_producto_acompanamiento]" id="id_producto_acompanamiento_{{$i}}">
+                                    <div class="input-field col s12 m6 l2">
+                                        <select name="menus[{{$i}}][id_producto_acompanamiento]"
+                                            id="id_producto_acompanamiento_{{$i}}">
                                             <option value="" disabled selected> -- Seleccione --</option>
-                                            <option value="" >Sin Acompañamiento</option>
+                                            <option value="">Sin Acompañamiento</option>
                                             @foreach ($acompañamientos as $acompañamiento)
                                             <option value="{{$acompañamiento->id}}">{{$acompañamiento->nombre}}</option>
-                                        @endforeach
+                                            @endforeach
                                         </select>
                                         @error('id_producto_acompanamiento_{{$i}}')
                                         <span class="invalid-feedback" role="alert">
@@ -292,8 +280,20 @@
                                         <label for="id_producto_acompanamiento_{{ $i }}">Acompañamiento</label>
                                     </div>
 
+                                    <div class="input-field col s12 m6 l2">
 
-                                    <div class="input-field col s12 m6 l3">
+                                        <input id="alergias_{{$i}}" type="text" name="menus[{{ $i }}][alergias]"
+                                            class="" value="">
+                                        <label for="alergias_{{$i}}">Alérgias</label>
+                                        @error('alergias_{{$i}}')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+
+
+                                    <div class="input-field col s12 m6 l2">
                                         <input type="text" name="menus[{{ $i }}][observacion]"
                                             id="observacion_{{ $i }}" />
                                         <label for="observacion_{{$i}}">Observaciones</label>

@@ -7,6 +7,7 @@ use App\Consumo;
 use App\DetalleServiciosExtra;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Programa;
+use App\Propina;
 use App\Reserva;
 use App\Servicio;
 use App\TipoTransaccion;
@@ -316,7 +317,7 @@ class ReservaController extends Controller
         }
 
         // return abort(404, 'Imagen de diferencia no encontrada');
-        return redirect('https://via.placeholder.com/200x300');
+        return redirect('https://placehold.co/200x300');
     }
 
     /**
@@ -363,11 +364,15 @@ class ReservaController extends Controller
         $visita->load(['menus']);
         $menus = $visita->menus;
         $consumos = $reserva->venta->consumos;
+        $idConsumo = null;
+        $cantidadPropina=null;
 
-        if (empty($consumos)) {
+
+        if ($consumos->isEmpty()) {
             $propina = 'No Aplica';
         } else {
             foreach ($consumos as $consumo) {
+                $idConsumo = $consumo->id;
                 foreach ($consumo->detallesConsumos as $detalles) {
                     if ($detalles->genera_propina) {
                         $total = $consumo->total_consumo;
@@ -378,7 +383,15 @@ class ReservaController extends Controller
                     }
                 }
             }
+
+            $cantidadPropina = DB::table('propinas')
+                ->where('id_consumo','=',$idConsumo)
+                ->first();
+    
+            $cantidadPropina = $cantidadPropina->cantidad;
+
         }
+
 
         $saveName = str_replace(' ', '_', $reserva->cliente->nombre_cliente);
 
@@ -394,6 +407,7 @@ class ReservaController extends Controller
             'venta' => $reserva->venta,
             'total' => $total,
             'propina' => $propina,
+            'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
         ];
 
         // dd($data);
@@ -412,7 +426,7 @@ class ReservaController extends Controller
         $currentMonth = Carbon::now()->month;
         $currentYear = Carbon::now()->year;
 
-        $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios'])
+        $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios','venta'])
             ->orderBy('fecha_visita')
             ->get()
             ->groupBy(function ($date) {
