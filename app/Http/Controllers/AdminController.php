@@ -9,7 +9,6 @@ use App\Masaje;
 use App\Reserva;
 use App\User;
 use Carbon\Carbon;
-use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
@@ -17,7 +16,7 @@ class AdminController extends Controller
 
     public function __construct()
     {
-        $this->middleware('role:' . config('app.admin_role') . '-' . config('app.anfitriona_role') . '-' . config('app.cocina_role') . '-' . config('app.garzon_role') . '-' . config('app.masoterapeuta_role'));
+        $this->middleware('role:' . config('app.admin_role') . '-' . config('app.anfitriona_role') . '-' . config('app.cocina_role') . '-' . config('app.garzon_role') . '-' . config('app.masoterapeuta_role') . '-' . config('app.barman_role'));
     }
 
     public function show()
@@ -56,6 +55,10 @@ class AdminController extends Controller
         if ($user->has_role(config('app.masoterapeuta_role'))) {
             return redirect()->action([MasajeController::class, 'index']);
         }
+
+        if ($user->has_role(config('app.barman_role'))) {
+            return redirect()->action([BarmanController::class, 'index']);
+        }
     }
 
     public function index()
@@ -78,6 +81,12 @@ class AdminController extends Controller
 
         // Definir los días de la semana en español
         $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+        // Calcular las fechas de cada día de la semana
+        $fechasDiasSemana = [];
+        foreach ($diasSemana as $indice => $dia) {
+            $fechasDiasSemana[$dia] = $inicioSemana->copy()->addDays($indice)->toDateString();
+        }
 
         // Crear un array para almacenar la cantidad de masajes por semana y por día por masoterapeuta
         $cantidadMasajesPorSemana = [];
@@ -110,6 +119,8 @@ class AdminController extends Controller
             'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
             'cantidadMasajesPorDia' => $cantidadMasajesPorDia,
             'diasSemana' => $diasSemana,
+
+            'fechasDiasSemana' => $fechasDiasSemana,
         ]);
     }
 
@@ -147,14 +158,13 @@ class AdminController extends Controller
             ->groupBy('fecha')
             ->get();
 
-
         // Crear un array para almacenar las propinas por día y dividirlas entre los usuarios asignados
         $propinasPorDia = [];
         $totalPropinasSemana = 0;
         $diaTrabajado = null;
 
         foreach ($detallesPorFecha as $detalle) {
-            $fecha = Carbon::parse($detalle->fecha)->locale('es')->isoFormat('dddd'); 
+            $fecha = Carbon::parse($detalle->fecha)->locale('es')->isoFormat('dddd');
             $fecha = ucfirst($fecha); // Convertir la primera letra a mayúscula para coincidir
             $diaTrabajado = Carbon::parse($detalle->fecha)->format('Y-m-d');
             if (isset($asignacionesPorDia[$fecha])) {
@@ -162,19 +172,16 @@ class AdminController extends Controller
                 $propinaPorUsuario = $totalUsuarios > 0 ? ($detalle->total_subtotal / $totalUsuarios) : 0;
 
                 // $propinasPorDia[$fecha] = $propinaPorUsuario;
-                $propinasPorDia[$fecha] = ['propina'=>$propinaPorUsuario, 'dia_trabajado'=>$diaTrabajado];
+                $propinasPorDia[$fecha] = ['propina' => $propinaPorUsuario, 'dia_trabajado' => $diaTrabajado];
 
                 $totalPropinasSemana += $detalle->total_subtotal;
-                
+
             } else {
                 // $propinasPorDia[$fecha] = 0;
-                $propinasPorDia[$fecha] = [ 'propina' => 0,
-                'dia_trabajado' => $diaTrabajado,];
+                $propinasPorDia[$fecha] = ['propina' => 0,
+                    'dia_trabajado' => $diaTrabajado];
             }
         }
-
-        
-
 
         // Calcular el total a pagar por usuario en la semana
         $pagoBasePorUsuario = 40000;
@@ -203,7 +210,6 @@ class AdminController extends Controller
 
         $totalSueldoGeneral = array_sum($totalPorUsuario);
 
-        
         return view('themes.backoffice.pages.admin.team', [
             'diasSemana' => $diasSemana,
             'asignacionesPorDia' => $asignacionesPorDia,
@@ -211,9 +217,8 @@ class AdminController extends Controller
             'totalPorUsuario' => $totalPorUsuario,
             'totalSueldos' => $totalSueldoGeneral,
             'usuarios' => $usuarios,
-            'diaT'=> $diaTrabajado
+            'diaT' => $diaTrabajado,
         ]);
     }
-
 
 }

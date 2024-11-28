@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\Asignacion;
 use App\DetalleConsumo;
+use App\Mail\ConsumoMailable;
 use App\Mail\VentaCerradaMailable;
+use App\PagoConsumo;
 use App\Propina;
 use App\Reserva;
 use App\TipoTransaccion;
@@ -120,29 +122,27 @@ class VentaController extends Controller
         ]);
     }
 
-    public function cerrar(Venta $venta, Reserva $reserva)
+    public function cerrar(Reserva $reserva, Venta $ventum)
     {
         $reserva->load('cliente', 'venta.tipoTransaccionAbono');
         $tipos = TipoTransaccion::all();
-        $venta->load('consumos');
-
-        // dd($reserva);
+        $ventum->load('consumos');
 
         return view('themes.backoffice.pages.venta.cerrar', [
             'reserva' => $reserva,
             'tipos' => $tipos,
-            'venta' => $venta,
+            'venta' => $ventum,
         ]);
     }
 
-    public function cerrarventa(Request $request, Venta $venta, Reserva $reserva)
+    public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
     {
-        $venta = $reserva->venta;
+        $venta = $ventum;
         $consumo = $venta->consumos->first();
         $cliente = $reserva->cliente->nombre_cliente;
+        $pagoConsumo = null;
 
-
-        DB::transaction(function () use ($request, &$venta, $reserva, $consumo) {
+        DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
 
             // Verifica si el campo está en el request y luego asignar campo
             if ($request->has('diferencia_programa')) {
@@ -167,8 +167,6 @@ class VentaController extends Controller
                 Storage::disk('imagen_diferencia')->move('temp/' . $filename, $finalPath);
                 $venta->imagen_diferencia = $finalPath;
             }
-
-            // $venta->imagen_diferencia = $request->input('imagen_diferencia');
 
             if ($request->has('id_tipo_transaccion_diferencia')) {
                 $venta->id_tipo_transaccion_diferencia = $request->input('id_tipo_transaccion_diferencia');
@@ -222,6 +220,29 @@ class VentaController extends Controller
                     }
 
                 }
+
+                if (!$request->has('separar')) {
+
+                } else {
+
+                    $pagoConsumo = PagoConsumo::create([
+                        'valor_consumo' => $request->valor_consumo,
+                        'imagen_transaccion' => null,
+                        'id_consumo' => $consumo->id,
+                        'id_tipo_transaccion' => $request->id_tipo_transaccion,
+                    ]);
+
+                    // Manejo de la imagen
+                    if ($request->hasFile('imagen_consumo')) {
+                        $imagen = $request->file('imagen_consumo');
+                        $filename = time() . '-' . $imagen->getClientOriginalName();
+                        $path = $imagen->storeAs('/', $filename, 'imagen_consumo');
+                        $pagoConsumo->imagen_transaccion = $path;
+                        $pagoConsumo->save();
+                    }
+
+                }
+
             }
 
         });
@@ -251,12 +272,14 @@ class VentaController extends Controller
                 }
             }
 
-            
             $cantidadPropina = DB::table('propinas')
                 ->where('id_consumo', '=', $idConsumo)
                 ->first();
-    
-            $cantidadPropina = $cantidadPropina->cantidad;
+
+            if ($cantidadPropina) {
+
+                $cantidadPropina = $cantidadPropina->cantidad;
+            }
         }
 
         $data = [
@@ -283,17 +306,37 @@ class VentaController extends Controller
         // Enviar el correo con el PDF adjunto
         Mail::to($reserva->cliente->correo)->send(new VentaCerradaMailable($data, $pdfPath));
 
+        // Si se genera la separación de consumo con venta
+        if ($pagoConsumo !== null) {
+
+            $dataConsumo = [
+                'nombre' => $reserva->cliente->nombre_cliente,
+                'numero' => $reserva->cliente->whatsapp_cliente,
+                'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+                'fecha_visita' => $reserva->fecha_visita,
+                'programa' => $reserva->programa->nombre_programa,
+                'personas' => $reserva->cantidad_personas,
+                'consumos' => $consumos,
+                'venta' => $reserva->venta,
+                'total' => $total,
+                'propina' => $propina,
+                'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
+            ];
+
+            // Generar el PDF
+            $pdf = PDF::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
+            $pdfRuta = storage_path('app/public/') . 'Detalle_Consumo_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
+            $pdf->save($pdfRuta);
+            $data['pdfRuta'] = $pdfRuta;
+
+            // Enviar el correo con el PDF adjunto
+            Mail::to($reserva->cliente->correo)->send(new ConsumoMailable($data, $pdfRuta));
+        }
+
         Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, Venta $venta)
     {
         //

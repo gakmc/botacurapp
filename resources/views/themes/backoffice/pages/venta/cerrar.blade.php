@@ -27,7 +27,7 @@
           </h4>
           <div class="row">
             <form class="col s12" method="post" enctype="multipart/form-data"
-              action="{{route('backoffice.reserva.venta.cerrarventa', ['reserva' => $reserva->id, 'ventum' => $reserva->venta->id])}}">
+              action="{{route('backoffice.reserva.venta.cerrarventa', ['reserva' => $reserva->id, 'ventum' => $venta])}}">
 
 
               {{csrf_field() }}
@@ -183,14 +183,89 @@
 
                 @else
 
-                @foreach ($reserva->venta->consumos as $consumo)
 
+
+
+
+                <p>
+                  <label>
+                    <input type="checkbox" id="separar" name="separar" />
+                    <span class="black-text">Separar Consumo?</span>
+                  </label>
+                </p>
+
+
+                <div class="input-field col s12 m3" id="div_valor_consumo">
+
+                  <label for="valor_consumo">Valor Consumo</label>
+                  <input id="valor_consumo" type="text" name="valor_consumo" class="" value="{{ old('valor_consumo') }}"
+                    readonly>
+                  @error('valor_consumo')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
+                <div class="file-field input-field col s12 m5" id="div_imagen_consumo">
+                  <div class="btn">
+                    <span>Imagen Pago Consumo</span>
+                    <input type="file" id="imagen_consumo" name="imagen_consumo">
+                  </div>
+                  <div class="file-path-wrapper">
+                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
+                  </div>
+                  @error('imagen_consumo')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+                </div>
+
+
+                <div class="input-field col s12 m4" id="div_id_tipo_transaccion">
+                  <select name="id_tipo_transaccion" id="id_tipo_transaccion">
+                    <option selected disabled>-- Seleccione --</option>
+                    @foreach ($tipos as $tipo)
+                    <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
+                    @endforeach
+                  </select>
+                  @error('id_tipo_transaccion')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+                  <label for="id_tipo_transaccion">Tipo Transaccion Consumo</label>
+
+                </div>
+
+
+
+
+                @foreach ($reserva->venta->consumos as $consumo)
                 <p id="check">
                   <label>
                     <input type="checkbox" id="propina" name="propina" />
-                    <span>Incluye Propina?</span>
+                    <span class="black-text">Incluye Propina?</span>
                   </label>
                 </p>
+
+                @php
+                  $totalSubtotal = $consumo->detallesConsumos->where('id_consumo', $consumo->id)->sum('subtotal');
+                @endphp
+
+                <div class="input-field col s12 m3" id="propinaBruta" hidden>
+
+                  <label for="propinaValue">ingrese Propina</label>
+                  <input id="propinaValue" type="text" name="propinaValue" class="" value="{{$totalSubtotal*0.1}}">
+                  @error('propinaValue')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
 
 
                 <div class="input-field col s12 m3" id="noPropina">
@@ -207,18 +282,7 @@
 
 
 
-                <div class="input-field col s12 m3" id="propinaBruta" hidden>
 
-                  <label for="propinaValue">ingrese Propina</label>
-                  <input id="propinaValue" type="text" name="propinaValue" class=""
-                    value="{{$consumo->subtotal * 0.1}}">
-                  @error('propinaValue')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div>
 
 
                 <div class="input-field col s12 m3" id="siPropina" hidden>
@@ -234,8 +298,23 @@
 
                 </div>
 
+
                 @endforeach
                 @endif
+
+                <div class="input-field col s12 m3">
+
+                  <label for="diferencia">Diferencia por Pagar</label>
+                  <input id="diferencia" type="text" name="diferencia" value="{{$venta->total_pagar}}" class="" readonly
+                    data-total-pagar="{{$venta->total_pagar}}">
+                  @error('diferencia')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
 
                 <div class="input-field col s12 m3">
 
@@ -318,75 +397,106 @@
     var SinPropina = parseInt($('#sinPropina').val());
     var propinaValue = parseInt($('#propinaValue').val());
     var propina = false;
+    var consumo = false;
     var nuevoTotal = 0;
-    var checkbox = $('#check');
-    
-    
-    $(document).ready(function(){
-      
-      $('#total_pagar').val(total+SinPropina);
+    var checkboxPropina = $('#check');
+    var checkboxConsumo = $('#separar');
+    var divValorConsumo = $('#div_valor_consumo');
+    var divImagenConsumo = $('#div_imagen_consumo');
+    var divTransaccionConsumo = $('#div_id_tipo_transaccion');
 
-      if (ConPropina <= 0) {
-        checkbox.attr('hidden', true);
-      }
+    var valorConsumo = $('#valor_consumo');
+    var imagenConsumo = $('#imagen_consumo');
+    var transaccionConsumo = $('#id_tipo_transaccion');
 
-    })
-    
-    
-    
-    $(document).change(function(){
-      
-      nuevoTotal = total;
-      propina = $('#propina').is(':checked');
-      
-      
-      
-      if (propina) {
-        $('#noPropina').attr('hidden', true);
-        $('#sinPropina').attr('disabled', true);
-        $('#siPropina').removeAttr('hidden');
-        $('#conPropina').removeAttr('disabled');
-        $('#propinaBruta').removeAttr('hidden');
-        $('#propinaValue').removeAttr('disabled');
-        
-        var nuevaPropinaValue = parseInt($('#propinaValue').val());
-            if (!isNaN(nuevaPropinaValue)) {
-              // Calcular ConPropina dinámicamente basado en la diferencia
-              ConPropina = ConPropina - propinaValue + nuevaPropinaValue; // Resta el valor previo y suma el nuevo
+    $(document).ready(function () {
+        $('#total_pagar').val(total + SinPropina);
 
-              // Actualizar el valor actual de propinaValue
-              propinaValue = nuevaPropinaValue;
+        if (ConPropina <= 0) {
+            checkboxPropina.attr('hidden', true);
+        }
 
-              $('#conPropina').val(ConPropina);
-        
-                
+        // Inicializa el estado de los campos relacionados con consumo
+        cambioConsumo(false);
+    });
+
+    $(document).change(function () {
+        nuevoTotal = total;
+        propina = $('#propina').is(':checked');
+        consumo = checkboxConsumo.is(':checked');
+
+        if (consumo) {
+            cambioConsumo(true);
+
+            if (propina) {
+                valorConsumo.val($('#conPropina').val());
+            } else {
+                valorConsumo.val($('#sinPropina').val());
             }
 
-        nuevoTotal += ConPropina;
-      } else {
-        $('#siPropina').attr('hidden', true);
-        $('#conPropina').attr('disabled', true);
-        $('#noPropina').removeAttr('hidden');
-        $('#sinPropina').removeAttr('disabled');
-        $('#propinaValue').val(propinaOriginal);
-        $('#propinaBruta').attr('hidden',true);
-        $('#propinaValue').attr('disabled', true);
-        nuevoTotal += SinPropina;
-      }
-      calcularTotal();
-    })
-    
-    $('#diferencia_programa').change(function () { 
-      diferenciaInput = $('#diferencia_programa').val();
-      calcularTotal();
-     })
-    
+            // Resta el valor del consumo del total
+            nuevoTotal -= parseInt(valorConsumo.val() || 0);
+        } else {
+            cambioConsumo(false);
+            valorConsumo.val('');
+        }
+
+        if (propina) {
+            $('#noPropina').attr('hidden', true);
+            $('#sinPropina').attr('disabled', true);
+            $('#siPropina').removeAttr('hidden');
+            $('#conPropina').removeAttr('disabled');
+            $('#propinaBruta').removeAttr('hidden');
+            $('#propinaValue').removeAttr('disabled');
+
+            var nuevaPropinaValue = parseInt($('#propinaValue').val());
+            if (!isNaN(nuevaPropinaValue)) {
+                ConPropina = ConPropina - propinaValue + nuevaPropinaValue;
+                propinaValue = nuevaPropinaValue;
+                $('#conPropina').val(ConPropina);
+            }
+
+            nuevoTotal += ConPropina;
+        } else {
+            $('#siPropina').attr('hidden', true);
+            $('#conPropina').attr('disabled', true);
+            $('#noPropina').removeAttr('hidden');
+            $('#sinPropina').removeAttr('disabled');
+            $('#propinaValue').val(propinaOriginal);
+            $('#propinaBruta').attr('hidden', true);
+            $('#propinaValue').attr('disabled', true);
+            nuevoTotal += SinPropina;
+        }
+
+        calcularTotal();
+    });
+
+    $('#diferencia_programa').change(function () {
+        diferenciaInput = $('#diferencia_programa').val();
+        calcularTotal();
+    });
 
     function calcularTotal() {
-
-      $('#total_pagar').val(nuevoTotal-diferenciaInput);
-      
+        $('#total_pagar').val(nuevoTotal - diferenciaInput);
     }
 
+    function cambioConsumo(enable) {
+        if (enable) {
+            divValorConsumo.removeAttr('hidden');
+            divImagenConsumo.removeAttr('hidden');
+            divTransaccionConsumo.removeAttr('hidden');
+            valorConsumo.removeAttr('disabled');
+            imagenConsumo.removeAttr('disabled');
+            transaccionConsumo.removeAttr('disabled');
+        } else {
+            divValorConsumo.attr('hidden', true);
+            divImagenConsumo.attr('hidden', true);
+            divTransaccionConsumo.attr('hidden', true);
+            valorConsumo.attr('disabled', true);
+            imagenConsumo.attr('disabled', true);
+            transaccionConsumo.attr('disabled', true);
+        }
+    }
 </script>
+
 @endsection

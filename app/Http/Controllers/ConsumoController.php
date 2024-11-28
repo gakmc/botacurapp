@@ -5,6 +5,8 @@ namespace App\Http\Controllers;
 use App\Consumo;
 use App\DetalleConsumo;
 use App\DetalleServiciosExtra;
+use App\Events\NuevoConsumoAgregado;
+use App\Producto;
 use App\Servicio;
 use App\TipoProducto;
 use App\Venta;
@@ -101,7 +103,20 @@ class ConsumoController extends Controller
 
     public function store(Request $request, Venta $venta)
     {
-        // dd($request);
+        $productosAñadidos = array_filter($request->productos, function ($producto) {
+            return isset($producto['cantidad']) && $producto['cantidad'] > 0;
+        });
+
+        $productos=[];
+
+        foreach ($productosAñadidos as $id => $producto) {
+            $productos[]= $id;
+        }
+
+        $nombres=null;
+        $nombres = Producto::whereIn('id', $productos)->pluck('nombre')->implode(', ');
+
+
         // Iniciar una transacción en la base de datos
         DB::transaction(function () use ($request, &$venta) {
 
@@ -162,6 +177,7 @@ class ConsumoController extends Controller
 
         $venta = Venta::where('id', $request->id_venta)->first();
 
+        broadcast(new NuevoConsumoAgregado('Nuevo consumo agregado'.$nombres));
         // Redirigir con éxito
         Alert::success('Éxito', 'Consumo ingresado correctamente', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.reserva.show', $venta->reserva->id);

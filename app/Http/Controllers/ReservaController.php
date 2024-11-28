@@ -37,11 +37,12 @@ class ReservaController extends Controller
 
         if (!$alternativeView) {
             $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-                ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-                ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-                ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
-                ->orderBy('v.horario_sauna', 'asc')
-                ->get();
+            ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
+            ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+            ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
+            ->orderBy('reservas.fecha_visita', 'asc')
+            ->orderBy('v.horario_sauna', 'asc')
+            ->get();
         } else {
 
             $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
@@ -50,7 +51,7 @@ class ReservaController extends Controller
                 ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
                 ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente', 'u.nombre')
                 ->orderBy('reservas.fecha_visita', 'asc')
-                ->orderBy('u.nombre', 'asc')
+                ->orderBy('u.id', 'asc')
                 ->get();
         }
 
@@ -289,6 +290,31 @@ class ReservaController extends Controller
         ]);
     }
 
+    public function showConsumoImage($id)
+    {
+        $reserva = Reserva::findOrFail($id);
+        $pagoConsumo = null;
+
+        foreach ($reserva->venta->consumos as $consumo){
+            if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)){
+                foreach($consumo->pagosConsumos as $pago)
+                {
+                    $pagoConsumo = $pago;
+                };
+            }
+        }
+
+        // Verificar si el archivo de abono existe
+        if (Storage::disk('imagen_consumo')->exists($pagoConsumo->imagen_transaccion)) {
+            $file = Storage::disk('imagen_consumo')->get($pagoConsumo->imagen_transaccion);
+            $mimeType = Storage::disk('imagen_consumo')->mimeType($pagoConsumo->imagen_transaccion);
+
+            return response($file, 200)->header('Content-Type', $mimeType);
+        }
+
+        return abort(404, 'Imagen de abono no encontrada');
+    }
+
     public function showAbonoImage($id)
     {
         $reserva = Reserva::findOrFail($id);
@@ -387,8 +413,11 @@ class ReservaController extends Controller
             $cantidadPropina = DB::table('propinas')
                 ->where('id_consumo','=',$idConsumo)
                 ->first();
-    
-            $cantidadPropina = $cantidadPropina->cantidad;
+
+            if ($cantidadPropina) {
+                
+                $cantidadPropina = $cantidadPropina->cantidad;
+            }
 
         }
 
@@ -416,6 +445,71 @@ class ReservaController extends Controller
         // return $pdf->download('factura.pdf');
         return $pdf->stream('Detalle_Venta' . '_' . $saveName . '_' . $reserva->fecha_visita . '.pdf');
 
+
+
+    }
+
+    public function generarPDFConsumo(Reserva $reserva)
+    {
+        $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
+
+        $total = 0;
+        $propina = 'No Aplica';
+        $visita = $reserva->visitas->first();
+        $visita->load(['menus']);
+        $consumos = $reserva->venta->consumos;
+        $idConsumo = null;
+        $cantidadPropina=null;
+
+
+        if ($consumos->isEmpty()) {
+            $propina = 'No Aplica';
+        } else {
+            foreach ($consumos as $consumo) {
+                $idConsumo = $consumo->id;
+                foreach ($consumo->detallesConsumos as $detalles) {
+                    if ($detalles->genera_propina) {
+                        $total = $consumo->total_consumo;
+                        $propina = 'Si';
+                    } else {
+                        $total = $consumo->subtotal;
+                        $propina = 'No';
+                    }
+                }
+            }
+
+            $cantidadPropina = DB::table('propinas')
+                ->where('id_consumo','=',$idConsumo)
+                ->first();
+
+            if ($cantidadPropina) {
+                
+                $cantidadPropina = $cantidadPropina->cantidad;
+            }
+
+        }
+
+
+        $saveName = str_replace(' ', '_', $reserva->cliente->nombre_cliente);
+
+        $dataConsumo = [
+            'nombre' => $reserva->cliente->nombre_cliente,
+            'numero' => $reserva->cliente->whatsapp_cliente,
+            'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+            'fecha_visita' => $reserva->fecha_visita,
+            'programa' => $reserva->programa->nombre_programa,
+            'personas' => $reserva->cantidad_personas,
+            'consumos' => $consumos,
+            'venta' => $reserva->venta,
+            'total' => $total,
+            'propina' => $propina,
+            'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
+        ];
+
+
+
+        $pdf = PDF::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
+        return $pdf->stream('Detalle_Consumo' . '_' . $saveName . '_' . $reserva->fecha_visita . '.pdf');
     }
 
     public function indexall()

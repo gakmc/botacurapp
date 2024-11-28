@@ -599,7 +599,7 @@
 $('.modal-trigger').on('click', function(){
       // Obtener los datos del cliente y la reserva seleccionada
       var abono = $(this).data('abono') || 0;
-      var abonoImg = $(this).data('abonoimg') || 'https://via.placeholder.com/200x300';
+      var abonoImg = $(this).data('abonoimg');
       var diferencia = $(this).data('diferencia') || 0;
       var diferenciaImg = $(this).data('diferenciaimg');
       var descuento = $(this).data('descuento');
@@ -607,6 +607,15 @@ $('.modal-trigger').on('click', function(){
       var tipoAbono = $(this).data('tipoabono');
       var tipoDiferencia = $(this).data('tipodiferencia');
       var consumos = $(this).data('consumo');
+      var pagoconsumo = $(this).data('pagoimg') || null;
+      
+
+      if (pagoconsumo === null) {
+          $('#consumoSeparado').attr('hidden', true);
+          $('#pConsumoSeparado').attr('hidden', true);
+        } else {
+          $('#consumoSeparado').removeAttr('hidden'); // Si necesitas mostrarlo en caso contrario
+        }
       
 
       // Insertar los datos en los elementos del modal
@@ -615,8 +624,10 @@ $('.modal-trigger').on('click', function(){
       
       $('#linkAbono').attr('href',abonoImg);
       $('#linkDiferencia').attr('href',diferenciaImg);
+      $('#linkConsumo').attr('href',pagoconsumo);
       $('#modalAbonoImg').attr('src',abonoImg);
       $('#modalDiferenciaImg').attr('src',diferenciaImg);
+      $('#modalConsumoImg').attr('src',pagoconsumo);
       
           // Validar si el descuento es nulo
           if (descuento == null || descuento == '') {

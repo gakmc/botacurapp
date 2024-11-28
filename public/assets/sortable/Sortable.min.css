@@ -1,0 +1,25 @@
+.card-list {
+    min-height: 200px;
+    border: 1px dashed #ddd;
+    padding: 10px;
+    background-color: #f9f9f9;
+}
+
+.card {
+    margin: 5px;
+    padding: 10px;
+    background-color: #fff;
+    border: 1px solid #ddd;
+    border-radius: 4px;
+    cursor: grab;
+}
+
+
+.collection {
+    min-height: 200px;
+    border: 1px dashed #ddd;
+    padding: 10px;
+}
+.collection-item {
+    cursor: grab;
+}

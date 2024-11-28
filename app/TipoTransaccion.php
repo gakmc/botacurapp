@@ -9,20 +9,24 @@ class TipoTransaccion extends Model
     protected $table = 'tipos_transacciones';
 
     protected $fillable = [
-        'nombre'
+        'nombre',
     ];
 
-
 //RELACIONES
-public function ventas()
-{
-    return $this->hasMany(Venta::class);
-}
+    public function ventas()
+    {
+        return $this->hasMany(Venta::class);
+    }
+
+    public function pagosConsumos()
+    {
+        return $this->hasMany(PagoConsumo::class, 'id_tipo_transaccion');
+    }
 
 // public function reservaciones()
-// {
-//     return $this->belongsToMany('App\Reserva');
-// }
+    // {
+    //     return $this->belongsToMany('App\Reserva');
+    // }
 
 //ALMACENAMIENTO
 

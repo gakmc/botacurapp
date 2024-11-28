@@ -39,11 +39,11 @@
     </div>
 
 
-    
+
     <div class="col s12" style="display:flex; justify-content:space-around; align-items:center;">
       <p><strong>Imagen Abono:</strong></p>
       <a href="" target="_blank" id="linkAbono">
-        <img style="max-width:300px; max-height:200px;"  id="modalAbonoImg" />
+        <img style="max-width:300px; max-height:200px;" id="modalAbonoImg" />
       </a>
 
       <p><strong>Imagen Diferencia:</strong></p>
@@ -53,7 +53,12 @@
     </div>
 
 
-
+    <div class="col s12" style="display:flex; justify-content:start; align-items:center;" id="consumoSeparado" hidden>
+      <p id="pConsumoSeparado"><strong>Imagen Pago Consumo:</strong></p>
+      <a href="" target="_blank" id="linkConsumo">
+        <img style="max-width:300px; max-height:200px;" id="modalConsumoImg" />
+      </a>
+    </div>
 
 
   </div>

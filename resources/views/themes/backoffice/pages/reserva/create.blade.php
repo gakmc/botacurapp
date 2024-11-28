@@ -136,9 +136,9 @@
 
               <div class="row">
                 <div class="input-field col s12 m3">
-                  <label for="fecha_visita">Fecha Visita</label>
                   <input id="fecha_visita" type="date" name="fecha_visita" class="" value="{{ old('fecha_visita') }}"
-                    placeholder="fecha Visita">
+                  placeholder="fecha Visita">
+                  <label for="fecha_visita">Fecha Visita</label>
                   @error('fecha_visita')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>

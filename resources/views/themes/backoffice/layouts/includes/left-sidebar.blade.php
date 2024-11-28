@@ -22,6 +22,14 @@
                             </a>
                         </li>
                         @endif
+                        @if (Auth::user()->has_any_role([config('app.masoterapeuta_role')]))     
+                        <li>
+                            <a class="grey-text text-darken-1" href="{{route('backoffice.sueldo.view_maso', Auth::user())}}">
+                                <i class="material-icons">account_balance_wallet</i>
+                                Pagos
+                            </a>
+                        </li>
+                        @endif
                         <li>
                             <a class="grey-text text-darken-1" href="#">
                                 <i class="material-icons">settings</i>
@@ -148,6 +156,32 @@
                         </i>
                         <span class="nav-text">
                             Menús
+                        </span>
+                    </a>
+                </li>
+                @endif
+
+                @if (Auth::user()->has_role(config('app.barman_role')) || Auth::user()->has_role(config('app.admin_role')))
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.index') }}">
+                        <i class="material-icons">
+                            local_bar
+                        </i>
+                        <span class="nav-text">
+                            Bebidas
+                        </span>
+                    </a>
+                </li>
+                @endif
+
+                @if (Auth::user()->has_role(config('app.garzon_role')))
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.bebidas') }}">
+                        <i class="material-icons">
+                            local_bar
+                        </i>
+                        <span class="nav-text">
+                            Bebidas
                         </span>
                     </a>
                 </li>

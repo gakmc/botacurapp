@@ -13,7 +13,8 @@ class DetalleConsumo extends Model
         'subtotal',
         'genera_propina',
         'id_consumo',
-        'id_producto'
+        'id_producto',
+        'estado'
     ];
     
 

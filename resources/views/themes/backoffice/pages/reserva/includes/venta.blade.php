@@ -48,7 +48,13 @@
         data-descuento="{{$reserva->venta->descuento}}" data-totalpagar="{{$reserva->venta->total_pagar}}"
         data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
         data-tipodiferencia="{{$reserva->venta->tipoTransaccionDiferencia->nombre ?? 'No registra'}}"
-        data-consumo="{{$reserva->venta->consumos}}">
+        data-consumo="{{$reserva->venta->consumos}}"
+        @foreach ($reserva->venta->consumos as $consumo)
+            @if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
+                data-pagoimg="{{$consumo->pagosConsumos ? route('backoffice.reserva.consumo.imagen', $reserva->id) : null}}"
+            @endif
+        @endforeach
+        >
         <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Venta">remove_red_eye</i>
     </a>
     @if (is_null($reserva->venta->diferencia_programa))
@@ -65,8 +71,22 @@
 
     <!-- Dropdown hacia arriba -->
     <ul id="dropdown1" class="dropdown-content">
-        <li><a href="{{route('backoffice.venta.pdf', $reserva)}}" target="_blank"><i class="material-icons">remove_red_eye</i>Ver</a></li>
+        <li><a href="{{route('backoffice.venta.pdf', $reserva)}}" target="_blank"><i
+                    class="material-icons">remove_red_eye</i>Ver venta</a></li>
         <li><a href="#!"><i class="material-icons">share</i>Compartir</a></li>
+
+
+        @foreach ($reserva->venta->consumos as $consumo)
+        @if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
+        <li>
+            <a href="{{ route('backoffice.consumo.pdf', $reserva) }}" target="_blank">
+                <i class="material-icons">remove_red_eye</i>Consumo
+            </a>
+        </li>
+        @endif
+        @endforeach
+
+
     </ul>
 
     @endif

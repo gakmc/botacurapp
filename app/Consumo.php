@@ -26,4 +26,9 @@ class Consumo extends Model
     {
         return $this->hasMany(DetalleServiciosExtra::class, 'id_consumo');
     }
+
+    public function pagosConsumos()
+    {
+        return $this->hasMany(PagoConsumo::class, 'id_consumo');
+    }
 }

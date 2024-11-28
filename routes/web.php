@@ -1,6 +1,7 @@
 <?php
 
 use App\CategoriaCompra;
+use App\Events\EjemploEvento;
 use App\Sector;
 use App\TipoDocumento;
 use App\TipoProducto;
@@ -27,14 +28,21 @@ Route::get('/email', function () {
     $reserva = App\Reserva::first(); // Usa un ejemplo de Reserva de tu base de datos
     $visita = $reserva->visitas; // Usa un ejemplo de Visita de tu base de datos
     $cliente = App\Cliente::first(); // Usa un ejemplo de Reserva de tu base de datos
-    // dd($reserva->id_programa);
-    // $programa = App\Programa::where('id','==',$reserva->id_programa)->get();
+
     $programa = $reserva->programa;
 
 
     // Devolver la vista de correo
     return new App\Mail\RegistroReservaMailable($visita, $reserva, $cliente, $programa);
 });
+
+
+
+Route::get('/emitir', function () {
+    broadcast(new EjemploEvento('Hola, WebSocket!'));
+    return 'Evento emitido';
+});
+
 
 Route::get('test', function () {
     return 'hola';
@@ -87,6 +95,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::delete('reserva/{reserva}', 'ReservaController@destroy')->name('reserva.destroy');
     Route::get('reserva/{reserva}/abono', 'ReservaController@showAbonoImage')->name('reserva.abono.imagen');
     Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
+    Route::get('reserva/{reserva}/consumo', 'ReservaController@showConsumoImage')->name('reserva.consumo.imagen');
 
     // Metodos Complementos CREAR
     Route::get('sectores/create', function () {
@@ -160,7 +169,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     // PDF
     Route::get('/generar-pdf/{reserva}', 'ClienteController@generarPDF')->name('cliente.pdf');
+
     Route::get('/ver-pdf/{reserva}', 'ReservaController@generarPDF')->name('venta.pdf');
+
+    Route::get('/pdf-consumo/{reserva}', 'ReservaController@generarPDFConsumo')->name('consumo.pdf');
 
     //Fin PDF
 
@@ -188,9 +200,18 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
 
-    Route::get('sueldo/{user}','SueldoController@view')->name('sueldo.view');
+    Route::get('sueldos/{user}','SueldoController@view')->name('sueldo.view');
+    Route::get('sueldo/{user}','SueldoController@view_maso')->name('sueldo.view_maso');
+
+    Route::post('sueldo/masoterapeuta','SueldoController@store_maso')->name('sueldo.store_maso');
+    
+    Route::post('barman/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
+    Route::post('barman/bebidas/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
+    Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
+
     
     Route::resource('asignacion', 'AsignacionController');
+    Route::resource('barman', 'BarmanController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');
     Route::resource('insumo', 'InsumoController');

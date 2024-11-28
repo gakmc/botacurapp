@@ -57,7 +57,7 @@ return [
 
         'imagen_abono' => [
             'driver' => 'local',
-            'root' => storage_path('imagenes/abono'), // Corregido: sin el '/' extra
+            'root' => storage_path('imagenes/abono'),
             'url' => env('APP_URL') . '/storage/imagenes/abono',
             'visibility' => 'private',
             'permissions' => [
@@ -74,8 +74,25 @@ return [
 
         'imagen_diferencia' => [
             'driver' => 'local',
-            'root' => storage_path('imagenes/diferencia'), // Corregido: sin el '/' extra
+            'root' => storage_path('imagenes/diferencia'),
             'url' => env('APP_URL') . '/storage/imagenes/diferencia',
+            'visibility' => 'private',
+            'permissions' => [
+                'file' => [
+                    'public' => 0644,
+                    'private' => 0600,
+                ],
+                'dir' => [
+                    'public' => 0755,
+                    'private' => 0700,
+                ],
+            ],
+        ],
+
+        'imagen_consumo' => [
+            'driver' => 'local',
+            'root' => storage_path('imagenes/consumo'),
+            'url' => env('APP_URL') . '/storage/imagenes/consumo',
             'visibility' => 'private',
             'permissions' => [
                 'file' => [

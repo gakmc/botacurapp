@@ -149,4 +149,37 @@
     });
 </script>
 @endif
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        setTimeout(function () {
+            if (window.Echo) {
+                window.Echo.channel('canal-publico')
+                    .listen('EjemploEvento', (e) => {
+                        console.log(e.mensaje);
+    
+                        const Toast = Swal.mixin({
+                        toast: true,
+                        position: "top",
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+                    
+                    Toast.fire({
+                        icon: "success",
+                        title: e.mensaje
+                    });
+                    });
+            } else {
+                console.error("Echo no está definido, verifica la configuración.");
+            }
+        }, 1000);
+    });
+    
+        </script>
 @endsection

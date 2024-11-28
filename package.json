@@ -12,7 +12,6 @@
     "devDependencies": {
         "axios": "^1.2.1",
         "bootstrap": "^5.3.3",
-        "browser-sync": "^3.0.2",
         "browser-sync-webpack-plugin": "^2.3.0",
         "cross-env": "^7.0",
         "jquery": "^3.2",
@@ -22,10 +21,13 @@
         "resolve-url-loader": "^5.0.0",
         "sass": "^1.20.1",
         "sass-loader": "^8.0.0",
-        "vue": "^2.5.17",
+        "vue": "^3.5.13",
         "vue-template-compiler": "^0.1.0"
     },
     "dependencies": {
+        "browser-sync": "^2.29.3",
+        "laravel-echo": "^1.17.1",
+        "pusher-js": "^8.4.0-rc2",
         "sweetalert2": "^11.4.8"
     }
 }

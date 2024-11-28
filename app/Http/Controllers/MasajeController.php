@@ -28,7 +28,8 @@ class MasajeController extends Controller
         ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
         ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
         ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
-        ->orderBy('v.horario_sauna', 'asc')
+        ->orderBy('reservas.fecha_visita', 'asc')
+        ->orderBy('v.horario_masaje', 'asc')
         ->get();
     
         // Agrupar reservas por fecha

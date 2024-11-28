@@ -3,7 +3,6 @@
     <head>
     <title>@yield('title')</title>
     
-    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     @include('themes.backoffice.layouts.includes.head')
     </head>
     <body>
@@ -25,9 +24,9 @@
 
         @include('themes.backoffice.layouts.includes.footer')
         
-        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
         @include('themes.backoffice.layouts.includes.foot')
-
         @yield('foot')
+        <script src="{{ mix('js/app.js') }}"></script>
+
     </body>
 </html>

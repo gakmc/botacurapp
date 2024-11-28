@@ -7,7 +7,7 @@
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
     <link href="{{ asset('assents/backoffice/css/materialize.css') }}" rel="stylesheet">
 
-    <title>Detalle Venta {{$nombre}}</title>
+    <title>Detalle Consumo {{$nombre}}</title>
 
 </head>
 
@@ -30,7 +30,7 @@
         <img style="max-height: 150px;"
             src="https://botacura.cl/wp-content/uploads/2024/04/294235172_462864912512116_3346235978129441981_n-modified.png"
             alt="botacura logo" />
-        <h3 class="right primario" style="margin-top: 7%">Detalle de venta</h3>
+        <h3 class="right primario" style="margin-top: 7%">Detalle de consumo</h3>
     </div>
 
     <div>
@@ -51,54 +51,6 @@
 
     <br>
 
-
-@if ($menus->isEmpty())
-    
-@else
-
-<div>
-    <h5 class="primario">Menús</h5>
-
-    <table class="striped">
-        <thead>
-            <tr>
-                <th class="primario">Menú</th>
-                <th class="primario">Entrada</th>
-                <th class="primario">Plato Fondo</th>
-                <th class="primario">Acompañamiento</th>
-                <th class="primario">Observaciones</th>
-            </tr>
-        </thead>
-
-        <tbody>
-            @foreach ($menus as $index=>$menu )
-            <tr>
-                <td class="primario">Menú {{$index+1}}</td>
-                <td>{{$menu->productoEntrada->nombre}}</td>
-                <td>{{$menu->productoFondo->nombre}}</td>
-                <td>
-                    @if ($menu->productoAcompanamiento == null)
-                    Sin Acompañamiento
-                    @else
-                    {{ $menu->productoAcompanamiento->nombre }}
-                    @endif
-
-                </td>
-                <td>
-                    @if (is_null($menu->observacion))
-                    No registra
-                    @else
-                    <span style="color: red">{{ $menu->observacion }}</span>
-                    @endif
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
-
-</div>
-    
-@endif
 
     <br>
 
@@ -156,7 +108,7 @@
                 </tr>
                 <tr>
                     <td colspan="3"></td>
-                    <td style="font-weight: bold; text-align:right;">Propinas:
+                    <td style="font-weight: bold; text-align:right;">Propinas 10%:
                         ${{number_format($propina,0,'','.')}}</td>
                 </tr>
                 <tr>
@@ -173,7 +125,7 @@
 
     <div>
         <h5 class="primario">Información de Pagos</h5>
-        <h6 class="left"><span class="primario">Pago con propina:</span>${{number_format($propina,0,'','.')}}</h6>
+        <h6 class="left"><span class="primario">Propina Sugerida:</span>${{number_format($propina,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Propina Pagada:</span>
 
             @if ($propinaPagada == "No Aplica")
@@ -186,12 +138,12 @@
     </div>
 <br>
     <div>
-        <h6 class="left"><span class="primario">Abono: </span> ${{number_format($venta->abono_programa,0,'','.')}}</h6>
+        <h6 class="left"><span class="primario">Subtotal: </span> ${{number_format($consumo->subtotal,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Total: </span>
-            ${{number_format($venta->abono_programa+$venta->diferencia_programa,0,'','.')}}</h6>
-            @if ($venta->diferencia_programa !== 0)
-            <h6 class="center "><span class="primario">Diferencia: </span>
-                ${{number_format($venta->diferencia_programa,0,'','.')}}
+            ${{number_format(($propinaPagada != 'No Aplica') ? $consumo->subtotal + $propinaPagada : $consumo->subtotal,0,'','.')}}</h6>
+            @if ($total !== 0)
+            <h6 class="center "><span class="primario">Propina: </span>
+                ${{number_format($propinaPagada,0,'','.')}}
             </h6>
             @else
                 
