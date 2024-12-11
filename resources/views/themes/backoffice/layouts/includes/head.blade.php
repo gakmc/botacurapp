@@ -5,7 +5,6 @@
 <meta content="no" name="msapplication-tap-highlight">
 
 
-<link href="{{ asset('assents/backoffice/css/materialize.min.css') }}" rel="stylesheet">
 <link href="{{ asset('assents/backoffice/css/materialize.css') }}" rel="stylesheet">
 <link href="{{ asset('assents/backoffice/css/style.css') }}" rel="stylesheet">
 <link href="{{ asset('assents/backoffice/css/custom.css') }}" rel="stylesheet">
