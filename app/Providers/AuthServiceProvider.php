@@ -19,7 +19,10 @@ class AuthServiceProvider extends ServiceProvider
         'App\Permission' => 'App\Policies\PermissionPolicy',
         'App\User'=>'App\Policies\UserPolicy',
         'App\Programa' =>'App\Policies\ProgramaPolicy',
-        'App\Servicio' =>'App\Policies\ServicioPolicy'
+        'App\Servicio' =>'App\Policies\ServicioPolicy',
+        'App\Cliente' =>'App\Policies\ClientePolicy',
+        'App\Reserva' =>'App\Policies\ReservaPolicy',
+        'App\Sueldo' =>'App\Policies\SueldoPolicy',
     ];
 
     /**

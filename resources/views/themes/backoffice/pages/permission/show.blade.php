@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle',$permission->name)
+@section('title',$permission->name)
 
 @section('head')
 @endsection

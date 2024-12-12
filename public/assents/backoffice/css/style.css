@@ -6736,6 +6736,8 @@ ul.side-nav .collapsible-header.active:after {
   margin-top: -16px;
   font-size: 13px;
   text-shadow: 1px 1px 1px #444;
+  margin: 0;
+  padding: 0;
 }
 
 .user-details .row {
@@ -7094,10 +7096,11 @@ Cards
   -moz-transform: rotate(90deg);
   -ms-transform: rotate(90deg);
   -o-transform: rotate(90deg);
+  transform: rotate(90deg);
 }
 
 #flight-card .card-content-bg {
-  background: url("../../images/gallary/3.png") no-repeat center center;
+  background: url("../../../images/gallary/3.png") no-repeat center center;
   -webkit-background-size: cover;
   -moz-background-size: cover;
   -o-background-size: cover;
@@ -7481,3 +7484,4 @@ tr.group:hover {
 #polar-chart-holder {
   padding-top: 20px;
 }
+

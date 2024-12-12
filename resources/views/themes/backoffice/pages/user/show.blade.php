@@ -23,12 +23,17 @@
                 <div class="col s12 m8">
                     <div class="card">
                             <div class="card-content">
-                                <span class="card-title">{{$user->name}}</span>
+                                <h4 class="card-title">{{$user->name}}</h4>
                                 <p><strong>Edad: </strong>{{$user->age()}}</p>
-                                <h4>Roles: </h4>
+                                <h5>Roles: </h5>
                                 <ul>
                                     @foreach($user->roles as $role)
-                                    <li>{{$role->name}}</li>
+                                    <li><i class='material-icons'>check</i>{{$role->name}}</li>
+                                    @foreach ($role->permissions as $permission)
+                                        <ul>
+                                            <li>{{$permission->name}}</li>
+                                        </ul>
+                                    @endforeach
                                     @endforeach
                                 </ul>
                             </div>

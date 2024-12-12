@@ -3,6 +3,8 @@
 namespace App\Http\Requests\Permission;
 //use App\Http\Request
 
+use App\Permission;
+use App\User;
 use Illuminate\Foundation\Http\FormRequest;
 
 class StoreRequest extends FormRequest
@@ -15,6 +17,7 @@ class StoreRequest extends FormRequest
     public function authorize()
     {
         return $this->user()->can('create', Permission::class);
+        // return true;
     }
 
     /**

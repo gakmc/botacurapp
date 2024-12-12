@@ -18,7 +18,7 @@ class CreateReservasTable extends Migration
             $table->integer('cliente_id')->unsigned();
             $table->foreign('cliente_id')->references('id')->on('clientes')->onUpdate('cascade')->onDelete('cascade');
             $table->integer('cantidad_personas');
-            $table->integer('cantidad_masajes');
+            $table->integer('cantidad_masajes')->nullable();
             $table->date('fecha_visita');
             $table->string('observacion');
             $table->integer('user_id')->unsigned();

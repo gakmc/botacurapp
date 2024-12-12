@@ -8,10 +8,11 @@ return [
     'anfitriona_role'=>env('ANFITRIONA_ROLE', 'anfitriona'),
     'barman_role'=>env('BARMAN_ROLE', 'barman'),
     'cajera_role'=>env('CAJERA_ROLE','cajera'),
-    'cocinera_role'=>env('COCINERA_ROLE','cocinera'),
+    'cocina_role'=>env('COCINA_ROLE','cocina'),
+    'garzon_role'=>env('GARZON_ROLE','garzon'),
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'compra_role'=>env('COMPRA_ROLE','comprador'),
-    'mantecion_role'=>env('MANTENCION_ROLE','mantencion'),
+    'mantencion_role'=>env('MANTENCION_ROLE','mantencion'),
     'administracion_role'=>env('ADMINISTRACION_ROLE','administracion'),
     /*
     |--------------------------------------------------------------------------
@@ -91,7 +92,7 @@ return [
     |
     */
 
-    'locale' => 'en',
+    'locale' => 'es',
 
     /*
     |--------------------------------------------------------------------------
@@ -104,7 +105,7 @@ return [
     |
     */
 
-    'fallback_locale' => 'en',
+    'fallback_locale' => 'es',
 
     /*
     |--------------------------------------------------------------------------
@@ -117,7 +118,7 @@ return [
     |
     */
 
-    'faker_locale' => 'en_US',
+    'faker_locale' => 'es_ES',
 
     /*
     |--------------------------------------------------------------------------
@@ -177,6 +178,7 @@ return [
          * Package Service Providers...
          */
         RealRashid\SweetAlert\SweetAlertServiceProvider::class,
+        Barryvdh\DomPDF\ServiceProvider::class,
         /*
          * Application Service Providers...
          */
@@ -225,6 +227,7 @@ return [
         'Mail' => Illuminate\Support\Facades\Mail::class,
         'Notification' => Illuminate\Support\Facades\Notification::class,
         'Password' => Illuminate\Support\Facades\Password::class,
+        'PDF' => Barryvdh\DomPDF\Facade\Pdf::class,
         'Queue' => Illuminate\Support\Facades\Queue::class,
         'Redirect' => Illuminate\Support\Facades\Redirect::class,
         'Redis' => Illuminate\Support\Facades\Redis::class,

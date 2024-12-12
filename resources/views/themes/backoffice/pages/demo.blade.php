@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle','Página Demo')
+@section('title','Página Demo')
 
 @section('head')
 @endsection
@@ -13,8 +13,21 @@
 @endsection
 
 @section('content')
+<div class="section">
+    <p class="caption"><strong>Reservaciones</strong></p>
+    <div class="divider"></div>
+    <div id="basic-form" class="section">
+        <div class="row">
+            <div class="col s12 ">
+    
 
-<p>Hola desde demo </p>
+                    
+
+
+            </div>
+        </div>
+    </div>
+</div>
 @endsection
 
 

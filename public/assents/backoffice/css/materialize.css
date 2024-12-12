@@ -2657,6 +2657,7 @@ html input[type="button"],
 input[type="reset"],
 input[type="submit"] {
   -webkit-appearance: button;
+  appearance: button;
   /* 2 */
   cursor: pointer;
   /* 3 */
@@ -2718,6 +2719,7 @@ input[type="number"]::-webkit-outer-spin-button {
  */
 input[type="search"] {
   -webkit-appearance: textfield;
+  appearance: textfield;
   /* 1 */
   box-sizing: content-box;
   /* 2 */
@@ -4592,31 +4594,31 @@ nav .input-field label.active i {
 
 @font-face {
   font-family: "Roboto";
-  src: local(Roboto Thin), url("../fonts/roboto/Roboto-Thin.woff2") format("woff2"), url("../fonts/roboto/Roboto-Thin.woff") format("woff");
+  src: local(Roboto Thin), url("../../../assents/fonts/roboto/Roboto-Thin.woff2") format("woff2"), url("../../../assents/fonts/roboto/Roboto-Thin.woff") format("woff");
   font-weight: 100;
 }
 
 @font-face {
   font-family: "Roboto";
-  src: local(Roboto Light), url("../fonts/roboto/Roboto-Light.woff2") format("woff2"), url("../fonts/roboto/Roboto-Light.woff") format("woff");
+  src: local(Roboto Light), url("../../../assents/fonts/roboto/Roboto-Light.woff2") format("woff2"), url("../../../assents/fonts/roboto/Roboto-Light.woff") format("woff");
   font-weight: 300;
 }
 
 @font-face {
   font-family: "Roboto";
-  src: local(Roboto Regular), url("../fonts/roboto/Roboto-Regular.woff2") format("woff2"), url("../fonts/roboto/Roboto-Regular.woff") format("woff");
+  src: local(Roboto Regular), url("../../../assents/fonts/roboto/Roboto-Regular.woff2") format("woff2"), url("../../../assents/fonts/roboto/Roboto-Regular.woff") format("woff");
   font-weight: 400;
 }
 
 @font-face {
   font-family: "Roboto";
-  src: local(Roboto Medium), url("../fonts/roboto/Roboto-Medium.woff2") format("woff2"), url("../fonts/roboto/Roboto-Medium.woff") format("woff");
+  src: local(Roboto Medium), url("../../../assents/fonts/roboto/Roboto-Medium.woff2") format("woff2"), url("../../../assents/fonts/roboto/Roboto-Medium.woff") format("woff");
   font-weight: 500;
 }
 
 @font-face {
   font-family: "Roboto";
-  src: local(Roboto Bold), url("../fonts/roboto/Roboto-Bold.woff2") format("woff2"), url("../fonts/roboto/Roboto-Bold.woff") format("woff");
+  src: local(Roboto Bold), url("../../../assents/fonts/roboto/Roboto-Bold.woff2") format("woff2"), url("../../../assents/fonts/roboto/Roboto-Bold.woff") format("woff");
   font-weight: 700;
 }
 
@@ -5681,6 +5683,7 @@ button.btn-floating {
 .waves-circle {
   transform: translateZ(0);
   -webkit-mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
+  mask-image: -webkit-radial-gradient(circle, white 100%, black 100%);
 }
 
 .waves-input-wrapper {
@@ -5702,6 +5705,7 @@ button.btn-floating {
   line-height: 2.5em;
   border-radius: 50%;
   -webkit-mask-image: none;
+  mask-image: none;
 }
 
 .waves-block {
@@ -5986,6 +5990,7 @@ button.btn-floating {
   position: relative;
   transition: opacity .4s;
   -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 .materialboxed:hover:not(.active) {
@@ -7216,6 +7221,7 @@ input[type=range] + .thumb.active .value {
 
 input[type=range] {
   -webkit-appearance: none;
+  appearance: none;
 }
 
 input[type=range]::-webkit-slider-runnable-track {
@@ -8438,6 +8444,7 @@ input[type=range]:focus::-ms-fill-upper {
   -moz-transition: background 0.15s ease-out, top 0s 0.15s;
   transition: background 0.15s ease-out, top 0s 0.15s;
   -webkit-backface-visibility: hidden;
+  backface-visibility: hidden;
 }
 
 /**
@@ -8519,6 +8526,7 @@ input[type=range]:focus::-ms-fill-upper {
   top: 0;
   background: transparent;
   -ms-filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#1E000000,endColorstr=#1E000000)";
+  filter: "progid:DXImageTransform.Microsoft.gradient(startColorstr=#1E000000,endColorstr=#1E000000)";
   zoom: 1;
   background: rgba(0, 0, 0, 0.32);
   -webkit-transition: background 0.15s ease-out;

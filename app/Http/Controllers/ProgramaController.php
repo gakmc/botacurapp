@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Programa;
+use App\Servicio;
 use App\Http\Requests\Programa\StoreRequest; 
 use App\Http\Requests\Programa\UpdateRequest; 
 use Illuminate\Http\Request;
@@ -28,7 +29,8 @@ class ProgramaController extends Controller
      */
     public function create()
     {
-        return view('themes.backoffice.pages.programa.create');
+        $servicios = Servicio::all();
+        return view('themes.backoffice.pages.programa.create', compact('servicios'));
     }
 
     /**
@@ -40,7 +42,7 @@ class ProgramaController extends Controller
     public function store(StoreRequest $request, Programa $programa)
     {
         $programa = $programa->store($request);
-        return 'Se ha almacenado el programa';
+        return redirect()->route('backoffice.programa.show', $programa);
     }
 
     /**
@@ -67,6 +69,7 @@ class ProgramaController extends Controller
         $this->authorize('update', $programa);
         return view('themes.backoffice.pages.programa.edit',[
             'programa'=> $programa,
+            'servicios' => Servicio::all(),
         ]);
     }
 

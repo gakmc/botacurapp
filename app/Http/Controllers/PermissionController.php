@@ -27,7 +27,8 @@ class PermissionController extends Controller
         {
             $this->authorize('index',Role::class);
              return view('themes.backoffice.pages.permission.index',[
-                'permissions' => Permission::all()
+                'permissions' => Permission::all(),
+                'roles' => Role::all(),
             ]);
         }
     }

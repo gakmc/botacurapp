@@ -3,81 +3,91 @@
 namespace App\Http\Controllers;
 
 use App\Cliente;
+use App\Http\Requests\Cliente\StoreRequest;
+use App\Http\Requests\Cliente\UpdateRequest;
+use App\Reserva;
+use App\User;
 use Illuminate\Http\Request;
+use PDF;
 
 class ClienteController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
-    public function index()
+    public function index(Request $request)
     {
-        //
+        $this->authorize('index', User::class);
+        if ($request) {
+            $query = trim($request->get('search'));
+
+            $clientes = Cliente::where('nombre_cliente', 'LIKE', '%' . $query . '%')
+                ->orWhere('whatsapp_cliente', 'LIKE', '%' . $query . '%')
+                ->orWhere('instagram_cliente', 'LIKE', '%' . $query . '%')
+                ->orWhere('correo', 'LIKE', '%' . $query . '%')
+                ->orderBy('id', 'asc')->get();
+
+            return view('themes.backoffice.pages.cliente.index', [
+                'clientes' => $clientes,
+                'search' => $query,
+            ]);
+
+        }
+
+        return view('themes.backoffice.pages.cliente.index', [
+            'clientes' => Cliente::all(),
+        ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
-        //
+        $this->authorize('create', User::class);
+        return view('themes.backoffice.pages.cliente.create');
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
-    public function store(Request $request)
+    public function store(StoreRequest $request, Cliente $cliente)
     {
-        //
+
+        $cliente = $cliente->store($request);
+        return redirect()->route('backoffice.cliente.show', $cliente);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Cliente  $cliente
-     * @return \Illuminate\Http\Response
-     */
     public function show(Cliente $cliente)
     {
-        //
+        $this->authorize('view', $cliente);
+        return view('themes.backoffice.pages.cliente.show', [
+            'cliente' => $cliente,
+        ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Cliente  $cliente
-     * @return \Illuminate\Http\Response
-     */
+    public function generarPDF(Reserva $reserva)
+    {
+        $saveName = str_replace(' ','_',$reserva->cliente->nombre_cliente);
+        
+        $data = [
+            'nombre'=>$reserva->cliente->nombre_cliente,
+            'fecha_visita'=>$reserva->fecha_visita,
+            'programa' => $reserva->programa->nombre_programa,
+            'personas' => $reserva->cantidad_personas,
+        ];
+
+        $pdf = PDF::loadView('pdf.cliente.viewPDF', $data);
+        // return $pdf->download('factura.pdf');
+        return $pdf->stream('Visita'.'_'.$saveName.'_'.$reserva->fecha_visita.'.pdf');
+
+    }
+
     public function edit(Cliente $cliente)
     {
-        //
+        $this->authorize('update', $cliente);
+        return view('themes.backoffice.pages.cliente.edit', [
+            'cliente' => $cliente,
+        ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Cliente  $cliente
-     * @return \Illuminate\Http\Response
-     */
-    public function update(Request $request, Cliente $cliente)
+    public function update(UpdateRequest $request, Cliente $cliente)
     {
-        //
+        $cliente->my_update($request);
+        return redirect()->route('backoffice.cliente.show', $cliente);
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Cliente  $cliente
-     * @return \Illuminate\Http\Response
-     */
     public function destroy(Cliente $cliente)
     {
         //

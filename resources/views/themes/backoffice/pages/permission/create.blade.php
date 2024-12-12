@@ -6,7 +6,7 @@
 @endsection
 
 @section('breadcrumbs')
-<!-- <li><a href="{{route('backoffice.role.index')}}">Permisos del Sistema</a></li> -->
+{{-- <!-- <li><a href="{{route('backoffice.role.index')}}">Permisos del Sistema</a></li> --> --}}
 <li>Crear Permiso</li>
 @endsection
 

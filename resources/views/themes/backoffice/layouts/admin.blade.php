@@ -1,7 +1,8 @@
 <!DOCTYPE html>
 <html lang="es">
     <head>
-    <title>@yield('tittle')</title>
+    <title>@yield('title')</title>
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     @include('themes.backoffice.layouts.includes.head')
     </head>
     <body>
@@ -22,8 +23,10 @@
         </div>
 
         @include('themes.backoffice.layouts.includes.footer')
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
         @include('themes.backoffice.layouts.includes.foot')
-
         @yield('foot')
+        <script src="{{ asset('js/app.js') }}"></script>
+
     </body>
 </html>

@@ -82,7 +82,7 @@
 
     // Materialize tooltip
     $('.tooltipped').tooltip({
-      delay: 50
+      delay: 0
     });
 
     //Main Left Sidebar Menu

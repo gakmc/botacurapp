@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle','Dar de alta un nuevo usuario')
+@section('title','Dar de alta un nuevo usuario')
 
 @section('head')
 @endsection

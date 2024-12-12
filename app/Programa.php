@@ -10,14 +10,19 @@ class Programa extends Model
     protected $guarded = [];  
 
 //RELACIONES
+    // public function servicios()
+    // {
+    //     return $this->hasMany('App\Servicio');
+    // }
+
     public function servicios()
     {
-        return $this->hasMany('App\Servicio');
+        return $this->belongsToMany(Servicio::class, 'programa_servicio', 'id_programa', 'id_servicio')->withTimestamps();
     }
 
-    public function reservaciones()
+    public function reservas()
     {
-        return $this->belongsToMany('App\Reserva');
+        return $this->hasMany(Reserva::class, 'id_programa');
     }
     
 //ALMACENAMIENTO
@@ -25,12 +30,22 @@ class Programa extends Model
 public function store($request)
 {
 
-    //dd($request);
     $slug = Str::slug($request->nombre_programa, '-');
-    Alert::success('Éxito', 'Programa guardado')->showConfirmButton();
-    return self::create($request->all() + [
+
+
+    $programa = self::create([
+        'nombre_programa' => $request->input('nombre_programa'),
+        'valor_programa' => $request->input('valor_programa'),
+        'descuento' => $request->input('descuento'),
         'slug' => $slug,
     ]);
+
+    if ($request->has('servicios')) {
+        $programa->servicios()->sync($request->servicios);
+    }
+
+    Alert::success('Éxito', 'Programa guardado')->showConfirmButton();
+    return $programa;
 }
 
 
@@ -38,13 +53,34 @@ public function store($request)
 public function my_update($request)
 {
     $slug = Str::slug($request->nombre_programa, '-');
-    Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
-    return self::update($request->all() + [
-        'slug' => $slug,
+
+    $this->update($request->except('servicios') + [
+        'slug' => $slug
     ]);
+
+    if ($request->has('servicios')) {
+        $this->servicios()->sync($request->servicios);
+    } else {
+        $this->servicios()->sync([]);
+    }
+    
+
+    Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
+    return $this;
     
 }
 //VALIDACION
+public function getIncluyeMasajesAttribute()
+{
+    return $this->servicios->contains('nombre_servicio', 'Masaje');
+}
+
+public function getIncluyeAlmuerzosAttribute()
+{
+    return $this->servicios->contains(function ($servicio) {
+        return in_array(strtolower($servicio->nombre_servicio), ['almuerzo', 'almuerzos']);
+    });
+}
 
 //RECUPERACION DE INFORMACION
 

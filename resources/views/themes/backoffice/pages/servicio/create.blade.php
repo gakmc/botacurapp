@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle','Crear Servicio')
+@section('title','Crear Servicio')
 
 @section('head')
 @endsection
@@ -29,8 +29,8 @@
 
                         {{csrf_field() }}
                           <div class="row">
-                            <div class="input-field col s12">
-                              <input id="nombre_servicio" type="text" name="nombre_servicio">
+                            <div class="input-field col s12 m6 l4">
+                              <input id="nombre_servicio" type="text" name="nombre_servicio" value="{{old('nombre_servicio')}}">
                               <label for="nombre_servicio">Nombre del Servicio</label>
                                 @error('nombre_servicio')
                                       <span class="invalid-feedback" role="alert">
@@ -40,12 +40,10 @@
 
 
                             </div>
-                          </div>
-                         
-                          <div class="row">
-                            <div class="input-field col s12">
-                              <input id="valor_servicio" class="materialize-textarea" name="valor_servicio"></textarea>
-                              <label for="valor_servicio">Valor Programa</label>
+                          
+                            <div class="input-field col s12 m6 l4">
+                              <input id="valor_servicio" type="number" name="valor_servicio" value="{{old('valor_servicio')}}"/>
+                              <label for="valor_servicio">Valor Servicio</label>
 
                               @error('valor_servicio')
                                     <span class="invalid-feedback" role="alert">
@@ -54,14 +52,27 @@
                                 @enderror
 
                             </div>
+                            
+                            <div class="input-field col s12 m6 l4">
+                              <input id="costo_servicio" type="number" class="materialize-textarea" name="costo_servicio" value="{{old('costo_servicio')}}"/>
+                              <label for="costo_servicio">Costo Servicio</label>
+
+                              @error('costo_servicio')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong style="color:red">{{ $message }}</strong>
+                                    </span>
+                                @enderror
+
                             </div>
 
-                            <div class="row">
-                            <div class="input-field col s12">
-                              <input id="descuento" class="materialize-textarea" name="descuento"></textarea>
-                              <label for="descuento">Descuento</label>
+                          </div>
+                          <div class="row">
 
-                              @error('descuento')
+                            <div class="input-field col s12 m6 l4">
+                              <input id="duracion" type="text" name="duracion" placeholder="Ingrese minutos. ej. 30 o 120" value="{{old('duracion')}}"/>
+                              <label for="duracion">Duración</label>
+
+                              @error('duracion')
                                     <span class="invalid-feedback" role="alert">
                                         <strong style="color:red">{{ $message }}</strong>
                                     </span>

@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle','Programas Botacura')
+@section('title','Programas Botacura')
 
 @section('head')
 @endsection
@@ -10,6 +10,7 @@
 
 
 @section('dropdown_settings')
+<li><a href="{{route ('backoffice.programa.create') }}" class="grey-text text-darken-2">Crear Programa</a></li> 
 @endsection
 
 @section('content')

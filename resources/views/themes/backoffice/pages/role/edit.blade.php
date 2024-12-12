@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('tittle','Editar Rol: ' . $role->name)
+@section('title','Editar Rol: ' . $role->name)
 
 @section('head')
 @endsection
