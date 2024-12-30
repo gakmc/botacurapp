@@ -29,7 +29,7 @@ class StoreRequest extends FormRequest
             'cliente_id'=>['required','exists:clientes,id'],
             'cantidad_personas'=>['required','integer','min:1'],
             'cantidad_masajes'=>['nullable','integer'],
-            'fecha_visita'=>['date', 'nullable'],
+            'fecha_visita'=>['date', 'required'],
             'observacion'=>['nullable', 'string', 'max:255'],
             'id_programa' => ['required', 'exists:programas,id'],
 
@@ -44,6 +44,7 @@ class StoreRequest extends FormRequest
             'id_programa.exists'=>'El programa seleccionado no existe en nuestro registro.',
             'cantidad_personas.integer'=>'El campo solo acepta valores numéricos',
             'cantidad_masajes.integer'=>'El campo solo acepta valores numéricos',
+            'fecha_visita.required' => 'El campo es obligatorio',
             'fecha_visita.date' => 'El campo debe ser una fecha valida',
             'observacion.max'=>'Excede el máximo de caracteres permitidos'
         ];

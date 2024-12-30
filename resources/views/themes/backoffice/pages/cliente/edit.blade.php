@@ -124,4 +124,9 @@
 
 
 @section('foot')
+<script>
+  $(document).ready(function () {
+    $('select').formSelect();
+  });
+</script>
 @endsection

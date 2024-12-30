@@ -36,8 +36,10 @@
             <div class="col s12">
                 <h5>Horarios: {{ $fecha }}</h5>
                 <div class="row">
-                    @foreach($reservas as $reserva)
-                        @foreach ($reserva->visitas->sortBy('id_ubicacion') as $visita)
+                    @foreach($reservas->groupBy('id') as $horario=>$grupo)
+                    @php
+                        $reserva = $grupo->first(); // Obtener el primer elemento del grupo
+                    @endphp
 
                         @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                         @php
@@ -61,7 +63,7 @@
                             <table class="highlight">
                                 <thead>
                                     <tr>
-                                        <th><h5><i class='material-icons right {{$color}}-text'>fiber_manual_record</i>{{$visita->ubicacion->nombre}}</h5></th>
+                                        <th><h5><i class='material-icons right {{$color}}-text'>fiber_manual_record</i>{{$reserva->ubicacion}}</h5></th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -78,10 +80,10 @@
                                                     @else
                                                         <p><strong>Evento: </strong><strong style="color:#FF4081;">{{ $reserva->observacion }}</strong></p>
                                                     @endif
-                                                    @if (is_null($visita->observacion))
+                                                    @if (is_null($reserva->observacion))
                                                         <p><strong>Requisitos: </strong>Sin Observaciones</p>
                                                     @else
-                                                        <p><strong>Requisitos: </strong><strong style="color:#FF4081;">{{ $visita->observacion }}</strong></p>
+                                                        <p><strong>Requisitos: </strong><strong style="color:#FF4081;">{{ $reserva->observacion }}</strong></p>
                                                     @endif
                                                     
                                                 </td>
@@ -92,7 +94,7 @@
                                 </div>
                             </div>
                         </a>
-                        @endforeach
+                        
                 @endforeach
 
 
@@ -129,37 +131,36 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                            @foreach($reservas as $reserva)
-                                @foreach ($reserva->visitas->sortBy('horario_sauna') as $visita)
-                                    @if ($visita->horario_sauna)
-                                        <tr>
-                                            @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
-                                            <td class="orange"></td>
-                                            @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
-                                            <td class="green"></td>
-                                            @else
-                                            <td class="blue"></td>
-                                            @endif
-                                            <td>
-                                                <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                    <strong style="color:#FF4081;">
-                                                        {{ $visita->horario_sauna }} - {{ $visita->hora_fin_sauna }}
-                                                    </strong>
-                                                    <strong>{{ $reserva->cliente->nombre_cliente }} -</strong>
-                                                    {{ $visita->ubicacion->nombre }} -
-                                                    {{ $reserva->programa->nombre_programa }} -
-                                                    {{ $reserva->cantidad_personas }} personas -
-                                                    @if (is_null($reserva->observacion))
-                                                        Sin Observaciones
-                                                    @else
-                                                        <strong style="color:#FF4081;">{{ $reserva->observacion }}</strong>
-                                                    @endif
-                                                </a>
-                                            </td>
-                                        </tr>
-                                    @endif
+                                    @foreach ($reservas->groupBy('horario_sauna') as $horario => $grupo)
+                                    @php
+                                        $reserva = $grupo->first(); // Obtener el primer elemento del grupo
+                                    @endphp
+                                    <tr>
+                                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                                        <td class="orange"></td>
+                                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                                        <td class="green"></td>
+                                        @else
+                                        <td class="blue"></td>
+                                        @endif
+                                        <td>
+                                            <a href="{{ route('backoffice.reserva.show', $reserva) }}">
+                                                <strong style="color:#FF4081;">{{ $reserva->horario_sauna }} - {{
+                                                    $reserva->hora_fin_sauna }}</strong>
+                                                <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
+                                                {{$reserva->ubicacion}} -
+                                                {{ $reserva->programa->nombre_programa }} -
+                                                {{ $reserva->cantidad_personas }} personas -
+                                                @if (is_null($reserva->observacion))
+                                                Sin Observaciones
+                                                @else
+                                                <strong style="color:#FF4081;">{{$reserva->observacion}}</strong>
+                                                @endif
+                                            </a>
+                                        </td>
+                                    </tr>
                                 @endforeach
-                            @endforeach
+                                
                                 </tbody>
                             </table>
                         </div>
@@ -176,9 +177,11 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($reservas as $reserva)
-                                    @foreach ($reserva->visitas as $visita)
-                                    @if ($visita->horario_tinaja)
+                                    @foreach($reservas->groupBy('horario_tinaja') as $horario => $grupo)
+                                    @php
+                                        $reserva = $grupo->first(); // Obtener el primer elemento del grupo
+                                    @endphp
+                                    @if ($reserva->horario_tinaja)
                                     <tr>
                                         @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                                         <td class="orange"></td>
@@ -190,10 +193,10 @@
                                         
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                <strong style="color:#FF4081;">{{ $visita->horario_tinaja }} - {{
-                                                    $visita->hora_fin_tinaja }}</strong>
+                                                <strong style="color:#FF4081;">{{ $reserva->horario_tinaja }} - {{
+                                                    $reserva->hora_fin_tinaja }}</strong>
                                                 <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
-                                                {{$visita->ubicacion->nombre}} -
+                                                {{$reserva->ubicacion}} -
                                                 {{ $reserva->programa->nombre_programa }} -
                                                 {{ $reserva->cantidad_personas }} personas -
                                                 @if (is_null($reserva->observacion))
@@ -205,7 +208,7 @@
                                         </td>
                                     </tr>
                                     @endif
-                                    @endforeach
+                                    
                                     @endforeach
                                 </tbody>
                             </table>
@@ -223,9 +226,23 @@
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @foreach($reservas as $reserva)
-                                    @foreach ($reserva->visitas as $visita)
-                                    @if ($visita->horario_masaje)
+                                    @php
+                                        $contador = 0;
+                                        $ultimoIdReserva = null; // Variable para rastrear el cambio de id_reserva
+                                    @endphp
+                                    @foreach($reservas as $index => $reserva)
+                                    @php
+                                        
+                                            if ($reserva->id !== $ultimoIdReserva) {
+                                                $contador=1;
+                                                $ultimoIdReserva = $reserva->id;
+                                            }else{
+                                                $contador++;
+                                            }
+
+                                    @endphp
+                                    
+                                    @if ($reserva->horario_masaje)
                                     <tr>
                                         @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                                         <td class="orange"></td>
@@ -236,17 +253,17 @@
                                         @endif
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                <strong style="color: #FF4081">{{ $visita->horario_masaje }} - 
-                                                    @if (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje)
-                                                        {{$visita->hora_fin_masaje_extra}}
+                                                <strong style="color: #FF4081">{{ $reserva->horario_masaje }} - 
+                                                    @if (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $reserva->horario_masaje)
+                                                        {{$reserva->hora_fin_masaje_extra}}
                                                     @else
-                                                        {{$visita->hora_fin_masaje }}    
+                                                        {{$reserva->hora_fin_masaje }}    
                                                     @endif
                                                 </strong>
                                                 <strong>{{ $reserva->cliente->nombre_cliente }} -</strong>
-                                                {{$visita->ubicacion->nombre}} -
+                                                {{$reserva->ubicacion}} -
                                                 {{ $reserva->programa->nombre_programa }} -
-                                                {{ $reserva->cantidad_personas }} personas -
+                                                Grupo {{$contador}} -
                                                 @if (is_null($reserva->observacion))
                                                 Sin Observaciones
                                                 @else
@@ -255,9 +272,16 @@
                                             </a>
                                         </td>
                                     </tr>
-                                    @elseif (is_null($visita->horario_masaje))
+                                    @elseif (is_null($reserva->horario_masaje))
 
                                     <tr>
+                                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                                        <td class="orange"></td>
+                                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                                        <td class="green"></td>
+                                        @else
+                                        <td class="blue"></td>
+                                        @endif
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                 <strong>{{ $reserva->cliente->nombre_cliente }} -</strong> No registra
@@ -266,7 +290,7 @@
                                         </td>
                                     </tr>
                                     @endif
-                                    @endforeach
+                                    
                                     @endforeach
                                 </tbody>
                             </table>
@@ -290,6 +314,5 @@
 @endsection
 
 @section('foot')
-
 
 @endsection

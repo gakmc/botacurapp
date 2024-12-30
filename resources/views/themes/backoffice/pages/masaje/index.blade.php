@@ -35,36 +35,37 @@
                         @endif
                         {{$fecha}}
                     </h5>
+
                     @foreach ($reservasPorFecha as $reserva)
-                    @foreach ($reserva->visitas as $visita)
-                    @if (!is_null($visita->horario_masaje))
-                    @for ($i = 1; $i <= $reserva->cantidad_personas; $i++)
+
+                    @if (!is_null($reserva->horario_masaje))
+                    
                         <tr>
                             <td>
-                                {{$visita->horario_masaje}} -
-                                @if ($visita->hora_fin_masaje)
-                                {{$visita->hora_fin_masaje}}
+                                {{$reserva->horario_masaje}} -
+                                @if ($reserva->hora_fin_masaje)
+                                {{$reserva->hora_fin_masaje}}
                                 @else
-                                {{$visita->hora_fin_masaje_extra}}
+                                {{$reserva->hora_fin_masaje_extra}}
                                 @endif
                             </td>
                             <td>{{ $reserva->cliente->nombre_cliente }}</td>
-                            <td>Persona {{ $i }}</td>
-                            <td>{{ $visita->tipo_masaje }}</td>
-                            <td>{{ $visita->lugarMasaje->nombre }}</td>
+                            <td>{{$reserva->cantidad_personas}} Personas total</td>
+                            <td>{{ $reserva->tipo_masaje }}</td>
+                            <td>{{ $reserva->lugarMasaje }}</td>
                             <td>
                                 <span class="estado badge white-text cyan" data-fecha="{{$reserva->fecha_visita}}"
-                                    data-inicio="{{ $visita->horario_masaje }}" @if ($visita->hora_fin_masaje)
-                                    data-fin="{{ $visita->hora_fin_masaje }}"
+                                    data-inicio="{{ $reserva->horario_masaje }}" @if ($reserva->hora_fin_masaje)
+                                    data-fin="{{ $reserva->hora_fin_masaje }}"
                                     @else
-                                    data-fin="{{ $visita->hora_fin_masaje_extra }}"
+                                    data-fin="{{ $reserva->hora_fin_masaje_extra }}"
                                     @endif
                                     >Pendiente</span>
                             </td>
                             <td>
-                                @php
+                                {{-- @php
                                 // Buscar el masaje correspondiente a la persona actual ($i)
-                                $masajeAsignado = $visita->masajes->firstWhere('persona', $i);
+                                $masajeAsignado = $reserva->visita->masajes->firstWhere('persona');
                                 @endphp
 
                                 @if ($masajeAsignado && $masajeAsignado->user)
@@ -75,7 +76,7 @@
                                 <form action="{{ route('backoffice.masaje.store') }}" method="POST">
                                     @csrf
                                     <input type="hidden" name="id_visita" value="{{ $visita->id }}">
-                                    <input type="hidden" name="persona_numero" value="{{ $i }}">
+                                    <input type="hidden" name="persona_numero" value="">
                                     <button type="submit" class="btn-floating" {{$fecha == now()->format('d-m-Y') ? '' : 'disabled'}}>
                                         <i class="material-icons">pan_tool</i>
                                     </button>
@@ -83,13 +84,32 @@
                             @elseif (Auth::user()->has_role(config('app.admin_role')))
                                 <strong class="red-text">No asignado</strong>
                             @endif
+                                @endif --}}
+
+
+
+
+
+
+                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
+                                    <form action="{{ route('backoffice.masaje.store') }}" method="POST">
+                                        @csrf
+                                        <input type="hidden" name="id_visita" value="{{ $reserva->id }}">
+                                        <input type="hidden" name="persona_numero" value="{{ $persona }}">
+                                        <button type="submit" class="btn-floating">
+                                            <i class="material-icons">pan_tool</i>
+                                        </button>
+                                    </form>
+                                @elseif (Auth::user()->has_role(config('app.admin_role')))
+                                    <strong class="red-text">No asignado</strong>
                                 @endif
                             </td>
+
                         </tr>
-                        @endfor
+                        
                         @endif
                         @endforeach
-                        @endforeach
+                        
                         @endforeach
                 </tbody>
             </table>

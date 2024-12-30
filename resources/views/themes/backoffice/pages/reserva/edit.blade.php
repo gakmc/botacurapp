@@ -15,19 +15,20 @@
 @section('content')
 
 <div class="section">
-  <p class="caption">Introduce los datos para crear un nuevo reserva</p>
+  <p class="caption">Introduce los datos para editar esta reserva</p>
   <div class="divider"></div>
   <div id="basic-form" class="section">
     <div class="row">
       <div class="col s12 m8 offset-m2 ">
         <div class="card-panel">
-          <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong></h4>
+          <h4 class="header">Modificar reserva para <strong>{{$cliente->nombre_cliente}}</strong></h4>
           <div class="row">
             <form class="col s12" method="post" enctype="multipart/form-data"
-              action="{{route('backoffice.reserva.store')}}">
+              action="{{route('backoffice.reserva.update', $reserva)}}">
 
 
               {{csrf_field() }}
+              @method('PUT')
 
 
 
@@ -37,7 +38,7 @@
                   <select name="id_programa" id="id_programa">
                     <option value="" disabled selected>-- Seleccione un programa --</option>
                     @foreach ($programas->sortBy('valor_programa') as $programa)
-                    <option value="{{$programa->id}}" @if (old('id_programa')==$programa->id)
+                    <option value="{{$programa->id}}" @if ($programa->id === $reserva->id_programa)
                       selected
                       @else
 
@@ -66,7 +67,7 @@
 
                   <input id="cantidad_personas" type="number"
                     class="form-control @error('cantidad_personas') is-invalid @enderror" name="cantidad_personas"
-                    value="{{old('cantidad_personas')}}" required>
+                    value="{{$reserva->cantidad_personas ?? old('cantidad_personas', '')}}" required>
                   @error('cantidad_personas')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -88,7 +89,7 @@
 
                   <label for="abono_programa">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class=""
-                    value="{{ old('abono_programa') }}">
+                    value="{{ $venta->abono_programa ?? old('abono_programa') }}">
                   @error('abono_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -103,7 +104,7 @@
                     <input type="file" id="imagen_abono" name="imagen_abono">
                   </div>
                   <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
+                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo" value="{{$venta->imagen_abono}}">
                   </div>
                   @error('imagen_abono')
                   <span class="invalid-feedback" role="alert">
@@ -117,7 +118,7 @@
                   <select id="tipo_transaccion" name="tipo_transaccion">
                     <option disabled selected>-- Seleccione --</option>
                     @foreach ($tipos as $tipo)
-                    <option value="{{ $tipo->id }}" @if (old('tipo_transaccion')==$tipo->id) selected @endif>
+                    <option value="{{ $tipo->id }}" @if ($tipo->id === $venta->id_tipo_transaccion_abono) selected @endif>
                       {{ $tipo->nombre }}
                     </option>
                     @endforeach
@@ -136,7 +137,7 @@
 
               <div class="row">
                 <div class="input-field col s12 m3">
-                  <input id="fecha_visita" type="date" name="fecha_visita" class="" value="{{ old('fecha_visita') }}"
+                  <input id="fecha_visita" type="text" name="fecha_visita" class="datepicker" value="{{ $reserva->fecha_visita ?? old('fecha_visita') }}"
                   placeholder="fecha Visita">
                   <label for="fecha_visita">Fecha Visita</label>
                   @error('fecha_visita')
@@ -147,7 +148,7 @@
                 </div>
 
                 <div class="input-field col s12 m3">
-                  <input id="observacion" name="observacion" type="text" class="" value="{{ old('observacion') }}"
+                  <input id="observacion" name="observacion" type="text" class="" value="{{ $reserva->observacion ?? old('observacion') }}"
                     placeholder="" />
                   <label for="observacion">Observaciones - "Cumpleaños,Aniversario,etc."</label>
                   @error('observacion')
@@ -188,7 +189,7 @@
                 <div class="input-field col s12 m3">
 
                   <label for="total_pagar">Total a pagar</label>
-                  <input id="total_pagar" type="number" name="total_pagar" class="" value="{{old('total_pagar')}}"
+                  <input id="total_pagar" type="number" name="total_pagar" class="" value="{{$venta->total_pagar ?? old('total_pagar')}}"
                     placeholder="0" readonly>
                   @error('total_pagar')
                   <span class="invalid-feedback" role="alert">
@@ -200,7 +201,7 @@
 
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaAbono">Imagen Abono:</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono" src="https://via.placeholder.com/200x300" alt=""
+                  <img class="center-text" id="imagenSeleccionadaAbono" src="{{route('backoffice.reserva.abono.imagen', $reserva->id)}}" alt="Comprobante Abono"
                     style="max-height: 200px">
                 </div>
               </div>
@@ -237,6 +238,12 @@
   $(document).ready(function () {
     $('select').formSelect();
   });
+
+  $(document).ready(function(){
+    $('.datepicker').datepicker({
+        format:'dd-mm-yyyy'
+    });
+  });
 </script>
 
 <script>
@@ -263,9 +270,10 @@ $(document).ready(function (e) {
 </script>
 
 <script>
-  var valorPrograma = 0;
-  var cantidadPersonas = 1;
-  var abono = 0;
+  var valorPrograma = $('#id_programa').find(':selected').data('valor');
+  var cantidadPersonas = $('#cantidad_personas').val();
+  var abono = $('#abono_programa').val();
+  
 
 $('#id_programa').on('change', function(){
   valorPrograma = $(this).find(':selected').data('valor');

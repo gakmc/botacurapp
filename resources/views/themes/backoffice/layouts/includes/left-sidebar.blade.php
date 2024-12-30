@@ -51,8 +51,8 @@
                                   </a>
                         </li>
                     </ul>
-                    <a class="btn-flat dropdown-button waves-effect waves-light white-text profile-btn"
-                        data-activates="profile-dropdown-nav" href="#">
+                    <a class="btn-flat dropdown-button waves-effect waves-light white-text profile-btn dropdown-trigger"
+                        data-activates="profile-dropdown-nav" data-target="profile-dropdown-nav" href="#">
                         {{Auth::user()->name}}
                         <i class="mdi-navigation-arrow-drop-down right"></i>
                     </a>

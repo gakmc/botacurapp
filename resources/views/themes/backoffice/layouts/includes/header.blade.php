@@ -29,7 +29,7 @@
                         </a>
                     </li>
                     <li>
-                        <a class="waves-effect waves-block waves-light profile-button" data-activates="profile-dropdown" href="javascript:void(0);">
+                        <a class="waves-effect waves-block waves-light profile-button dropdown-trigger" data-activates="profile-dropdown" data-target="profile-dropdown" href="javascript:void(0);">
                             <span class="avatar-status avatar-online">
                                 <img alt="avatar" src="/images/avatar/avatar-7.png">
                                 <i></i>

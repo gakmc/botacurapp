@@ -19,11 +19,15 @@
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
-            <div class="col s12 m8 offset-m2 ">
+            <div class="col s12 m10 offset-m1 ">
                 <div class="card-panel">
                     <h4 class="header">Planificar visita para <strong>{{$reserva->cliente->nombre_cliente}}</strong> -
                         Fecha:<strong>{{$reserva->fecha_visita}}</strong></h4>
                     <div class="row">
+                        @php
+                        $indexSpa = ceil($reserva->cantidad_personas/5);
+                        $indexMasajes = ceil($reserva->cantidad_personas/2);
+                        @endphp
                         <form class="col s12" method="post"
                             action="{{route('backoffice.reserva.visitas.store', $reserva)}}">
 
@@ -32,14 +36,14 @@
 
 
 
+
+                            <div class="input-field col s12 m6 l4" hidden>
+                                <input id="id_reserva" type="hidden" class="form-control" name="id_reserva"
+                                    value="{{$reserva->id}}" required>
+                            </div>
+
+                            @if ($reserva->cantidad_personas <= 2)
                             <div class="row">
-                                <div class="input-field col s12 m6 l4" hidden>
-                                    <input id="id_reserva" type="hidden" class="form-control" name="id_reserva"
-                                        value="{{$reserva->id}}" required>
-                                </div>
-
-
-
                                 <div class="input-field col s12 m6 l4">
                                     <select name="horario_sauna" id="horario_sauna">
                                         <option value="" selected disabled="">-- Seleccione --</option>
@@ -58,36 +62,6 @@
                                     <label for="horario_sauna">Horario SPA</label>
                                 </div>
 
-
-
-                                {{-- <div class="input-field col s12 m6 l4" @if(!in_array('Sauna', $servicios)) hidden
-                                    @endif>
-
-                                    <input id="horario_sauna" type="text" name="horario_sauna" class="timepicker"
-                                        value="{{ old('horario_sauna') }}" placeholder="" @if(!in_array('Sauna',
-                                        $servicios)) disabled hidden @endif>
-                                    <label for="horario_sauna">Horario SPA</label>
-                                    @error('horario_sauna')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong style="color:red">{{ $message }}</strong>
-                                    </span>
-                                    @enderror
-                                </div> --}}
-
-                                {{-- <div class="input-field col s12 m6 l4" @if(!in_array('Tinaja', $servicios)) hidden
-                                    @endif>
-
-                                    <label for="horario_tinaja">Horario Tinaja</label>
-                                    <input id="horario_tinaja" type="text" name="horario_tinaja" class="timepicker"
-                                        value="{{ old('horario_tinaja') }}" placeholder="" @if(!in_array('Tinaja',
-                                        $servicios)) disabled hidden @endif>
-                                    @error('horario_tinaja')
-                                    <span class="invalid-feedback" role="alert">
-                                        <strong style="color:red">{{ $message }}</strong>
-                                    </span>
-                                    @enderror
-                                </div> --}}
-
                                 <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
                                     !$masajesExtra) style="display: none;" @endif>
 
@@ -95,12 +69,12 @@
                                         $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" selected disabled="">-- Seleccione --</option>
-                                        @foreach($horasMasaje as $horario)
+                                        {{-- @foreach($horasMasaje as $horario)
                                         <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
                                             : '' }}>
                                             {{ $horario }}
                                         </option>
-                                        @endforeach
+                                        @endforeach --}}
 
                                     </select>
                                     <label for="horario_masaje">Horario Masaje</label>
@@ -139,8 +113,211 @@
                                     @enderror
 
                                 </div>
+                            </div>
+                                
+                            @elseif ($reserva->cantidad_personas <= 5)
+                            
+                            <div class="row">
+                                <h6><strong>SPA</strong></h6>
+                                <div class="input-field col s12 m6 l4">
+                                    
+                                    <select name="horario_sauna" id="horario_sauna">
+                                        <option value="" selected disabled="">-- Seleccione --</option>
+                                        @foreach($horarios as $horario)
+                                        <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
+                                            : '' }}>
+                                            {{ $horario }}
+                                        </option>
+                                        @endforeach
+                                    </select>
+                                    @error('horario_sauna')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong style="color:red">{{ $message }}</strong>
+                                    </span>
+                                    @enderror
+                                    <label for="horario_sauna">Horario SPA</label>
+                                </div>
+
+                </div>
+                <div class="row">
+                                <h6><strong>Masajes</strong></h6>
+                                @for ($i = 1; $i <= $indexMasajes; $i++)
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                !$masajesExtra) style="display: none;" @endif>
+
+                                <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje',
+                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+
+                                    <option value="" selected disabled="">-- Seleccione --</option>
 
 
+                                </select>
+                                <label for="horario_masaje_{{$i}}">Horario Masaje</label>
+                                @error('horario_masaje_{{$i}}')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong style="color:red">{{ $message }}</strong>
+                                </span>
+                                @enderror
+
+                            </div>
+
+                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                !$masajesExtra) style="display: none;" @endif>
+
+                                <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) disabled hidden @endif>
+
+                                    <option value="" disabled selected>-- Seleccione --</option>
+                                    <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
+                                        }}>
+                                        Relajante
+                                    </option>
+                                    <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
+                                        ? 'selected' : '' }}>
+                                        Descontracturante
+                                    </option>
+
+
+
+                                </select>
+                                <label for="tipo_masaje">Tipo Masaje</label>
+                                @error('tipo_masaje')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong style="color:red">{{ $message }}</strong>
+                                </span>
+                                @enderror
+
+                            </div>
+
+                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                            !$masajesExtra) style="display: none;" @endif>
+                            <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje',
+                                $servicios) && !$masajesExtra) disabled hidden @endif>
+                                @foreach ($lugares as $lugar)
+                                <option value="{{$lugar->id}}" {{ old("masajes.{$i}.id_lugar_masaje")==$lugar->nombre ?
+                                    'selected' : '' }}>{{$lugar->nombre}}</option>
+                                @endforeach
+                            </select>
+                            @error('id_lugar_masaje_{{$i}}')
+                            <span class="invalid-feedback" role="alert">
+                                <strong style="color:red">{{ $message }}</strong>
+                            </span>
+                            @enderror
+                            <label for="id_lugar_masaje_{{$i}}">Lugar Masaje</label>
+                        </div>
+
+
+                                @endfor
+                            </div>
+
+                            @else
+                                <div class="row">
+                                    <h6><strong>SPA</strong></h6>
+                                    @for ($i = 1; $i <= $indexSpa; $i++)
+                                    <div class="input-field col s12 m6 l4">
+                                        <h6>Grupo {{$i}}</h6>
+                                        <select id="horario_sauna_{{$i}}" name="spas[{{$i}}][horario_sauna]">
+                                            <option value="" selected disabled="">-- Seleccione --</option>
+                                            @foreach($horarios as $horario)
+                                            <option value="{{ $horario }}" {{ old("spas.{$i}.horario_sauna")== $horario ? 'selected'
+                                                : '' }}>
+                                                {{ $horario }}
+                                            </option>
+                                            @endforeach
+                                        </select>
+
+                                        @error('horario_sauna_{{$i}}')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                        <label for="horario_sauna_{{$i}}">Horario SPA</label>
+                                    </div>
+                                    @endfor
+
+        </div>
+        <div class="row">
+                                    <h6><strong>Masajes</strong></h6>
+                                    @for ($i=1; $i<=$indexMasajes; $i++)
+                                    <h6>Par {{$i}}</h6>
+                                    <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) style="display: none;" @endif>
+
+
+                                    <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje',
+                                        $servicios) && !$masajesExtra) disabled hidden @endif >
+
+                                        <option value="" selected disabled="">-- Seleccione --</option>
+                                        {{-- @foreach($horasMasaje[1] as $horario)
+                                        <option value="{{ $horario }}" {{ old("masajes.{$i}.horario_masaje")==$horario ? 'selected'
+                                            : '' }}>
+                                            {{ $horario }}
+                                        </option>
+                                        @endforeach --}}
+
+                                    </select>
+                                    <label for="horario_masaje_{{$i}}">Horario Masaje</label>
+                                    @error('horario_masaje_{{$i}}')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong style="color:red">{{ $message }}</strong>
+                                    </span>
+                                    @enderror
+
+                                </div>
+
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                    !$masajesExtra) style="display: none;" @endif>
+
+                                    <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) &&
+                                        !$masajesExtra) disabled hidden @endif>
+
+                                        <option value="" disabled selected>-- Seleccione --</option>
+                                        <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
+                                            }}>
+                                            Relajante
+                                        </option>
+                                        <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
+                                            ? 'selected' : '' }}>
+                                            Descontracturante
+                                        </option>
+
+
+
+                                    </select>
+                                    <label for="tipo_masaje_{{$i}}">Tipo Masaje</label>
+                                    @error('tipo_masaje_{{$i}}')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong style="color:red">{{ $message }}</strong>
+                                    </span>
+                                    @enderror
+
+                                </div>
+
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
+                                !$masajesExtra) style="display: none;" @endif>
+                                <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje',
+                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+                                    @foreach ($lugares as $lugar)
+                                    <option value="{{$lugar->id}}" {{$lugar->nombre == "Containers" ? 'selected' : ''}} {{ old("masajes.{$i}.id_lugar_masaje") == $lugar->nombre ?
+                                        'selected' : '' }}>{{$lugar->nombre}}</option>
+                                    @endforeach
+                                </select>
+                                @error('id_lugar_masaje_{{$i}}')
+                                <span class="invalid-feedback" role="alert">
+                                    <strong style="color:red">{{ $message }}</strong>
+                                </span>
+                                @enderror
+                                <label for="id_lugar_masaje_{{$i}}">Lugar Masaje</label>
+                            </div>
+
+                                    @endfor
+                                </div>
+                            @endif
+
+
+
+
+                            <div class="row">
                                 <div class="input-field col s12 m6 l4">
 
                                     <label for="observacion">Observaciones - "Decoraciones"</label>
@@ -159,7 +336,7 @@
                                     <select name="id_ubicacion" id="id_ubicacion">
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         @foreach ($ubicaciones as $ubicacion)
-                                        <option value="{{$ubicacion->id}}" {{ old('id_ubicacion')==$ubicacion->nombre ?
+                                        <option value="{{$ubicacion->id}}" {{ old('id_ubicacion') == $ubicacion->nombre ?
                                             'selected' : '' }}>{{$ubicacion->nombre}}</option>
                                         @endforeach
                                     </select>
@@ -171,11 +348,14 @@
                                     <label for="id_ubicacion">Ubicación</label>
                                 </div>
 
+                                @if ($reserva->cantidad_personas <= 2)
+                                    
+                                
                                 <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
                                     !$masajesExtra) style="display: none;" @endif>
                                     <select name="id_lugar_masaje" id="id_lugar_masaje" @if(!in_array('Masaje',
                                         $servicios) && !$masajesExtra) disabled hidden @endif>
-                                        <option value="" selected disabled="">-- Seleccione --</option>
+                                        
                                         @foreach ($lugares as $lugar)
                                         <option value="{{$lugar->id}}" {{ old('id_lugar_masaje')==$lugar->nombre ?
                                             'selected' : '' }}>{{$lugar->nombre}}</option>
@@ -188,9 +368,13 @@
                                     @enderror
                                     <label for="id_lugar_masaje">Lugar Masaje</label>
                                 </div>
+                                @endif
+
+                            </div>
 
 
 
+                            <div class="row">
 
                                 <div class="col s12 m6 l4">
                                     <label for="trago_cortesia">Trago cortesia</label>
@@ -215,10 +399,11 @@
                                     @enderror
 
                                 </div>
-
-
-
                             </div>
+
+
+
+
 
                             <div class="row"><br></div>
                             @if (!in_array('Almuerzo', $servicios) && !$almuerzosExtra)
@@ -234,7 +419,8 @@
                                             id="id_producto_entrada_{{ $i }}">
                                             <option value="" disabled selected> -- Seleccione --</option>
                                             @foreach ($entradas as $entrada)
-                                            <option value="{{$entrada->id}}">{{$entrada->nombre}}</option>
+                                            <option value="{{$entrada->id}}" {{ old("menus.{$i}.id_producto_entrada") == $entrada->nombre ? 'selected'
+                                            : '' }}>{{$entrada->nombre}}</option>
                                             @endforeach
                                         </select>
                                         @error('id_producto_entrada')
@@ -251,7 +437,8 @@
                                         <select name="menus[{{$i}}][id_producto_fondo]" id="id_producto_fondo_{{$i}}">
                                             <option value="" disabled selected> -- Seleccione --</option>
                                             @foreach ($fondos as $fondo)
-                                            <option value="{{$fondo->id}}">{{$fondo->nombre}}</option>
+                                            <option value="{{$fondo->id}}" {{ old("menus.{$i}.id_producto_fondo") == $fondo->nombre ? 'selected'
+                                            : '' }}>{{$fondo->nombre}}</option>
                                             @endforeach
                                         </select>
                                         @error('id_producto_fondo_{{$i}}')
@@ -269,7 +456,8 @@
                                             <option value="" disabled selected> -- Seleccione --</option>
                                             <option value="">Sin Acompañamiento</option>
                                             @foreach ($acompañamientos as $acompañamiento)
-                                            <option value="{{$acompañamiento->id}}">{{$acompañamiento->nombre}}</option>
+                                            <option value="{{$acompañamiento->id}}" {{ old("menus.{$i}.id_producto_acompanamiento") == $acompañamiento->nombre ? 'selected'
+                                            : '' }}>{{$acompañamiento->nombre}}</option>
                                             @endforeach
                                         </select>
                                         @error('id_producto_acompanamiento_{{$i}}')
@@ -283,7 +471,7 @@
                                     <div class="input-field col s12 m6 l2">
 
                                         <input id="alergias_{{$i}}" type="text" name="menus[{{ $i }}][alergias]"
-                                            class="" value="">
+                                            class="" value="{{ old("menus.{$i}.alergias")}}">
                                         <label for="alergias_{{$i}}">Alérgias</label>
                                         @error('alergias_{{$i}}')
                                         <span class="invalid-feedback" role="alert">
@@ -295,7 +483,7 @@
 
                                     <div class="input-field col s12 m6 l2">
                                         <input type="text" name="menus[{{ $i }}][observacion]"
-                                            id="observacion_{{ $i }}" />
+                                            id="observacion_{{ $i }}" value="{{ old("menus.{$i}.observacion") }}"/>
                                         <label for="observacion_{{$i}}">Observaciones</label>
                                         @error('id_producto_entrada')
                                         <span class="invalid-feedback" role="alert">
@@ -308,11 +496,6 @@
 
                                     @endif
                             </div>
-
-
-
-
-
 
                             <div class="row">
                                 <div class="input-field col s12">
@@ -337,6 +520,99 @@
     var elems = document.querySelectorAll('.timepicker');
     var instances = M.Timepicker.init(elems);
   });
+
+  $(document).ready(function(){
+    $('.datepicker').datepicker();
+  });
 </script> --}}
 
-@endsection
+<script>
+    $(document).ready(function () {
+    // Cargar horarios desde el backend
+    const horariosPorLugar = @json($horasMasaje);
+
+    // Inicializa Materialize para todos los selectores
+    $('select').formSelect();
+
+    // Función para cargar horarios en horario_masaje según el lugar seleccionado
+    function cargarHorariosUnico(lugarId) {
+        const $horarioSelect = $('#horario_masaje');
+        $horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
+
+        if (horariosPorLugar[lugarId]) {
+            horariosPorLugar[lugarId].forEach(function (horario) {
+                $horarioSelect.append(new Option(horario, horario));
+            });
+
+            // Reinicializa Materialize para el selector
+            $horarioSelect.formSelect();
+        }
+    }
+
+    // Detectar cambios en el lugar de masaje
+    $('#id_lugar_masaje').on('change', function () {
+        const lugarId = $(this).val(); // ID del lugar seleccionado
+        cargarHorariosUnico(lugarId); // Actualizar los horarios en horario_masaje
+    });
+
+    // Carga inicial: verifica si hay un lugar preseleccionado
+    const lugarInicial = $('#id_lugar_masaje').val();
+    if (lugarInicial) {
+        cargarHorariosUnico(lugarInicial);
+    }
+});
+
+</script>
+
+
+<script>
+
+$(document).ready(function () {
+    // Cargar horarios desde el backend
+    const horariosPorLugar = @json($horasMasaje);
+
+    // Inicializa todos los selectores de Materialize
+    $('select').formSelect();
+
+    // Función para cargar horarios en el select de horario masaje
+    function cargarHorariosInicial(lugarId, index) {
+        const $horarioSelect = $(`#horario_masaje_${index}`);
+        $horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
+
+        if (horariosPorLugar[lugarId]) {
+            horariosPorLugar[lugarId].forEach(function (horario) {
+                $horarioSelect.append(new Option(horario, horario));
+            });
+
+            // Reinicializa Materialize para el selector
+            $horarioSelect.formSelect();
+        }
+    }
+
+    // Detectar cambios en el lugar de masaje
+    $('[id^="id_lugar_masaje_"]').on('change', function () {
+        const lugarId = $(this).val(); // ID del lugar seleccionado
+        const index = $(this).attr('id').split('_').pop(); // Índice del selector
+
+        // Cargar los horarios según el lugar seleccionado
+        cargarHorariosInicial(lugarId, index);
+    });
+
+    // Carga inicial: busca todos los selects que tienen lugar de masaje ya seleccionado
+    $('[id^="id_lugar_masaje_"]').each(function () {
+        const lugarId = $(this).val(); // ID del lugar seleccionado
+        const index = $(this).attr('id').split('_').pop(); // Índice del selector
+
+        // Carga los horarios iniciales para el lugar ya seleccionado
+        if (lugarId) {
+            cargarHorariosInicial(lugarId, index);
+        }
+    });
+});
+
+        
+
+
+        </script>
+        
+        @endsection

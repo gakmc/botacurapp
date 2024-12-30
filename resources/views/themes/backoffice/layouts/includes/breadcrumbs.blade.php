@@ -8,7 +8,7 @@
             <div class="col s10 m6 l6">
                 <h5 class="breadcrumbs-title">@yield('title')</h5>
                 <ol class="breadcrumbs">
-                    <li><a href="#">Panel de Administración</a></li>
+                    <li><a href="/home">Panel de Administración</a></li>
                     @yield('breadcrumbs')
                 </ol>
             </div>
@@ -16,7 +16,7 @@
             <div class="col s2 m6 l6">
                 @hasSection('dropdown_settings')
                     <a class="btn dropdown-settings waves-effect waves-light breadcrumbs-btn right" href="#!"
-                        data-activates="dropdown1">
+                        data-activates="dropdown1" data-target="dropdown1">
                         <i class="material-icons hide-on-med-and-up">settings</i>
                         <span class="hide-on-small-onl">Acciones</span>
                         <i class="material-icons right">arrow_drop_down</i>

@@ -27,7 +27,8 @@ class MasajeController extends Controller
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
         ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
         ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-        ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
+        ->join('lugares_masajes as lm', 'lm.id', '=', 'v.id_lugar_masaje')
+        ->select('reservas.*', 'v.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente', 'lm.nombre as lugarMasaje')
         ->orderBy('reservas.fecha_visita', 'asc')
         ->orderBy('v.horario_masaje', 'asc')
         ->get();

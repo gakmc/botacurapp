@@ -368,6 +368,11 @@
 
 @section('foot')
 <script>
+
+$(document).ready(function () {
+  M.AutoInit();
+});
+
   $(document).ready(function (e) {   
   $('#imagen_abono').change(function(){            
       let reader = new FileReader();

@@ -192,16 +192,23 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/verificar-ubicaciones', 'ReservaController@verificarUbicaciones')->name('verificar.ubicaciones');
 
+    // Borrar en caso de no utilizar
+    // Route::post('/verificar-horarios', 'VisitaController@obtenerHorariosDisponibles')->name('verificar.horarios');
+
     // Store - Guardar la nueva reserva
     Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
     
     Route::get('visita/{visitum}/ubicacion_edit', 'VisitaController@edit_ubicacion')->name('visita.edit_ubicacion');
     Route::match(['put', 'patch'],'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');
+
+
     // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
 
     Route::get('sueldos/{user}','SueldoController@view')->name('sueldo.view');
     Route::get('sueldo/{user}','SueldoController@view_maso')->name('sueldo.view_maso');
+
+    Route::get('/actualizar-sueldo-base','SueldoController@actualizarSueldoBase');
 
     Route::post('sueldo/masoterapeuta','SueldoController@store_maso')->name('sueldo.store_maso');
     

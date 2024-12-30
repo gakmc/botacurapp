@@ -180,6 +180,9 @@
 
 @section('foot')
 <script>
+    $(document).ready(function(){
+$('.tabs').tabs();
+});
     $(document).ready(function () {
         // let nombreTipo = $('#nombreSeleccion').text();
         let seleccion = $('#seleccion').text();

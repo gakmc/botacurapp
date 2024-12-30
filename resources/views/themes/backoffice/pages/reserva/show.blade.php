@@ -11,8 +11,7 @@
 @endsection
 
 @section('dropdown_settings')
-{{-- <li><a href="{{ route('backoffice.reserva.visitas.create',$reserva) }}" class="grey-text text-darken-2">Generar
-    Visita</a></li> --}}
+<li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
 @endsection
 
 @section('content')
@@ -93,7 +92,7 @@
 
             @if(Auth::user()->has_role(config('app.admin_role')))
             <div class="card-action">
-              <a href="{{route('backoffice.cliente.edit', $reserva->cliente_id)}}" class="purple-text">Editar</a>
+              <a href="{{route('backoffice.cliente.edit', $reserva->cliente_id)}}" class="purple-text">Editar datos Cliente</a>
               {{-- <a href="#" style="color: red" onclick="enviar_formulario()">Eliminar</a> --}}
             </div>
             @endif
@@ -466,6 +465,14 @@
 @endsection
 
 @section('foot')
+
+<script>
+
+  $(document).ready(function(){
+      $('.tooltipped').tooltip();
+    });
+  </script>
+
 <script>
   function enviar_formulario()
  {
@@ -571,12 +578,6 @@
       M.Modal.init(elems);
   });
 
-  document.addEventListener('DOMContentLoaded', function() {
-    var elems = document.querySelectorAll('.tooltipped');
-    M.Tooltip.init(elems, {
-      position: 'top',
-    });
-  });
 </script>
 
 <script>
@@ -772,4 +773,21 @@ $('.modal-trigger').on('click', function(){
 });
 </script>
 
+<script>
+  @if(session('info'))
+  Swal.fire({
+      toast: true,
+      position: '',
+      icon: 'info',
+      title: '{{ session('info') }}',
+      showConfirmButton: false,
+      timer: 5000,
+      timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        }
+  });
+@endif
+</script>
 @endsection

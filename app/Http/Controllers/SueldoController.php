@@ -6,6 +6,7 @@ use App\Sueldo;
 use App\User;
 use Exception;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class SueldoController extends Controller
@@ -124,6 +125,31 @@ class SueldoController extends Controller
 
             Alert::toast('No se almacenaron los sueldos ' . $e->getMessage(), 'error')->toToast('top');
             return redirect()->back()->withErrors($e->getMessage())->withInput();
+        }
+
+    }
+
+    public function actualizarSueldoBase(Request $request)
+    {
+        $request->validate([
+            'sueldoBase' => 'required|numeric',
+        ]);
+
+        // Recuperar el sueldo base actual del cache
+        $sueldoActual = Cache::get('sueldoBase');
+
+
+        // Verificar si el valor es diferente al actual
+        if ($sueldoActual !== $request->sueldoBase) {
+            // Guardar el nuevo valor en cache
+            Cache::forever('sueldoBase', $request->sueldoBase);
+    
+            // Redirigir con un mensaje de éxito
+            return redirect()->back()->with('success', 'El sueldo base se ha actualizado correctamente.');
+
+        }else{
+            // Redirigir con un mensaje indicando que no hubo cambios
+            return redirect()->back()->with('info', 'El sueldo base es el mismo, no se realizaron cambios.');
         }
 
     }

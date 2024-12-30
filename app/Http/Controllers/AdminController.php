@@ -9,6 +9,7 @@ use App\Masaje;
 use App\Reserva;
 use App\User;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
 class AdminController extends Controller
@@ -184,7 +185,7 @@ class AdminController extends Controller
         }
 
         // Calcular el total a pagar por usuario en la semana
-        $pagoBasePorUsuario = 40000;
+        $pagoBasePorUsuario = Cache::get('sueldoBase') ?? 45000;
         $totalPorUsuario = [];
 
         foreach ($usuarios as $usuario) {
@@ -218,7 +219,10 @@ class AdminController extends Controller
             'totalSueldos' => $totalSueldoGeneral,
             'usuarios' => $usuarios,
             'diaT' => $diaTrabajado,
+            'base' => $pagoBasePorUsuario,
         ]);
     }
+
+
 
 }

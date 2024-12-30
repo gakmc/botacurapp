@@ -125,10 +125,11 @@
         M.Modal.init(elems);
     });
 
-    document.addEventListener('DOMContentLoaded', function() {
-        var elems = document.querySelectorAll('.tooltipped');
-        M.Modal.init(elems);
-    });
+$(document).ready(function () {
+
+    $('.tooltipped').tooltip();
+
+});
 
 </script>
 

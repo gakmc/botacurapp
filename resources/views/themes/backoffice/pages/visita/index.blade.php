@@ -237,4 +237,10 @@
     @endsection
 
     @section('foot')
+    <script>
+
+        $(document).ready(function(){
+            $('.tooltipped').tooltip();
+          });
+        </script>
     @endsection
