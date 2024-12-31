@@ -1,11 +1,12 @@
 <!DOCTYPE html>
-<html lang="en">
+<html lang="es">
 
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <meta http-equiv="X-UA-Compatible" content="ie=edge">
-    <link href="{{ asset('assents/backoffice/css/materialize.css') }}" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
+
 
     <title>Visita {{$nombre}}</title>
 
@@ -18,7 +19,7 @@
         }
 
         .logo{
-            height: 150px;
+            height: 200px;
             align-items: center;
             justify-content: center;
         }
@@ -26,6 +27,7 @@
             color: #039B7B;
         }
     </style>
+
     <div class="center">
         <img class="center logo" src="https://botacura.cl/wp-content/uploads/2024/04/294235172_462864912512116_3346235978129441981_n-modified.png"
             alt="botacura logo"/>
@@ -67,9 +69,8 @@
 
             
             
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
-
-      <script src="{{ asset('assents/backoffice/js/materialize.min.js') }}"></script>
 </body>
 
 </html>

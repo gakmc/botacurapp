@@ -8,6 +8,7 @@ use App\DetalleServiciosExtra;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
 use App\Programa;
+use App\Reagendamiento;
 use App\Reserva;
 use App\Servicio;
 use App\TipoTransaccion;
@@ -336,12 +337,6 @@ class ReservaController extends Controller
 
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Reserva  $reserva
-     * @return \Illuminate\Http\Response
-     */
     public function show(Reserva $reserva)
     {
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
@@ -409,19 +404,15 @@ class ReservaController extends Controller
         return redirect('https://placehold.co/200x300');
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Reserva  $reserva
-     * @return \Illuminate\Http\Response
-     */
     public function edit(Reserva $reserva)
     {
         // $this->authorize('create', User::class);
         $cliente = $reserva->cliente;
         $venta = $reserva->venta;
+        $visita = $reserva->visitas->first();
         $programas = Programa::with('servicios')->get();
         $tipos = TipoTransaccion::all();
+        // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
 
         return view('themes.backoffice.pages.reserva.edit', [
             'reserva' => $reserva,
@@ -429,28 +420,22 @@ class ReservaController extends Controller
             'cliente' => $cliente,
             'programas' => $programas,
             'tipos' => $tipos,
+            'visita' => $visita,
         ]);
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\Reserva  $reserva
-     * @return \Illuminate\Http\Response
-     */
     public function update(UpdateRequest $request, Reserva $reserva)
     {
+        dd($reserva->visitas->first());
         $data = $request->all();
 
         $original = DB::table('reservas')
-        ->join('ventas as v', 'reservas.id', '=', 'v.id_reserva')
-        ->where('reservas.id', $reserva->id)
-        ->select('reservas.*', 'v.abono_programa', 'v.id_tipo_transaccion_abono as tipo_transaccion', 'v.total_pagar')
-        ->first();
-    
+            ->join('ventas as v', 'reservas.id', '=', 'v.id_reserva')
+            ->where('reservas.id', $reserva->id)
+            ->select('reservas.*', 'v.abono_programa', 'v.id_tipo_transaccion_abono as tipo_transaccion', 'v.total_pagar')
+            ->first();
 
-        $originalArray = (array) $original; // Convertir objeto en arreglo asociativo
+        $originalArray = (array) $original; // Convertir objeto en arreglo
 
         // Parsear y formatear la fecha_visita del original
         if (!empty($originalArray['fecha_visita'])) {
@@ -470,7 +455,6 @@ class ReservaController extends Controller
         }
 
 
-
         // Verificar si hubo cambios
         if (!$changes) {
             // Si no hay cambios, redirigir a otra ruta
@@ -479,7 +463,20 @@ class ReservaController extends Controller
 
         // Si hay cambios, continuar con la lógica normal
         try {
-            DB::transaction(function () use ($request, &$reserva) {
+            DB::transaction(function () use ($request, &$reserva, $originalArray) {
+
+                // dd($originalArray['fecha_visita'] ,$request->input('fecha_visita'));
+                if($originalArray['fecha_visita'] !== $request->input('fecha_visita')){
+                    $nuevaFecha = Carbon::createFromFormat('d-m-Y', $request->input('fecha_visita'))->format('Y-m-d');
+                    // Guardar la fecha original de la reserva en el reagendamiento
+                    $reagendamiento = Reagendamiento::create([
+                        'fecha_original' => Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d'),
+                        'nueva_fecha' => $nuevaFecha,
+                        'id_reserva' => $reserva->id,
+                    ]);
+                    // Actualizar la reserva con la nueva fecha de visita
+                    $reserva->fecha_visita = $nuevaFecha;
+                };
                 // Guardar los cambios en la reserva
                 $reserva->save();
 
@@ -496,17 +493,21 @@ class ReservaController extends Controller
                     $reserva->update(['cantidad_masajes' => null]);
                 }
 
+                // Actualizar la venta relacionada con la reserva
+                $venta = $reserva->venta ?? new Venta();
+
                 // Manejo de la imagen de abono
                 $url_abono = null;
-                if ($request->hasFile('imagen_abono')) {
-                    $abono = $request->file('imagen_abono');
+                if ($request->hasFile('imagen_abono_boton')) {
+                    if (!empty($venta->imagen_abono) && Storage::disk('imagen_abono')->exists($venta->imagen_abono)) {
+                        Storage::disk('imagen_abono')->delete($venta->imagen_abono);
+                    }
+                    $abono = $request->file('imagen_abono_boton');
                     $filename = time() . '-' . $abono->getClientOriginalName();
                     $url_abono = 'temp/' . $filename;
                     Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
                 }
 
-                // Actualizar la venta relacionada con la reserva
-                $venta = $reserva->venta ?? new Venta();
                 $venta->fill([
                     'abono_programa' => $request->abono_programa,
                     'imagen_abono' => $url_abono,
@@ -531,10 +532,10 @@ class ReservaController extends Controller
                 }
             });
 
-            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])
+            return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva->id])
                 ->with('success', 'La reserva fue actualizada exitosamente.');
-        } catch (\Throwable $e) {
-            return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva.');
+        } catch (\Error $e) {
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. '.$e);
         }
     }
 

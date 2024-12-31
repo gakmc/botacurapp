@@ -101,10 +101,10 @@
                 <div class="file-field input-field col s12 m5">
                   <div class="btn">
                     <span>Imagen Abono</span>
-                    <input type="file" id="imagen_abono" name="imagen_abono">
+                    <input type="file" id="imagen_abono_boton" name="imagen_abono_boton" value="{{$venta->imagen_abono}}">
                   </div>
                   <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo" value="{{$venta->imagen_abono}}">
+                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo" name="imagen_abono" value="{{$venta->imagen_abono}}">
                   </div>
                   @error('imagen_abono')
                   <span class="invalid-feedback" role="alert">
@@ -161,7 +161,7 @@
 
 
                 <label id="checkbox-masajes-container" class="input-field col s12 m3">
-                  <input style="display: none" type="checkbox" id="agregar_masajes" name="agregar_masajes" />
+                  <input @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje) checked="checked" @endif style="display: none" type="checkbox" id="agregar_masajes" name="agregar_masajes" />
                   <span class="black-text">¿Desea agregar masajes?</span>
                 </label>
 
@@ -248,7 +248,7 @@
 
 <script>
 $(document).ready(function (e) {   
-  $('#imagen_abono').change(function(){            
+  $('#imagen_abono_boton').change(function(){            
       let reader = new FileReader();
       reader.onload = (e) => { 
           $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
@@ -415,5 +415,21 @@ function calcularValorTotal(){
     });
   });
 </script>
-
+<script>
+@if(session('error'))
+  Swal.fire({
+      toast: true,
+      position: '',
+      icon: 'error',
+      title: '{{ session('error') }}',
+      showConfirmButton: false,
+      timer: 5000,
+      timerProgressBar: true,
+        didOpen: (toast) => {
+          toast.onmouseenter = Swal.stopTimer;
+          toast.onmouseleave = Swal.resumeTimer;
+        }
+  });
+@endif
+</script>
 @endsection

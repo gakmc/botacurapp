@@ -36,7 +36,7 @@
 
                                 <p>Fecha Nueva Visita: </p>
                                 
-                                  <input id="nueva_fecha" type="date" name="nueva_fecha" class="" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
+                                  <input id="nueva_fecha" type="text" name="nueva_fecha" class="datepicker" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
                                     @error('nueva_fecha')
                                           <span class="invalid-feedback" role="alert">
                                               <strong style="color:red">{{ $message }}</strong>
@@ -75,4 +75,11 @@
 
 
 @section('foot')
+<script>
+  $(document).ready(function () {
+    $('.datepicker').datepicker({
+      format:'dd-mm-yyyy'
+    });
+  });
+</script>
 @endsection

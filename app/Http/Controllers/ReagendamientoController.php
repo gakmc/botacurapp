@@ -34,15 +34,17 @@ class ReagendamientoController extends Controller
             'nueva_fecha' => 'required|date',
         ]);
 
+        $nuevaFecha = Carbon::createFromFormat('d-m-Y', $validarData['nueva_fecha'])->format('Y-m-d');
+
         // Guardar la fecha original de la reserva en el reagendamiento
         $reagendamiento = Reagendamiento::create([
             'fecha_original' => Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d'),
-            'nueva_fecha' => $validarData['nueva_fecha'],
+            'nueva_fecha' => $nuevaFecha,
             'id_reserva' => $request->input('id_reserva'),
         ]);
 
         // Actualizar la reserva con la nueva fecha de visita
-        $reserva->fecha_visita = $validarData['nueva_fecha'];
+        $reserva->fecha_visita = $nuevaFecha;
         $reserva->save();
 
         Alert::success('Éxito', 'Se ha reagendado la visita')->showConfirmButton();

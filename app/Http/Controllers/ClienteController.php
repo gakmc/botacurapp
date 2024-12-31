@@ -60,14 +60,13 @@ class ClienteController extends Controller
     public function generarPDF(Reserva $reserva)
     {
         $saveName = str_replace(' ','_',$reserva->cliente->nombre_cliente);
-        
         $data = [
             'nombre'=>$reserva->cliente->nombre_cliente,
             'fecha_visita'=>$reserva->fecha_visita,
             'programa' => $reserva->programa->nombre_programa,
             'personas' => $reserva->cantidad_personas,
         ];
-
+        
         $pdf = PDF::loadView('pdf.cliente.viewPDF', $data);
         // return $pdf->download('factura.pdf');
         return $pdf->stream('Visita'.'_'.$saveName.'_'.$reserva->fecha_visita.'.pdf');
