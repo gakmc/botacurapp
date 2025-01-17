@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Cliente;
@@ -25,22 +24,103 @@ use RealRashid\SweetAlert\Facades\Alert;
 
 class ReservaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
 
     public function index(Request $request)
     {
         Carbon::setLocale('es');
         $alternativeView = $request->query('alternative', false);
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual     = Carbon::now()->startOfDay();
 
         if (!$alternativeView) {
+            $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+                ->with([
+                    'cliente',
+                    'visitas.ubicacion',
+                    'visitas.masajes',
+                    'programa',
+                    'venta',
+                ])
+                ->orderBy('fecha_visita', 'asc')
+                ->get();
+
+        } else {
+
+            $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+                ->with([
+                    'cliente',
+                    'visitas.ubicacion',
+                    'visitas.masajes',
+                    'programa',
+                    'venta',
+                ])
+                ->orderBy('fecha_visita', 'asc')
+                ->get()
+                ->sortBy(function ($reserva) {
+                    // Ordenar por el ID de la ubicación de la primera visita
+                    return $reserva->visitas->first()->id_ubicacion ?? 0;
+                });
+
+        }
+
+        /* Para dispositivos moviles */
+        $reservasMoviles = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+        ->with([
+            'cliente',
+            'visitas.ubicacion',
+            'visitas.masajes',
+            'programa',
+            'venta',
+        ])
+        ->orderBy('fecha_visita', 'asc')
+        ->get()
+        ->sortBy(function ($reserva) {
+            // Ordenar por el ID de la ubicación de la primera visita
+            return $reserva->visitas->first()->id_ubicacion ?? 0;
+        });
+
+        $reservasMoviles->load(['visitas.masajes', 'visitas.ubicacion']);
+        $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
+            return Carbon::parse($reservamovil->fecha_visita)->format('d-m-Y');
+        });
+
+        $porPagina           = 1;
+        $paginaActual       = LengthAwarePaginator::resolveCurrentPage();
+        $itemsActuales      = $reservasDia->slice(($paginaActual - 1) * $porPagina, $porPagina)->all();
+        $reservasMovilesPaginadas = new LengthAwarePaginator($itemsActuales, $reservasDia->count(), $porPagina, $paginaActual);
+        $reservasMovilesPaginadas->setPath(request()->url());
+        /* Fin dispositivos moviles */
+
+
+
+        $reservas->load(['visitas.masajes', 'visitas.ubicacion']);
+
+
+        $reservasPorDia = $reservas->groupBy(function ($reserva) {
+            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
+        });
+
+        $perPage           = 1;
+        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
+        $reservasPaginadas->setPath(request()->url());
+
+        // dd($reservas);
+
+        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas'));
+    }
+
+    public function indexOld(Request $request)
+    {
+        Carbon::setLocale('es');
+        $alternativeView = $request->query('alternative', false);
+        $fechaActual     = Carbon::now()->startOfDay();
+
+        if (! $alternativeView) {
             $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
                 ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
                 ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+                ->leftjoin('masajes as m', 'm.id_visita', '=', 'v.id')
                 ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
                 ->join('programas as p', 'reservas.id_programa', '=', 'p.id')
                 ->join('ventas as vt', 'reservas.id', '=', 'vt.id_reserva')
@@ -48,7 +128,7 @@ class ReservaController extends Controller
                     'reservas.*',
                     'v.horario_sauna',
                     'v.horario_tinaja',
-                    'v.horario_masaje',
+                    'm.horario_masaje',
                     'c.nombre_cliente',
                     'u.nombre as ubicacion',
                     'p.nombre_programa as programa_nombre',
@@ -63,6 +143,7 @@ class ReservaController extends Controller
             $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
                 ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
                 ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
+                ->leftjoin('masajes as m', 'm.id_visita', '=', 'v.id')
                 ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
                 ->join('programas as p', 'reservas.id_programa', '=', 'p.id')
                 ->join('ventas as vt', 'reservas.id', '=', 'vt.id_reserva')
@@ -70,7 +151,7 @@ class ReservaController extends Controller
                     'reservas.*',
                     'v.horario_sauna',
                     'v.horario_tinaja',
-                    'v.horario_masaje',
+                    'm.horario_masaje',
                     'c.nombre_cliente',
                     'u.nombre as ubicacion',
                     'p.nombre_programa as programa_nombre',
@@ -86,70 +167,28 @@ class ReservaController extends Controller
             return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
         });
 
-        $perPage = 1;
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $perPage           = 1;
+        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
         $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
         $reservasPaginadas->setPath(request()->url());
+
+        // dd($reservas);
 
         return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView'));
     }
 
-    // public function indexOld(Request $request)
-    // {
-    //     Carbon::setLocale('es');
-    //     $alternativeView = $request->query('alternative', false);
-    //     $fechaActual = Carbon::now()->startOfDay();
-
-    //     if (!$alternativeView) {
-    //         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-    //             ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-    //             ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-    //             ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente')
-    //             ->orderBy('reservas.fecha_visita', 'asc')
-    //             ->orderBy('v.horario_sauna', 'asc')
-    //             ->get();
-    //     } else {
-
-    //         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-    //             ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-    //             ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-    //             ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
-    //             ->select('reservas.*', 'v.horario_sauna', 'v.horario_tinaja', 'v.horario_masaje', 'c.nombre_cliente', 'u.nombre')
-    //             ->orderBy('reservas.fecha_visita', 'asc')
-    //             ->orderBy('u.id', 'asc')
-    //             ->get();
-    //     }
-
-    //     $reservasPorDia = $reservas->groupBy(function ($reserva) {
-    //         return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
-    //     });
-
-    //     $perPage = 1;
-    //     $currentPage = LengthAwarePaginator::resolveCurrentPage();
-    //     $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
-    //     $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
-    //     $reservasPaginadas->setPath(request()->url());
-
-    //     return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView'));
-    // }
-
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create($cliente)
     {
         $this->authorize('create', User::class);
-        $cliente = Cliente::findOrFail($cliente);
+        $cliente   = Cliente::findOrFail($cliente);
         $programas = Programa::with('servicios')->get();
-        $tipos = TipoTransaccion::all();
+        $tipos     = TipoTransaccion::all();
 
         return view('themes.backoffice.pages.reserva.create', [
-            'cliente' => $cliente,
+            'cliente'   => $cliente,
             'programas' => $programas,
-            'tipos' => $tipos,
+            'tipos'     => $tipos,
         ]);
     }
 
@@ -172,22 +211,17 @@ class ReservaController extends Controller
             ->get();
 
         $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
+            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
 
         return response()->json($ubicaciones);
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(StoreRequest $request, Reserva $reserva)
     {
-        $masajesExtra = null;
-        $almuerzosExtra = null;
+        $masajesExtra         = null;
+        $almuerzosExtra       = null;
+        $cantidadMasajesExtra = null;
 
         // Verificar si el programa seleccionado incluye un masaje
         $programa = Programa::find($request->id_programa);
@@ -223,22 +257,22 @@ class ReservaController extends Controller
 
                 // Generar url para almacenar imagen
                 $url_abono = null;
-                $filename = null;
+                $filename  = null;
 
                 if ($request->hasFile('imagen_abono')) {
-                    $abono = $request->file('imagen_abono');
-                    $filename = time() . '-' . $abono->getClientOriginalName();
+                    $abono     = $request->file('imagen_abono');
+                    $filename  = time() . '-' . $abono->getClientOriginalName();
                     $url_abono = 'temp/' . $filename; // Almacenamiento temporal
                     Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
                 }
 
                 // Crear la venta relacionada con la reserva
                 $venta = Venta::create([
-                    'id_reserva' => $reserva->id,
-                    'abono_programa' => $request->abono_programa,
-                    'imagen_abono' => $url_abono,
+                    'id_reserva'                => $reserva->id,
+                    'abono_programa'            => $request->abono_programa,
+                    'imagen_abono'              => $url_abono,
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
-                    'total_pagar' => $request->total_pagar,
+                    'total_pagar'               => $request->total_pagar,
                 ]);
 
                 // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
@@ -255,24 +289,24 @@ class ReservaController extends Controller
                     $masajesExtra = $request->filled('cantidad_masajes_extra');
 
                     $consumo = Consumo::create([
-                        'id_venta' => $venta->id,
-                        'subtotal' => 0,
+                        'id_venta'      => $venta->id,
+                        'subtotal'      => 0,
                         'total_consumo' => 0,
                     ]);
 
                     $servicioMasaje = Servicio::whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])->first();
 
                     if ($servicioMasaje) {
-                        $subtotal = 0;
+                        $subtotal             = 0;
                         $cantidadMasajesExtra = intval($request->input('cantidad_masajes_extra'));
-                        $subtotalMasajes = $servicioMasaje->valor_servicio * $cantidadMasajesExtra;
-                        $subtotal = $subtotalMasajes;
+                        $subtotalMasajes      = $servicioMasaje->valor_servicio * $cantidadMasajesExtra;
+                        $subtotal             = $subtotalMasajes;
 
                         // Crear el detalle del servicio extra
                         DetalleServiciosExtra::create([
                             'cantidad_servicio' => $cantidadMasajesExtra,
-                            'subtotal' => $subtotalMasajes,
-                            'id_consumo' => $consumo->id,
+                            'subtotal'          => $subtotalMasajes,
+                            'id_consumo'        => $consumo->id,
                             'id_servicio_extra' => $servicioMasaje->id,
                         ]);
 
@@ -287,10 +321,10 @@ class ReservaController extends Controller
 
                     $almuerzosExtra = $request->filled('agregar_almuerzos');
 
-                    if (!$consumo) {
+                    if (! $consumo) {
                         $consumo = Consumo::create([
-                            'id_venta' => $venta->id,
-                            'subtotal' => 0,
+                            'id_venta'      => $venta->id,
+                            'subtotal'      => 0,
                             'total_consumo' => 0,
                         ]);
                     }
@@ -298,16 +332,16 @@ class ReservaController extends Controller
                     $servicioAlmuerzo = Servicio::whereIn('nombre_servicio', ['Almuerzo', 'Almuerzos', 'almuerzo', 'almuerzos'])->first();
 
                     if ($servicioAlmuerzo) {
-                        $subtotal = 0;
+                        $subtotal               = 0;
                         $cantidadAlmuerzosExtra = intval($request->input('cantidad_personas'));
-                        $subtotalAlmuerzos = $servicioAlmuerzo->valor_servicio * $cantidadAlmuerzosExtra;
-                        $subtotal = $subtotalAlmuerzos;
+                        $subtotalAlmuerzos      = $servicioAlmuerzo->valor_servicio * $cantidadAlmuerzosExtra;
+                        $subtotal               = $subtotalAlmuerzos;
 
                         // Crear el detalle del servicio extra
                         DetalleServiciosExtra::create([
                             'cantidad_servicio' => $cantidadAlmuerzosExtra,
-                            'subtotal' => $subtotalAlmuerzos,
-                            'id_consumo' => $consumo->id,
+                            'subtotal'          => $subtotalAlmuerzos,
+                            'id_consumo'        => $consumo->id,
                             'id_servicio_extra' => $servicioAlmuerzo->id,
                         ]);
 
@@ -323,8 +357,9 @@ class ReservaController extends Controller
             Alert::success('Éxito', 'Reserva realizada con éxito', 'Confirmar')->showConfirmButton();
 
             session()->put([
-                'masajesExtra' => $masajesExtra,
-                'almuerzosExtra' => $almuerzosExtra,
+                'masajesExtra'         => $masajesExtra,
+                'almuerzosExtra'       => $almuerzosExtra,
+                'cantidadMasajesExtra' => $cantidadMasajesExtra,
             ]);
 
             // Redirigir fuera de la transacción
@@ -339,32 +374,45 @@ class ReservaController extends Controller
 
     public function show(Reserva $reserva)
     {
-        $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
+        $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento', 'visitas.masajes');
 
         $servicios = Servicio::all();
+        $visitas = $reserva->visitas;
+        $masajes = null;
+
+
+        foreach ($visitas as $visita) {
+            if ($visita->masajes->isNotEmpty()) {
+                
+                $masajes = $visita->masajes;
+            }
+        }
+
 
         return view('themes.backoffice.pages.reserva.show', [
-            'reserva' => $reserva,
+            'reserva'   => $reserva,
             'servicios' => $servicios,
+            'visitas' => $visitas,
+            'masajes' => $masajes
         ]);
     }
 
     public function showConsumoImage($id)
     {
-        $reserva = Reserva::findOrFail($id);
+        $reserva     = Reserva::findOrFail($id);
         $pagoConsumo = null;
 
         foreach ($reserva->venta->consumos as $consumo) {
             if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)) {
                 foreach ($consumo->pagosConsumos as $pago) {
                     $pagoConsumo = $pago;
-                };
+                }
             }
         }
 
         // Verificar si el archivo de abono existe
         if (Storage::disk('imagen_consumo')->exists($pagoConsumo->imagen_transaccion)) {
-            $file = Storage::disk('imagen_consumo')->get($pagoConsumo->imagen_transaccion);
+            $file     = Storage::disk('imagen_consumo')->get($pagoConsumo->imagen_transaccion);
             $mimeType = Storage::disk('imagen_consumo')->mimeType($pagoConsumo->imagen_transaccion);
 
             return response($file, 200)->header('Content-Type', $mimeType);
@@ -379,7 +427,7 @@ class ReservaController extends Controller
 
         // Verificar si el archivo de abono existe
         if (Storage::disk('imagen_abono')->exists($reserva->venta->imagen_abono)) {
-            $file = Storage::disk('imagen_abono')->get($reserva->venta->imagen_abono);
+            $file     = Storage::disk('imagen_abono')->get($reserva->venta->imagen_abono);
             $mimeType = Storage::disk('imagen_abono')->mimeType($reserva->venta->imagen_abono);
 
             return response($file, 200)->header('Content-Type', $mimeType);
@@ -394,7 +442,7 @@ class ReservaController extends Controller
 
         // Verificar si el archivo de diferencia existe
         if (Storage::disk('imagen_diferencia')->exists($reserva->venta->imagen_diferencia)) {
-            $file = Storage::disk('imagen_diferencia')->get($reserva->venta->imagen_diferencia);
+            $file     = Storage::disk('imagen_diferencia')->get($reserva->venta->imagen_diferencia);
             $mimeType = Storage::disk('imagen_diferencia')->mimeType($reserva->venta->imagen_diferencia);
 
             return response($file, 200)->header('Content-Type', $mimeType);
@@ -407,27 +455,36 @@ class ReservaController extends Controller
     public function edit(Reserva $reserva)
     {
         // $this->authorize('create', User::class);
-        $cliente = $reserva->cliente;
-        $venta = $reserva->venta;
-        $visita = $reserva->visitas->first();
+        $cantidadExtraMasaje = null;
+        $ventaId             = $reserva->venta->id;
+        $consumo             = Consumo::where('id_venta', '=', $ventaId)->first();
+        if (isset($consumo)) {
+            $detalleServExtra    = DetalleServiciosExtra::where('id_consumo', '=', $consumo->id)->first();
+            $cantidadExtraMasaje = $detalleServExtra->cantidad_servicio;
+        }
+        $cliente   = $reserva->cliente;
+        $venta     = $reserva->venta;
+        $visita    = $reserva->visitas->first();
         $programas = Programa::with('servicios')->get();
-        $tipos = TipoTransaccion::all();
+        $tipos     = TipoTransaccion::all();
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
 
         return view('themes.backoffice.pages.reserva.edit', [
-            'reserva' => $reserva,
-            'venta' => $venta,
-            'cliente' => $cliente,
-            'programas' => $programas,
-            'tipos' => $tipos,
-            'visita' => $visita,
+            'reserva'        => $reserva,
+            'venta'          => $venta,
+            'cliente'        => $cliente,
+            'programas'      => $programas,
+            'tipos'          => $tipos,
+            'visita'         => $visita,
+            'cantidadMasaje' => $cantidadExtraMasaje,
         ]);
     }
 
     public function update(UpdateRequest $request, Reserva $reserva)
     {
-        dd($reserva->visitas->first());
-        $data = $request->all();
+        $masajesExtra   = null;
+        $almuerzosExtra = null;
+        $data           = $request->all();
 
         $original = DB::table('reservas')
             ->join('ventas as v', 'reservas.id', '=', 'v.id_reserva')
@@ -438,7 +495,7 @@ class ReservaController extends Controller
         $originalArray = (array) $original; // Convertir objeto en arreglo
 
         // Parsear y formatear la fecha_visita del original
-        if (!empty($originalArray['fecha_visita'])) {
+        if (! empty($originalArray['fecha_visita'])) {
             $originalArray['fecha_visita'] = Carbon::parse($originalArray['fecha_visita'])->format('d-m-Y'); // Ajusta el formato según sea necesario
         }
 
@@ -449,30 +506,29 @@ class ReservaController extends Controller
             if (array_key_exists($key, $originalArray) && $originalArray[$key] != $value) {
                 $changes[$key] = [
                     'original' => $originalArray[$key],
-                    'new' => $value,
+                    'new'      => $value,
                 ];
             }
         }
 
-
         // Verificar si hubo cambios
-        if (!$changes) {
+        if (! $changes) {
             // Si no hay cambios, redirigir a otra ruta
             return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id])->with('info', 'No se realizaron cambios en la reserva.');
         }
 
         // Si hay cambios, continuar con la lógica normal
         try {
-            DB::transaction(function () use ($request, &$reserva, $originalArray) {
+            DB::transaction(function () use ($request, &$reserva, $originalArray, &$masajesExtra, &$almuerzosExtra) {
 
                 // dd($originalArray['fecha_visita'] ,$request->input('fecha_visita'));
-                if($originalArray['fecha_visita'] !== $request->input('fecha_visita')){
+                if ($originalArray['fecha_visita'] !== $request->input('fecha_visita')) {
                     $nuevaFecha = Carbon::createFromFormat('d-m-Y', $request->input('fecha_visita'))->format('Y-m-d');
                     // Guardar la fecha original de la reserva en el reagendamiento
                     $reagendamiento = Reagendamiento::create([
                         'fecha_original' => Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d'),
-                        'nueva_fecha' => $nuevaFecha,
-                        'id_reserva' => $reserva->id,
+                        'nueva_fecha'    => $nuevaFecha,
+                        'id_reserva'     => $reserva->id,
                     ]);
                     // Actualizar la reserva con la nueva fecha de visita
                     $reserva->fecha_visita = $nuevaFecha;
@@ -481,7 +537,7 @@ class ReservaController extends Controller
                 $reserva->save();
 
                 // Verificar si el programa incluye masaje
-                $programa = Programa::find($request->id_programa);
+                $programa      = Programa::find($request->id_programa);
                 $incluyeMasaje = $programa->servicios()
                     ->whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])
                     ->exists();
@@ -499,20 +555,20 @@ class ReservaController extends Controller
                 // Manejo de la imagen de abono
                 $url_abono = null;
                 if ($request->hasFile('imagen_abono_boton')) {
-                    if (!empty($venta->imagen_abono) && Storage::disk('imagen_abono')->exists($venta->imagen_abono)) {
+                    if (! empty($venta->imagen_abono) && Storage::disk('imagen_abono')->exists($venta->imagen_abono)) {
                         Storage::disk('imagen_abono')->delete($venta->imagen_abono);
                     }
-                    $abono = $request->file('imagen_abono_boton');
-                    $filename = time() . '-' . $abono->getClientOriginalName();
+                    $abono     = $request->file('imagen_abono_boton');
+                    $filename  = time() . '-' . $abono->getClientOriginalName();
                     $url_abono = 'temp/' . $filename;
                     Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
                 }
 
                 $venta->fill([
-                    'abono_programa' => $request->abono_programa,
-                    'imagen_abono' => $url_abono,
+                    'abono_programa'            => $request->abono_programa,
+                    'imagen_abono'              => $url_abono ?? $venta->imagen_abono,
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
-                    'total_pagar' => $request->total_pagar,
+                    'total_pagar'               => $request->total_pagar,
                 ])->save();
 
                 // Mover la imagen a su ubicación final, si es necesario
@@ -524,36 +580,44 @@ class ReservaController extends Controller
 
                 // Manejar los servicios extra
                 if ($request->filled('cantidad_masajes_extra')) {
+                    $masajesExtra = $request->filled('cantidad_masajes_extra');
                     $this->manipularMasajesExtra($request, $venta);
                 }
 
                 if ($request->filled('agregar_almuerzos')) {
+                    $almuerzosExtra = $request->filled('agregar_almuerzos');
                     $this->manipularAlmuerzosExtra($request, $venta);
                 }
             });
 
-            return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva->id])
-                ->with('success', 'La reserva fue actualizada exitosamente.');
+            session()->put([
+                'masajesExtra'   => $masajesExtra,
+                'almuerzosExtra' => $almuerzosExtra,
+            ]);
+
+            return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()])->with('success', 'La reserva fue actualizada exitosamente.');
         } catch (\Error $e) {
-            return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. '.$e);
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. ' . $e);
         }
     }
 
     private function manipularMasajesExtra($request, $venta)
     {
         $servicioMasaje = Servicio::whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])->first();
+        $consumo        = Consumo::where('id_venta', '=', $venta->id)->first();
+
         if ($servicioMasaje) {
             $cantidadMasajesExtra = intval($request->input('cantidad_masajes_extra'));
-            $subtotalMasajes = $servicioMasaje->valor_servicio * $cantidadMasajesExtra;
+            $subtotalMasajes      = $servicioMasaje->valor_servicio * $cantidadMasajesExtra;
 
             DetalleServiciosExtra::updateOrCreate(
                 [
-                    'id_consumo' => $venta->consumo->id,
+                    'id_consumo'        => $consumo->id,
                     'id_servicio_extra' => $servicioMasaje->id,
                 ],
                 [
                     'cantidad_servicio' => $cantidadMasajesExtra,
-                    'subtotal' => $subtotalMasajes,
+                    'subtotal'          => $subtotalMasajes,
                 ]
             );
         }
@@ -564,16 +628,16 @@ class ReservaController extends Controller
         $servicioAlmuerzo = Servicio::whereIn('nombre_servicio', ['Almuerzo', 'Almuerzos', 'almuerzo', 'almuerzos'])->first();
         if ($servicioAlmuerzo) {
             $cantidadAlmuerzosExtra = intval($request->input('cantidad_personas'));
-            $subtotalAlmuerzos = $servicioAlmuerzo->valor_servicio * $cantidadAlmuerzosExtra;
+            $subtotalAlmuerzos      = $servicioAlmuerzo->valor_servicio * $cantidadAlmuerzosExtra;
 
             DetalleServiciosExtra::updateOrCreate(
                 [
-                    'id_consumo' => $venta->consumo->id,
+                    'id_consumo'        => $venta->consumo->id,
                     'id_servicio_extra' => $servicioAlmuerzo->id,
                 ],
                 [
                     'cantidad_servicio' => $cantidadAlmuerzosExtra,
-                    'subtotal' => $subtotalAlmuerzos,
+                    'subtotal'          => $subtotalAlmuerzos,
                 ]
             );
         }
@@ -588,13 +652,13 @@ class ReservaController extends Controller
     {
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
 
-        $total = 0;
+        $total   = 0;
         $propina = 'No Aplica';
-        $visita = $reserva->visitas->first();
+        $visita  = $reserva->visitas->first();
         $visita->load(['menus']);
-        $menus = $visita->menus;
-        $consumos = $reserva->venta->consumos;
-        $idConsumo = null;
+        $menus           = $visita->menus;
+        $consumos        = $reserva->venta->consumos;
+        $idConsumo       = null;
         $cantidadPropina = null;
 
         if ($consumos->isEmpty()) {
@@ -604,10 +668,10 @@ class ReservaController extends Controller
                 $idConsumo = $consumo->id;
                 foreach ($consumo->detallesConsumos as $detalles) {
                     if ($detalles->genera_propina) {
-                        $total = $consumo->total_consumo;
+                        $total   = $consumo->total_consumo;
                         $propina = 'Si';
                     } else {
-                        $total = $consumo->subtotal;
+                        $total   = $consumo->subtotal;
                         $propina = 'No';
                     }
                 }
@@ -627,17 +691,17 @@ class ReservaController extends Controller
         $saveName = str_replace(' ', '_', $reserva->cliente->nombre_cliente);
 
         $data = [
-            'nombre' => $reserva->cliente->nombre_cliente,
-            'numero' => $reserva->cliente->whatsapp_cliente,
-            'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
-            'fecha_visita' => $reserva->fecha_visita,
-            'programa' => $reserva->programa->nombre_programa,
-            'personas' => $reserva->cantidad_personas,
-            'menus' => $menus,
-            'consumos' => $consumos,
-            'venta' => $reserva->venta,
-            'total' => $total,
-            'propina' => $propina,
+            'nombre'        => $reserva->cliente->nombre_cliente,
+            'numero'        => $reserva->cliente->whatsapp_cliente,
+            'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+            'fecha_visita'  => $reserva->fecha_visita,
+            'programa'      => $reserva->programa->nombre_programa,
+            'personas'      => $reserva->cantidad_personas,
+            'menus'         => $menus,
+            'consumos'      => $consumos,
+            'venta'         => $reserva->venta,
+            'total'         => $total,
+            'propina'       => $propina,
             'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
         ];
 
@@ -653,12 +717,12 @@ class ReservaController extends Controller
     {
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
 
-        $total = 0;
+        $total   = 0;
         $propina = 'No Aplica';
-        $visita = $reserva->visitas->first();
+        $visita  = $reserva->visitas->first();
         $visita->load(['menus']);
-        $consumos = $reserva->venta->consumos;
-        $idConsumo = null;
+        $consumos        = $reserva->venta->consumos;
+        $idConsumo       = null;
         $cantidadPropina = null;
 
         if ($consumos->isEmpty()) {
@@ -668,10 +732,10 @@ class ReservaController extends Controller
                 $idConsumo = $consumo->id;
                 foreach ($consumo->detallesConsumos as $detalles) {
                     if ($detalles->genera_propina) {
-                        $total = $consumo->total_consumo;
+                        $total   = $consumo->total_consumo;
                         $propina = 'Si';
                     } else {
-                        $total = $consumo->subtotal;
+                        $total   = $consumo->subtotal;
                         $propina = 'No';
                     }
                 }
@@ -691,16 +755,16 @@ class ReservaController extends Controller
         $saveName = str_replace(' ', '_', $reserva->cliente->nombre_cliente);
 
         $dataConsumo = [
-            'nombre' => $reserva->cliente->nombre_cliente,
-            'numero' => $reserva->cliente->whatsapp_cliente,
-            'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
-            'fecha_visita' => $reserva->fecha_visita,
-            'programa' => $reserva->programa->nombre_programa,
-            'personas' => $reserva->cantidad_personas,
-            'consumos' => $consumos,
-            'venta' => $reserva->venta,
-            'total' => $total,
-            'propina' => $propina,
+            'nombre'        => $reserva->cliente->nombre_cliente,
+            'numero'        => $reserva->cliente->whatsapp_cliente,
+            'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+            'fecha_visita'  => $reserva->fecha_visita,
+            'programa'      => $reserva->programa->nombre_programa,
+            'personas'      => $reserva->cantidad_personas,
+            'consumos'      => $consumos,
+            'venta'         => $reserva->venta,
+            'total'         => $total,
+            'propina'       => $propina,
             'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
         ];
 
@@ -714,7 +778,7 @@ class ReservaController extends Controller
 
         // Vista anterior
         $currentMonth = Carbon::now()->month;
-        $currentYear = Carbon::now()->year;
+        $currentYear  = Carbon::now()->year;
 
         $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios', 'venta'])
             ->orderBy('fecha_visita')

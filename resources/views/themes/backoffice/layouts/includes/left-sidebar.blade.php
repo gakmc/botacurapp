@@ -268,8 +268,8 @@
         </li>
     </ul>
 
-    <a class="sidebar-collapse btn-floating btn-medium waves-effect waves-light hide-on-large-only"
-        data-activates="slide-out" href="#">
+    <a class="sidebar-collapse sidenav-trigger btn-floating btn-medium waves-effect waves-light hide-on-large-only"
+        data-activates="slide-out" data-target="slide-out" href="#">
         <i class="material-icons">menu</i>
     </a>
 

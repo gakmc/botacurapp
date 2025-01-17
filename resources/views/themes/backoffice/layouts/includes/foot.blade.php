@@ -26,26 +26,32 @@
 <script>
     $(document).ready(function(){
         $('.tooltipped').tooltip();
+
+        $('.side-nav').sidenav({
+            draggable:false,
+            preventScrolling:true,
+        });
+
+        $('.dropdown-settings').dropdown({
+            hover: false, // Deshabilita el hover para que funcione en dispositivos móviles
+            constrainWidth: false, // Ajusta el ancho al contenido
+            coverTrigger: false, // Muestra el dropdown fuera del botón
+            alignment: 'left', // Opcional: Alinea el dropdown a la izquierda
+            closeOnClick: true // Cierra el dropdown al hacer clic fuera
+        });   
+        
+        $('.dropdown-trigger').dropdown({
+            hover: false, // Deshabilita el hover para que funcione en dispositivos móviles
+            constrainWidth: false, // Ajusta el ancho al contenido
+            coverTrigger: false, // Muestra el dropdown fuera del botón
+            alignment: 'left', // Opcional: Alinea el dropdown a la izquierda
+            closeOnClick: true // Cierra el dropdown al hacer clic fuera
+        });
+
     });
     
 
 
-    $(document).ready(function () {            
-        $('.dropdown-settings').dropdown({
-            hover: true, // Activa el dropdown al pasar el mouse
-            constrainWidth: false, // Opcional: para ajustar el ancho al contenido
-            coverTrigger: false
-        });       
-    });
-
-    $(document).ready(function () {
-        // Inicializar los dropdowns
-        $('.dropdown-trigger').dropdown({
-            hover: true, // Abre el dropdown al pasar el mouse
-            constrainWidth: false, // Ajusta el ancho al contenido
-            coverTrigger: false // Opcional: Muestra el dropdown fuera del botón
-        });
-    });
 
 
 </script>

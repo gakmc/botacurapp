@@ -62,11 +62,9 @@
                                     <label for="horario_sauna">Horario SPA</label>
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) style="display: none;" @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
-                                    <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje',
-                                        $servicios) && !$masajesExtra) disabled hidden @endif>
+                                    <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         {{-- @foreach($horasMasaje as $horario)
@@ -86,11 +84,9 @@
 
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) style="display: none;" @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
-                                    <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje', $servicios) &&
-                                        !$masajesExtra) disabled hidden @endif>
+                                    <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" disabled selected>-- Seleccione --</option>
                                         <option value="Relajante" {{ old('tipo_masaje')=='Relajante' ? 'selected' : ''
@@ -142,11 +138,9 @@
                 <div class="row">
                                 <h6><strong>Masajes</strong></h6>
                                 @for ($i = 1; $i <= $indexMasajes; $i++)
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                !$masajesExtra) style="display: none;" @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
-                                <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje',
-                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+                                <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                     <option value="" selected disabled="">-- Seleccione --</option>
 
@@ -161,11 +155,9 @@
 
                             </div>
 
-                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                !$masajesExtra) style="display: none;" @endif>
+                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
-                                <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) disabled hidden @endif>
+                                <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                     <option value="" disabled selected>-- Seleccione --</option>
                                     <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
@@ -189,10 +181,8 @@
 
                             </div>
 
-                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                            !$masajesExtra) style="display: none;" @endif>
-                            <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje',
-                                $servicios) && !$masajesExtra) disabled hidden @endif>
+                            <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
+                            <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
                                 @foreach ($lugares as $lugar)
                                 <option value="{{$lugar->id}}" {{ old("masajes.{$i}.id_lugar_masaje")==$lugar->nombre ?
                                     'selected' : '' }}>{{$lugar->nombre}}</option>
@@ -237,15 +227,17 @@
 
         </div>
         <div class="row">
-                                    <h6><strong>Masajes</strong></h6>
+                                    @if(in_array('Masaje', $servicios) && $masajesExtra)
+
+                                        <h6><strong>Masajes</strong></h6>
+
+                                    @endif
                                     @for ($i=1; $i<=$indexMasajes; $i++)
-                                    <h6>Par {{$i}}</h6>
-                                    <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) style="display: none;" @endif>
+                                    <h6 @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>Par {{$i}}</h6>
+                                    <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
 
-                                    <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje',
-                                        $servicios) && !$masajesExtra) disabled hidden @endif >
+                                    <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif >
 
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         {{-- @foreach($horasMasaje[1] as $horario)
@@ -265,11 +257,9 @@
 
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) style="display: none;" @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
-                                    <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) &&
-                                        !$masajesExtra) disabled hidden @endif>
+                                    <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" disabled selected>-- Seleccione --</option>
                                         <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
@@ -293,10 +283,8 @@
 
                                 </div>
 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                !$masajesExtra) style="display: none;" @endif>
-                                <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje',
-                                    $servicios) && !$masajesExtra) disabled hidden @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
+                                <select name="masajes[{{$i}}][id_lugar_masaje]" id="id_lugar_masaje_{{$i}}" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
                                     @foreach ($lugares as $lugar)
                                     <option value="{{$lugar->id}}" {{$lugar->nombre == "Containers" ? 'selected' : ''}} {{ old("masajes.{$i}.id_lugar_masaje") == $lugar->nombre ?
                                         'selected' : '' }}>{{$lugar->nombre}}</option>
@@ -351,10 +339,8 @@
                                 @if ($reserva->cantidad_personas <= 2)
                                     
                                 
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) &&
-                                    !$masajesExtra) style="display: none;" @endif>
-                                    <select name="id_lugar_masaje" id="id_lugar_masaje" @if(!in_array('Masaje',
-                                        $servicios) && !$masajesExtra) disabled hidden @endif>
+                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
+                                    <select name="id_lugar_masaje" id="id_lugar_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
                                         
                                         @foreach ($lugares as $lugar)
                                         <option value="{{$lugar->id}}" {{ old('id_lugar_masaje')==$lugar->nombre ?

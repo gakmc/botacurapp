@@ -211,6 +211,12 @@ class AdminController extends Controller
 
         $totalSueldoGeneral = array_sum($totalPorUsuario);
 
+        // Calcular las fechas exactas de los días de la semana
+        $fechasSemana = [];
+        for ($i = 0; $i < 7; $i++) {
+            $fechasSemana[$diasSemana[$i]] = $inicioSemana->copy()->addDays($i)->format('Y-m-d');
+        }
+
         return view('themes.backoffice.pages.admin.team', [
             'diasSemana' => $diasSemana,
             'asignacionesPorDia' => $asignacionesPorDia,
@@ -220,9 +226,8 @@ class AdminController extends Controller
             'usuarios' => $usuarios,
             'diaT' => $diaTrabajado,
             'base' => $pagoBasePorUsuario,
+            'fechasSemana' => $fechasSemana,
         ]);
     }
-
-
 
 }

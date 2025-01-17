@@ -105,6 +105,11 @@
 
 @section('foot')
 <script>
+$(document).ready(function(){
+    $('.tabs').tabs();
+});
+</script>
+<script>
     $(document).ready(function () {
     let seleccion = $('#seleccion').text();
 

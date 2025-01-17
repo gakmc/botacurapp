@@ -118,12 +118,12 @@ class SueldoController extends Controller
                 );
             }
 
-            Alert::toast('Se almacenaron los sueldos correctamente', 'success')->toToast('top');
+            Alert::toast('Se almacenaron los sueldos correctamente', 'success')->toToast('center');
             return redirect()->back();
 
         } catch (Exception $e) {
 
-            Alert::toast('No se almacenaron los sueldos ' . $e->getMessage(), 'error')->toToast('top');
+            Alert::toast('No se almacenaron los sueldos ' . $e->getMessage(), 'error')->toToast('center');
             return redirect()->back()->withErrors($e->getMessage())->withInput();
         }
 

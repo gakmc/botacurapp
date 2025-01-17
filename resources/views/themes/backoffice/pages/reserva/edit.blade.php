@@ -161,14 +161,14 @@
 
 
                 <label id="checkbox-masajes-container" class="input-field col s12 m3">
-                  <input @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje) checked="checked" @endif style="display: none" type="checkbox" id="agregar_masajes" name="agregar_masajes" />
+                  <input @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje) checked @endif style="display: none" type="checkbox" id="agregar_masajes" name="agregar_masajes" />
                   <span class="black-text">¿Desea agregar masajes?</span>
                 </label>
 
 
                 <div class="input-field col s12 m3" id="input-cantidad-masajes-container">
                   <input id="cantidad_masajes_extra" type="number" name="cantidad_masajes_extra"
-                    value="{{ old('cantidad_masajes_extra') }}">
+                    value="{{ $cantidadMasaje ?? old('cantidad_masajes_extra') }}">
                   <label for="cantidad_masajes_extra">Cantidad masajes extras</label>
                   @error('cantidad_masajes_extra')
                   <span class="invalid-feedback" role="alert">
@@ -238,12 +238,29 @@
   $(document).ready(function () {
     $('select').formSelect();
   });
-
+  
   $(document).ready(function(){
     $('.datepicker').datepicker({
-        format:'dd-mm-yyyy'
+      format:'dd-mm-yyyy',
+
+      defaultDate: new Date(),
+      i18n: {
+          cancel: 'Cancelar',
+        },
+      buttons: [
+          {
+            text: 'Now',
+            class: 'btn-flat',
+            onClick: (picker) => {
+              const now = new Date();
+              picker.setDate(now);
+              picker.close();
+            }
+          }
+        ]
     });
   });
+
 </script>
 
 <script>
@@ -300,7 +317,8 @@ function calcularValorTotal(){
 
 
 <script>
-  $(document).ready(function(e){
+
+ $(document).ready(function(e){
   const selectPrograma = $('#id_programa');
   const cantidadMasajesInput = $('#cantidad_masajes').closest('div');
   const checkboxMasajesContainer = $('#checkbox-masajes-container');
@@ -310,28 +328,26 @@ function calcularValorTotal(){
   const checkboxAlmuerzosContainer = $('#checkbox-almuerzos-container');
   const agregarAlmuerzosCheckbox = $('#agregar_almuerzos');
 
-
   function toggleMasajesField() {
     const selectedOption = selectPrograma.find('option:selected');
     const incluyeMasajes = selectedOption.data('incluye-masajes');
     const inputMasajes = $('#cantidad_masajes');
-    
+
     if (incluyeMasajes === 1) {
-      // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
       cantidadMasajesInput.show();
-      checkboxMasajesContainer.hide(); // Ocultar el checkbox de agregar masajes extras
-      inputCantidadMasajesContainer.hide(); // Ocultar el input de cantidad de masajes extras
+      checkboxMasajesContainer.hide();
+      inputCantidadMasajesContainer.hide();
       cantidadMasajesExtraInput.val('');
       agregarMasajesCheckbox.prop('checked', false);
       inputMasajes.val('');
     } else {
-      // Si no incluye masajes, ocultamos el input normal de masajes y mostramos el checkbox para agregar masajes extras
       cantidadMasajesInput.hide();
-      checkboxMasajesContainer.show(); // Mostrar checkbox para agregar masajes
-      inputCantidadMasajesContainer.hide(); // Inicialmente ocultamos el input de cantidad de masajes extras
-      cantidadMasajesExtraInput.val('');
-      agregarMasajesCheckbox.prop('checked', false);
-      inputMasajes.val('');
+      checkboxMasajesContainer.show();
+      if (agregarMasajesCheckbox.is(':checked')) {
+        inputCantidadMasajesContainer.show(); // Mostrar el input si el checkbox está marcado al cargar
+      } else {
+        inputCantidadMasajesContainer.hide();
+      }
     }
   }
 
@@ -347,25 +363,25 @@ function calcularValorTotal(){
     }
   }
 
-  // Mostrar el input de cantidad de masajes solo si el checkbox está marcado
+  // Escucha el evento change del checkbox para actualizar el estado
   agregarMasajesCheckbox.on('change', function() {
     if ($(this).is(':checked')) {
-      inputCantidadMasajesContainer.show(); // Mostrar el input de cantidad si el checkbox está marcado
+      inputCantidadMasajesContainer.show();
     } else {
-      inputCantidadMasajesContainer.hide(); // Ocultar el input si el checkbox está desmarcado
+      inputCantidadMasajesContainer.hide();
       cantidadMasajesExtraInput.val('');
     }
   });
 
-  // Escucha el evento change del select para detectar cuando cambie
+  // Escucha el evento change del select para detectar cambios
   selectPrograma.on('change', toggleMasajesField);
   selectPrograma.on('change', toggleAlmuerzosField);
 
   // Inicializa el estado del campo en la carga de la página
   toggleMasajesField(); // Para verificar la selección inicial
   toggleAlmuerzosField();
-  
 });
+
 
 
 </script>

@@ -7,7 +7,7 @@
             <div class="card">
                 <div class="card-header">{{ __('Register') }}</div>
 
-                <div class="card-body">
+                {{-- <div class="card-body">
                     <form id="registerForm" method="POST" action="{{ route('register') }}">
                         @csrf
 
@@ -69,7 +69,7 @@
                             </div>
                         </div>
                     </form>
-                </div>
+                </div> --}}
             </div>
         </div>
     </div>

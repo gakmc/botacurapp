@@ -5,6 +5,19 @@
     <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/css/materialize.min.css">
     @include('themes.backoffice.layouts.includes.head')
     </head>
+
+    <style>
+        body::-webkit-scrollbar{
+            width: 10px;
+            height: 10px;
+        }
+
+        body::-webkit-scrollbar-thumb{
+            background: #3B82F6;
+            border: 3px solid #fff;
+            border-radius: 10px;
+        }
+    </style>
     <body>
         @include('themes.backoffice.layouts.includes.loader')
         @include('themes.backoffice.layouts.includes.header')
@@ -27,7 +40,6 @@
         @include('themes.backoffice.layouts.includes.foot')
         @yield('foot')
         <script src="{{ asset('js/app.js') }}"></script>
-
 
     </body>
 </html>

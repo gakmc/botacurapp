@@ -20,35 +20,35 @@ class Reserva extends Model
     ];
 
     //RELACIONES
-    public function programa()
-    {
-        return $this->belongsTo(Programa::class, 'id_programa');
-    }
-
-    public function visitas()
-    {
-        return $this->hasMany(Visita::class, 'id_reserva');
-    }
-
-    public function reagendamientos()
-    {
-        return $this->hasMany(Reagendamiento::class, 'id_reserva');
-    }
 
     public function cliente()
     {
         return $this->belongsTo(Cliente::class);
     }
 
+    public function programa()
+    {
+        return $this->belongsTo(Programa::class, 'id_programa');
+    }
+
+    public function reagendamientos()
+    {
+        return $this->hasMany(Reagendamiento::class, 'id_reserva');
+    }
+    
     public function user() {
         return $this->belongsTo(User::class);
     }
-
+    
     public function venta()
     {
         return $this->hasOne(Venta::class, 'id_reserva');
     }
-
+    
+    public function visitas()
+    {
+        return $this->hasMany(Visita::class, 'id_reserva');
+    }
 //ALMACENAMIENTO
 
     public function store($request)

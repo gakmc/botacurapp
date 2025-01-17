@@ -31,11 +31,6 @@ class Visita extends Model
         return $this->belongsTo(Ubicacion::class, 'id_ubicacion');
     }
 
-    public function lugarMasaje()
-    {
-        return $this->belongsTo(LugarMasaje::class, 'id_lugar_masaje');
-    }
-
     public function menus()
     {
         return $this->hasMany(Menu::class, 'id_visita');

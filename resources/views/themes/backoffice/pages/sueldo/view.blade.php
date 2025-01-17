@@ -80,6 +80,8 @@
                         </tbody>
                     </table>
 
+                    
+
                     {{-- Paginación --}}
                     <div class="center-align">
                         {{ $sueldos->appends(['mes' => $mes, 'anio' => $anio])->links('vendor.pagination.materialize') }}
@@ -89,4 +91,14 @@
         </div>
     </div>
 </div>
+@endsection
+
+@section('foot')
+    <script>
+        $(document).ready(function () {
+            $('select').formSelect({
+                classes:"left-text"
+            });
+        });
+    </script>
 @endsection

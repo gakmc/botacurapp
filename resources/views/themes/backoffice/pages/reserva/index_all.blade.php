@@ -3,7 +3,7 @@
 @section('title', 'Reservas')
 
 @section('breadcrumbs')
-<li><a href="{{route('backoffice.reserva.index')}}">Todas las Reservas</a></li>
+<li><a href="{{route('backoffice.reserva.index')}}">Reservas Diarias</a></li>
 @endsection
 
 @section('head')
@@ -89,7 +89,7 @@ document.addEventListener('DOMContentLoaded', function() {
             var horaSauna = convertirHora('{{ $visita->horario_sauna }}');
 
             eventos.push({
-                title: 'Sauna - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+                title: '{{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
                 start: formatoFecha + ' {{ $visita->horario_sauna }}',
                 end: formatoFecha + ' {{ $visita->hora_fin_sauna }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
@@ -106,45 +106,45 @@ document.addEventListener('DOMContentLoaded', function() {
             @endif
 
             // Evitar horarios tinaja duplicados
-            @if ($visita->horario_tinaja && !in_array($visita->horario_tinaja, $tinajaHorarios))
-            var horaTinaja = convertirHora('{{ $visita->horario_tinaja }}');
+            // @if ($visita->horario_tinaja && !in_array($visita->horario_tinaja, $tinajaHorarios))
+            // var horaTinaja = convertirHora('{{ $visita->horario_tinaja }}');
 
-            eventos.push({
-                title: 'Tinaja - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
-                start: formatoFecha + ' ' + horaTinaja,
-                end: formatoFecha + ' {{ $visita->hora_fin_tinaja }}',
-                url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
-                description: '{{ addslashes($reserva->observacion) }}',
-                @if (isset($reserva->venta) && $reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
-                    color: 'orange'
-                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
-                    color: 'green'
-                @else
-                    color: 'primary'
-                @endif
-            });
-            @php $tinajaHorarios[] = $visita->horario_tinaja; @endphp
-            @endif
+            // eventos.push({
+            //     title: 'Tinaja - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+            //     start: formatoFecha + ' ' + horaTinaja,
+            //     end: formatoFecha + ' {{ $visita->hora_fin_tinaja }}',
+            //     url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
+            //     description: '{{ addslashes($reserva->observacion) }}',
+            //     @if (isset($reserva->venta) && $reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+            //         color: 'orange'
+            //     @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+            //         color: 'green'
+            //     @else
+            //         color: 'primary'
+            //     @endif
+            // });
+            // @php $tinajaHorarios[] = $visita->horario_tinaja; @endphp
+            // @endif
 
-            // Masajes siempre se agregan
-            @if ($visita->horario_masaje)
-            var horaMasaje = convertirHora('{{ $visita->horario_masaje }}');
+            // // Masajes siempre se agregan
+            // @if ($visita->horario_masaje)
+            // var horaMasaje = convertirHora('{{ $visita->horario_masaje }}');
 
-            eventos.push({
-                title: 'Masaje - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
-                start: formatoFecha + ' ' + horaMasaje,
-                end: formatoFecha + ' {{ $visita->hora_fin_masaje_extra }}',
-                url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
-                description: '{{ addslashes($reserva->observacion) }}',
-                @if (isset($reserva->venta) && $reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
-                    color: 'orange'
-                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
-                    color: 'green'
-                @else
-                    color: 'primary'
-                @endif
-            });
-            @endif
+            // eventos.push({
+            //     title: 'Masaje - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+            //     start: formatoFecha + ' ' + horaMasaje,
+            //     end: formatoFecha + ' {{ $visita->hora_fin_masaje_extra }}',
+            //     url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
+            //     description: '{{ addslashes($reserva->observacion) }}',
+            //     @if (isset($reserva->venta) && $reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+            //         color: 'orange'
+            //     @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+            //         color: 'green'
+            //     @else
+            //         color: 'primary'
+            //     @endif
+            // });
+            // @endif
         @endforeach
 
         @endforeach

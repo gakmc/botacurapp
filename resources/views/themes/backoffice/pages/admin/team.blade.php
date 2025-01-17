@@ -24,9 +24,11 @@
                                 <div class="input-field col m4">
                                     <input type="number" name="sueldoBase" id="sueldoBase" value="{{$base}}" readonly>
                                     <label for="sueldoBase">Sueldo Base</label>
-                                    <a href="javascript:void(0);" class="purple-text" id="editarBase" data-state="modificar">Modificar
+                                    <a href="javascript:void(0);" class="purple-text" id="editarBase"
+                                        data-state="modificar">Modificar
                                         sueldo base</a>
-                                    <a href="javascript:void(0);" class="purple-text" id="guardarBase" data-state="guardar" hidden>Guardar
+                                    <a href="javascript:void(0);" class="purple-text" id="guardarBase"
+                                        data-state="guardar" hidden>Guardar
                                         sueldo base</a>
                                 </div>
                                 <div class="input-field col m4">
@@ -56,22 +58,42 @@
                                             }}
 
 
+                                                    {{-- Campos ocultos para el envío del formulario --}}
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
+                                                        value="{{ $propinasPorDia[$dia]['dia_trabajado'] }}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]"
+                                                        value="{{$base}}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
+                                                        value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
+                                                        value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
+                                                        value="{{ $user->id }}">
+
+
+                                                @php
+                                                $counter++
+                                                @endphp
+
+                                            @else
+
                                             {{-- Campos ocultos para el envío del formulario --}}
-                                            <input type="text" name="sueldos[{{ $counter }}][dia_trabajado]"
-                                                value="{{ $propinasPorDia[$dia]['dia_trabajado'] }}">
-                                            <input type="text" name="sueldos[{{ $counter }}][valor_dia]"
-                                                value="{{$base}}">
-                                            <input type="text" name="sueldos[{{ $counter }}][sub_sueldo]"
-                                                value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
-                                            <input type="text" name="sueldos[{{ $counter }}][total_pagar]"
-                                                value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
-                                            <input type="text" name="sueldos[{{ $counter }}][id_user]"
-                                                value="{{ $user->id }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
+                                            value="{{$fechasSemana[$dia]}}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]"
+                                            value="{{$base}}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
+                                            value="{{ number_format($base,0,',', '') }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
+                                            value="{{ number_format($base,0,',', '') }}">
+                                            <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
+                                            value="{{ $user->id }}">
+                                            
 
+                                                @php
+                                                $counter++
+                                                @endphp
 
-                                            @php
-                                            $counter++
-                                            @endphp
                                             @endif
                                         </p>
                                         @endforeach
@@ -85,7 +107,8 @@
                             @endforeach
                             <button type="submit" class="btn btn-primary right"><i
                                     class='material-icons right'>account_balance_wallet</i>Cerrar sueldos de la
-                                semana</button>
+                                semana
+                            </button>
                         </form>
                     </div>
                 </div>
@@ -139,7 +162,7 @@
 
 </script>
 <script>
-$(document).ready(function () {
+    $(document).ready(function () {
     const sueldoBaseInput = $('#sueldoBase');
     const editarBaseBtn = $("#editarBase");
     const guardarBaseBtn = $("#guardarBase");

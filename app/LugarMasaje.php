@@ -12,7 +12,7 @@ class LugarMasaje extends Model
     ];
 
 
-    public function visitas(){
-        return $this->hasMany(Visita::class, 'id_lugar_masaje');
+    public function masajes(){
+        return $this->hasMany(Masaje::class, 'id_lugar_masaje');
     }
 }

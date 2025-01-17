@@ -38,81 +38,100 @@
 
                     @foreach ($reservasPorFecha as $reserva)
 
-                    @if (!is_null($reserva->horario_masaje))
-                    
-                        <tr>
-                            <td>
-                                {{$reserva->horario_masaje}} -
-                                @if ($reserva->hora_fin_masaje)
-                                {{$reserva->hora_fin_masaje}}
-                                @else
-                                {{$reserva->hora_fin_masaje_extra}}
-                                @endif
-                            </td>
-                            <td>{{ $reserva->cliente->nombre_cliente }}</td>
-                            <td>{{$reserva->cantidad_personas}} Personas total</td>
-                            <td>{{ $reserva->tipo_masaje }}</td>
-                            <td>{{ $reserva->lugarMasaje }}</td>
-                            <td>
-                                <span class="estado badge white-text cyan" data-fecha="{{$reserva->fecha_visita}}"
-                                    data-inicio="{{ $reserva->horario_masaje }}" @if ($reserva->hora_fin_masaje)
-                                    data-fin="{{ $reserva->hora_fin_masaje }}"
-                                    @else
-                                    data-fin="{{ $reserva->hora_fin_masaje_extra }}"
-                                    @endif
-                                    >Pendiente</span>
-                            </td>
-                            <td>
-                                {{-- @php
-                                // Buscar el masaje correspondiente a la persona actual ($i)
-                                $masajeAsignado = $reserva->visita->masajes->firstWhere('persona');
-                                @endphp
+                    @if (isset($distribucionHorarios[$reserva->id]))
+                    @else
+                    <p>No hay horarios disponibles para esta visita.</p>
+                    @endif
 
-                                @if ($masajeAsignado && $masajeAsignado->user)
-                                <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
-                                @else
-                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
-                                <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
-                                <form action="{{ route('backoffice.masaje.store') }}" method="POST">
-                                    @csrf
-                                    <input type="hidden" name="id_visita" value="{{ $visita->id }}">
-                                    <input type="hidden" name="persona_numero" value="">
-                                    <button type="submit" class="btn-floating" {{$fecha == now()->format('d-m-Y') ? '' : 'disabled'}}>
-                                        <i class="material-icons">pan_tool</i>
-                                    </button>
-                                </form>
-                            @elseif (Auth::user()->has_role(config('app.admin_role')))
-                                <strong class="red-text">No asignado</strong>
+
+
+
+                    @foreach ($reserva->visitas as $visita)
+                    @foreach ($visita->masajes as $masaje)
+
+                    <tr>
+                        <td>
+                            {{$masaje->horario_masaje}} -
+                            @if ($masaje->hora_fin_masaje)
+                            {{$masaje->hora_fin_masaje}}
+                            @else
+                            {{$masaje->hora_fin_masaje_extra}}
                             @endif
-                                @endif --}}
-
-
-
-
-
-
-                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
-                                    <form action="{{ route('backoffice.masaje.store') }}" method="POST">
-                                        @csrf
-                                        <input type="hidden" name="id_visita" value="{{ $reserva->id }}">
-                                        <input type="hidden" name="persona_numero" value="{{ $persona }}">
-                                        <button type="submit" class="btn-floating">
-                                            <i class="material-icons">pan_tool</i>
-                                        </button>
-                                    </form>
-                                @elseif (Auth::user()->has_role(config('app.admin_role')))
-                                    <strong class="red-text">No asignado</strong>
+                        </td>
+                        <td>{{ $reserva->cliente->nombre_cliente }}</td>
+                        <td>Persona {{$masaje->persona}}</td>
+                        <td>{{ $masaje->tipo_masaje }}</td>
+                        <td>{{ $masaje->lugarMasaje->nombre }}</td>
+                        <td>
+                            <span class="estado badge white-text cyan" data-fecha="{{$reserva->fecha_visita}}"
+                                data-inicio="{{ $masaje->horario_masaje }}" @if ($masaje->hora_fin_masaje)
+                                data-fin="{{ $masaje->hora_fin_masaje }}"
+                                @else
+                                data-fin="{{ $masaje->hora_fin_masaje_extra }}"
                                 @endif
-                            </td>
+                                >Pendiente</span>
+                        </td>
+                        <td>
+                            @php
+                            // Buscar el masaje correspondiente a la persona actual ($i)
+                            $masajeAsignado = $masaje->load('user');
+                            //dd($masajeAsignado->user);
+                            @endphp
 
-                        </tr>
-                        
-                        @endif
-                        @endforeach
-                        
-                        @endforeach
+                            @if ($masajeAsignado && $masajeAsignado->user)
+                            <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
+                            @else
+                            @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
+                            <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
+                            <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="id" value="{{ $masaje->id }}">
+                                <button type="submit" class="btn-floating" {{$fecha==now()->format('d-m-Y') ? '' :
+                                    'disabled'}}>
+                                    <i class="material-icons">pan_tool</i>
+                                </button>
+                            </form>
+                            @elseif (Auth::user()->has_role(config('app.admin_role')))
+                            <strong class="red-text">No asignado</strong>
+                            @endif
+                            @endif
+
+
+
+
+
+
+                            {{-- @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
+                            <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
+                                @csrf
+                                @method('PUT')
+                                <input type="hidden" name="id" value="{{ $masaje->id }}">
+                                <button type="submit" class="btn-floating">
+                                    <i class="material-icons">pan_tool</i>
+                                </button>
+                            </form>
+                            @elseif (Auth::user()->has_role(config('app.admin_role')))
+                            <strong class="red-text">No asignado</strong>
+                            @endif --}}
+
+
+                        </td>
+
+                    </tr>
+                    @endforeach
+                    @endforeach
+
+                    @endforeach
+
+                    @endforeach
                 </tbody>
             </table>
+
+
+
+
+
 
             {{-- Paginación --}}
             <div class="center">
@@ -124,6 +143,38 @@
 @endsection
 
 @section('foot')
+<script>
+    @if(session('success'))
+    Swal.fire({
+        toast: true,
+        icon: 'success',
+        title: '{{ session('success') }}',
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+            didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+            }
+    });
+    @endif
+
+    @if(session('error'))
+    Swal.fire({
+        toast: true,
+        icon: 'error',
+        title: '{{ session('error') }}',
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+            didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+            }
+    });
+    @endif
+</script>
+
 <script>
     $(document).ready(function () {
         function actualizarEstado() {
