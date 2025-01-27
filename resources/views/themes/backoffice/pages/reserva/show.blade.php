@@ -237,6 +237,7 @@
                 <li class="collection-item avatar">
                   <i class="material-icons green accent-2 circle">spa</i>
                   <h6 class="collection-header m-0">Visita <a class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
+                  <p>{{$reserva->visitas->first()->ubicacion->nombre}}</p>
                   @if ($reserva->visitas->isEmpty())
 
                       <h6>Aún no se registra la visita para esta reserva</h6>
@@ -245,8 +246,6 @@
                       @php
                         $mostrados = [];
                       @endphp
-
-
 
 
 
@@ -272,76 +271,130 @@
                                   </div>
                                 </div>
                               </div>
-                              @endforeach
+                            @endforeach
                             </div>
                           </li>
                           <li>
                             <div class="collapsible-header"><i class="material-icons">hot_tub</i>Horarios Tinaja</div>
                             <div class="collapsible-body">
                             @foreach ($visitas as $indexT=>$visita)
-                            <div class="row">
-                              <div class="col s7">
-                                <p class="collections-title">Tinaja: <strong id="horario-tinaja" class="horario-tinaja"
-                                    data-fecha="{{ $reserva->fecha_visita }}" data-inicio="{{ $visita->horario_tinaja }}"
-                                    data-fin="{{ $visita->hora_fin_tinaja }}">{{ $visita->horario_tinaja }}</strong></p>
-                                <p class="collections-content">Hora Fin: <strong name="tinaja" id="tinaja" data-tinaja="duracion-tinaja">{{
-                                    $visita->hora_fin_tinaja }}</strong></p>
-                              </div>
-                              <div class="col s3">
-                                <span class="task-cat cyan" id="task-cat-tinaja-{{$indexT}}">Pendiente</span>
-                              </div>
-                              <div class="col s3">
-                                <div class="progress">
-                                  <div class="determinate" id="progress-tinaja-{{$indexT}}" style="width: 0%;"></div>
-                                </div>
-                              </div>
-                            </div>
-                            @endforeach
-                            </div>
-                          </li>
-                          <li>
-                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje</div>
-                            <div class="collapsible-body">
-                              @foreach ($masajes as $indexM=>$masaje)
-                                @if($reserva->programa->servicios->contains('nombre_servicio', 'Masaje'))
                               <div class="row">
                                 <div class="col s7">
-                                  <p class="collections-title">Masaje: <strong id="horario-masaje" class="horario-masaje"
-                                      data-fecha="{{ $reserva->fecha_visita }}" data-inicio="{{ $masaje->horario_masaje }}"
-                                      data-fin="{{ $masaje->hora_fin_masaje }}">{{ $masaje->horario_masaje }}</strong></p>
-                                  <p class="collections-content">Hora Fin: <strong name="masaje" id="masaje" data-masaje="duracion-masaje">{{$masaje->hora_fin_masaje }}</strong></p>
+                                  <p class="collections-title">Tinaja: <strong id="horario-tinaja" class="horario-tinaja"
+                                      data-fecha="{{ $reserva->fecha_visita }}" data-inicio="{{ $visita->horario_tinaja }}"
+                                      data-fin="{{ $visita->hora_fin_tinaja }}">{{ $visita->horario_tinaja }}</strong></p>
+                                  <p class="collections-content">Hora Fin: <strong name="tinaja" id="tinaja" data-tinaja="duracion-tinaja">{{
+                                      $visita->hora_fin_tinaja }}</strong></p>
                                 </div>
                                 <div class="col s3">
-                                  <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                  <span class="task-cat cyan" id="task-cat-tinaja-{{$indexT}}">Pendiente</span>
                                 </div>
                                 <div class="col s3">
                                   <div class="progress">
-                                    <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
+                                    <div class="determinate" id="progress-tinaja-{{$indexT}}" style="width: 0%;"></div>
                                   </div>
                                 </div>
                               </div>
-                                @endif
-                                @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje)
-                                <div class="row">
-                                  <div class="col s7">
-                                    <p class="collections-title">Masaje Extra: <strong id="horario-masaje" class="horario-masaje"
-                                        data-fecha="{{ $reserva->fecha_visita }}" data-inicio="{{ $masaje->horario_masaje }}"
-                                        data-fin="{{ $masaje->hora_fin_masaje_extra }}">{{ $masaje->horario_masaje }}</strong></p>
-                                    <p class="collections-content">Hora Fin: <strong name="masaje" id="masaje" data-masaje="duracion-masaje">{{$masaje->hora_fin_masaje_extra }}</strong></p>
-                                  </div>
-                                  <div class="col s3">
-                                    <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
-                                  </div>
-                                  <div class="col s3">
-                                    <div class="progress">
-                                      <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
-                                    </div>
-                                  </div>
-                                </div>
-                                @endif
-                              @endforeach
+                            @endforeach
                             </div>
                           </li>
+                        
+                          @if (isset($masajes))
+                          
+                            <li>
+                              <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje</div>
+                              <div class="collapsible-body">
+                                @foreach ($masajes->groupBy('horario_masaje') as $indexM => $grupoMasajes)
+                                  @php
+                                      // Obtener el primer masaje del grupo, ya que todos tienen el mismo horario
+                                      $masaje = $grupoMasajes->first();
+                                  @endphp
+                            
+                                  @if($reserva->programa->servicios->contains('nombre_servicio', 'Masaje'))
+                                      <div class="row">
+                                          <div class="col s7">
+                                            <p class="collections-content">
+                                                Lugar: 
+                                                <strong name="lugar" id="lugar">
+                                                    {{ $masaje->lugarMasaje->nombre }}
+                                                </strong>
+                                            </p>
+                                              <p class="collections-title">
+                                                  Masaje: 
+                                                  <strong id="horario-masaje" class="horario-masaje"
+                                                      data-fecha="{{ $reserva->fecha_visita }}" 
+                                                      data-inicio="{{ $masaje->horario_masaje }}"
+                                                      data-fin="{{ $masaje->hora_fin_masaje }}">
+                                                      {{ $masaje->horario_masaje }}
+                                                  </strong>
+                                              </p>
+                                              <p class="collections-content">
+                                                  Hora Fin: 
+                                                  <strong name="masaje" id="masaje" data-masaje="duracion-masaje">
+                                                      {{ $masaje->hora_fin_masaje }}
+                                                  </strong>
+                                              </p>
+                                          </div>
+                                          <div class="col s3">
+                                              <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                          </div>
+                                          <div class="col s3">
+                                              <div class="progress">
+                                                  <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
+                                              </div>
+                                          </div>
+                                      </div>
+                                  @endif
+                            
+                                  @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje)
+                                      <div class="row">
+                                          <div class="col s7">
+                                            <p class="collections-tittle">
+                                                Lugar: 
+                                                <strong name="lugar" id="lugar">
+                                                    {{ $masaje->lugarMasaje->nombre }}
+                                                </strong>
+                                            </p>
+                                              <p class="collections-title">
+                                                  Masaje Extra: 
+                                                  <strong id="horario-masaje" class="horario-masaje"
+                                                      data-fecha="{{ $reserva->fecha_visita }}" 
+                                                      data-inicio="{{ $masaje->horario_masaje }}"
+                                                      data-fin="{{ $masaje->hora_fin_masaje_extra }}">
+                                                      {{ $masaje->horario_masaje }}
+                                                  </strong>
+                                              </p>
+                                              <p class="collections-content">
+                                                  Hora Fin: 
+                                                  <strong name="masaje" id="masaje" data-masaje="duracion-masaje">
+                                                      {{ $masaje->hora_fin_masaje_extra }}
+                                                  </strong>
+                                              </p>
+                                              <p>
+                                                <br><br>
+                                              </p>
+                                          </div>
+                                          <div class="col s3">
+                                              <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                          </div>
+                                          <div class="col s3">
+                                              <div class="progress">
+                                                  <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
+                                              </div>
+                                          </div>
+                                          
+                                      </div>
+                                  @endif
+                                @endforeach
+                            
+                              </div>
+                            </li>
+
+                          @else
+
+                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje - <strong class="pink-text accent-2"> No registra</strong></div>
+                            
+                          @endif
                         </ul>
       
 

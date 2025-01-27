@@ -2,9 +2,10 @@
 <script src="{{ asset('assents/plugins/perfect-scrollbar/perfect-scrollbar.min.js') }}"></script>
 <script src="{{ asset('assents/backoffice/js/plugins.js') }}"></script>
 <script src="{{ asset('assents/backoffice/js/custom-script.js') }}"></script>
-{{-- <script src="{{ asset('assents/backoffice/js/materialize.min.js') }}"></script> --}}
-<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
+<script src="{{ asset('assents/backoffice/js/materialize.min.js') }}"></script>
+{{-- <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script> --}}
 <script src="{{ asset('assents/plugins/swal/sweetalert2.all.min.js') }}"></script>
+
 <!-- <script src="//cdn.jsdelivr.net/npm/sweetalert2@11"></script> -->
 
 
@@ -17,7 +18,6 @@
                         t.addEventListener('click', e => e.stopPropagation())
                     });
                 }, 500)
-
     });
 
 
@@ -27,10 +27,9 @@
     $(document).ready(function(){
         $('.tooltipped').tooltip();
 
-        $('.side-nav').sidenav({
-            draggable:false,
-            preventScrolling:true,
-        });
+
+        $('.side-nav').sidenav();
+        
 
         $('.dropdown-settings').dropdown({
             hover: false, // Deshabilita el hover para que funcione en dispositivos móviles
@@ -50,9 +49,6 @@
 
     });
     
-
-
-
 
 </script>
 

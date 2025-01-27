@@ -2,9 +2,14 @@
 
 namespace App\Http\Controllers;
 
+use App\DetalleConsumo;
+use App\Events\Consumos\EstadoConsumoActualizado;
+use App\Producto;
+use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class BarmanController extends Controller
 {
@@ -52,17 +57,34 @@ class BarmanController extends Controller
 
     public function actualizarEstado(Request $request, $id)
     {
-        // Buscar el detalle de consumo por ID
-        $detalleConsumo = DB::table('detalles_consumos')->where('id', $id)->first();
+        // // Buscar el detalle de consumo por ID
+        // $detalleConsumo = DB::table('detalles_consumos')->where('id', $id)->first();
 
-        if (!$detalleConsumo) {
-            return response()->json(['error' => 'Detalle de consumo no encontrado.'], 404);
-        }
+        // if (!$detalleConsumo) {
+        //     return response()->json(['error' => 'Detalle de consumo no encontrado.'], 404);
+        // }
 
-        // Actualizar el estado del detalle
-        DB::table('detalles_consumos')
-            ->where('id', $id)
-            ->update(['estado' => $request->input('estado')]);
+        // // Actualizar el estado del detalle
+        // DB::table('detalles_consumos')
+        //     ->where('id', $id)
+        //     ->update(['estado' => $request->input('estado')]);
+
+        // return response()->json(['success' => true, 'estado' => $request->input('estado')]);
+
+        $detalle = DetalleConsumo::findOrFail($id);
+        $detalle->estado = $request->estado;
+        $detalle->save();
+
+        $visita = Visita::where('id_reserva', $detalle->consumo->venta->reserva->id)->first();
+
+        $producto = [
+            'nombre' => $detalle->producto->nombre,
+            'cantidad' => $detalle->cantidad_producto,
+            'cliente' => $detalle->consumo->venta->reserva->cliente->nombre_cliente,
+            'ubicacion' => $visita->ubicacion->nombre,
+        ];
+
+        broadcast(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
 
         return response()->json(['success' => true, 'estado' => $request->input('estado')]);
     }
@@ -107,5 +129,6 @@ class BarmanController extends Controller
             'productos' => $productos,
         ]);
     }
+
 
 }

@@ -17,6 +17,8 @@
             border: 3px solid #fff;
             border-radius: 10px;
         }
+
+
     </style>
     <body>
         @include('themes.backoffice.layouts.includes.loader')
@@ -40,6 +42,7 @@
         @include('themes.backoffice.layouts.includes.foot')
         @yield('foot')
         <script src="{{ asset('js/app.js') }}"></script>
+
 
     </body>
 </html>

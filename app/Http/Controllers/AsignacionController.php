@@ -82,46 +82,39 @@ class AsignacionController extends Controller
         return redirect()->route('backoffice.asignacion.index');
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\asignacion  $asignacion
-     * @return \Illuminate\Http\Response
-     */
     public function show(asignacion $asignacion)
     {
         //
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\asignacion  $asignacion
-     * @return \Illuminate\Http\Response
-     */
     public function edit(asignacion $asignacion)
     {
-        //
+        $users = User::whereHas('roles', function ($query) {
+            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+        })->get();
+
+        $fecha = $asignacion->fecha;
+        $fecha = Carbon::parse($fecha)->format('d-m-Y');
+        
+        return view('themes.backoffice.pages.asignacion.edit', compact('asignacion','users', 'fecha' ));
     }
 
-    /**
-     * Update the specified resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @param  \App\asignacion  $asignacion
-     * @return \Illuminate\Http\Response
-     */
     public function update(Request $request, asignacion $asignacion)
     {
-        //
+        $request->validate([
+            'fecha' => 'required',
+            'users' => 'required|array'
+        ],[
+            'fecha.required' => 'La fecha es requerida',
+            'users.required' => 'Debe seleccionar al menos un usuario',
+        ]);
+
+        $asignacion->users()->sync($request->users);
+        Alert::success('Éxito', 'Equipo editado correctamente para el '.$request->fecha, 'Confirmar')->showConfirmButton();
+        return redirect()->route('backoffice.asignacion.index');
+
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\asignacion  $asignacion
-     * @return \Illuminate\Http\Response
-     */
     public function destroy(asignacion $asignacion)
     {
         //

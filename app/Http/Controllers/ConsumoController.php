@@ -5,11 +5,13 @@ namespace App\Http\Controllers;
 use App\Consumo;
 use App\DetalleConsumo;
 use App\DetalleServiciosExtra;
-use App\Events\NuevoConsumoAgregado;
+use App\Events\Consumos\NuevoConsumoAgregado;
 use App\Producto;
 use App\Servicio;
 use App\TipoProducto;
+use App\Ubicacion;
 use App\Venta;
+use App\Visita;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -108,6 +110,10 @@ class ConsumoController extends Controller
         });
 
         $productos=[];
+        $cliente=null;
+        $ubicacion=null;
+        $detallesConsumo = [];
+
 
         foreach ($productosAñadidos as $id => $producto) {
             $productos[]= $id;
@@ -118,7 +124,7 @@ class ConsumoController extends Controller
 
 
         // Iniciar una transacción en la base de datos
-        DB::transaction(function () use ($request, &$venta) {
+        DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesConsumo) {
 
             // Verificar si ya existe un consumo para esta venta
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
@@ -132,6 +138,11 @@ class ConsumoController extends Controller
                 ]);
             }
 
+            $cliente = $consumo->venta->reserva->cliente->nombre_cliente;
+            $reservaID = $consumo->venta->reserva->id;
+            $visita = Visita::where('id_reserva', $reservaID)->first();
+            $ubicacion = Ubicacion::where('id', $visita->id_ubicacion)->first()->nombre;
+
             // Inicializar variables
             $totalSubtotal = 0;
             $nuevoSubtotal = 0;
@@ -144,7 +155,7 @@ class ConsumoController extends Controller
 
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($productosValidos as $producto_id => $producto) {
-                DetalleConsumo::create([
+                $detalle = DetalleConsumo::create([
                     'id_consumo' => $consumo->id,
                     'id_producto' => $producto_id,
                     'cantidad_producto' => $producto['cantidad'],
@@ -152,6 +163,7 @@ class ConsumoController extends Controller
                     'genera_propina' => 1,
                 ]);
 
+                $detallesConsumo[] = $detalle;
                 // Sumar al subtotal del nuevo consumo
                 $nuevoSubtotal += $producto['cantidad'] * $producto['valor'];
 
@@ -177,7 +189,24 @@ class ConsumoController extends Controller
 
         $venta = Venta::where('id', $request->id_venta)->first();
 
-        broadcast(new NuevoConsumoAgregado('Nuevo consumo agregado'.$nombres));
+        $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
+            $producto = Producto::find($detalle->id_producto);
+            return [
+                'id' => $detalle->id,
+                'nombre' => $producto->nombre,
+                'cantidad' => $detalle->cantidad_producto,
+                'cliente' => $cliente ?? 'Cliente Desconocido', // Ajusta según los datos disponibles
+                'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
+            ];
+        }, $detallesConsumo);
+
+
+        broadcast(new NuevoConsumoAgregado([
+            'mensaje'=>'Nuevo consumo agregado '.$nombres,
+            'productos' => $productosEvento,
+            'estado' => 'por-procesar'
+        ]));
+        
         // Redirigir con éxito
         Alert::success('Éxito', 'Consumo ingresado correctamente', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.reserva.show', $venta->reserva->id);

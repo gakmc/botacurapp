@@ -170,6 +170,10 @@
 
 
 $(document).ready(function() {
+    if (!$('select').hasClass('initialized')) {
+        $('select').material_select();
+    }
+
     let insumoIndex = $('#insumos-wrapper .insumo-item').length; // Contar los insumos que ya están presentes por old()
     
     // Al hacer clic en "Agregar Insumo", añadir un nuevo insumo vacío
@@ -184,6 +188,7 @@ $(document).ready(function() {
     // Función para agregar un nuevo insumo vacío
     function agregarInsumo() {
         let $wrapper = $('#insumos-wrapper');
+
         let nuevoIndex = insumoIndex++; // Incrementamos el índice
 
         let nuevoInsumo = `
@@ -218,10 +223,14 @@ $(document).ready(function() {
         // Añadir el nuevo insumo al contenedor
         $wrapper.append(nuevoInsumo);
 
-        // Re-inicializar los selects con Materialize
+        // // Re-inicializar los selects con Materialize
         $wrapper.find('.insumo-item:last select').each(function() {
-            M.FormSelect.init(this);
+            // M.FormSelect.init(this);
+            $('select').material_select('destroy');
+            $('select').material_select();
+  
         });
+
     }
 
         // Función para eliminar el último insumo

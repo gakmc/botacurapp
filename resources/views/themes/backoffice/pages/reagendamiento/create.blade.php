@@ -3,6 +3,9 @@
 @section('title','Reagendar reserva')
 
 @section('head')
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.time.css') }}">
 @endsection
 
 @section('breadcrumbs')
@@ -36,7 +39,7 @@
 
                                 <p>Fecha Nueva Visita: </p>
                                 
-                                  <input id="nueva_fecha" type="text" name="nueva_fecha" class="datepicker" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
+                                  <input id="nueva_fecha" type="date" name="nueva_fecha" class="" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
                                     @error('nueva_fecha')
                                           <span class="invalid-feedback" role="alert">
                                               <strong style="color:red">{{ $message }}</strong>
@@ -75,11 +78,17 @@
 
 
 @section('foot')
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
+
 <script>
   $(document).ready(function () {
-    $('.datepicker').datepicker({
-      format:'dd-mm-yyyy'
-    });
+
+    $('#nueva_fecha').pickadate({
+      format: 'dd-mm-yyyy',
+    })
+
   });
 </script>
 @endsection

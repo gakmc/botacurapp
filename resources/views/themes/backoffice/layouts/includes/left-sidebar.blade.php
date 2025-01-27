@@ -180,8 +180,8 @@
                         <i class="material-icons">
                             local_bar
                         </i>
-                        <span class="nav-text">
-                            Bebidas
+                        <span id="bebidasGarzon" class="nav-text">
+                            Bebidas 
                         </span>
                     </a>
                 </li>

@@ -70,12 +70,12 @@
 
                 <div class="col s12 m6 l4">
                   @foreach($servicios as $servicio)
-                  <p>
-                    <input type="checkbox" id="{{$servicio->id}}" name="servicios[]" value="{{$servicio->id}}" data-valor="{{ $servicio->valor_servicio }}"/>
-                    <label for="{{$servicio->id}}">
-                      <span>{{$servicio->nombre_servicio}}</span>
-                    </label>
-                  </p>
+                    <p>
+                      <input type="checkbox" id="{{$servicio->id}}" name="servicios[]" value="{{$servicio->id}}" data-valor="{{ $servicio->valor_servicio }}"/>
+                      <label for="{{$servicio->id}}">
+                        <span class="black-text">{{$servicio->nombre_servicio}}</span>
+                      </label>
+                    </p>
                   @endforeach
                   
 
@@ -110,11 +110,18 @@
   $(document).ready(function(){
       function calcularTotal() {
           let total = 0;
+          let dcto = parseInt($('#descuento').val()) || 0;
+          
           $('input[name="servicios[]"]:checked').each(function() {
-              total += $(this).data('valor');
+            total += $(this).data('valor');
           });
+          
+          if (dcto !== undefined) {
+            total = Math.max(total - dcto, 0);  
+          }
+
           $('#valor_programa').val(total);
-      }
+        }
 
       // Inicializar el total al cargar la página
       calcularTotal();
@@ -122,6 +129,10 @@
       // Recalcular el total cada vez que se selecciona o deselecciona un servicio
       $('input[name="servicios[]"]').change(function() {
           calcularTotal();
+      });
+
+      $('#descuento').change(function () { 
+        calcularTotal();
       });
   });
 </script>

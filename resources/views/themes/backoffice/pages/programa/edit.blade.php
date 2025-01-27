@@ -78,7 +78,7 @@
                       @if($programa->servicios->contains($servicio->id)) checked @endif
                       />
                       <label for="{{$servicio->id}}">
-                        <span>{{$servicio->nombre_servicio}}</span>
+                        <span class="black-text">{{$servicio->nombre_servicio}}</span>
                       </label>
                     </p>
 
@@ -106,13 +106,20 @@
 @section('foot')
 <script>
   $(document).ready(function(){
-      function calcularTotal() {
+    function calcularTotal() {
           let total = 0;
+          let dcto = parseInt($('#descuento').val()) || 0;
+          
           $('input[name="servicios[]"]:checked').each(function() {
-              total += $(this).data('valor');
+            total += $(this).data('valor');
           });
+          
+          if (dcto !== undefined) {
+            total = Math.max(total - dcto, 0);  
+          }
+
           $('#valor_programa').val(total);
-      }
+        }
 
       // Inicializar el total al cargar la página
       calcularTotal();
@@ -120,6 +127,10 @@
       // Recalcular el total cada vez que se selecciona o deselecciona un servicio
       $('input[name="servicios[]"]').change(function() {
           calcularTotal();
+      });
+
+      $('#descuento').change(function () { 
+        calcularTotal();
       });
   });
 </script>

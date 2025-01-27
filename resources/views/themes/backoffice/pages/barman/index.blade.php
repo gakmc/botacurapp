@@ -119,19 +119,16 @@
     });
 </script>
 
+
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.Echo !== 'undefined') {
             window.Echo.channel('consumo-canal')
-                .listen('NuevoConsumoAgregado', (e) => {
-                    console.log(e.mensaje);
-                    
-                    // Refrescar la página o hacer una llamada AJAX para actualizar los productos
-                    location.reload();
-
+                .listen('Consumos.NuevoConsumoAgregado', (e) => {
+                    // Mostrar el Sweet Alert
                     const Toast = Swal.mixin({
                         toast: true,
-                        position: "top",
+                        position: "",
                         showConfirmButton: false,
                         timer: 3000,
                         timerProgressBar: true,
@@ -140,15 +137,114 @@
                             toast.onmouseleave = Swal.resumeTimer;
                         }
                     });
-                
+            
                     Toast.fire({
                         icon: "success",
                         title: e.mensaje
                     });
+
+                    
+                    // // Recargar la página después de mostrar el Toast
+                    // setTimeout(() => {
+                    //     location.reload();
+                    // }, 3000); // Espera 3 segundos (3000ms) para recargar la página
+
+
+                // Agregar nuevo consumo a la lista "Por Procesar"
+                const listaPorProcesar = document.querySelector('#por-procesar .collection');
+                e.productos.forEach((producto) => {
+                    // Verificar si ya existe el producto en la lista
+                    const existente = listaPorProcesar.querySelector(`[data-id="${producto.id}"]`);
+
+                    if (existente) {
+                        // Actualizar cantidad del producto existente
+                        const cantidadSpan = existente.querySelector('.cantidad');
+                        cantidadSpan.textContent = `X${producto.cantidad}`;
+                    } else {
+                        // Crear un nuevo elemento para el producto
+                        const nuevoElemento = document.createElement('li');
+                        nuevoElemento.classList.add('collection-item', 'avatar');
+                        nuevoElemento.setAttribute('data-id', producto.id);
+                        nuevoElemento.innerHTML = `
+                            <i class="material-icons circle red">local_drink</i>
+                            <span class="title">${producto.nombre} <span class="cantidad">X${producto.cantidad}</span></span>
+                            <p>
+                                Cliente: ${producto.cliente} <br>
+                                Ubicación: ${producto.ubicacion}
+                            </p>
+                        `;
+                        listaPorProcesar.appendChild(nuevoElemento);
+                    }
                 });
+            });
+
+
+            // Escuchar cambios de estado            
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.EstadoConsumoActualizado', (e) => {
+
+                const detalleId = e.detalleId;
+                const nuevoEstado = e.estado;
+                
+
+
+                // Encontrar el elemento actual
+                const elemento = document.querySelector(`[data-id="${detalleId}"]`);
+                
+                if (elemento) {
+                    // Mover el elemento a la nueva lista
+                    const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
+                    nuevaLista.appendChild(elemento);
+                }
+
+                estado = "";
+
+                switch (nuevoEstado) {
+                    case 'por-procesar':
+                        estado = 'Pedido por procesar';
+                        break;
+
+                    case 'en-preparacion':
+                        estado = 'Preparando pedido';
+                        break;
+
+                    case 'completado':
+                        estado = 'Pedido completado';
+                        break;
+                
+                    default:
+                        estado = 'Estado desconocido';
+                        break;
+                }
+                
+
+                const Toast = Swal.mixin({
+                        toast: true,
+                        position: "top-right",
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+            
+                    Toast.fire({
+                        icon: "success",
+                        title: estado
+                    });
+
+
+            });
+
+
+
         } else {
             console.error("Echo no está definido, verifica la configuración.");
         }
+
     });
 </script>
+
 @endsection

@@ -1,6 +1,6 @@
 <?php
 
-namespace App\Events;
+namespace App\Events\Consumos;
 
 use Illuminate\Broadcasting\Channel;
 use Illuminate\Broadcasting\InteractsWithSockets;
@@ -14,11 +14,7 @@ class NuevoConsumoAgregado implements ShouldBroadcast
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
-    /**
-     * Create a new event instance.
-     *
-     * @return void
-     */
+
     public $mensaje;
     public function __construct($mensaje)
     {
@@ -32,6 +28,10 @@ class NuevoConsumoAgregado implements ShouldBroadcast
 
     public function broadcastWith()
     {
-        return ['mensaje' => $this->mensaje];
+        return [
+            'mensaje' => $this->mensaje['mensaje'],
+            'productos' => $this->mensaje['productos'], // IDs de productos
+            'estado' => $this->mensaje['estado'], // Estado actual
+        ];
     }
 }

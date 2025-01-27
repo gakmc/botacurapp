@@ -3,6 +3,9 @@
 @section('title','Crear reserva')
 
 @section('head')
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.time.css') }}">
 @endsection
 
 @section('breadcrumbs')
@@ -47,7 +50,7 @@
                       >{{$programa->nombre_programa}}</option>
                     @endforeach
                   </select>
-                  <label for="id_programa">Programa</label>
+                  <label for="id_programa" class="black-text">Programa</label>
                   @error('id_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -62,7 +65,7 @@
                     required>
 
 
-                  <label for="cantidad_personas">Cantidad Personas</label>
+                  <label for="cantidad_personas" class="black-text">Cantidad Personas</label>
 
                   <input id="cantidad_personas" type="number"
                     class="form-control @error('cantidad_personas') is-invalid @enderror" name="cantidad_personas"
@@ -86,7 +89,7 @@
 
                 <div class="input-field col s12 m3">
 
-                  <label for="abono_programa">Cantidad de Abono</label>
+                  <label for="abono_programa" class="black-text">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class=""
                     value="{{ old('abono_programa') }}">
                   @error('abono_programa')
@@ -136,9 +139,8 @@
 
               <div class="row">
                 <div class="input-field col s12 m3">
-                  <input id="fecha_visita" type="date" name="fecha_visita" class="" value="{{ old('fecha_visita') }}"
-                  placeholder="fecha Visita">
-                  <label for="fecha_visita">Fecha Visita</label>
+                  <input id="fecha_visita" type="date" name="fecha_visita" class="" value="{{ old('fecha_visita') }}">
+                  <label for="fecha_visita" class="black-text">Fecha Visita</label>
                   @error('fecha_visita')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -147,9 +149,8 @@
                 </div>
 
                 <div class="input-field col s12 m3">
-                  <input id="observacion" name="observacion" type="text" class="" value="{{ old('observacion') }}"
-                    placeholder="" />
-                  <label for="observacion">Observaciones - "Cumpleaños,Aniversario,etc."</label>
+                  <input id="observacion" name="observacion" type="text" class="" value="{{ old('observacion') }}" />
+                  <label for="observacion">Cumpleaños, Aniversario, etc.</label>
                   @error('observacion')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -233,6 +234,22 @@
 
 @section('foot')
 
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
+
+<script>
+  $(document).ready(function () {
+
+    $('#fecha_visita').pickadate({
+      format: 'dd-mm-yyyy',
+      formatSubmit: 'yyyy-mm-dd',
+      hiddenName: true
+    })
+
+  });
+</script>
+
 <script>
   $(document).ready(function () {
     $('select').formSelect();
@@ -240,26 +257,15 @@
 </script>
 
 <script>
-$(document).ready(function (e) {   
-  $('#imagen_abono').change(function(){            
-      let reader = new FileReader();
-      reader.onload = (e) => { 
-          $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
-      }
-      reader.readAsDataURL(this.files[0]);
+  $(document).ready(function (e) {   
+    $('#imagen_abono').change(function(){            
+        let reader = new FileReader();
+        reader.onload = (e) => { 
+            $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
+        }
+        reader.readAsDataURL(this.files[0]);
+    });
   });
-});
-
-
-$(document).ready(function (e) {   
-  $('#imagen_diferencia').change(function(){            
-      let reader = new FileReader();
-      reader.onload = (e) => { 
-          $('#imagenSeleccionadaDiferencia').attr('src', e.target.result); 
-      }
-      reader.readAsDataURL(this.files[0]);
-  });
-});
 </script>
 
 <script>

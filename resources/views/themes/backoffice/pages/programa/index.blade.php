@@ -31,6 +31,7 @@
                                     <th>Nombre Programa	</th>
                                     <th>Valor Programa</th>
                                     <th>Descuento</th>
+                                    <th>Valor Final</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -38,8 +39,9 @@
                                 @foreach($programa as $programa)
                                 <tr>
                                     <td><a href="{{route ('backoffice.programa.show',$programa)}}">{{$programa->nombre_programa}}</a></td>
-                                    <td>{{$programa->valor_programa}}</td>
-                                    <td>{{$programa->descuento}}</td>
+                                    <td>${{number_format($programa->valor_programa + $programa->descuento,0,'','.')}}</td>
+                                    <td>${{number_format($programa->descuento,0,'','.')}}</td>
+                                    <td><strong>${{number_format($programa->valor_programa,0,'','.')}}</strong></td>
                                     <td><a href="{{route ('backoffice.programa.edit',$programa)}}">Editar</a></td>
                                 </tr>
                                 @endforeach

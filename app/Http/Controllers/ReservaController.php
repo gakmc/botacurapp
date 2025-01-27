@@ -54,11 +54,13 @@ class ReservaController extends Controller
                     'venta',
                 ])
                 ->orderBy('fecha_visita', 'asc')
-                ->get()
-                ->sortBy(function ($reserva) {
-                    // Ordenar por el ID de la ubicación de la primera visita
-                    return $reserva->visitas->first()->id_ubicacion ?? 0;
-                });
+                ->orderBy(function ($query) {
+                    $query->select('id_ubicacion')
+                          ->from('visitas')
+                          ->whereColumn('visitas.id_reserva', 'reservas.id')
+                          ->orderBy('id_ubicacion', 'asc');
+                })
+                ->get();
 
         }
 
@@ -72,11 +74,13 @@ class ReservaController extends Controller
             'venta',
         ])
         ->orderBy('fecha_visita', 'asc')
-        ->get()
-        ->sortBy(function ($reserva) {
-            // Ordenar por el ID de la ubicación de la primera visita
-            return $reserva->visitas->first()->id_ubicacion ?? 0;
-        });
+        ->orderBy(function ($query) {
+            $query->select('id_ubicacion')
+                  ->from('visitas')
+                  ->whereColumn('visitas.id_reserva', 'reservas.id')
+                  ->orderBy('id_ubicacion', 'asc');
+        })
+        ->get();
 
         $reservasMoviles->load(['visitas.masajes', 'visitas.ubicacion']);
         $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
@@ -354,7 +358,7 @@ class ReservaController extends Controller
             });
 
             // Mostrar alerta de éxito
-            Alert::success('Éxito', 'Reserva realizada con éxito', 'Confirmar')->showConfirmButton();
+            // Alert::success('Éxito', 'Reserva realizada con éxito', 'Confirmar')->showConfirmButton();
 
             session()->put([
                 'masajesExtra'         => $masajesExtra,
@@ -363,11 +367,11 @@ class ReservaController extends Controller
             ]);
 
             // Redirigir fuera de la transacción
-            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id]);
+            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success','Reserva realizada con éxito');
 
         } catch (\Error $e) {
-            Alert::error('Falló', 'Error: ' . $e, 'Confirmar')->showConfirmButton();
-            return redirect()->back()->withInput();
+            // Alert::error('Falló', 'Error: ' . $e, 'Confirmar')->showConfirmButton();
+            return redirect()->back()->with('error','Error: ' . $e)->withInput();
         }
 
     }

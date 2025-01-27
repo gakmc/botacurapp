@@ -22,6 +22,9 @@
             <div class="col s12 ">
 
 
+                @php
+                    $indexPedido = 0;
+                @endphp
 
                 <div class="row">
 
@@ -38,6 +41,9 @@
                                     Ubicacion: {{ $producto->ubicacion }}
                                 </p>
                             </li>
+                            @php
+                                $indexPedido++
+                            @endphp
                             @endforeach
                         </ul>
                     </div>
@@ -83,8 +89,6 @@
                 const detalleId = evt.item.getAttribute('data-id');
                 const nuevoEstado = evt.to.parentNode.id;
 
-                
-
                 // Actualizar estado en el servidor
                 fetch('bebidas/detalles-consumos/' + detalleId + '/actualizar-estado', {
                     method: 'POST',
@@ -102,4 +106,145 @@
         });
     });
 </script>
+<script>
+document.addEventListener('DOMContentLoaded', function () { 
+    if (typeof window.Echo !== 'undefined') {
+        // Escuchar cambios de estado            
+        window.Echo.channel('consumo-canal-actualizar')
+        .listen('Consumos.EstadoConsumoActualizado', (e) => {
+            const detalleId = e.detalleId;
+            const nuevoEstado = e.estado;
+
+            // Buscar el elemento en la lista actual
+            let elemento = document.querySelector(`[data-id="${detalleId}"]`);
+            
+            if (elemento) {
+                // Mover el elemento a la nueva lista
+                const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
+                nuevaLista.appendChild(elemento);
+            } else {
+                // Si el elemento no existe, crearlo dinámicamente
+                const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
+                const nuevoElemento = document.createElement('li');
+                nuevoElemento.classList.add('collection-item', 'avatar');
+                nuevoElemento.setAttribute('data-id', detalleId);
+                nuevoElemento.innerHTML = `
+                    <i class="material-icons circle green">${nuevoEstado === 'completado' ? 'done_all' : 'local_bar'}</i>
+                    <span class="title">${e.producto.nombre} X${e.producto.cantidad}</span>
+                    <p>
+                        Cliente: ${e.producto.cliente} <br>
+                        Ubicación: ${e.producto.ubicacion}
+                    </p>
+                `;
+                nuevaLista.appendChild(nuevoElemento);
+            }
+
+            // Mostrar un toast
+            const Toast = Swal.mixin({
+                toast: true,
+                position: "top-right",
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                }
+            });
+
+            let estado = "";
+            switch (nuevoEstado) {
+                case 'completado':
+                    estado = 'Pedido completado';
+                    break;
+                case 'entregado':
+                    estado = 'Pedido entregado';
+                    break;
+                default:
+                    estado = 'Estado desconocido';
+                    break;
+            }
+
+            Toast.fire({
+                icon: "success",
+                title: estado
+            });
+        });
+    }
+});
+</script>
+
+<script>
+    $(document).ready(function () {
+        
+        cantidadPedidos = {!! $indexPedido !!};
+    
+        if (cantidadPedidos > 0) {
+            $('#bebidasGarzon').val(`Bebidas <span class="new badge" data-badge-caption="Pedidos">${cantidadPedidos}</span>`)
+        }
+    
+    });
+</script>
+
+{{-- <script>
+    document.addEventListener('DOMContentLoaded', function () { 
+        if (typeof window.Echo !== 'undefined') {
+            // Escuchar cambios de estado            
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.EstadoConsumoActualizado', (e) => {
+
+                const detalleId = e.detalleId;
+                const nuevoEstado = e.estado;
+                
+
+
+                // Encontrar el elemento actual
+                const elemento = document.querySelector(`[data-id="${detalleId}"]`);
+                
+                if (elemento) {
+                    // Mover el elemento a la nueva lista
+                    const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
+                    nuevaLista.appendChild(elemento);
+                }
+
+                estado = "";
+
+                switch (nuevoEstado) {
+                    case 'completado':
+                        estado = 'Pedido completado';
+                        break;
+
+                    case 'entregado':
+                        estado = 'Pedido Entregado';
+                        break;
+                
+                    default:
+                        estado = 'Estado desconocido';
+                        break;
+                }
+                
+
+                const Toast = Swal.mixin({
+                        toast: true,
+                        position: "top-right",
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+            
+                    Toast.fire({
+                        icon: "success",
+                        title: estado
+                    });
+
+
+            });
+
+        }
+     });
+</script> --}}
 @endsection

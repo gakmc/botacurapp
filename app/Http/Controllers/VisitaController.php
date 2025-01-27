@@ -332,10 +332,7 @@ class VisitaController extends Controller
                         'id_reserva'      => $reserva->id,
                         'horario_sauna'   => $horarioSauna,  // Horario del SPA
                         'horario_tinaja'  => $horarioTinaja, // Horario de tinaja
-                        'horario_masaje'  => null,           // No hay masajes
-                        'tipo_masaje'     => null,           // No hay masajes
                         'id_ubicacion'    => $request->input('id_ubicacion'),
-                        'id_lugar_masaje' => null, // No hay masajes
                         'trago_cortesia'  => $request->input('trago_cortesia'),
                         'observacion'     => $request->input('observacion'),
                     ]);
@@ -527,7 +524,9 @@ class VisitaController extends Controller
 
     public function show(Visita $visitum)
     {
-        dd($visitum->reserva->programa->servicios()->whereIn('nombre_servicio', ['Sauna', 'Saunas', 'sauna', 'saunas'])->exists());
+        // $bytes = 1048580000;
+        $bytes = $visitum->id;
+        dd($this->formatBytes($bytes));
     }
 
     public function edit(Reserva $reserva, Visita $visita)

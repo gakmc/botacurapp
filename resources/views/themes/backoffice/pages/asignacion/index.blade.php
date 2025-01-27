@@ -38,7 +38,7 @@
 <script src='{{ asset('assets/fullcalendar/packages/daygrid/main.js')}}'></script>
 <script src='{{ asset('assets/fullcalendar/packages/timegrid/main.js')}}'></script>
 <script src='{{ asset('assets/fullcalendar/packages/list/main.js')}}'></script>
-
+<script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>
 
 <script>
 function convertirFecha(fecha) {
@@ -82,6 +82,7 @@ document.addEventListener('DOMContentLoaded', function() {
             @php
 
                 $asignacion = $asignados->get($fecha);
+                $editUrl = route('backoffice.asignacion.edit', $asignacion);
                 $usuariosRoles = $asignacion->users->map(function ($user) {
                 $roles = $user->roles->pluck('name')->implode(', '); // Concatenar los roles con coma
                 return $user->name . ' (' . $roles . ')'; // Devolver el nombre del usuario con sus roles
@@ -101,7 +102,8 @@ document.addEventListener('DOMContentLoaded', function() {
                 description: '{{ addslashes($nombresUsuarios) }}',
                 modalData: {
                     title: 'Equipo asignado - {{ $fechaFormateada }}',
-                    description: usuarios
+                    description: usuarios,
+                    editUrl: '{{$editUrl}}'
                 }
             });
         @else
@@ -153,6 +155,17 @@ document.addEventListener('DOMContentLoaded', function() {
 
             document.getElementById('modalDescription').innerHTML = modalDescription;
 
+
+            let editButton = document.querySelector('#asignacionModal .modal-footer .modal-edit');
+            console.log(editButton);
+            
+            if (modalData.editUrl) {
+                
+                editButton.href = modalData.editUrl;
+                editButton.style.display = 'inline-block';
+            } else {
+                editButton.style.display = 'none';
+            }
 
             // Mostrar el modal
             let modal = M.Modal.getInstance(document.getElementById('asignacionModal'));

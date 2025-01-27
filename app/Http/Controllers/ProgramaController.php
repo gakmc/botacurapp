@@ -10,11 +10,7 @@ use Illuminate\Http\Request;
 
 class ProgramaController extends Controller
 {
-    /**
-     * Display a listing of the resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
+
     public function index()
     {
         return view('themes.backoffice.pages.programa.index', [
@@ -22,35 +18,18 @@ class ProgramaController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for creating a new resource.
-     *
-     * @return \Illuminate\Http\Response
-     */
     public function create()
     {
         $servicios = Servicio::all();
         return view('themes.backoffice.pages.programa.create', compact('servicios'));
     }
 
-    /**
-     * Store a newly created resource in storage.
-     *
-     * @param  \Illuminate\Http\Request  $request
-     * @return \Illuminate\Http\Response
-     */
     public function store(StoreRequest $request, Programa $programa)
     {
         $programa = $programa->store($request);
         return redirect()->route('backoffice.programa.show', $programa);
     }
 
-    /**
-     * Display the specified resource.
-     *
-     * @param  \App\Programa  $programas
-     * @return \Illuminate\Http\Response
-     */
     public function show(Programa $programa)
     {
         return view('themes.backoffice.pages.programa.show', [
@@ -58,12 +37,6 @@ class ProgramaController extends Controller
         ]);
     }
 
-    /**
-     * Show the form for editing the specified resource.
-     *
-     * @param  \App\Programa  $programa
-     * @return \Illuminate\Http\Response
-     */
     public function edit(Programa $programa)
     {
         $this->authorize('update', $programa);
