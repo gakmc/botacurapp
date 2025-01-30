@@ -45,8 +45,8 @@
                 <div class="input-field col s12 m3">
 
                   <label for="abono_programa">Cantidad de Abono</label>
-                  <input id="abono_programa" type="text" name="abono_programa" class=""
-                    value="{{ old('abono_programa') ?? $reserva->venta->abono_programa}}" readonly>
+                  <input id="abono_programa" type="text" name="abono_programa" class="money-format"
+                    value="{{old('abono_programa') ?? $reserva->venta->abono_programa}}" readonly>
                   @error('abono_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -102,8 +102,7 @@
                 <div class="input-field col s12 m3">
 
                   <label for="diferencia_programa">Cantidad de diferencia</label>
-                  <input id="diferencia_programa" type="text" name="diferencia_programa" class=""
-                    value="{{ old('diferencia_programa') }}">
+                  <input id="diferencia_programa" type="text" name="diferencia_programa" class="money-format" value="{{old('diferencia_programa')}}">
                   @error('diferencia_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -171,7 +170,7 @@
                 <div class="input-field col s12 m3" id="noPropina">
 
                   <label for="sinPropina">Consumo Sin Propina</label>
-                  <input id="sinPropina" type="text" name="sinPropina" class="" value="0" readonly>
+                  <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="0" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -198,7 +197,7 @@
                 <div class="input-field col s12 m3" id="div_valor_consumo">
 
                   <label for="valor_consumo">Valor Consumo</label>
-                  <input id="valor_consumo" type="text" name="valor_consumo" class="" value="{{ old('valor_consumo') }}"
+                  <input id="valor_consumo" type="text" name="valor_consumo" class="money-format" value="{{ old('valor_consumo') }}"
                     readonly>
                   @error('valor_consumo')
                   <span class="invalid-feedback" role="alert">
@@ -258,7 +257,7 @@
                 <div class="input-field col s12 m3" id="propinaBruta" hidden>
 
                   <label for="propinaValue">ingrese Propina</label>
-                  <input id="propinaValue" type="text" name="propinaValue" class="" value="{{$totalSubtotal*0.1}}">
+                  <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
                   @error('propinaValue')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -271,7 +270,7 @@
                 <div class="input-field col s12 m3" id="noPropina">
 
                   <label for="sinPropina">Consumo Sin Propina</label>
-                  <input id="sinPropina" type="text" name="sinPropina" class="" value="{{$consumo->subtotal}}" readonly>
+                  <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$consumo->subtotal}}" value="{{$consumo->subtotal}}" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -288,7 +287,7 @@
                 <div class="input-field col s12 m3" id="siPropina" hidden>
 
                   <label for="conPropina">Consumo Con Propina</label>
-                  <input id="conPropina" type="text" name="conPropina" class="" value="{{$consumo->total_consumo}}"
+                  <input id="conPropina" type="text" name="conPropina" class="money-format" value="{{$consumo->total_consumo}}" data-conpropina="{{$consumo->total_consumo}}"
                     readonly>
                   @error('conPropina')
                   <span class="invalid-feedback" role="alert">
@@ -305,8 +304,7 @@
                 <div class="input-field col s12 m3">
 
                   <label for="diferencia">Diferencia por Pagar</label>
-                  <input id="diferencia" type="text" name="diferencia" value="{{$venta->total_pagar}}" class="" readonly
-                    data-total-pagar="{{$venta->total_pagar}}">
+                  <input id="diferencia" type="text" name="diferencia" value="{{$venta->total_pagar}}" class="money-format" data-total-pagar="{{$venta->total_pagar}}" readonly>
                   @error('diferencia')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -319,8 +317,7 @@
                 <div class="input-field col s12 m3">
 
                   <label for="total_pagar">Total a Pagar</label>
-                  <input id="total_pagar" type="text" name="total_pagar" class="" readonly
-                    data-total-pagar="{{$reserva->venta->total_pagar}}">
+                  <input id="total_pagar" type="text" name="total_pagar" class="money-format" data-total-pagar="{{$reserva->venta->total_pagar}}" readonly>
                   @error('total_pagar')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -367,11 +364,10 @@
 
 
 @section('foot')
+
+
 <script>
 
-$(document).ready(function () {
-  M.AutoInit();
-});
 
   $(document).ready(function (e) {   
   $('#imagen_abono').change(function(){            
@@ -394,114 +390,244 @@ $(document).ready(function () {
 });
 </script>
 
+
+
+
+
+{{-- <script>
+  var total = parseInt($('#total_pagar').data('total-pagar'));  
+  var propinaOriginal = parseInt($('#propinaValue').data('propinavalue'));
+  var diferenciaInput = 0;
+  var ConPropina = parseInt($('#conPropina').data('conpropina'));
+  var SinPropina = parseInt($('#sinPropina').data('sinpropina'));
+  var propinaValue = parseInt($('#propinaValue').data('propinavalue'));
+  var propina = false;
+  var consumo = false;
+  var nuevoTotal = 0;
+  var checkboxPropina = $('#check');
+  var checkboxConsumo = $('#separar');
+  var divValorConsumo = $('#div_valor_consumo');
+  var divImagenConsumo = $('#div_imagen_consumo');
+  var divTransaccionConsumo = $('#div_id_tipo_transaccion');
+
+  var valorConsumo = $('#valor_consumo');
+  var imagenConsumo = $('#imagen_consumo');
+  var transaccionConsumo = $('#id_tipo_transaccion');
+
+
+  $(document).ready(function () {
+      $('#total_pagar').val(total + SinPropina);
+
+      console.log($('#total_pagar').val(total + SinPropina));
+      
+      if (ConPropina <= 0) {
+          checkboxPropina.attr('hidden', true);
+      }
+
+      // Inicializa el estado de los campos relacionados con consumo
+      cambioConsumo(false);
+  });
+
+  $(document).change(function () {
+      nuevoTotal = total;
+      
+      propina = $('#propina').is(':checked');
+      consumo = checkboxConsumo.is(':checked');
+      
+      if (consumo) {
+        cambioConsumo(true);
+
+          if (propina) {
+              valorConsumo.val($('#conPropina').val());
+          } else {
+              valorConsumo.val($('#sinPropina').val());
+          }
+
+          // Resta el valor del consumo del total
+          nuevoTotal -= parseInt(valorConsumo.val() || 0);
+      } else {
+          cambioConsumo(false);
+          valorConsumo.val('');
+      }
+
+
+      if (propina) {
+          $('#noPropina').attr('hidden', true);
+          $('#sinPropina').attr('disabled', true);
+          $('#siPropina').removeAttr('hidden');
+          $('#conPropina').removeAttr('disabled');
+          $('#propinaBruta').removeAttr('hidden');
+          $('#propinaValue').removeAttr('disabled');
+
+          var nuevaPropinaValue = parseInt($('#propinaValue').val());
+          if (!isNaN(nuevaPropinaValue)) {
+              ConPropina = ConPropina - propinaValue + nuevaPropinaValue;
+              propinaValue = nuevaPropinaValue;
+              $('#conPropina').val(ConPropina);
+          }
+
+          nuevoTotal += ConPropina;
+      } else {
+          $('#siPropina').attr('hidden', true);
+          $('#conPropina').attr('disabled', true);
+          $('#noPropina').removeAttr('hidden');
+          $('#sinPropina').removeAttr('disabled');
+          $('#propinaValue').val(propinaOriginal);
+          $('#propinaBruta').attr('hidden', true);
+          $('#propinaValue').attr('disabled', true);
+          nuevoTotal += SinPropina;
+      }
+
+      calcularTotal();
+  });
+
+  $('#diferencia_programa').change(function () {
+      diferenciaInput = $('#diferencia_programa').val();
+      calcularTotal();
+  });
+
+  function calcularTotal() {
+      $('#total_pagar').val(nuevoTotal - diferenciaInput);
+  }
+
+  function cambioConsumo(enable) {
+      if (enable) {
+          divValorConsumo.removeAttr('hidden');
+          divImagenConsumo.removeAttr('hidden');
+          divTransaccionConsumo.removeAttr('hidden');
+          valorConsumo.removeAttr('disabled');
+          imagenConsumo.removeAttr('disabled');
+          transaccionConsumo.removeAttr('disabled');
+      } else {
+          divValorConsumo.attr('hidden', true);
+          divImagenConsumo.attr('hidden', true);
+          divTransaccionConsumo.attr('hidden', true);
+          valorConsumo.attr('disabled', true);
+          imagenConsumo.attr('disabled', true);
+          transaccionConsumo.attr('disabled', true);
+      }
+  }
+
+    // Función para formatear números en CLP
+    function formatCLP(number) {
+      if (!number || isNaN(number)) return '$0';
+      return '$' + parseInt(number, 10).toLocaleString('es-CL');
+    }
+</script> --}}
+
+
+
 <script>
-  var total = parseInt($('#total_pagar').data('total-pagar'));
-    var propinaOriginal = parseInt($('#propinaValue').val());
-    var diferenciaInput = 0;
-    var ConPropina = parseInt($('#conPropina').val());
-    var SinPropina = parseInt($('#sinPropina').val());
-    var propinaValue = parseInt($('#propinaValue').val());
-    var propina = false;
-    var consumo = false;
-    var nuevoTotal = 0;
-    var checkboxPropina = $('#check');
-    var checkboxConsumo = $('#separar');
-    var divValorConsumo = $('#div_valor_consumo');
-    var divImagenConsumo = $('#div_imagen_consumo');
-    var divTransaccionConsumo = $('#div_id_tipo_transaccion');
+// Inicialización de elementos ocultos o visibles al cargar la página
+$(document).ready(function () {
+    inicializarEstado();
 
-    var valorConsumo = $('#valor_consumo');
-    var imagenConsumo = $('#imagen_consumo');
-    var transaccionConsumo = $('#id_tipo_transaccion');
+    // Eventos para actualización de valores y cambios
+    $('#separar, #propina').on('change', actualizarValores);
+    $('#propinaValue, #diferencia_programa').on('input', actualizarValores);
+});
 
-    $(document).ready(function () {
-        $('#total_pagar').val(total + SinPropina);
+function inicializarEstado() {
+    // Asignar valores iniciales y establecer estado del formulario
+    var total = obtenerValorData('#total_pagar', 'total-pagar');
+    var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
+    var ConPropina = obtenerValorData('#conPropina', 'conpropina');
 
-        if (ConPropina <= 0) {
-            checkboxPropina.attr('hidden', true);
-        }
+    $('#total_pagar').val(formatCLP(total + SinPropina));
 
-        // Inicializa el estado de los campos relacionados con consumo
-        cambioConsumo(false);
-    });
+    if (ConPropina <= 0) {
+        $('#check').attr('hidden', true);
+    }
 
-    $(document).change(function () {
-        nuevoTotal = total;
-        propina = $('#propina').is(':checked');
-        consumo = checkboxConsumo.is(':checked');
+    cambioConsumo(false);
+}
 
-        if (consumo) {
-            cambioConsumo(true);
+function actualizarValores() {
+    var total = obtenerValorData('#total_pagar', 'total-pagar');
+    var propina = $('#propina').is(':checked');
+    var consumo = $('#separar').is(':checked');
+    var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
+    var ConPropina = obtenerValorData('#conPropina', 'conpropina');
+    var diferenciaInput = parseCurrency($('#diferencia_programa').val());
+    var nuevoTotal = total;
 
-            if (propina) {
-                valorConsumo.val($('#conPropina').val());
-            } else {
-                valorConsumo.val($('#sinPropina').val());
-            }
+    console.log('Valores iniciales:', { total, SinPropina, ConPropina });
 
-            // Resta el valor del consumo del total
-            nuevoTotal -= parseInt(valorConsumo.val() || 0);
-        } else {
-            cambioConsumo(false);
-            valorConsumo.val('');
-        }
+    if (consumo) {
+        cambioConsumo(true);
 
         if (propina) {
-            $('#noPropina').attr('hidden', true);
-            $('#sinPropina').attr('disabled', true);
-            $('#siPropina').removeAttr('hidden');
-            $('#conPropina').removeAttr('disabled');
-            $('#propinaBruta').removeAttr('hidden');
-            $('#propinaValue').removeAttr('disabled');
-
-            var nuevaPropinaValue = parseInt($('#propinaValue').val());
-            if (!isNaN(nuevaPropinaValue)) {
-                ConPropina = ConPropina - propinaValue + nuevaPropinaValue;
-                propinaValue = nuevaPropinaValue;
-                $('#conPropina').val(ConPropina);
-            }
-
-            nuevoTotal += ConPropina;
+            $('#valor_consumo').val(formatCLP(ConPropina));
+            console.log('Consumo con propina aplicado');
         } else {
-            $('#siPropina').attr('hidden', true);
-            $('#conPropina').attr('disabled', true);
-            $('#noPropina').removeAttr('hidden');
-            $('#sinPropina').removeAttr('disabled');
-            $('#propinaValue').val(propinaOriginal);
-            $('#propinaBruta').attr('hidden', true);
-            $('#propinaValue').attr('disabled', true);
-            nuevoTotal += SinPropina;
+            $('#valor_consumo').val(formatCLP(SinPropina));
+            console.log('Consumo sin propina aplicado');
         }
 
-        calcularTotal();
-    });
-
-    $('#diferencia_programa').change(function () {
-        diferenciaInput = $('#diferencia_programa').val();
-        calcularTotal();
-    });
-
-    function calcularTotal() {
-        $('#total_pagar').val(nuevoTotal - diferenciaInput);
+        nuevoTotal -= parseCurrency($('#valor_consumo').val() || 0);
+    } else {
+        cambioConsumo(false);
+        $('#valor_consumo').val('');
     }
 
-    function cambioConsumo(enable) {
-        if (enable) {
-            divValorConsumo.removeAttr('hidden');
-            divImagenConsumo.removeAttr('hidden');
-            divTransaccionConsumo.removeAttr('hidden');
-            valorConsumo.removeAttr('disabled');
-            imagenConsumo.removeAttr('disabled');
-            transaccionConsumo.removeAttr('disabled');
-        } else {
-            divValorConsumo.attr('hidden', true);
-            divImagenConsumo.attr('hidden', true);
-            divTransaccionConsumo.attr('hidden', true);
-            valorConsumo.attr('disabled', true);
-            imagenConsumo.attr('disabled', true);
-            transaccionConsumo.attr('disabled', true);
+    if (propina) {
+        manejarPropina(true, ConPropina);
+        nuevoTotal += ConPropina;
+    } else {
+        manejarPropina(false, SinPropina);
+        nuevoTotal += SinPropina;
+    }
+
+    console.log('Nuevo total calculado:', nuevoTotal);
+    $('#total_pagar').val(formatCLP(nuevoTotal - diferenciaInput));
+}
+
+function manejarPropina(activar, ConPropina) {
+    if (activar) {
+        $('#noPropina').attr('hidden', true);
+        $('#sinPropina').attr('disabled', true);
+        $('#siPropina, #propinaBruta, #propinaValue').removeAttr('hidden disabled');
+
+        var nuevaPropinaValue = parseCurrency($('#propinaValue').val());
+        if (!isNaN(nuevaPropinaValue)) {
+            ConPropina = ConPropina - parseCurrency($('#propinaValue').data('propinavalue')) + nuevaPropinaValue;
+            $('#propinaValue').data('propinavalue', nuevaPropinaValue);
+            $('#conPropina').val(formatCLP(ConPropina));
+            console.log('Propina actualizada:', nuevaPropinaValue);
         }
+    } else {
+        $('#siPropina').attr('hidden', true).attr('disabled', true);
+        $('#noPropina').removeAttr('hidden');
+        $('#sinPropina').removeAttr('disabled');
+        $('#propinaValue').val(parseCurrency($('#propinaValue').data('propinavalue')));
+        $('#propinaBruta').attr('hidden', true).attr('disabled', true);
     }
+}
+
+function cambioConsumo(enable) {
+    if (enable) {
+        $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').removeAttr('hidden');
+        $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').removeAttr('disabled');
+    } else {
+        $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').attr('hidden', true);
+        $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').attr('disabled', true);
+    }
+}
+
+// Funciones auxiliares
+function obtenerValorData(selector, dataAttr) {
+    return parseInt($(selector).data(dataAttr)) || 0;
+}
+
+function parseCurrency(value) {
+    return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
+}
+
+function formatCLP(number) {
+    return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+}
 </script>
+
+
 
 @endsection

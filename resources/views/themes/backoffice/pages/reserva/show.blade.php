@@ -494,9 +494,6 @@
 
 
 
-
-
-
       </div>
 
       @if(Auth::user()->has_role(config('app.admin_role')))
@@ -532,18 +529,14 @@
       $('.collapsible').collapsible({
         accordion:false
       });
+
+      $('.modal').modal()
   
   });
 
 </script>
 
-<script>
-  document.addEventListener('DOMContentLoaded', function() {
-      var elems = document.querySelectorAll('.modal');
-      M.Modal.init(elems);
-  });
-</script>
-
+{{-- Propiedades Materialize --}}
 <script>
   document.addEventListener('DOMContentLoaded', function () {
     var elems = document.querySelectorAll('.dropdown-trigger');
@@ -559,6 +552,7 @@
   });
 </script>
 
+{{-- Pasar Data a Modal --}}
 <script>
   $(document).ready(function(){
     $('.modal-trigger').on('click', function(){
@@ -736,7 +730,6 @@
     });
   });
 </script>
-
 
 {{-- Boton para eliminar --}}
 <script>

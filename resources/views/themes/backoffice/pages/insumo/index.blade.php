@@ -48,7 +48,7 @@
                                     style="background-color: red; color:white;"
                                 @endif>
                                     <td>{{ $insumo->nombre }}</td>
-                                    <td>{{ $insumo->valor }}</td>
+                                    <td>{{ '$'.number_format($insumo->valor, 0, '', '.') }}</td>
                                     <td>{{ $insumo->cantidad }}
                                         @if ($insumo->cantidad <= 1) {{$insumo->unidadMedida->abreviatura}}.
                                             @else
@@ -104,7 +104,7 @@
                                     style="background-color: red; color:white;"
                                 @endif>
                                     <td>{{ $insumo->nombre }}</td>
-                                    <td>{{ $insumo->valor }}</td>
+                                    <td>{{ '$'.number_format($insumo->valor, 0, '', '.') }}</td>
                                     <td>{{ $insumo->cantidad }}
                                         @if ($insumo->cantidad <= 1) 
                                             {{$insumo->unidadMedida->abreviatura}}.
@@ -160,7 +160,7 @@
                                     style="background-color: red; color:white;"
                                 @endif>
                                     <td>{{ $insumo->nombre }}</td>
-                                    <td>{{ $insumo->valor }}</td>
+                                    <td>{{ '$'.number_format($insumo->valor, 0, '', '.') }}</td>
                                     <td>{{ $insumo->cantidad }}
                                         @if ($insumo->cantidad <= 1) {{$insumo->unidadMedida->abreviatura}}.
                                             @else
@@ -217,7 +217,7 @@
                                     style="background-color: red; color:white;"
                                 @endif>
                                     <td>{{ $insumo->nombre }}</td>
-                                    <td>{{ $insumo->valor }}</td>
+                                    <td>{{ '$'.number_format($insumo->valor, 0, '', '.') }}</td>
                                     <td>{{ $insumo->cantidad }}
                                         @if ($insumo->cantidad <= 1) {{$insumo->unidadMedida->abreviatura}}.
                                             @else

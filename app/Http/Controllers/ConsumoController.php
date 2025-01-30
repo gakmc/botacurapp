@@ -165,7 +165,7 @@ class ConsumoController extends Controller
 
                 $detallesConsumo[] = $detalle;
                 // Sumar al subtotal del nuevo consumo
-                $nuevoSubtotal += $producto['cantidad'] * $producto['valor'];
+                $nuevoSubtotal += $detalle->subtotal;
 
                 // Verificar si alguno de los productos genera propina
                 if (isset($producto['genera_propina']) && $producto['genera_propina']) {
@@ -177,14 +177,17 @@ class ConsumoController extends Controller
             $consumo->subtotal += $nuevoSubtotal;
 
             // Calcular la propina solo del nuevo subtotal
-            $propina = $nuevoSubtotal * 0.1;
+            $propina = $consumo->subtotal * 0.1;
 
             // Recalcular el total del consumo (se añade un 10% en propina)
             $totalConPropina = $consumo->subtotal + $propina;
 
             // Actualizar el consumo con los nuevos totales
-            $consumo->total_consumo = $totalConPropina;
-            $consumo->save();
+            $consumo->update([
+                'subtotal' => $consumo->subtotal,
+                'total_consumo' => $totalConPropina,
+            ]);
+
         });
 
         $venta = Venta::where('id', $request->id_venta)->first();

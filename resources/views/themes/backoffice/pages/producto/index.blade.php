@@ -48,7 +48,7 @@
                                     <td><a
                                             href="{{route('backoffice.producto.show' ,$producto )}}">{{$producto->nombre}}</a>
                                     </td>
-                                    <td>{{$producto->valor}}</td>
+                                    <td>{{'$'.number_format($producto->valor, 0, '', '.')}}</td>
                                     <td>{{$producto->tipoProducto->nombre}}</td>
 
                                     <td><a href="{{ route('backoffice.producto.edit', $producto )}}"><i

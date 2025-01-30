@@ -166,14 +166,10 @@
 @section('foot')
 <script>
 
-
-
-
 $(document).ready(function() {
     if (!$('select').hasClass('initialized')) {
         $('select').material_select();
     }
-
     let insumoIndex = $('#insumos-wrapper .insumo-item').length; // Contar los insumos que ya están presentes por old()
     
     // Al hacer clic en "Agregar Insumo", añadir un nuevo insumo vacío
@@ -223,7 +219,7 @@ $(document).ready(function() {
         // Añadir el nuevo insumo al contenedor
         $wrapper.append(nuevoInsumo);
 
-        // // Re-inicializar los selects con Materialize
+        // Re-inicializar los selects con Materialize
         $wrapper.find('.insumo-item:last select').each(function() {
             // M.FormSelect.init(this);
             $('select').material_select('destroy');
@@ -231,10 +227,17 @@ $(document).ready(function() {
   
         });
 
+
+
+
+
+        
+
+
     }
 
         // Función para eliminar el último insumo
-        function eliminarUltimoInsumo() {
+    function eliminarUltimoInsumo() {
         let $wrapper = $('#insumos-wrapper');
         if ($wrapper.find('.insumo-item').length > 0) {
             $wrapper.find('.insumo-item:last').remove(); // Elimina el último insumo añadido

@@ -514,7 +514,7 @@
                                                         <strong>{{ $horario['cliente'] }} -</strong>
                                                         {{ $horario['ubicacion'] }} -
                                                         {{ $horario['programa'] }} -
-                                                        persona {{ implode(' / ', $horario['personas']) }} -
+                                                        persona {{ implode(' y ', $horario['personas']) }} -
                                                         @if (is_null($horario['observacion']))
                                                             Sin Observaciones
                                                         @else

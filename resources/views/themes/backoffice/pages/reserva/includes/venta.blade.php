@@ -40,7 +40,8 @@
         {{$reserva->venta->diferencia_programa}}
         @endif
     </a>
-    <a href="#modal-venta{{$reserva->venta->id}}" class="modal-trigger collection-item center-align valign-wrapper left"
+
+    <a href="#modalVenta{{--$reserva->venta->id--}}" class="collection-item center-align valign-wrapper left modal-trigger"
         data-id="{{ $reserva->venta->id }}" data-abono="{{ $reserva->venta->abono_programa }}"
         data-abonoimg="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
         data-diferencia="{{ $reserva->venta->diferencia_programa }}"
