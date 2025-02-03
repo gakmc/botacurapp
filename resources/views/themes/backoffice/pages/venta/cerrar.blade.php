@@ -46,7 +46,7 @@
 
                   <label for="abono_programa">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class="money-format"
-                    value="{{old('abono_programa') ?? $reserva->venta->abono_programa}}" readonly>
+                    value="{{'$'.number_format(old('abono_programa') ?? $reserva->venta->abono_programa, 0,'', '.')}}" readonly>
                   @error('abono_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -518,114 +518,137 @@
 
 
 <script>
-// Inicialización de elementos ocultos o visibles al cargar la página
-$(document).ready(function () {
-    inicializarEstado();
+  // Inicialización de elementos ocultos o visibles al cargar la página
+  $(document).ready(function () {
+      inicializarEstado();
 
-    // Eventos para actualización de valores y cambios
-    $('#separar, #propina').on('change', actualizarValores);
-    $('#propinaValue, #diferencia_programa').on('input', actualizarValores);
-});
+      // Eventos para actualización de valores y cambios
+      $('#separar, #propina').on('change', actualizarValores);
+      $('#propinaValue, #diferencia_programa').on('input', actualizarValores);
+  });
 
-function inicializarEstado() {
-    // Asignar valores iniciales y establecer estado del formulario
-    var total = obtenerValorData('#total_pagar', 'total-pagar');
-    var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
-    var ConPropina = obtenerValorData('#conPropina', 'conpropina');
+  function inicializarEstado() {
+      // Asignar valores iniciales y establecer estado del formulario
+      var total = obtenerValorData('#total_pagar', 'total-pagar');
+      var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
+      var ConPropina = obtenerValorData('#conPropina', 'conpropina');
+      var diferencia = obtenerValorData('#diferencia', 'total-pagar');
 
-    $('#total_pagar').val(formatCLP(total + SinPropina));
+      $('#total_pagar').val(formatCLP(total + SinPropina));
+      
+      
+      $('#sinPropina').val(formatCLP(SinPropina));
+      $('#diferencia').val(formatCLP(diferencia));
 
-    if (ConPropina <= 0) {
-        $('#check').attr('hidden', true);
-    }
+      if (ConPropina <= 0) {
+          $('#check').attr('hidden', true);
+      }
 
-    cambioConsumo(false);
-}
+      cambioConsumo(false);
+  }
 
-function actualizarValores() {
+  function actualizarValores() {
     var total = obtenerValorData('#total_pagar', 'total-pagar');
     var propina = $('#propina').is(':checked');
     var consumo = $('#separar').is(':checked');
     var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
     var ConPropina = obtenerValorData('#conPropina', 'conpropina');
     var diferenciaInput = parseCurrency($('#diferencia_programa').val());
-    var nuevoTotal = total;
 
-    console.log('Valores iniciales:', { total, SinPropina, ConPropina });
+    var nuevoTotal = total;
 
     if (consumo) {
         cambioConsumo(true);
 
-        if (propina) {
-            $('#valor_consumo').val(formatCLP(ConPropina));
-            console.log('Consumo con propina aplicado');
-        } else {
-            $('#valor_consumo').val(formatCLP(SinPropina));
-            console.log('Consumo sin propina aplicado');
-        }
+        // Mostrar el valor del consumo según el estado de la propina
+        var valorConsumo = propina ? ConPropina : SinPropina;
+        $('#valor_consumo').val(formatCLP(valorConsumo));
 
-        nuevoTotal -= parseCurrency($('#valor_consumo').val() || 0);
+        // Restar el consumo del total
+        // nuevoTotal -= valorConsumo;
     } else {
         cambioConsumo(false);
         $('#valor_consumo').val('');
+        $('#total_pagar').val(formatCLP(nuevoTotal+valorConsumo))
     }
 
+    // Manejo de la propina
     if (propina) {
         manejarPropina(true, ConPropina);
-        nuevoTotal += ConPropina;
+        
     } else {
         manejarPropina(false, SinPropina);
-        nuevoTotal += SinPropina;
     }
 
-    console.log('Nuevo total calculado:', nuevoTotal);
-    $('#total_pagar').val(formatCLP(nuevoTotal - diferenciaInput));
+    // Aplicar diferencia
+    nuevoTotal -= diferenciaInput;
+
+    // Actualizar el valor total a pagar
+    $('#total_pagar').val(formatCLP(nuevoTotal));
 }
 
-function manejarPropina(activar, ConPropina) {
-    if (activar) {
-        $('#noPropina').attr('hidden', true);
-        $('#sinPropina').attr('disabled', true);
-        $('#siPropina, #propinaBruta, #propinaValue').removeAttr('hidden disabled');
 
-        var nuevaPropinaValue = parseCurrency($('#propinaValue').val());
+  function manejarPropina(activar, ConPropina) {
+      if (activar) {
+          // Ocultar opciones sin propina y habilitar opciones con propina
+          $('#noPropina').attr('hidden', true);
+          $('#sinPropina').attr('disabled', true);
+          $('#siPropina, #propinaBruta, #propinaValue').removeAttr('hidden disabled');
+          $('#conPropina').removeAttr('disabled');
+
+        // Obtener el nuevo valor de propina desde el input
+        let rawPropinaValue = $('#propinaValue').val();
+
+        let nuevaPropinaValue = rawPropinaValue;
+
         if (!isNaN(nuevaPropinaValue)) {
-            ConPropina = ConPropina - parseCurrency($('#propinaValue').data('propinavalue')) + nuevaPropinaValue;
-            $('#propinaValue').data('propinavalue', nuevaPropinaValue);
+            // Actualizar el total con la nueva propina
+            ConPropina = ConPropina - obtenerValorData('#propinaValue', 'propinavalue');
+            console.log( typeof(ConPropina),typeof(nuevaPropinaValue));
+            nuevaPropinaValue = parseCurrency(nuevaPropinaValue);
+            ConPropina += nuevaPropinaValue;
+
+
+            // Actualizar el valor almacenado en data y el campo total
+            $('#propinaValue').val(formatCLP(nuevaPropinaValue));
             $('#conPropina').val(formatCLP(ConPropina));
-            console.log('Propina actualizada:', nuevaPropinaValue);
         }
-    } else {
-        $('#siPropina').attr('hidden', true).attr('disabled', true);
-        $('#noPropina').removeAttr('hidden');
-        $('#sinPropina').removeAttr('disabled');
-        $('#propinaValue').val(parseCurrency($('#propinaValue').data('propinavalue')));
-        $('#propinaBruta').attr('hidden', true).attr('disabled', true);
-    }
-}
+      } else {
+          // Ocultar y deshabilitar los controles relacionados con la propina
+          $('#siPropina').attr('hidden', true);
+          $('#conPropina').attr('disabled', true);
+          $('#noPropina').removeAttr('hidden');
+          $('#sinPropina').removeAttr('disabled');
+          $('#propinaValue').attr('disabled', true);
+          $('#propinaBruta').attr('hidden', true);
+      }
+  }
 
-function cambioConsumo(enable) {
-    if (enable) {
-        $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').removeAttr('hidden');
-        $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').removeAttr('disabled');
-    } else {
-        $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').attr('hidden', true);
-        $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').attr('disabled', true);
-    }
-}
 
-// Funciones auxiliares
-function obtenerValorData(selector, dataAttr) {
-    return parseInt($(selector).data(dataAttr)) || 0;
-}
+  function cambioConsumo(enable) {
+      if (enable) {
+          $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').removeAttr('hidden');
+          $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').removeAttr('disabled');
+          
+      } else {
+          $('#div_valor_consumo, #div_imagen_consumo, #div_id_tipo_transaccion').attr('hidden', true);
+          $('#valor_consumo, #imagen_consumo, #id_tipo_transaccion').attr('disabled', true);
+      }
+  }
 
-function parseCurrency(value) {
-    return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
-}
+  // Funciones auxiliares
+  function obtenerValorData(selector, dataAttr) {
+      return parseInt($(selector).data(dataAttr)) || 0;
+  }
 
-function formatCLP(number) {
-    return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
-}
+  function parseCurrency(value) {
+      // return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
+      return Number(value.replace(/[^0-9.-]/g, "")) || 0;
+  }
+
+  function formatCLP(number) {
+      return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+  }
 </script>
 
 
