@@ -200,6 +200,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     Route::get('visita/{visitum}/ubicacion_edit', 'VisitaController@edit_ubicacion')->name('visita.edit_ubicacion');
     Route::match(['put', 'patch'],'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');
+    
+    
+    
+    Route::get('reserva/{reserva}/visita/{visita}/register', 'VisitaController@register')->name('reserva.visita.register');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/register_update', 'VisitaController@register_update')->name('reserva.visita.register_update');
 
 
     // Show - Mostrar una reserva específica

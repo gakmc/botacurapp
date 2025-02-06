@@ -12,7 +12,13 @@
 
 @section('dropdown_settings')
 <li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
-<li><a href="{{ route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Visita</a></li>
+  @if ($reserva->visitas->first()->horario_sauna === null && $reserva->visitas->first()->horario_tinaja === null)
+    
+    <li><a href="{{ route('backoffice.reserva.visita.register', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Registrar Visita</a></li>
+  @else
+    
+    <li><a href="{{ route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Visita</a></li>
+  @endif
 @endsection
 
 @section('content')
@@ -237,7 +243,7 @@
                 <li class="collection-item avatar">
                   <i class="material-icons green accent-2 circle">spa</i>
                   <h6 class="collection-header m-0">Visita <a class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
-                  <p>{{$reserva->visitas->first()->ubicacion->nombre}}</p>
+                  <p>{{$reserva->visitas->first()->ubicacion->nombre ?? 'Ubicacion no registrada'}}</p>
                   @if ($reserva->visitas->isEmpty())
 
                       <h6>Aún no se registra la visita para esta reserva</h6>
@@ -316,7 +322,7 @@
                                             <p class="collections-content">
                                                 Lugar: 
                                                 <strong name="lugar" id="lugar">
-                                                    {{ $masaje->lugarMasaje->nombre }}
+                                                    {{ $masaje->lugarMasaje->nombre ?? 'No Registra' }}
                                                 </strong>
                                             </p>
                                               <p class="collections-title">
@@ -444,11 +450,11 @@
                         <strong>Menú {{$index + 1}}:</strong>
                       </td>
                       <td>
-                        {{ $menu->productoEntrada->nombre }}
+                        {{ $menu->productoEntrada->nombre ?? 'Sin Entrada' }}
                       </td>
                       <td>
 
-                        {{ $menu->productoFondo->nombre }}
+                        {{ $menu->productoFondo->nombre ?? 'No registra' }}
                       </td>
                       <td>
                         @if ($menu->productoAcompanamiento == null)

@@ -27,7 +27,7 @@ class StoreRequest extends FormRequest
             'horario_sauna' => 'nullable|string', // Para 1 horario SPA
             'horario_masaje' => 'nullable|string', // Caso de datos simples
             'tipo_masaje' => 'nullable|string',
-            'id_ubicacion' => 'required|string',
+            'id_ubicacion' => 'nullable|string',
             'trago_cortesia' => 'required|string',
             'spas.*.horario_sauna' => 'nullable|string', // Para arreglos de SPA
             'masajes.*.horario_masaje' => 'nullable|string', // Para arreglos de masajes

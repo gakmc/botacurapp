@@ -50,7 +50,7 @@
                                     
                                     foreach ($reserva->visitas->sortBy('ubicacion.id') as $index=>$visita) {
 
-                                        $ubicacion[] = $visita->ubicacion->nombre;
+                                        $ubicacion[] = $visita->ubicacion->nombre ?? 'No registra';
                                         if ($visita->masajes->isEmpty()) {
                                             $horariosMasaje = null;
                                         }else {
@@ -154,7 +154,7 @@
                                     $ubicacion = [];
                             
                                     foreach ($reserva->visitas->sortBy('id_ubicacion') as $horario=>$visita) {
-                                        $ubicacion[] = $visita->ubicacion->nombre;
+                                        $ubicacion[] = $visita->ubicacion->nombre ?? 'No registra';
                             
                                         if ($visita->masajes->isEmpty()) {
                                             $horariosMasaje = null;
@@ -184,18 +184,21 @@
                                                     <thead>
                                                         <tr>
                                                             <th>
-                                                                <h5><i
-                                                                        class='material-icons right {{$color}}-text'>fiber_manual_record</i>{{
-                                                                    isset($ubicacion[$horario]) ? $ubicacion[$horario] : 'No Disponible' }}
+                                                                <h5><i class='material-icons right {{$color}}-text'>fiber_manual_record</i>
+                                                                {{isset($ubicacion[$horario ?? 0]) ? $ubicacion[$horario ?? 0] : 'No Disponible' }}
                                                                 </h5>
                                                             </th>
-                                                            @if ($visita->trago_cortesia === "Si")
+                                                            @isset($visita)
+                                                                
+                                                            
+                                                                @if ($visita->trago_cortesia === "Si")
                                                                 <th>
                                                                     <h5>
                                                                         <i class='material-icons' style="color: #FF4081;">local_bar</i>
                                                                     </h5>
                                                                 </th>
-                                                            @endif
+                                                                @endif
+                                                            @endisset
                                                         </tr>
                                                     </thead>
                                                     <tbody>
@@ -214,13 +217,15 @@
                                                                 <p><strong>Evento: </strong><strong style="color:#FF4081;">{{
                                                                         $reserva->observacion }}</strong></p>
                                                                 @endif
-                                                                @if (is_null($visita->observacion))
-                                                                <p><strong>Requisitos: </strong>Sin Observaciones</p>
-                                                                @else
-                                                                <p><strong>Requisitos: </strong><strong style="color:#FF4081;">{{
-                                                                        $visita->observacion }}</strong></p>
-                                                                @endif
-                    
+
+                                                                @isset($visita)
+                                                                    @if (is_null($visita->observacion))
+                                                                        <p><strong>Requisitos: </strong>Sin Observaciones</p>
+                                                                    @else
+                                                                        <p><strong>Requisitos: </strong><strong style="color:#FF4081;">{{
+                                                                            $visita->observacion }}</strong></p>
+                                                                    @endif
+                                                                @endisset
                                                                 <p><strong>Sauna: </strong>{{ $horariosSauna ?? 'No Registra' }} </p>
                                                                 <p><strong>Tinaja: </strong>{{ $horariosTinaja ?? 'No Registra' }} </p>
                                                                 <p><strong>Masaje: </strong>{{ $horariosMasaje ?? 'No Registra' }} </p>
@@ -295,7 +300,7 @@
                                             <td>
                                                 <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                     <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
-                                                    {{$visita->ubicacion->nombre}} -
+                                                    {{$visita->ubicacion->nombre ?? 'No registra'}} -
                                                     {{ $reserva->programa->nombre_programa }} -
                                                     {{ $reserva->cantidad_personas }} personas -
                                                     @if (is_null($reserva->observacion))
@@ -366,7 +371,7 @@
                                             <td>
                                                 <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                     <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
-                                                    {{$visita->ubicacion->nombre}} -
+                                                    {{$visita->ubicacion->nombre ?? 'No registra'}} -
                                                     {{ $reserva->programa->nombre_programa }} -
                                                     {{ $reserva->cantidad_personas }} personas -
                                                     @if (is_null($reserva->observacion))
@@ -410,7 +415,6 @@
                                 
                                         @foreach($reservas as $reserva)
                                             @foreach ($reserva->visitas as $visita)
-                                            
                                                 @if ($visita->masajes->isEmpty())
 
                                                     <tr>
@@ -462,7 +466,7 @@
                                                                         'horario_inicio' => $masaje->horario_masaje,
                                                                         'horario_fin' => (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje) ? $masaje->hora_fin_masaje_extra : $masaje->hora_fin_masaje,
                                                                         'cliente' => $reserva->cliente->nombre_cliente,
-                                                                        'ubicacion' => $visita->ubicacion->nombre,
+                                                                        'ubicacion' => $visita->ubicacion->nombre ?? 'No registra',
                                                                         'trago' => $visita->trago_cortesia,
                                                                         'programa' => $reserva->programa->nombre_programa,
                                                                         'personas' => [],

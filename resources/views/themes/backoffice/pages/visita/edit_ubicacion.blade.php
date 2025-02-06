@@ -25,7 +25,7 @@
         <div class="row">
             <div class="col s8 offset-m2 ">
                 <div class="card-panel">
-                    <h4 class="header2">Cambiar de Ubicacion <strong>{{$visita->ubicacion->nombre}}</strong></h4>
+                    <h4 class="header2">Cambiar de Ubicacion <strong>{{$visita->ubicacion->nombre ?? 'No registra ubicacion'}}</strong></h4>
                     <div class="row">
 
 

@@ -4,8 +4,8 @@
       <div class="collapsible-header pink accent-2 white-text"><i class="material-icons">folder</i>Documentos</div>
       <div class="collapsible-body">
         @if($cliente->reservas->isEmpty())
-            <a class="collection-item center">Este cliente no tiene reservas. </a>
-            <a href="{{ route('backoffice.reserva.create', $cliente->id) }}" class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right"> <i class="material-icons">add</i> </a>
+            <a class="collection-item center">Este cliente aun no posee reservas. </a>
+            {{-- <a href="{{ route('backoffice.reserva.create', $cliente->id) }}" class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right"> <i class="material-icons">add</i> </a> --}}
 
         @else
             @foreach($cliente->reservas as $reserva)
@@ -44,14 +44,19 @@
     <li>
       <div class="collapsible-header pink accent-2 white-text"><i class="material-icons">av_timer</i>Historial de Reservas</div>
       <div class="collapsible-body">
+        @if($cliente->reservas->isEmpty())
+
+        <a class="collection-item center">Este cliente aun no posee reservas. </a>
+        {{-- <a href="{{ route('backoffice.reserva.create', $cliente->id) }}" class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right"> <i class="material-icons">add</i> </a> --}}
+
+        @else
+
         @foreach ($cliente->reservas as $reserva)
         <a class="valign-wrapper" href="{{ route('backoffice.reserva.show', $reserva) }}">{{$reserva->fecha_visita}}</a>
         @endforeach
+
+        @endif
     </div>
-    </li>
-    <li>
-      <div class="collapsible-header pink accent-2 white-text"><i class="material-icons">whatshot</i>Third</div>
-      <div class="collapsible-body"><span>Lorem ipsum dolor sit amet.</span></div>
     </li>
   </ul>
   <a href="{{ route('backoffice.reserva.create', $cliente->id) }}" class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right"> <i class="material-icons">add</i> </a>
