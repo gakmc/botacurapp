@@ -398,7 +398,7 @@
 
                           @else
 
-                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje - <strong class="pink-text accent-2"> No registra</strong></div>
+                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje - <strong class="pink-text accent-2"> No registra</strong> </div>
                             
                           @endif
                         </ul>

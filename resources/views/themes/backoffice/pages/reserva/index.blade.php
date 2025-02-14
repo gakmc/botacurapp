@@ -137,10 +137,8 @@
                 {{-- Fin Vista Alternativa --}}    
             @else
                 {{-- Vista Comun --}}    
-
                 {{-- Vista en Pantallas de dispositivos Moviles --}}
                 @foreach($reservasMovilesPaginadas as $fecha => $reservas)
-
                     <div class="col s12 hide-on-large-only">
                         <h5>Reservas: {{ $fecha }}</h5>
                         <div class="row">

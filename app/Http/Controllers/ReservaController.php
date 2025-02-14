@@ -82,6 +82,21 @@ class ReservaController extends Controller
         })
         ->get();
 
+    //     dd(
+    //     Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+    //     ->with([
+    //         'cliente',
+    //         'visitas.ubicacion',
+    //         'visitas.masajes',
+    //         'programa',
+    //         'venta',
+    //     ])    ->join('visitas', 'visitas.id_reserva', '=', 'reservas.id')
+    //     ->orderBy('reservas.fecha_visita', 'asc')
+    //     ->orderBy('visitas.id_ubicacion', 'asc')
+    //     ->select('reservas.*') // Para evitar columnas repetidas al hacer join
+    //     ->get()
+    // );
+        
         $reservasMoviles->load(['visitas.masajes', 'visitas.ubicacion']);
         $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
             return Carbon::parse($reservamovil->fecha_visita)->format('d-m-Y');

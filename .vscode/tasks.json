@@ -1,0 +1,27 @@
+{
+    "version": "2.0.0",
+    "tasks": [
+        {
+            // "label": "My Task",
+            // "command": "echo hello",
+            // "type": "shell",
+            // "args": [],
+            // "problemMatcher": [
+            //     "$tsc"
+            // ],
+            // "presentation": {
+            //     "reveal": "always"
+            // },
+            // "group": "build"
+            "label": "Inicio del server",
+            "type": "shell",
+            "command": "php artisan serve",
+            "runOptions": {
+                "runOn": "folderOpen"
+            },
+            "presentation": {
+                "reveal": "always",
+            }
+        }
+    ]
+}
