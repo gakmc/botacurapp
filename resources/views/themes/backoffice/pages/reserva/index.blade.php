@@ -106,10 +106,9 @@
 
 
 
-                                                            <p><strong>Sauna: </strong>{{ $horariosSauna ?? 'No Registra' }} </p>
-                                                            <p><strong>Tinaja: </strong>{{ $horariosTinaja ?? 'No Registra' }} </p>
-                                                            <p><strong>Masaje: </strong>{{ $horariosMasaje ?? 'No Registra' }} </p>
-                                                            
+                                                            <p><strong>Sauna: </strong>{{ $horariosSauna ?? 'No Registra Sauna' }} </p>
+                                                            <p><strong>Tinaja: </strong>{{ $horariosTinaja ?? 'No Registra Tinaja' }} </p>
+                                                            <p><strong>Masaje: </strong>{{ $horariosMasaje ?? 'No Registra Masajes' }} </p>
                                                         </td>
                                                     </tr>
                                                     
@@ -226,7 +225,7 @@
                                                                 @endisset
                                                                 <p><strong>Sauna: </strong>{{ $horariosSauna ?? 'No Registra' }} </p>
                                                                 <p><strong>Tinaja: </strong>{{ $horariosTinaja ?? 'No Registra' }} </p>
-                                                                <p><strong>Masaje: </strong>{{ $horariosMasaje ?? 'No Registra' }} </p>
+                                                                <p><strong>Masaje: </strong>{{ $horariosMasaje ?? 'No Registra Masajes' }} </p>
                     
                                                             </td>
                                                         </tr>
@@ -409,50 +408,56 @@
                                         @php
                                             // Crear un array temporal para agrupar masajes por horario y cliente
                                             $horariosAgrupados = [];
+
+                                            // Arreglo para almacenar la ultima visita por id_reserva
+                                            $ultimaVisitaPorReserva = [];
                                         @endphp
-                                
+
                                         @foreach($reservas as $reserva)
                                             @foreach ($reserva->visitas as $visita)
-                                                @if ($visita->masajes->isEmpty())
+                                                @php
+                                                    // Almacenar la última visita de cada reserva
+                                                    $ultimaVisitaPorReserva[$visita->id_reserva] = $visita;
+                                                @endphp
+                                            @endforeach
+                                        @endforeach
+                                
+                                        @foreach($reservas as $reserva)
+                                            @if (isset($ultimaVisitaPorReserva[$reserva->id]))
+                                                @php
+                                                    $ultimaVisita = $ultimaVisitaPorReserva[$reserva->id];
+                                                @endphp
 
+                                                @if ($ultimaVisita->masajes->isEmpty())
                                                     <tr>
                                                         @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                                                             <td class="orange" style="border-radius: 5px">
                                                                 <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                                    
                                                                     <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                                    
                                                                 </strong>
                                                             </td>
                                                         @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
                                                             <td class="green" style="border-radius: 5px">
                                                                 <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                                    
                                                                     <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                                    
                                                                 </strong>
                                                             </td>
                                                         @else
                                                             <td class="blue" style="border-radius: 5px">
                                                                 <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                                    
                                                                     <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                                    
                                                                 </strong>
                                                             </td>
                                                         @endif
                                                     
-
-                                                            <td>
-                                                                <a href="#" onclick="activar_alerta(`{{$reserva->cliente->nombre_cliente}}`)">
-                                                                    <strong>{{$reserva->cliente->nombre_cliente}} - No Registra masajes</strong>
-                                                                </a>
-                                                            </td>
+                                                        <td>
+                                                            <a href="#" onclick="activar_alerta(`{{$reserva->cliente->nombre_cliente}}`)">
+                                                                <strong>{{$reserva->cliente->nombre_cliente}} - No Registra masajes (Problemas)</strong>
+                                                            </a>
+                                                        </td>
                                                     </tr>
-                                                    
                                                 @else
-
-                                                    @foreach ($visita->masajes as $masaje)
+                                                    @foreach ($ultimaVisita->masajes as $masaje)
                                                         @if ($masaje->horario_masaje)
                                                             @php
                                                                 // Clave para agrupar: horario y cliente
@@ -464,8 +469,8 @@
                                                                         'horario_inicio' => $masaje->horario_masaje,
                                                                         'horario_fin' => (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje) ? $masaje->hora_fin_masaje_extra : $masaje->hora_fin_masaje,
                                                                         'cliente' => $reserva->cliente->nombre_cliente,
-                                                                        'ubicacion' => $visita->ubicacion->nombre ?? 'No registra',
-                                                                        'trago' => $visita->trago_cortesia,
+                                                                        'ubicacion' => $ultimaVisita->ubicacion->nombre ?? 'No registra',
+                                                                        'trago' => $ultimaVisita->trago_cortesia,
                                                                         'programa' => $reserva->programa->nombre_programa,
                                                                         'personas' => [],
                                                                         'observacion' => $reserva->observacion
@@ -477,11 +482,8 @@
                                                             @endphp
                                                         @endif
                                                     @endforeach
-                                                    
                                                 @endif
-
-
-                                            @endforeach
+                                            @endif
                                         @endforeach
                                 
                                         @foreach($horariosAgrupados as $horario)

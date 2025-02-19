@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Asignacion;
@@ -18,6 +17,7 @@ use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use PDF;
+// use Barryvdh\Snappy\Facades\SnappyPdf;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class VentaController extends Controller
@@ -117,8 +117,8 @@ class VentaController extends Controller
 
         return view('themes.backoffice.pages.venta.edit', [
             'reserva' => $reserva,
-            'tipos' => $tipos,
-            'venta' => $venta,
+            'tipos'   => $tipos,
+            'venta'   => $venta,
         ]);
     }
 
@@ -130,16 +130,26 @@ class VentaController extends Controller
 
         return view('themes.backoffice.pages.venta.cerrar', [
             'reserva' => $reserva,
-            'tipos' => $tipos,
-            'venta' => $ventum,
+            'tipos'   => $tipos,
+            'venta'   => $ventum,
         ]);
     }
 
     public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
     {
-        $venta = $ventum;
-        $consumo = $venta->consumos->first();
-        $cliente = $reserva->cliente->nombre_cliente;
+        $request->merge([
+            'diferencia_programa' => (int) str_replace(['$', '.', ','], '', $request->diferencia_programa),
+            'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+            'propinaValue'        => (int) str_replace(['$', '.', ','], '', $request->propinaValue),
+            'valor_consumo'       => (int) str_replace(['$', '.', ','], '', $request->valor_consumo),
+            'abono_programa'      => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
+            'conPropina'      => (int) str_replace(['$', '.', ','], '', $request->conPropina),
+            'diferencia'      => (int) str_replace(['$', '.', ','], '', $request->diferencia),
+        ]);
+
+        $venta       = $ventum;
+        $consumo     = $venta->consumos->first();
+        $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
 
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
@@ -151,11 +161,11 @@ class VentaController extends Controller
 
             // Generar url para almacenar imagen
             $url_diferencia = null;
-            $filename = null;
+            $filename       = null;
             if ($request->hasFile('imagen_diferencia')) {
 
-                $diferencia = $request->file('imagen_diferencia');
-                $filename = time() . '-' . $diferencia->getClientOriginalName();
+                $diferencia     = $request->file('imagen_diferencia');
+                $filename       = time() . '-' . $diferencia->getClientOriginalName();
                 $url_diferencia = 'temp/' . $filename; // Almacenamiento temporal
                 Storage::disk('imagen_diferencia')->put($url_diferencia, File::get($diferencia));
 
@@ -172,9 +182,9 @@ class VentaController extends Controller
                 $venta->id_tipo_transaccion_diferencia = $request->input('id_tipo_transaccion_diferencia');
             }
 
-            if ($request->has('descuento')) {
-                $venta->descuento = $request->input('descuento');
-            }
+            // if ($request->has('descuento')) {
+            //     $venta->descuento = $request->input('descuento');
+            // }
 
             if ($request->has('total_pagar')) {
                 $venta->total_pagar = $request->input('total_pagar');
@@ -183,12 +193,12 @@ class VentaController extends Controller
             // Guarda los cambios
             $venta->save();
 
-            if (!is_null($consumo)) {
+            if (! is_null($consumo)) {
 
-                $detalles = $consumo->detallesConsumos;
+                $detalles      = $consumo->detallesConsumos;
                 $totalPropinas = 0;
 
-                if (!$request->has('propina')) {
+                if (! $request->has('propina')) {
                     DetalleConsumo::where('id_consumo', $consumo->id)
                         ->update(['genera_propina' => 0]);
                 } else {
@@ -199,8 +209,8 @@ class VentaController extends Controller
                     $totalPropinas += $request->propinaValue;
 
                     $propina = Propina::create([
-                        'fecha' => $fecha,
-                        'cantidad' => $totalPropinas,
+                        'fecha'      => $fecha,
+                        'cantidad'   => $totalPropinas,
                         'id_consumo' => $consumo->id,
                     ]);
 
@@ -210,33 +220,33 @@ class VentaController extends Controller
                         $usuarios = $asignacion->users;
                         foreach ($usuarios as $user) {
                             DB::table('propina_user')->insert([
-                                'id_user' => $user->id,
-                                'id_propina' => $propina->id,
+                                'id_user'        => $user->id,
+                                'id_propina'     => $propina->id,
                                 'monto_asignado' => $totalPropinas / count($usuarios),
-                                'created_at' => now(),
-                                'updated_at' => now(),
+                                'created_at'     => now(),
+                                'updated_at'     => now(),
                             ]);
                         }
                     }
 
                 }
 
-                if (!$request->has('separar')) {
+                if (! $request->has('separar')) {
 
                 } else {
 
                     $pagoConsumo = PagoConsumo::create([
-                        'valor_consumo' => $request->valor_consumo,
-                        'imagen_transaccion' => null,
-                        'id_consumo' => $consumo->id,
+                        'valor_consumo'       => $request->valor_consumo,
+                        'imagen_transaccion'  => null,
+                        'id_consumo'          => $consumo->id,
                         'id_tipo_transaccion' => $request->id_tipo_transaccion,
                     ]);
 
                     // Manejo de la imagen
                     if ($request->hasFile('imagen_consumo')) {
-                        $imagen = $request->file('imagen_consumo');
-                        $filename = time() . '-' . $imagen->getClientOriginalName();
-                        $path = $imagen->storeAs('/', $filename, 'imagen_consumo');
+                        $imagen                          = $request->file('imagen_consumo');
+                        $filename                        = time() . '-' . $imagen->getClientOriginalName();
+                        $path                            = $imagen->storeAs('/', $filename, 'imagen_consumo');
                         $pagoConsumo->imagen_transaccion = $path;
                         $pagoConsumo->save();
                     }
@@ -247,12 +257,12 @@ class VentaController extends Controller
 
         });
 
-        $total = 0;
+        $total   = 0;
         $propina = 'No Aplica';
-        $visita = $reserva->visitas->first();
+        $visita  = $reserva->visitas->last();
         $visita->load(['menus']);
-        $menus = $visita->menus;
-        $consumos = $venta->consumos;
+        $menus     = $visita->menus;
+        $consumos  = $venta->consumos;
         $idConsumo = null;
 
         if ($consumos->isEmpty()) {
@@ -263,10 +273,10 @@ class VentaController extends Controller
                 foreach ($consumo->detallesConsumos as $detalles) {
 
                     if ($detalles->genera_propina) {
-                        $total = $consumo->total_consumo;
+                        $total   = $consumo->total_consumo;
                         $propina = 'Si';
                     } else {
-                        $total = $consumo->subtotal;
+                        $total   = $consumo->subtotal;
                         $propina = 'No';
                     }
                 }
@@ -283,22 +293,23 @@ class VentaController extends Controller
         }
 
         $data = [
-            'nombre' => $reserva->cliente->nombre_cliente,
-            'numero' => $reserva->cliente->whatsapp_cliente,
-            'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
-            'fecha_visita' => $reserva->fecha_visita,
-            'programa' => $reserva->programa->nombre_programa,
-            'personas' => $reserva->cantidad_personas,
-            'menus' => $menus,
-            'consumos' => $consumos,
-            'venta' => $reserva->venta,
-            'total' => $total,
-            'propina' => $propina,
+            'nombre'        => $reserva->cliente->nombre_cliente,
+            'numero'        => $reserva->cliente->whatsapp_cliente,
+            'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+            'fecha_visita'  => $reserva->fecha_visita,
+            'programa'      => $reserva->programa->nombre_programa,
+            'personas'      => $reserva->cantidad_personas,
+            'menus'         => $menus,
+            'consumos'      => $consumos,
+            'venta'         => $reserva->venta,
+            'total'         => $total,
+            'propina'       => $propina,
             'propinaPagada' => isset($cantidadPropina) && $cantidadPropina !== null ? $cantidadPropina : 'No Aplica',
         ];
 
+
         // Generar el PDF
-        $pdf = PDF::loadView('pdf.venta.viewPDF', $data);
+        $pdf     = PDF::loadView('pdf.venta.viewPDF', $data);
         $pdfPath = storage_path('app/public/') . 'Detalle_Venta_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
         $pdf->save($pdfPath);
         $data['pdfPath'] = $pdfPath;
@@ -310,21 +321,21 @@ class VentaController extends Controller
         if ($pagoConsumo !== null) {
 
             $dataConsumo = [
-                'nombre' => $reserva->cliente->nombre_cliente,
-                'numero' => $reserva->cliente->whatsapp_cliente,
-                'observacion' => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
-                'fecha_visita' => $reserva->fecha_visita,
-                'programa' => $reserva->programa->nombre_programa,
-                'personas' => $reserva->cantidad_personas,
-                'consumos' => $consumos,
-                'venta' => $reserva->venta,
-                'total' => $total,
-                'propina' => $propina,
+                'nombre'        => $reserva->cliente->nombre_cliente,
+                'numero'        => $reserva->cliente->whatsapp_cliente,
+                'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+                'fecha_visita'  => $reserva->fecha_visita,
+                'programa'      => $reserva->programa->nombre_programa,
+                'personas'      => $reserva->cantidad_personas,
+                'consumos'      => $consumos,
+                'venta'         => $reserva->venta,
+                'total'         => $total,
+                'propina'       => $propina,
                 'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
             ];
 
             // Generar el PDF
-            $pdf = PDF::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
+            $pdf     = PDF::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
             $pdfRuta = storage_path('app/public/') . 'Detalle_Consumo_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
             $pdf->save($pdfRuta);
             $data['pdfRuta'] = $pdfRuta;

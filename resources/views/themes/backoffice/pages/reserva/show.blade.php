@@ -560,6 +560,10 @@
 
 {{-- Pasar Data a Modal --}}
 <script>
+  function formatCLP(number) {
+      return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+  }
+
   $(document).ready(function(){
     $('.modal-trigger').on('click', function(){
           // Obtener los datos del cliente y la reserva seleccionada
@@ -584,8 +588,8 @@
           
 
           // Insertar los datos en los elementos del modal
-          $('#modalAbono').text(abono);
-          $('#modalDiferencia').text(diferencia);
+          $('#modalAbono').text(formatCLP(abono));
+          $('#modalDiferencia').text(formatCLP(diferencia));
           
           $('#linkAbono').attr('href',abonoImg);
           $('#linkDiferencia').attr('href',diferenciaImg);
@@ -596,14 +600,14 @@
           
               // Validar si el descuento es nulo
               if (descuento == null || descuento == '') {
-                $('#modalDescuento').text('0');
+                $('#modalDescuento').text(formatCLP(0));
               } else {
-                $('#modalDescuento').text(descuento + '%');
+                $('#modalDescuento').text(formatCLP(descuento));
               }
 
 
 
-          $('#modalTotalPagar').text(totalPagar);
+          $('#modalTotalPagar').text(formatCLP(totalPagar));
           $('#modalTipoAbono').text(tipoAbono);
           $('#modalTipoDiferencia').text(tipoDiferencia);
           
@@ -628,9 +632,9 @@
                       consumo.detalles_consumos.forEach(function(detalle, detalleIndex) {
                           tablaConsumos += '<tr>';
                           tablaConsumos += '<td>' + detalle.producto.nombre + '</td>';  // Cambia si tienes un nombre específico del producto
-                          tablaConsumos += '<td>$' + detalle.producto.valor + '</td>';
+                          tablaConsumos += '<td>' + formatCLP(detalle.producto.valor) + '</td>';
                           tablaConsumos += '<td>X' + detalle.cantidad_producto + '</td>';
-                          tablaConsumos += '<td>$' + detalle.subtotal + '</td>';
+                          tablaConsumos += '<td>' + formatCLP(detalle.subtotal) + '</td>';
                           subtotalConsumo += detalle.subtotal;
                           totalConsumo += detalle.subtotal*1.1;
                           tablaConsumos += '</tr>';
@@ -641,21 +645,21 @@
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
-              tablaConsumos += '<td class="right">' + '<strong>SubTotal: $'+subtotalConsumo+'</strong>' + '</td>'; 
+              tablaConsumos += '<td class="right">' + '<strong>SubTotal: '+formatCLP(subtotalConsumo)+'</strong>' + '</td>'; 
               tablaConsumos += '</tr>';
 
               tablaConsumos += '<tr>';
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
-              tablaConsumos += '<td class="right">' + '<strong>Propinas: $'+subtotalConsumo*0.1+'</strong>' + '</td>'; 
+              tablaConsumos += '<td class="right">' + '<strong>Propinas: '+formatCLP(subtotalConsumo*0.1)+'</strong>' + '</td>'; 
               tablaConsumos += '</tr>';
               
               tablaConsumos += '<tr>';
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
-              tablaConsumos += '<td class="right">' + '<strong>Total: $'+Math.trunc(totalConsumo)+'</strong>' + '</td>'; 
+              tablaConsumos += '<td class="right">' + '<strong>Total: '+formatCLP(Math.trunc(totalConsumo))+'</strong>' + '</td>'; 
               tablaConsumos += '</tr>';
 
           } else {
@@ -682,9 +686,9 @@
                       consumo.detalle_servicios_extra.forEach(function(detalle, detalleIndex) {
                           tablaServicios += '<tr>';
                           tablaServicios += '<td>' + detalle.servicio.nombre_servicio + '</td>';
-                          tablaServicios += '<td>$' + detalle.servicio.valor_servicio + '</td>';
+                          tablaServicios += '<td>' + formatCLP(detalle.servicio.valor_servicio) + '</td>';
                           tablaServicios += '<td>' +'X'+ detalle.cantidad_servicio + '</td>';
-                          tablaServicios += '<td>$' + detalle.subtotal + '</td>';
+                          tablaServicios += '<td>' + formatCLP(detalle.subtotal) + '</td>';
                           subtotalServicio += detalle.subtotal;
                           tablaServicios += '</tr>';
                       });
@@ -694,7 +698,7 @@
               tablaServicios += '<td>' + '</td>'; 
               tablaServicios += '<td>' + '</td>'; 
               tablaServicios += '<td>' + '</td>'; 
-              tablaServicios += '<td>' + '<strong>Total:'+subtotalServicio+'</strong>' + '</td>'; 
+              tablaServicios += '<td>' + '<strong>Total:'+formatCLP(subtotalServicio)+'</strong>' + '</td>'; 
               tablaServicios += '</tr>';
 
           } else {
@@ -719,10 +723,10 @@
             tablaResumen += '<tbody>';
 
             tablaResumen += '<tr>';
-            tablaResumen += '<td>' +'$'+ Math.trunc(totalConsumo) + '</td>'; 
-            tablaResumen += '<td>' +'$'+ subtotalServicio + '</td>'; 
-            tablaResumen += '<td>' +'$'+ totalPagar + '</td>'; 
-            tablaResumen += '<td>' + '<strong> $'+TotalPagarCP+'</strong>' + '</td>'; 
+            tablaResumen += '<td>' + formatCLP(Math.trunc(totalConsumo)) + '</td>'; 
+            tablaResumen += '<td>' + formatCLP(subtotalServicio) + '</td>'; 
+            tablaResumen += '<td>' + formatCLP(totalPagar) + '</td>'; 
+            tablaResumen += '<td>' + '<strong> '+formatCLP(TotalPagarCP)+'</strong>' + '</td>'; 
             tablaResumen += '</tr>';
 
             tablaResumen += '</tbody></table>';

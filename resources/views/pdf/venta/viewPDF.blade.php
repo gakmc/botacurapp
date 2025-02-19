@@ -161,7 +161,7 @@
                 </tr>
                 <tr>
                     <td colspan="3"></td>
-                    <td style="font-weight: bold; text-align:right;">Total: ${{number_format($total,0,'','.')}}</td>
+                    <td style="font-weight: bold; text-align:right;">Total: ${{number_format((float)$total,0,'','.')}}</td>
                 </tr>
                 @endforeach
             </tbody>
@@ -173,7 +173,7 @@
 
     <div>
         <h5 class="primario">Información de Pagos</h5>
-        <h6 class="left"><span class="primario">Pago con propina:</span>${{number_format($propina,0,'','.')}}</h6>
+        <h6 class="left"><span class="primario">Pago con propina:</span>${{number_format((float)$propina,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Propina Pagada:</span>
 
             @if ($propinaPagada == "No Aplica")

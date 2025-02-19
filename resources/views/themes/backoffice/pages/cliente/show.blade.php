@@ -120,10 +120,6 @@
 </script>
 
 <script>
-    document.addEventListener('DOMContentLoaded', function() {
-        var elems = document.querySelectorAll('.modal');
-        M.Modal.init(elems);
-    });
 
 $(document).ready(function () {
 
@@ -131,31 +127,32 @@ $(document).ready(function () {
 
     $('.collapsible').collapsible();
 
+    $('.modal').modal();
+
 });
 
 </script>
 
 <script>
     $(document).ready(function(){
-  $('.modal-trigger').on('click', function(){
-        // Obtener los datos del cliente y la reserva seleccionada
-        var clienteNombre = $(this).data('cliente');
-        var fechaReserva = $(this).data('fecha');
-        var observacionReserva = $(this).data('observacion');
-        var masajeReserva = $(this).data('masaje');
-        var personasReserva = $(this).data('personas');
+        $('.modal-trigger').on('click', function(){
+                // Obtener los datos del cliente y la reserva seleccionada
+                var clienteNombre = $(this).data('cliente');
+                var fechaReserva = $(this).data('fecha');
+                var observacionReserva = $(this).data('observacion');
+                var masajeReserva = $(this).data('masaje');
+                var personasReserva = $(this).data('personas');
 
-        // Insertar los datos en los elementos del modal
-        $('#modalClienteNombre').text(clienteNombre);
-        $('#modalFechaReserva').text(fechaReserva);
-        $('#modalObservacionReserva').text(observacionReserva);
-        $('#modalMasajeReserva').text(masajeReserva);
-        $('#modalPersonasReserva').text(personasReserva);
+                // Insertar los datos en los elementos del modal
+                $('#modalClienteNombre').text(clienteNombre);
+                $('#modalFechaReserva').text(fechaReserva);
+                $('#modalObservacionReserva').text(observacionReserva);
+                $('#modalMasajeReserva').text(masajeReserva);
+                $('#modalPersonasReserva').text(personasReserva);
 
-    // Abrir el modal
-    var modal = M.Modal.getInstance($('#modalReserva'));
-    modal.open();
-  });
-});
+            // Abrir el modal
+            $('#modalReserva').modal('open');
+        });
+    });
 </script>
 @endsection

@@ -1191,7 +1191,7 @@ class VisitaController extends Controller
                     $horarioSauna  = Carbon::createFromFormat('H:i', $request->input('horario_sauna'));
                     $horarioTinaja = $horarioSauna->copy()->addMinutes(15);
                     $horarioMasaje = Carbon::createFromFormat('H:i', $request->input('horario_masaje'));
-                    $masaje        = Masaje::where('id_visita', $visita->id)->first();
+
 
                     // Crear una visita con solo SPA
                     $visita->update([
@@ -1203,11 +1203,17 @@ class VisitaController extends Controller
                         'observacion'    => $request->input('observacion'),
                     ]);
 
-                    $masaje->update([
-                        'horario_masaje'  => $horarioMasaje,
-                        'tipo_masaje'     => $request->input('tipo_masaje'),
-                        'id_lugar_masaje' => $request->input('id_lugar_masaje'),
-                    ]);
+
+                    $masajes        = Masaje::where('id_visita', $visita->id)->get();
+
+                    foreach ($masajes as $masaje) {
+                        
+                        $masaje->update([
+                            'horario_masaje'  => $horarioMasaje,
+                            'tipo_masaje'     => $request->input('tipo_masaje'),
+                            'id_lugar_masaje' => $request->input('id_lugar_masaje'),
+                        ]);
+                    }
 
                 }
 

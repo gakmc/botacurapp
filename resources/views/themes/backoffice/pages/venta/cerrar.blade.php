@@ -525,6 +525,15 @@
       // Eventos para actualización de valores y cambios
       $('#separar, #propina').on('change', actualizarValores);
       $('#propinaValue, #diferencia_programa').on('input', actualizarValores);
+
+      $('#diferencia_programa').on('blur', function() {
+          var valor = parseCurrency($(this).val()); // Convertir input a número real
+          if (!isNaN(valor) && valor > 0) {
+              $(this).val(formatCLP(valor)); // Aplicar formato CLP solo si es válido
+          } else {
+              $(this).val(''); // Si el valor es inválido, dejarlo vacío
+          }
+      });
   });
 
   function inicializarEstado() {
@@ -552,16 +561,20 @@
     var propina = $('#propina').is(':checked');
     var consumo = $('#separar').is(':checked');
     var SinPropina = obtenerValorData('#sinPropina', 'sinpropina');
-    var ConPropina = obtenerValorData('#conPropina', 'conpropina');
+    // var ConPropina = obtenerValorData('#conPropina', 'conpropina');
     var diferenciaInput = parseCurrency($('#diferencia_programa').val());
+    var propinaInput = parseCurrency($('#propinaValue').val());
 
     var nuevoTotal = total;
+
+    var valorConsumo = 0;
+    var ConPropina = SinPropina + propinaInput;
 
     if (consumo) {
         cambioConsumo(true);
 
         // Mostrar el valor del consumo según el estado de la propina
-        var valorConsumo = propina ? ConPropina : SinPropina;
+        valorConsumo = propina ? ConPropina : SinPropina;
         $('#valor_consumo').val(formatCLP(valorConsumo));
 
         // Restar el consumo del total
@@ -569,7 +582,12 @@
     } else {
         cambioConsumo(false);
         $('#valor_consumo').val('');
-        $('#total_pagar').val(formatCLP(nuevoTotal+valorConsumo))
+        valorConsumo = propina ? ConPropina : SinPropina;
+        // $('#total_pagar').val(formatCLP(nuevoTotal+valorConsumo))
+    }
+
+    if (!consumo) {
+      nuevoTotal += valorConsumo;
     }
 
     // Manejo de la propina
@@ -585,7 +603,8 @@
 
     // Actualizar el valor total a pagar
     $('#total_pagar').val(formatCLP(nuevoTotal));
-}
+    $('#conPropina').val(formatCLP(ConPropina));
+  }
 
 
   function manejarPropina(activar, ConPropina) {
@@ -642,8 +661,10 @@
   }
 
   function parseCurrency(value) {
-      // return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
-      return Number(value.replace(/[^0-9.-]/g, "")) || 0;
+      // // return Number(value.replace(/[^0-9.-]+/g, "")) || 0;
+      // return Number(value.replace(/[^0-9.-]/g, "")) || 0;
+      if (!value) return 0; // Si el valor está vacío, devolver 0
+      return parseInt(value.replace(/[^0-9]/g, ""), 10) || 0;
   }
 
   function formatCLP(number) {

@@ -3,7 +3,7 @@
     <h4>Detalles de la Venta</h4>
     <div class="col s12 m6">
 
-      <p><strong>Abono:</strong> $<span id="modalAbono"></span></p>
+      <p><strong>Abono:</strong><span id="modalAbono"></span></p>
 
       <p><strong>Tipo de Transaccion (Abono):</strong> <span id="modalTipoAbono"></span></p>
 
@@ -12,11 +12,11 @@
 
     <div class="col s12 m6">
 
-      <p><strong>Diferencia Pagada:</strong> $<span id="modalDiferencia"> </span></p>
+      <p><strong>Diferencia Pagada:</strong><span id="modalDiferencia"> </span></p>
 
       <p><strong>Tipo de Transaccion (Diferencia):</strong> <span id="modalTipoDiferencia"></span></p>
 
-      <p><strong>Diferencia por pagar:</strong> $<span id="modalTotalPagar"></span></p>
+      <p><strong>Diferencia por pagar:</strong><span id="modalTotalPagar"></span></p>
     </div>
 
 

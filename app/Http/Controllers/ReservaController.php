@@ -53,13 +53,24 @@ class ReservaController extends Controller
                     'programa',
                     'venta',
                 ])
+                ->select('*')
+                ->selectSub(
+                    DB::table('visitas')
+                        ->whereColumn('visitas.id_reserva', 'reservas.id')
+                        ->orderBy('id_ubicacion', 'asc')
+                        ->limit(1)
+                        ->select('id_ubicacion'),
+                    'first_id_ubicacion'
+                )
                 ->orderBy('fecha_visita', 'asc')
-                ->orderBy(function ($query) {
-                    $query->select('id_ubicacion')
-                          ->from('visitas')
-                          ->whereColumn('visitas.id_reserva', 'reservas.id')
-                          ->orderBy('id_ubicacion', 'asc');
-                })
+                ->orderBy('first_id_ubicacion', 'asc')
+                // ->orderBy('fecha_visita', 'asc')
+                // ->orderBy(function ($query) {
+                //     $query->select('id_ubicacion')
+                //           ->from('visitas')
+                //           ->whereColumn('visitas.id_reserva', 'reservas.id')
+                //           ->orderBy('id_ubicacion', 'asc');
+                // })
                 ->get();
 
         }
@@ -73,13 +84,24 @@ class ReservaController extends Controller
             'programa',
             'venta',
         ])
+        ->select('*')
+        ->selectSub(
+            DB::table('visitas')
+                ->whereColumn('visitas.id_reserva', 'reservas.id')
+                ->orderBy('id_ubicacion', 'asc')
+                ->limit(1)
+                ->select('id_ubicacion'),
+            'first_id_ubicacion'
+        )
         ->orderBy('fecha_visita', 'asc')
-        ->orderBy(function ($query) {
-            $query->select('id_ubicacion')
-                  ->from('visitas')
-                  ->whereColumn('visitas.id_reserva', 'reservas.id')
-                  ->orderBy('id_ubicacion', 'asc');
-        })
+        ->orderBy('first_id_ubicacion', 'asc')
+        // ->orderBy('fecha_visita', 'asc')
+        // ->orderBy(function ($query) {
+        //     $query->select('id_ubicacion')
+        //           ->from('visitas')
+        //           ->whereColumn('visitas.id_reserva', 'reservas.id')
+        //           ->orderBy('id_ubicacion', 'asc');
+        // })
         ->get();
 
     //     dd(
