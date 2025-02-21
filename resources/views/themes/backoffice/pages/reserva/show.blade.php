@@ -536,14 +536,15 @@
         accordion:false
       });
 
-      $('.modal').modal()
-  
+      $('.modal').modal();
+
+
   });
 
 </script>
 
 {{-- Propiedades Materialize --}}
-<script>
+{{-- <script>
   document.addEventListener('DOMContentLoaded', function () {
     var elems = document.querySelectorAll('.dropdown-trigger');
     M.Dropdown.init(elems, {
@@ -556,7 +557,7 @@
       belowOrigin: true // Aparece hacia arriba
     });
   });
-</script>
+</script> --}}
 
 {{-- Pasar Data a Modal --}}
 <script>

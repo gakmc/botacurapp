@@ -2,6 +2,7 @@
 
 use App\CategoriaCompra;
 use App\Events\EjemploEvento;
+use App\Http\Controllers\EmailPreviewController;
 use App\Sector;
 use App\TipoDocumento;
 use App\TipoProducto;
@@ -23,18 +24,7 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
-Route::get('/email', function () {
-    // Simular una visita y una reserva para previsualización
-    $reserva = App\Reserva::first(); // Usa un ejemplo de Reserva de tu base de datos
-    $visita = $reserva->visitas; // Usa un ejemplo de Visita de tu base de datos
-    $cliente = App\Cliente::first(); // Usa un ejemplo de Reserva de tu base de datos
-
-    $programa = $reserva->programa;
-
-
-    // Devolver la vista de correo
-    return new App\Mail\RegistroReservaMailable($visita, $reserva, $cliente, $programa);
-});
+Route::get('/email', [EmailPreviewController::class, 'preview']);
 
 
 

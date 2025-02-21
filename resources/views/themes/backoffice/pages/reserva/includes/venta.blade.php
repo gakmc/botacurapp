@@ -66,29 +66,46 @@
 
     @else
 
-    <a class="collection-item center-align valign-wrapper left dropdown-trigger" href="#" data-target="dropdown1">
-        <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF">picture_as_pdf</i>
+    <a class="collection-item center-align valign-wrapper left" href="{{ route('backoffice.venta.pdf', $reserva) }}" target="_blank">
+        <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Venta">picture_as_pdf</i>
     </a>
 
-    <!-- Dropdown hacia arriba -->
-    <ul id="dropdown1" class="dropdown-content">
-        <li><a href="{{route('backoffice.venta.pdf', $reserva)}}" target="_blank"><i
-                    class="material-icons">remove_red_eye</i>Ver venta</a></li>
-        <li><a href="#!"><i class="material-icons">share</i>Compartir</a></li>
-
-
-        @foreach ($reserva->venta->consumos as $consumo)
+    @if ($reserva->venta->consumos->isNotEmpty())
+    @foreach ($reserva->venta->consumos as $consumo)
         @if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
+                <a href="{{ route('backoffice.consumo.pdf', $reserva) }}" target="_blank" class="collection-item center-align valign-wrapper left">
+                    <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Consumo">local_bar</i></a>
+        @endif
+    @endforeach
+    @endif
+
+
+    <!-- Dropdown hacia arriba -->
+    {{-- <ul id="dropdownVenta" class="dropdown-content">
         <li>
-            <a href="{{ route('backoffice.consumo.pdf', $reserva) }}" target="_blank">
-                <i class="material-icons">remove_red_eye</i>Consumo
+            <a href="{{ route('backoffice.venta.pdf', $reserva) }}" target="_blank">
+                <i class="material-icons">remove_red_eye</i> Ver venta
             </a>
         </li>
+        
+        <li>
+            <a href="#!" target="_blank">
+                <i class="material-icons">share</i> Compartir
+            </a>
+        </li>
+    
+        @if ($reserva->venta->consumos->isNotEmpty())
+            @foreach ($reserva->venta->consumos as $consumo)
+                @if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
+                    <li>
+                        <a href="{{ route('backoffice.consumo.pdf', $reserva) }}" target="_blank">
+                            <i class="material-icons">remove_red_eye</i> Consumo
+                        </a>
+                    </li>
+                @endif
+            @endforeach
         @endif
-        @endforeach
-
-
-    </ul>
+    </ul> --}}
 
     @endif
 

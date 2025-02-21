@@ -16,7 +16,8 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
-use PDF;
+// use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 // use Barryvdh\Snappy\Facades\SnappyPdf;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -309,7 +310,7 @@ class VentaController extends Controller
 
 
         // Generar el PDF
-        $pdf     = PDF::loadView('pdf.venta.viewPDF', $data);
+        $pdf     = Pdf::loadView('pdf.venta.viewPDF', $data);
         $pdfPath = storage_path('app/public/') . 'Detalle_Venta_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
         $pdf->save($pdfPath);
         $data['pdfPath'] = $pdfPath;
@@ -335,7 +336,7 @@ class VentaController extends Controller
             ];
 
             // Generar el PDF
-            $pdf     = PDF::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
+            $pdf     = Pdf::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
             $pdfRuta = storage_path('app/public/') . 'Detalle_Consumo_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
             $pdf->save($pdfRuta);
             $data['pdfRuta'] = $pdfRuta;

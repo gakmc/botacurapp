@@ -13,13 +13,16 @@ use App\Servicio;
 use App\TipoTransaccion;
 use App\User;
 use App\Venta;
+use Barryvdh\DomPDF\Facade\Pdf as FacadePdf;
+use Barryvdh\DomPDF\PDF as DomPDFPDF;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 use Illuminate\Support\Facades\Storage;
-use PDF;
+// use PDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class ReservaController extends Controller
@@ -104,20 +107,20 @@ class ReservaController extends Controller
         // })
         ->get();
 
-    //     dd(
-    //     Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-    //     ->with([
-    //         'cliente',
-    //         'visitas.ubicacion',
-    //         'visitas.masajes',
-    //         'programa',
-    //         'venta',
-    //     ])    ->join('visitas', 'visitas.id_reserva', '=', 'reservas.id')
-    //     ->orderBy('reservas.fecha_visita', 'asc')
-    //     ->orderBy('visitas.id_ubicacion', 'asc')
-    //     ->select('reservas.*') // Para evitar columnas repetidas al hacer join
-    //     ->get()
-    // );
+        //     dd(
+        //     Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+        //     ->with([
+        //         'cliente',
+        //         'visitas.ubicacion',
+        //         'visitas.masajes',
+        //         'programa',
+        //         'venta',
+        //     ])    ->join('visitas', 'visitas.id_reserva', '=', 'reservas.id')
+        //     ->orderBy('reservas.fecha_visita', 'asc')
+        //     ->orderBy('visitas.id_ubicacion', 'asc')
+        //     ->select('reservas.*') // Para evitar columnas repetidas al hacer join
+        //     ->get()
+        // );
         
         $reservasMoviles->load(['visitas.masajes', 'visitas.ubicacion']);
         $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
@@ -692,16 +695,17 @@ class ReservaController extends Controller
     public function generarPDF(Reserva $reserva)
     {
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
-
+        
         $total   = 0;
         $propina = 'No Aplica';
         $visita  = $reserva->visitas->first();
-        $visita->load(['menus']);
-        $menus           = $visita->menus;
+        $reserva->visitas->last()->load(['menus']);
+        $menus           = $reserva->visitas->last()->menus;
         $consumos        = $reserva->venta->consumos;
         $idConsumo       = null;
         $cantidadPropina = null;
-
+        // dd($menus);
+        
         if ($consumos->isEmpty()) {
             $propina = 'No Aplica';
         } else {
@@ -747,8 +751,7 @@ class ReservaController extends Controller
         ];
 
         // dd($data);
-
-        $pdf = PDF::loadView('pdf.venta.viewPDF', $data);
+        $pdf = Pdf::loadView('pdf.venta.viewPDF', $data);
         // return $pdf->download('factura.pdf');
         return $pdf->stream('Detalle_Venta' . '_' . $saveName . '_' . $reserva->fecha_visita . '.pdf');
 
