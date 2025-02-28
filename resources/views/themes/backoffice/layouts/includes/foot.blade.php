@@ -28,7 +28,7 @@
         $('.tooltipped').tooltip();
 
 
-        $('.side-nav').sidenav();
+        // $('.side-nav').sidenav();
         
 
         $('.dropdown-settings').dropdown({

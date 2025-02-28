@@ -148,10 +148,14 @@ class VentaController extends Controller
             'diferencia'      => (int) str_replace(['$', '.', ','], '', $request->diferencia),
         ]);
 
+
+
         $venta       = $ventum;
         $consumo     = $venta->consumos->first();
         $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
+
+        dd($request->input('total_pagar'), $venta->total_pagar, $venta);
 
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
 

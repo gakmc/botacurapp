@@ -504,7 +504,9 @@ class ReservaController extends Controller
         $consumo             = Consumo::where('id_venta', '=', $ventaId)->first();
         if (isset($consumo)) {
             $detalleServExtra    = DetalleServiciosExtra::where('id_consumo', '=', $consumo->id)->first();
-            $cantidadExtraMasaje = $detalleServExtra->cantidad_servicio;
+            if (isset($detalleServExtra)) {
+                $cantidadExtraMasaje = $detalleServExtra->cantidad_servicio;
+            }
         }
         $cliente   = $reserva->cliente;
         $venta     = $reserva->venta;
@@ -512,7 +514,6 @@ class ReservaController extends Controller
         $programas = Programa::with('servicios')->get();
         $tipos     = TipoTransaccion::all();
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
-
         return view('themes.backoffice.pages.reserva.edit', [
             'reserva'        => $reserva,
             'venta'          => $venta,
@@ -832,5 +833,38 @@ class ReservaController extends Controller
             });
 
         return view('themes.backoffice.pages.reserva.index_all', compact('reservasPorMes'));
+    }
+
+    public function indexReserva()
+    {
+        Carbon::setLocale('es');
+        $fechaActual     = Carbon::now()->startOfDay();
+
+        $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+        ->with([
+            'cliente',
+            'visitas',
+            'visitas.masajes',
+            'programa',
+            'venta',
+            'visitas.menus'
+        ])
+        ->orderBy('fecha_visita', 'asc')
+        ->get();
+
+        $reservas->load(['visitas.masajes', 'visitas.ubicacion', 'visitas.menus', 'cliente']);
+
+
+        $reservasPorDia = $reservas->groupBy(function ($reserva) {
+            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
+        });
+
+        $perPage           = 1;
+        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
+        $reservasPaginadas->setPath(request()->url());
+
+        return view('themes.backoffice.pages.reserva.index_registro', compact('reservas'));
     }
 }

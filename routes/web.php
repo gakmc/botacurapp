@@ -77,7 +77,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Edit - Mostrar el formulario para editar una reserva
     // Route::get('reserva/{id}/edit', 'ReservaController@edit')->name('reserva.edit');
 
-    Route::get('reservas', 'ReservaController@indexall')->name('reserva.listar');
+    Route::get('reservas', 'ReservaController@indexall')->name('reservas.listar');
+    Route::get('reservas/registros', 'ReservaController@indexReserva')->name('reservas.registro');
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     // Update - Actualizar una reserva específica
@@ -195,6 +196,18 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     Route::get('reserva/{reserva}/visita/{visita}/register', 'VisitaController@register')->name('reserva.visita.register');
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/register_update', 'VisitaController@register_update')->name('reserva.visita.register_update');
+    
+    
+    Route::get('reserva/{reserva}/visita/{visita}/menu', 'VisitaController@menu')->name('reserva.visitas.menu');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/menu_update', 'VisitaController@menu_update')->name('reserva.visitas.menu_update');
+
+
+    Route::get('reserva/{reserva}/visita/{visita}/masaje', 'VisitaController@masaje')->name('reserva.visitas.masaje');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/masaje_update', 'VisitaController@masaje_update')->name('reserva.visitas.masaje_update');
+
+
+    Route::get('reserva/{reserva}/visita/{visita}/spa', 'VisitaController@spa')->name('reserva.visitas.spa');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/spa_update', 'VisitaController@spa_update')->name('reserva.visitas.spa_update');
 
 
     // Show - Mostrar una reserva específica

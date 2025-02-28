@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('title','Modificar reserva')
+@section('title','Modificar Visita')
 
 @section('breadcrumbs')
 {{-- <li><a href="{{route('backoffice.cliente.show', $cliente->id) }}">Reservas del cliente</a></li>
@@ -61,7 +61,7 @@
 
                                   <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
-                                      <option value="{{$visita->horario_masaje}}" selected>{{$visita->horario_masaje}}</option>
+                                      <option value="{{$visita->masajes->first()->horario_masaje}}" selected>{{$visita->masajes->first()->horario_masaje}}</option>
                                       {{-- @foreach($horasMasaje as $horario)
                                       <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
                                           : '' }}>
@@ -135,7 +135,7 @@
                               @if(!in_array('Masaje', $servicios) & !$masajesExtra) <br> <h6>Esta Visita no posee masajes</h6> @endif
                               @for ($i = 1; $i <= $indexMasajes; $i++)
 
-                              <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) & !$masajesExtra) style="display: none;" @endif>
+                        <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) & !$masajesExtra) style="display: none;" @endif>
 
                               <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
@@ -490,146 +490,143 @@
 
 @section('foot')
 <script>
-@if(session('success'))
-  Swal.fire({
-      toast: true,
-      icon: 'success',
-      title: '{{ session('success') }}',
-      showConfirmButton: false,
-      timer: 5000,
-      timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.onmouseenter = Swal.stopTimer;
-          toast.onmouseleave = Swal.resumeTimer;
-        }
-  });
-@endif
+    @if(session('success'))
+        Swal.fire({
+            toast: true,
+            icon: 'success',
+            title: '{{ session('success') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
 
-@if(session('error'))
-  Swal.fire({
-      toast: true,
-      icon: 'error',
-      title: '{{ session('error') }}',
-      showConfirmButton: false,
-      timer: 5000,
-      timerProgressBar: true,
-        didOpen: (toast) => {
-          toast.onmouseenter = Swal.stopTimer;
-          toast.onmouseleave = Swal.resumeTimer;
-        }
-  });
-@endif
+    @if(session('error'))
+        Swal.fire({
+            toast: true,
+            icon: 'error',
+            title: '{{ session('error') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
 </script>
 
 
-
-{{-- <script>
-    document.addEventListener('DOMContentLoaded', function() {
-    var elems = document.querySelectorAll('.timepicker');
-    var instances = M.Timepicker.init(elems);
-  });
-
-  $(document).ready(function(){
-    $('.datepicker').datepicker();
-  });
-</script> --}}
-
+{{-- Carga horario masajes (2 o -) en vista --}}
 <script>
   $(document).ready(function () {
-  // Cargar horarios desde el backend
-  const horariosPorLugar = @json($horasMasaje);
-
-  // Inicializa Materialize para todos los selectores
-  $('select').formSelect();
-
-
-  // Función para cargar horarios en horario_masaje según el lugar seleccionado
-  function cargarHorariosUnico(lugarId) {
-      const $horarioSelect = $('#horario_masaje');
-
-
-      if (horariosPorLugar[lugarId]) {
-          horariosPorLugar[lugarId].forEach(function (horario) {
-              $horarioSelect.append(new Option(horario, horario));
-          });
-
-          // Reinicializa Materialize para el selector
-          $horarioSelect.formSelect();
-      }
-  }
-
-  // Detectar cambios en el lugar de masaje
-  $('#id_lugar_masaje').on('change', function () {
-    const $horarioSelect = $('#horario_masaje');
-      const lugarId = $(this).val(); // ID del lugar seleccionado
-
-      if (lugarId == {{$visita->id_lugar_masaje}}) {
+        // Cargar horarios desde el backend
+        const horariosPorLugar = @json($horasMasaje);
+        console.log(horariosPorLugar);
         
-          $horarioSelect.empty().append('<option value="{{$visita->horario_masaje}}" selected>{{$visita->horario_masaje}}</option>');
-      }else{
 
-          $horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
-      }
-      cargarHorariosUnico(lugarId); // Actualizar los horarios en horario_masaje
-  });
+        // Inicializa Materialize para todos los selectores
+        $('select').material_select();
 
-  // Carga inicial: verifica si hay un lugar preseleccionado
-  const lugarInicial = $('#id_lugar_masaje').val();
-  if (lugarInicial) {
-      cargarHorariosUnico(lugarInicial);
-  }
-});
+
+        // Función para cargar horarios en horario_masaje según el lugar seleccionado
+        function cargarHorariosUnico(lugarId) {
+            const $horarioSelect = $('#horario_masaje');
+
+
+            if (horariosPorLugar[lugarId]) {
+                horariosPorLugar[lugarId].forEach(function (horario) {
+                    $horarioSelect.append(new Option(horario, horario));
+                });
+
+                // Reinicializa Materialize para el selector
+                $horarioSelect.material_select();
+            }
+        }
+
+        @php
+            $lugarDatabase = $visita->id_lugar_masaje;
+        @endphp
+
+        var lugarDatabase = @json($lugarDatabase);
+
+        // Detectar cambios en el lugar de masaje
+        $('#id_lugar_masaje').on('change', function () {
+            const $horarioSelect = $('#horario_masaje');
+            const lugarId = $(this).val(); // ID del lugar seleccionado
+
+            if (lugarId == lugarDatabase) {
+                
+                $horarioSelect.empty().append('<option value="{{$visita->horario_masaje}}" selected>{{$visita->horario_masaje}}</option>');
+            }else{
+
+                $horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
+            }
+            cargarHorariosUnico(lugarId); // Actualizar los horarios en horario_masaje
+        });
+
+        // Carga inicial: verifica si hay un lugar preseleccionado
+        const lugarInicial = $('#id_lugar_masaje').val();
+        if (lugarInicial) {
+            cargarHorariosUnico(lugarInicial);
+        }
+    });
 
 </script>
 
-
+{{-- Carga horario masajes (5 o +) en vista --}}
 <script>
 
-$(document).ready(function () {
-  // Cargar horarios desde el backend
-  const horariosPorLugar = @json($horasMasaje);
+    $(document).ready(function () {
+        // Cargar horarios desde el backend
+        const horariosPorLugar = @json($horasMasaje);
 
-  // Inicializa todos los selectores de Materialize
-  $('select').formSelect();
+        // Inicializa todos los selectores de Materialize
+        $('select').material_select();
 
-  // Función para cargar horarios en el select de horario masaje
-  function cargarHorariosInicial(lugarId, index) {
-      const $horarioSelect = $(`#horario_masaje_${index}`);
-      //$horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
+        // Función para cargar horarios en el select de horario masaje
+        function cargarHorariosInicial(lugarId, index) {
+            const $horarioSelect = $(`#horario_masaje_${index}`);
+            //$horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
 
-      if (horariosPorLugar[lugarId]) {
-          horariosPorLugar[lugarId].forEach(function (horario) {
-              $horarioSelect.append(new Option(horario, horario));
-          });
+            if (horariosPorLugar[lugarId]) {
+                horariosPorLugar[lugarId].forEach(function (horario) {
+                    $horarioSelect.append(new Option(horario, horario));
+                });
 
-          // Reinicializa Materialize para el selector
-          $horarioSelect.formSelect();
-      }
-  }
+                // Reinicializa Materialize para el selector
+                $horarioSelect.material_select();
+            }
+        }
 
-  // Detectar cambios en el lugar de masaje
-  $('[id^="id_lugar_masaje_"]').on('change', function () {
-      const lugarId = $(this).val(); // ID del lugar seleccionado
-      const index = $(this).attr('id').split('_').pop(); // Índice del selector
+        // Detectar cambios en el lugar de masaje
+        $('[id^="id_lugar_masaje_"]').on('change', function () {
+            const lugarId = $(this).val(); // ID del lugar seleccionado
+            const index = $(this).attr('id').split('_').pop(); // Índice del selector
 
-      // Cargar los horarios según el lugar seleccionado
-      cargarHorariosInicial(lugarId, index);
-  });
+            // Cargar los horarios según el lugar seleccionado
+            cargarHorariosInicial(lugarId, index);
+        });
 
-  // Carga inicial: busca todos los selects que tienen lugar de masaje ya seleccionado
-  $('[id^="id_lugar_masaje_"]').each(function () {
-      const lugarId = $(this).val(); // ID del lugar seleccionado
-      const index = $(this).attr('id').split('_').pop(); // Índice del selector
+        // Carga inicial: busca todos los selects que tienen lugar de masaje ya seleccionado
+        $('[id^="id_lugar_masaje_"]').each(function () {
+            const lugarId = $(this).val(); // ID del lugar seleccionado
+            const index = $(this).attr('id').split('_').pop(); // Índice del selector
 
-      // Carga los horarios iniciales para el lugar ya seleccionado
-      if (lugarId) {
-          cargarHorariosInicial(lugarId, index);
-      }
-  });
-});
+            // Carga los horarios iniciales para el lugar ya seleccionado
+            if (lugarId) {
+                cargarHorariosInicial(lugarId, index);
+            }
+        });
+    });
 
       
 
 
-      </script>
+</script>
 @endsection

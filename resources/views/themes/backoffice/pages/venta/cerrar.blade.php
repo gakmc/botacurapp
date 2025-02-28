@@ -56,11 +56,6 @@
                 </div>
 
                 <div class="file-field input-field col s12 m5">
-                  {{-- <div class="btn">
-                    <span>Imagen Abono</span>
-                    <input type="file" id="imagen_abono" name="imagen_abono" value="{{$reserva->venta->imagen_abono}}"
-                      disabled>
-                  </div> --}}
                   <div class="file-path-wrapper">
                     <input class="file-path validate" type="text" placeholder="{{$reserva->venta->imagen_abono}}"
                       value="{{$reserva->venta->imagen_abono}}" readonly>
@@ -271,6 +266,20 @@
 
                   <label for="sinPropina">Consumo Sin Propina</label>
                   <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$consumo->subtotal}}" value="{{$consumo->subtotal}}" readonly>
+                  @error('sinPropina')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
+
+
+                <div class="input-field col s12 m3" id="soloConsumo">
+
+                  <label for="soloConsumo">Consumo</label>
+                  <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$consumo->subtotal}}" value="{{$consumo->subtotal}}" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>

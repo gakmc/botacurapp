@@ -85,6 +85,17 @@
                         </span>
                     </a>
                 </li>
+
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reservas.registro') }}">
+                        <i class="material-icons">
+                            assignment_ind
+                        </i>
+                        <span class="nav-text">
+                            Reservas
+                        </span>
+                    </a>
+                </li>
                 @endif
 
                 @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')))

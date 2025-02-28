@@ -560,8 +560,6 @@
     $(document).ready(function () {
         // Cargar horarios desde el backend
         const horariosPorLugar = @json($horasMasaje);
-
-        console.log(horariosPorLugar);
         
 
         // Inicializa todos los selectores de Materialize

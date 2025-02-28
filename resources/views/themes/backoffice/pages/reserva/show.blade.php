@@ -17,7 +17,12 @@
     <li><a href="{{ route('backoffice.reserva.visita.register', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Registrar Visita</a></li>
   @else
     
-    <li><a href="{{ route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Visita</a></li>
+    <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
+    
+    <li><a href="{{ route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
+    
+    <li><a href="{{ route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Menú</a></li>
+
   @endif
 @endsection
 
@@ -325,9 +330,10 @@
                                                     {{ $masaje->lugarMasaje->nombre ?? 'No Registra' }}
                                                 </strong>
                                             </p>
+                                            <br>
                                               <p class="collections-title">
                                                   Masaje: 
-                                                  <strong id="horario-masaje" class="horario-masaje"
+                                                  <strong id="horario-masaje-{{$indexM}}" class="horario-masaje"
                                                       data-fecha="{{ $reserva->fecha_visita }}" 
                                                       data-inicio="{{ $masaje->horario_masaje }}"
                                                       data-fin="{{ $masaje->hora_fin_masaje }}">
@@ -340,14 +346,15 @@
                                                       {{ $masaje->hora_fin_masaje }}
                                                   </strong>
                                               </p>
+                                              <br>
                                           </div>
                                           <div class="col s3">
-                                              <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                            <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
                                           </div>
                                           <div class="col s3">
-                                              <div class="progress">
-                                                  <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
-                                              </div>
+                                            <div class="progress">
+                                              <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
+                                            </div>
                                           </div>
                                       </div>
                                   @endif
@@ -361,6 +368,7 @@
                                                     {{ $masaje->lugarMasaje->nombre }}
                                                 </strong>
                                             </p>
+                                            <br>
                                               <p class="collections-title">
                                                   Masaje Extra: 
                                                   <strong id="horario-masaje" class="horario-masaje"
@@ -376,6 +384,7 @@
                                                       {{ $masaje->hora_fin_masaje_extra }}
                                                   </strong>
                                               </p>
+                                              <br>
                                               <p>
                                                 <br><br>
                                               </p>
@@ -790,12 +799,16 @@
 
           return (milisegundosTranscurridos / totalMilisegundos) * 100;
       }
+      
 
       function actualizarProgreso(servicio) {
           document.querySelectorAll(`.horario-${servicio}`).forEach((element, index) => {
               const fecha = element.getAttribute('data-fecha');
               const horaInicio = element.getAttribute('data-inicio');
               const horaFin = element.getAttribute('data-fin');
+
+              console.log(`Servicio: ${servicio}, Index: ${index}`, { fecha, horaInicio, horaFin });
+
               const progreso = calcularProgreso(horaInicio, horaFin, fecha);
 
               const progressBar = document.getElementById(`progress-${servicio}-${index}`);
@@ -827,8 +840,10 @@
           actualizarProgreso('tinaja');
           actualizarProgreso('masaje');
         }, 1000);
+
+
+        console.log($('#horario_masaje').data('inicio'),$('#horario_masaje').data('fin'),$('#horario_masaje').data('fecha'));
     });
-    
     
     
 </script>
@@ -849,6 +864,17 @@
             toast.onmouseleave = Swal.resumeTimer;
           }
     });
+  @endif
+
+  @if(session('success'))
+        Swal.fire({
+            icon: 'success',
+            title: 'Éxito',
+            text: '{{ session('success') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            timer: 5000,
+        });
   @endif
 </script>
 

@@ -6,7 +6,7 @@
 @endsection
 
 @section('dropdown_settings')
-<li><a href="{{route ('backoffice.reserva.listar') }}" class="grey-text text-darken-2">Todas las Reservas</a></li>
+<li><a href="{{route ('backoffice.reservas.listar') }}" class="grey-text text-darken-2">Todas las Reservas</a></li>
 @endsection
 
 @section('head')
