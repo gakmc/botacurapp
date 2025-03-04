@@ -38,11 +38,15 @@ class MenuController extends Controller
             foreach ($reservasPorFecha as $reserva) {
                 foreach ($reserva->visitas as $visita) {
                     foreach ($visita->menus as $menu) {
-                        if (isset($platosContados[$menu->productoEntrada->nombre])) {
-                            $platosContados[$menu->productoEntrada->nombre]++;
-                        } else {
-                            $platosContados[$menu->productoEntrada->nombre] = 1;
+                        if ($menu->id_producto_entrada !== null) {
+                            $nombrePlato = $menu->productoEntrada->nombre;
+                            if (isset($platosContados[$nombrePlato])) {
+                                $platosContados[$nombrePlato]++;
+                            } else {
+                                $platosContados[$nombrePlato] = 1;
+                            }
                         }
+                        
                     }
                 }
             }
@@ -57,10 +61,12 @@ class MenuController extends Controller
             foreach ($reservasPorFecha as $reserva) {
                 foreach ($reserva->visitas as $visita) {
                     foreach ($visita->menus as $menu) {
-                        if (isset($platosContados[$menu->productoFondo->nombre])) {
-                            $platosContados[$menu->productoFondo->nombre]++;
-                        } else {
-                            $platosContados[$menu->productoFondo->nombre] = 1;
+                        if ($menu->id_producto_fondo !== null) {
+                            if (isset($platosContados[$menu->productoFondo->nombre])) {
+                                $platosContados[$menu->productoFondo->nombre]++;
+                            } else {
+                                $platosContados[$menu->productoFondo->nombre] = 1;
+                            }
                         }
                     }
                 }

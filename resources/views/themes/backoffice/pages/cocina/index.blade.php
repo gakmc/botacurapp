@@ -177,20 +177,25 @@
                   <strong>Menú {{$index + 1}}:</strong>
                 </td>
                 <td>
-                  {{ $menu->productoEntrada->nombre }}
+                  @if (isset($menu->id_producto_entrada))
+                      {{ $menu->productoEntrada->nombre }}
+                  @else
+                      <span class="red-text">No registra</span>
+                  @endif
                 </td>
                 <td>
-
-                  {{ $menu->productoFondo->nombre }}
+                  @if (isset($menu->id_producto_fondo))
+                      {{ $menu->productoFondo->nombre }}
+                  @else
+                      <span class="red-text">No registra</span>
+                  @endif
                 </td>
                 <td>
                   @if ($menu->productoAcompanamiento == null)
-                  Sin Acompañamiento
-                @else
-                  
-                {{ $menu->productoAcompanamiento->nombre }}
-                @endif
-
+                    Sin Acompañamiento
+                  @else
+                    {{ $menu->productoAcompanamiento->nombre }}
+                  @endif
                 </td>
 
                 @if ($menu->alergias == null)

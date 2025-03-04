@@ -706,7 +706,7 @@ class VisitaController extends Controller
 
         return view('themes.backoffice.pages.visita.edit', [
             'visita'          => $visita,
-            'visitas'         => $visitas,
+            'visitas'         => $reserva->visitas,
             'reserva'         => $reserva,
             'menus'           => $menus,
             'ubicaciones'     => $ubicaciones,

@@ -865,6 +865,8 @@ class ReservaController extends Controller
         $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
         $reservasPaginadas->setPath(request()->url());
 
-        return view('themes.backoffice.pages.reserva.index_registro', compact('reservas'));
+        return view('themes.backoffice.pages.reserva.index_registro', [
+            'reservasPaginadas' => $reservasPaginadas
+        ]);
     }
 }

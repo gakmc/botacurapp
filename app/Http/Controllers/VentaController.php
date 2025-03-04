@@ -358,14 +358,23 @@ class VentaController extends Controller
         //
     }
 
-    /**
-     * Remove the specified resource from storage.
-     *
-     * @param  \App\Venta  $venta
-     * @return \Illuminate\Http\Response
-     */
     public function destroy(Venta $venta)
     {
         //
+    }
+
+    public function index_cierre()
+    {
+        // Asignacion de dias Hoy y Mañana
+        $hoy    = Carbon::today();
+        
+        // Filtrar las reservas que tienen visitas y cuya fecha de visita es hoy o mañana
+        $reservas = Reserva::with('visitas', 'cliente', 'programa', 'user', 'venta')
+        ->where('fecha_visita', $hoy)
+        ->get();
+
+        return view('themes.backoffice.pages.venta.cierre.index_cierre',[
+            'reservas' => $reservas
+        ]);
     }
 }

@@ -170,6 +170,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('venta/{ventum}/verconsumo', 'VentaController@verconsumo')->name('reserva.venta.verconsumo');
 
     
+    Route::get('venta/cierre_ventas', 'VentaController@index_cierre')->name('reserva.venta.cierre');
+
     Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
     Route::match(['put', 'patch'],'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
     
