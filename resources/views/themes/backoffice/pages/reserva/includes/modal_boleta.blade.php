@@ -1,5 +1,5 @@
 <!-- Modal Structure -->
-<div id="modal-{{$reserva->venta->consumos->first()->id}}" class="modal modal-fixed-footer">
+<div id="modal-{{--$reserva->venta->consumos->first()->id--}}" class="modal modal-fixed-footer">
     <div class="modal-content">
       <h4>Boleta</h4>
       <div id="boleta-contenido">

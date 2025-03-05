@@ -81,7 +81,7 @@
                             @if(!empty($reserva->venta->consumos) && count($reserva->venta->consumos) > 0)
                                 <td>
                                     
-                                    <a href="#modal-{{$reserva->venta->consumos->first()->id}}"
+                                    <a href="#modal-{{--$reserva->venta->consumos->first()->id--}}"
                                         class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
                                 
                                     </a>
