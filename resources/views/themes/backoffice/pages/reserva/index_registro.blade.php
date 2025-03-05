@@ -17,14 +17,17 @@
     <a href="?page=1"><p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p></a>
 
     <div class="row">
-        <div class="col s2 green-text offset-s2">
+        <div class="col s2 green-text offset-s1">
             <i class='material-icons left'>done_all</i>Registro completo
         </div>
-        <div class="col s2 green-text offset-s2">
+        <div class="col s2 green-text offset-s1">
             <i class='material-icons left'>check</i>Registro incompleto
         </div>
         <div class="col s2 red-text offset-s1">
             <i class='material-icons left'>close</i>No Registra
+        </div> 
+        <div class="col s2 red-text offset-s1">
+            <i class='material-icons left'>do_not_disturb_alt</i>No Aplica
         </div> 
     </div>
     
@@ -82,7 +85,7 @@
                                     return $visita->horario_sauna !== null || $visita->horario_tinaja !== null;
                                 })->count();
 
-                                if ($menusConProducto === $totalMenus) {
+                                if ($totalMenus > 0 && ($menusConProducto === $totalMenus)) {
                                     $iconoMenu = 'done_all';
                                     $colorMenu = 'green';
                                     $linkMenu = '#';
@@ -90,13 +93,17 @@
                                     $iconoMenu = 'check';
                                     $colorMenu = 'green';
                                     $linkMenu = route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]);
+                                } elseif (!$reserva->programa->incluye_almuerzos && !$ultimaVisita->incluye_almuerzos_extra) {
+                                    $iconoMenu = 'do_not_disturb_alt';
+                                    $colorMenu = 'red';
+                                    $linkMenu = '#';
                                 } else {
                                     $iconoMenu = 'close';
                                     $colorMenu = 'red';
-                                    $linkMenu = route('backoffice.reserva.show', $reserva);
+                                    $linkMenu = route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]);
                                 }
 
-                                if ($masajesConHorario === $totalMasajes) {
+                                if ($totalMasajes > 0 && ($masajesConHorario === $totalMasajes)) {
                                     $iconoMasaje = 'done_all';
                                     $colorMasaje = 'green';
                                     $linkMasaje = '#';
@@ -104,10 +111,14 @@
                                     $iconoMasaje = 'check';
                                     $colorMasaje = 'green';
                                     $linkMasaje = route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]);
+                                } elseif ( !$reserva->programa->incluye_masajes && !$ultimaVisita->incluye_masajes_extra) {
+                                    $iconoMasaje = 'do_not_disturb_alt';
+                                    $colorMasaje = 'red';
+                                    $linkMasaje = '#';
                                 } else {
                                     $iconoMasaje = 'close';
                                     $colorMasaje = 'red';
-                                    $linkMasaje = route('backoffice.reserva.show', $reserva);
+                                    $linkMasaje = route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]);
                                 }
 
                                 if ($visitasConHorario === $totalVisitas) {
@@ -121,7 +132,7 @@
                                 } else {
                                     $iconoVisita = 'close';
                                     $colorVisita = 'red';
-                                    $linkVisita = route('backoffice.reserva.show', $reserva);
+                                    $linkVisita = route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]);
                                 }
 
                             @endphp
@@ -147,7 +158,14 @@
 
                                 </td>
                                 <td>
-                                    {{is_null($ultimaVisita->id_ubicacion) ? 'No Registrada' : $ultimaVisita->ubicacion->nombre}}
+                                    @if (is_null($ultimaVisita->id_ubicacion))
+                                        <a href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}">
+                                            No Registrada
+                                        </a>
+                                    @else
+                                        {{$ultimaVisita->ubicacion->nombre}}
+                                    @endif
+
                                 </td>
                                 <td>
                                     <a href="{{$linkMenu}}">

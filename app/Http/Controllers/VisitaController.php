@@ -589,7 +589,7 @@ class VisitaController extends Controller
         $cantidadMasajesExtra = session()->get('cantidadMasajesExtra');
 
         $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
-        $menus = $reserva->visitas->last()->menus;
+        // $menus = $reserva->visitas->last()->menus;
 
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
@@ -608,7 +608,7 @@ class VisitaController extends Controller
             ->get();
 
         $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
+            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
 
         // ===============================HORAS=SPA==============================================
@@ -703,6 +703,25 @@ class VisitaController extends Controller
         $acompañamientos = Producto::whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'acompañamiento');
         })->get();
+
+        
+        
+
+        // Obtener la última visita de la reserva
+$ultimaVisita = $reserva->visitas->last();
+
+// Obtener la cantidad de personas en la reserva
+$cantidadPersonas = $reserva->cantidad_personas;
+
+// Obtener los menús de la última visita
+$menus = $ultimaVisita ? $ultimaVisita->menus : collect([]);
+
+// Si la cantidad de menús es menor a la cantidad de personas en la reserva, agregamos menús vacíos
+$menusFaltantes = $cantidadPersonas - $menus->count();
+for ($i = 0; $i < $menusFaltantes; $i++) {
+    $menus->push(new Menu()); // Agregar menú vacío
+}
+
 
         return view('themes.backoffice.pages.visita.edit', [
             'visita'          => $visita,

@@ -113,163 +113,178 @@
 
                 @endif
 
+                @if(Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.admin_role')))
+
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reserva.venta.cierre') }}">
+                            <i class="material-icons">
+                                local_drink
+                            </i>
+                            <span class="nav-text">
+                                Gestion Consumo
+                            </span>
+                        </a>
+                    </li>
+
+                @endif
+
                 @if(Auth::user()->has_role(config('app.admin_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.programa.index') }}">
-                        <i class="material-icons">
-                            redeem
-                        </i>
-                        <span class="nav-text">
-                            Programas
-                        </span>
-                    </a>
-                </li>
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.servicio.index') }}">
-                        <i class="material-icons">
-                            room_service
-                        </i>
-                        <span class="nav-text">
-                            Servicios
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.programa.index') }}">
+                            <i class="material-icons">
+                                redeem
+                            </i>
+                            <span class="nav-text">
+                                Programas
+                            </span>
+                        </a>
+                    </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.servicio.index') }}">
+                            <i class="material-icons">
+                                room_service
+                            </i>
+                            <span class="nav-text">
+                                Servicios
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.insumo.index') }}">
-                        <i class="material-icons">
-                            store
-                        </i>
-                        <span class="nav-text">
-                            Insumos
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.insumo.index') }}">
+                            <i class="material-icons">
+                                store
+                            </i>
+                            <span class="nav-text">
+                                Insumos
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.producto.index') }}">
-                        <i class="material-icons">
-                            shopping_basket
-                        </i>
-                        <span class="nav-text">
-                            Productos
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.producto.index') }}">
+                            <i class="material-icons">
+                                shopping_basket
+                            </i>
+                            <span class="nav-text">
+                                Productos
+                            </span>
+                        </a>
+                    </li>
                 @endif
 
 
                 @if (Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.admin_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.menu.index') }}">
-                        <i class="material-icons">
-                            restaurant
-                        </i>
-                        <span class="nav-text">
-                            Menús
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.menu.index') }}">
+                            <i class="material-icons">
+                                restaurant
+                            </i>
+                            <span class="nav-text">
+                                Menús
+                            </span>
+                        </a>
+                    </li>
                 @endif
 
                 @if (Auth::user()->has_role(config('app.barman_role')) || Auth::user()->has_role(config('app.admin_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.index') }}">
-                        <i class="material-icons">
-                            local_bar
-                        </i>
-                        <span class="nav-text">
-                            Bebidas
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.index') }}">
+                            <i class="material-icons">
+                                local_bar
+                            </i>
+                            <span class="nav-text">
+                                Bebidas
+                            </span>
+                        </a>
+                    </li>
                 @endif
 
                 @if (Auth::user()->has_role(config('app.garzon_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.bebidas') }}">
-                        <i class="material-icons">
-                            local_bar
-                        </i>
-                        <span id="bebidasGarzon" class="nav-text">
-                            Bebidas 
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.bebidas') }}">
+                            <i class="material-icons">
+                                local_bar
+                            </i>
+                            <span id="bebidasGarzon" class="nav-text">
+                                Bebidas 
+                            </span>
+                        </a>
+                    </li>
                 @endif
 
                 @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.masoterapeuta_role')))
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.masaje.index') }}">
-                        <i class="material-icons">
-                            airline_seat_flat
-                        </i>
-                        <span class="nav-text">
-                            Masajes
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.masaje.index') }}">
+                            <i class="material-icons">
+                                airline_seat_flat
+                            </i>
+                            <span class="nav-text">
+                                Masajes
+                            </span>
+                        </a>
+                    </li>
 
                 @endif
                 
                 
                 @if (Auth::user()->has_role(config('app.admin_role')))
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.user.index') }}">
-                        <i class="material-icons">
-                            people
-                        </i>
-                        <span class="nav-text">
-                            Usuarios del Sistema
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.user.index') }}">
+                            <i class="material-icons">
+                                people
+                            </i>
+                            <span class="nav-text">
+                                Usuarios del Sistema
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.role.index') }}">
-                        <i class="material-icons">
-                            perm_identity
-                        </i>
-                        <span class="nav-text">
-                            Roles del Sistema
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.role.index') }}">
+                            <i class="material-icons">
+                                perm_identity
+                            </i>
+                            <span class="nav-text">
+                                Roles del Sistema
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.permission.index') }}">
-                        <i class="material-icons">
-                            vpn_key
-                        </i>
-                        <span class="nav-text">
-                            Permisos del Sistema
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.permission.index') }}">
+                            <i class="material-icons">
+                                vpn_key
+                            </i>
+                            <span class="nav-text">
+                                Permisos del Sistema
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.asignacion.index') }}">
-                        <i class="material-icons">
-                            person_add
-                        </i>
-                        <span class="nav-text">
-                            Asignacion de turno
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.asignacion.index') }}">
+                            <i class="material-icons">
+                                person_add
+                            </i>
+                            <span class="nav-text">
+                                Asignacion de turno
+                            </span>
+                        </a>
+                    </li>
 
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
-                        <i class="material-icons">
-                            data_usage
-                        </i>
-                        <span class="nav-text">
-                            Complementos
-                        </span>
-                    </a>
-                </li>
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
+                            <i class="material-icons">
+                                data_usage
+                            </i>
+                            <span class="nav-text">
+                                Complementos
+                            </span>
+                        </a>
+                    </li>
 
                 @endif
 

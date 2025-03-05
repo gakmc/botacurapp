@@ -39,7 +39,7 @@
                 </h5>
             @else
 
-                    <table class="bordered">
+                    <table class="bordered responsive-table">
                         <thead>
                         <tr>
                             <th>Nombre</th>
@@ -59,7 +59,6 @@
                         <tr>
                             <td>
                                 <a href="{{route('backoffice.reserva.show', $reserva)}}">
-
                                     {{$reserva->cliente->nombre_cliente}}
                                 </a>
                             </td>
@@ -71,19 +70,44 @@
                                 @endif
                             </td>
                             <td>
-                                {{$visita->ubicacion->nombre}}
+                                @if (!is_null($visita->id_ubicacion))
+                                    {{$visita->ubicacion->nombre}}
+                                @else
+                                    <a id="noRegistra" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}">No registra ubicación.</a>
+                                @endif
                             </td>
-                            <td>
                             @if (is_null($reserva->venta->diferencia_programa))
-                                <a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
-                                    class="collection-item center-align valign-wrapper left">
-                                    <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>
-                                </a>
+                            
+                            @if(!empty($reserva->venta->consumos) && count($reserva->venta->consumos) > 0)
+                                <td>
+                                    
+                                    <a href="#modal-{{$reserva->venta->consumos->first()->id}}"
+                                        class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
+                                
+                                    </a>
+                                </td>
+                            @endif
+                                <td>
+                                    <a 
+                                        href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
+                                        class="collection-item center-align valign-wrapper left"
+                                        data-position="bottom" data-tooltip="Ingresar Consumo">
+                                            <i class="left material-icons pink-text ">local_bar</i>
+                                            Ingresar Consumo        
+                                    </a>
+                                </td>
 
-                                <a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
-                                    class="collection-item center-align valign-wrapper left">
-                                    <i class='material-icons tooltipped red-text' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
-                                </a>
+                                <td>
+
+                                    
+                                    <a 
+                                        href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
+                                        class="collection-item center-align valign-wrapper left">
+                                            <i class='material-icons red-text left' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
+                                    Cerrar Venta
+                                    </a>
+
+                                </td>
                     
                             @else
                     
@@ -104,6 +128,10 @@
 
 
             @endif
+
+
+            @include('themes.backoffice.pages.reserva.includes.modal_boleta')
+
 
         </div>
     </div>
@@ -132,5 +160,33 @@
     //             }
     //     });
     // }
-   </script>
+</script>
+
+<script>
+    $(document).ready(function () {
+        $('.collection-item').on('click', function (event) {
+            let noRegistra = $(this).closest('tr').find('#noRegistra').length > 0;
+
+            if (noRegistra) {
+                event.preventDefault();
+                
+                Swal.fire({
+                    toast: true,
+                    icon: 'warning',
+                    title: 'Debes agregar la ubicación antes de ingresar el consumo.',
+                    color: 'white',
+                    iconColor: 'yellow',
+                    background: "#039B7B",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+            }
+        });
+    });
+</script>
 @endsection

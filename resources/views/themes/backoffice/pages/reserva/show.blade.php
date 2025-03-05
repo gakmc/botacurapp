@@ -11,19 +11,19 @@
 @endsection
 
 @section('dropdown_settings')
-<li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
-  @if ($reserva->visitas->first()->horario_sauna === null && $reserva->visitas->first()->horario_tinaja === null)
-    
-    <li><a href="{{ route('backoffice.reserva.visita.register', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Registrar Visita</a></li>
-  @else
-    
-    <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
-    
-    <li><a href="{{ route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
-    
-    <li><a href="{{ route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Menú</a></li>
 
+  <li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
+    
+  <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
+    
+  @if ($reserva->programa->incluye_masajes || $reserva->visitas->last()->incluye_masajes_extra)
+    <li><a href="{{ route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
   @endif
+  
+  @if ($reserva->programa->incluye_almuerzos || $reserva->visitas->last()->incluye_almuerzos_extra)
+    <li><a href="{{ route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Menú</a></li>
+  @endif
+
 @endsection
 
 @section('content')
@@ -33,7 +33,6 @@
   <div id="basic-form" class="section" style="padding-top: 0">
     <div class="row">
       <div class="col s12 m8">
-
         @if(Auth::user()->has_role(config('app.admin_role')))
         {{-- TABLA CLIENTE --}}
           <div class="card">
@@ -43,9 +42,9 @@
                 <div class="col s12 m6 l4">
                   <p>
                     @if (is_null($reserva->cliente->whatsapp_cliente))
-                      <i class="material-icons">perm_phone_msg</i> No Registra
+                      <i class="material-icons left">perm_phone_msg</i> No Registra
                     @else
-                      <i class="material-icons">perm_phone_msg</i> <a
+                      <i class="material-icons left">perm_phone_msg</i> <a
                       href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}"
                       target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                     @endif
@@ -57,9 +56,9 @@
                   <p>
 
                     @if (is_null($reserva->cliente->instagram_cliente))
-                      <i class="material-icons">perm_identity</i> No Registra
+                      <i class="material-icons left">perm_identity</i> No Registra
                     @else
-                      <i class="material-icons">perm_identity</i> <a
+                      <i class="material-icons left">perm_identity</i> <a
                       href="https://www.instagram.com/{{$reserva->cliente->instagram_cliente}}"
                       target="_blank">{{$reserva->cliente->instagram_cliente}}</a>
                     @endif
@@ -72,9 +71,9 @@
                   <p>
 
                     @if (is_null($reserva->cliente->correo))
-                      <i class="material-icons">email</i> No Registra
+                      <i class="material-icons left">email</i> No Registra
                     @else
-                      <i class="material-icons">email</i> <a href="mailto:{{$reserva->cliente->correo}}"
+                      <i class="material-icons left">email</i> <a href="mailto:{{$reserva->cliente->correo}}"
                       target="_blank">{{$reserva->cliente->correo}}</a>
                     @endif
 
@@ -85,7 +84,7 @@
                 <div class="col s12 m6 l4">
                   <p>
 
-                    <i class="material-icons">group</i> Reserva para: <strong>{{$reserva->cantidad_personas}}
+                    <i class="material-icons left">group</i> Reserva para: <strong>{{$reserva->cantidad_personas}}
                       personas</strong>
 
                   </p>
@@ -93,7 +92,7 @@
                 <div class="col s12 m6 l4">
                   <p>
 
-                    <i class="material-icons">verified_user</i> Reserva Generada por: <a
+                    <i class="material-icons left">verified_user</i> Reserva Generada por: <a
                       href="{{route('backoffice.user.show', $reserva->user_id)}}">{{$reserva->user->name}}</a>
 
                   </p>
@@ -321,7 +320,7 @@
                                       $masaje = $grupoMasajes->first();
                                   @endphp
                             
-                                  @if($reserva->programa->servicios->contains('nombre_servicio', 'Masaje'))
+                                  @if($reserva->programa->incluye_masajes)
                                       <div class="row">
                                           <div class="col s7">
                                             <p class="collections-content">
@@ -359,7 +358,7 @@
                                       </div>
                                   @endif
                             
-                                  @if(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje)
+                                  @if(!$reserva->programa->incluye_masajes && $masaje->horario_masaje)
                                       <div class="row">
                                           <div class="col s7">
                                             <p class="collections-tittle">

@@ -44,6 +44,15 @@ class Visita extends Model
     //ALMACENAMIENTO
 
     //VALIDACION
+    public function getIncluyeMasajesExtraAttribute() 
+    {
+        return $this->masajes()->exists();    
+    }
+
+    public function getIncluyeAlmuerzosExtraAttribute() 
+    {
+        return $this->menus()->exists();
+    }
 
     //RECUPERACION DE INFORMACION
     // public function getFechaVisitaAttribute($value)

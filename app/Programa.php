@@ -72,7 +72,9 @@ public function my_update($request)
 //VALIDACION
 public function getIncluyeMasajesAttribute()
 {
-    return $this->servicios->contains('nombre_servicio', 'Masaje');
+    return $this->servicios->contains(function($servicio){
+        return in_array($servicio->nombre_servicio, ['Masaje', 'masaje', 'Masajes', 'masajes']);
+    });
 }
 
 public function getIncluyeAlmuerzosAttribute()

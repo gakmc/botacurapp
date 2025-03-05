@@ -263,16 +263,22 @@ class ReservaController extends Controller
 
     public function store(StoreRequest $request, Reserva $reserva)
     {
+        $request->merge([
+            'abono_programa' => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
+            'cantidad_personas' => (int) str_replace(['$', '.', ','], '', $request->cantidad_personas),
+            'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+        ]);
+
         $masajesExtra         = null;
         $almuerzosExtra       = null;
         $cantidadMasajesExtra = null;
-
+        
         // Verificar si el programa seleccionado incluye un masaje
         $programa = Programa::find($request->id_programa);
-
+        
         // Buscar si el programa tiene un servicio de masaje
-        $incluyeMasaje = $programa->servicios()->whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])->exists();
-
+        $incluyeMasaje = $programa->incluye_masajes;
+        
         try {
 
             // Iniciar la transacción
@@ -587,9 +593,15 @@ class ReservaController extends Controller
                     ->whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])
                     ->exists();
 
+
+                $reserva->update([
+                    'cantidad_personas' => $request->cantidad_personas,
+                    'observacion' => $request->observacion,
+                    'id_programa' => $request->id_programa,
+                ]);
                 // Actualizar cantidad_masajes si el programa incluye masaje
                 if ($incluyeMasaje) {
-                    $reserva->update(['cantidad_masajes' => $reserva->cantidad_personas]);
+                    $reserva->update(['cantidad_masajes' => $request->cantidad_personas]);
                 } else {
                     $reserva->update(['cantidad_masajes' => null]);
                 }

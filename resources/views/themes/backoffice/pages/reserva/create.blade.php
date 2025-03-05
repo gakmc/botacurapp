@@ -92,6 +92,8 @@
                   <label for="abono_programa" class="black-text">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class=""
                     value="{{ old('abono_programa') }}">
+                    
+                  <input type="hidden" id="abono_hidden">
                   @error('abono_programa')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -189,7 +191,7 @@
                 <div class="input-field col s12 m3">
 
                   <label for="total_pagar">Total a pagar</label>
-                  <input id="total_pagar" type="number" name="total_pagar" class="" value="{{old('total_pagar')}}"
+                  <input id="total_pagar" type="text" name="total_pagar" class="" value="{{old('total_pagar')}}"
                     placeholder="0" readonly>
                   @error('total_pagar')
                   <span class="invalid-feedback" role="alert">
@@ -201,7 +203,7 @@
 
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaAbono">Imagen Abono:</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono" src="https://via.placeholder.com/200x300" alt=""
+                  <img class="center-text" id="imagenSeleccionadaAbono" src="https://placehold.co/200x300?text=No+Image" alt=""
                     style="max-height: 200px">
                 </div>
               </div>
@@ -250,11 +252,11 @@
   });
 </script>
 
-<script>
+{{-- <script>
   $(document).ready(function () {
     $('select').formSelect();
   });
-</script>
+</script> --}}
 
 <script>
   $(document).ready(function (e) {   
@@ -274,7 +276,7 @@
   var abono = 0;
 
 $('#id_programa').on('change', function(){
-  valorPrograma = $(this).find(':selected').data('valor');
+  valorPrograma = parseInt($(this).find(':selected').data('valor')) || 0;
   calcularValorTotal();
 });
 
@@ -283,88 +285,105 @@ $('#cantidad_personas').on('change', function(){
   calcularValorTotal();
 })
 
+// $('#abono_programa').on('change', function(){
+//   abono = parseInt($(this).val());
+//   calcularValorTotal();
+// })
+
+
 $('#abono_programa').on('change', function(){
-  abono = $(this).val();
+  let rawValue = $(this).val().replace(/\D/g, ''); // Eliminar caracteres no numéricos
+      abono = parseInt(rawValue) || 0; 
+
+      // Guardar el valor sin formato en un input oculto
+      $('#abono_hidden').val(abono);
+
+      // Mostrar el valor formateado en el input visible
+      $(this).val(formatCLP(abono));
   calcularValorTotal();
 })
 
 function calcularValorTotal(){
 
   var total = (valorPrograma * cantidadPersonas)-abono;
-  $('#total_pagar').val(total);
+  $('#abono_programa').val(formatCLP(abono));
+  $('#total_pagar').val(formatCLP(total));
 }
 
+function formatCLP(number) 
+{
+      return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+}
 </script>
 
 
 <script>
   $(document).ready(function(e){
-  const selectPrograma = $('#id_programa');
-  const cantidadMasajesInput = $('#cantidad_masajes').closest('div');
-  const checkboxMasajesContainer = $('#checkbox-masajes-container');
-  const inputCantidadMasajesContainer = $('#input-cantidad-masajes-container');
-  const agregarMasajesCheckbox = $('#agregar_masajes');
-  const cantidadMasajesExtraInput = $('#cantidad_masajes_extra');
-  const checkboxAlmuerzosContainer = $('#checkbox-almuerzos-container');
-  const agregarAlmuerzosCheckbox = $('#agregar_almuerzos');
+    const selectPrograma = $('#id_programa');
+    const cantidadMasajesInput = $('#cantidad_masajes').closest('div');
+    const checkboxMasajesContainer = $('#checkbox-masajes-container');
+    const inputCantidadMasajesContainer = $('#input-cantidad-masajes-container');
+    const agregarMasajesCheckbox = $('#agregar_masajes');
+    const cantidadMasajesExtraInput = $('#cantidad_masajes_extra');
+    const checkboxAlmuerzosContainer = $('#checkbox-almuerzos-container');
+    const agregarAlmuerzosCheckbox = $('#agregar_almuerzos');
 
 
-  function toggleMasajesField() {
-    const selectedOption = selectPrograma.find('option:selected');
-    const incluyeMasajes = selectedOption.data('incluye-masajes');
-    const inputMasajes = $('#cantidad_masajes');
-    
-    if (incluyeMasajes === 1) {
-      // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
-      cantidadMasajesInput.show();
-      checkboxMasajesContainer.hide(); // Ocultar el checkbox de agregar masajes extras
-      inputCantidadMasajesContainer.hide(); // Ocultar el input de cantidad de masajes extras
-      cantidadMasajesExtraInput.val('');
-      agregarMasajesCheckbox.prop('checked', false);
-      inputMasajes.val('');
-    } else {
-      // Si no incluye masajes, ocultamos el input normal de masajes y mostramos el checkbox para agregar masajes extras
-      cantidadMasajesInput.hide();
-      checkboxMasajesContainer.show(); // Mostrar checkbox para agregar masajes
-      inputCantidadMasajesContainer.hide(); // Inicialmente ocultamos el input de cantidad de masajes extras
-      cantidadMasajesExtraInput.val('');
-      agregarMasajesCheckbox.prop('checked', false);
-      inputMasajes.val('');
+    function toggleMasajesField() {
+      const selectedOption = selectPrograma.find('option:selected');
+      const incluyeMasajes = selectedOption.data('incluye-masajes');
+      const inputMasajes = $('#cantidad_masajes');
+      
+      if (incluyeMasajes === 1) {
+        // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
+        cantidadMasajesInput.show();
+        checkboxMasajesContainer.hide(); // Ocultar el checkbox de agregar masajes extras
+        inputCantidadMasajesContainer.hide(); // Ocultar el input de cantidad de masajes extras
+        cantidadMasajesExtraInput.val('');
+        agregarMasajesCheckbox.prop('checked', false);
+        inputMasajes.val('');
+      } else {
+        // Si no incluye masajes, ocultamos el input normal de masajes y mostramos el checkbox para agregar masajes extras
+        cantidadMasajesInput.hide();
+        checkboxMasajesContainer.show(); // Mostrar checkbox para agregar masajes
+        inputCantidadMasajesContainer.hide(); // Inicialmente ocultamos el input de cantidad de masajes extras
+        cantidadMasajesExtraInput.val('');
+        agregarMasajesCheckbox.prop('checked', false);
+        inputMasajes.val('');
+      }
     }
-  }
 
-  function toggleAlmuerzosField(){
-    const selectedOption = selectPrograma.find('option:selected');
-    const incluyeAlmuerzos = selectedOption.data('incluye-almuerzos');
-    
-    if (incluyeAlmuerzos === 1) {
-      checkboxAlmuerzosContainer.hide();
-      agregarAlmuerzosCheckbox.prop('checked', false);
-    } else {
-      checkboxAlmuerzosContainer.show();
+    function toggleAlmuerzosField(){
+      const selectedOption = selectPrograma.find('option:selected');
+      const incluyeAlmuerzos = selectedOption.data('incluye-almuerzos');
+      
+      if (incluyeAlmuerzos === 1) {
+        checkboxAlmuerzosContainer.hide();
+        agregarAlmuerzosCheckbox.prop('checked', false);
+      } else {
+        checkboxAlmuerzosContainer.show();
+      }
     }
-  }
 
-  // Mostrar el input de cantidad de masajes solo si el checkbox está marcado
-  agregarMasajesCheckbox.on('change', function() {
-    if ($(this).is(':checked')) {
-      inputCantidadMasajesContainer.show(); // Mostrar el input de cantidad si el checkbox está marcado
-    } else {
-      inputCantidadMasajesContainer.hide(); // Ocultar el input si el checkbox está desmarcado
-      cantidadMasajesExtraInput.val('');
-    }
-  });
+    // Mostrar el input de cantidad de masajes solo si el checkbox está marcado
+    agregarMasajesCheckbox.on('change', function() {
+      if ($(this).is(':checked')) {
+        inputCantidadMasajesContainer.show(); // Mostrar el input de cantidad si el checkbox está marcado
+      } else {
+        inputCantidadMasajesContainer.hide(); // Ocultar el input si el checkbox está desmarcado
+        cantidadMasajesExtraInput.val('');
+      }
+    });
 
-  // Escucha el evento change del select para detectar cuando cambie
-  selectPrograma.on('change', toggleMasajesField);
-  selectPrograma.on('change', toggleAlmuerzosField);
+    // Escucha el evento change del select para detectar cuando cambie
+    selectPrograma.on('change', toggleMasajesField);
+    selectPrograma.on('change', toggleAlmuerzosField);
 
-  // Inicializa el estado del campo en la carga de la página
-  toggleMasajesField(); // Para verificar la selección inicial
-  toggleAlmuerzosField();
+    // Inicializa el estado del campo en la carga de la página
+    toggleMasajesField(); // Para verificar la selección inicial
+    toggleAlmuerzosField();
   
-});
-
+  });
 
 </script>
 
