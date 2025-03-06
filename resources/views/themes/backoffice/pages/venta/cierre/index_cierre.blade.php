@@ -79,13 +79,16 @@
                             @if (is_null($reserva->venta->diferencia_programa))
                             
                             @if(!empty($reserva->venta->consumos) && count($reserva->venta->consumos) > 0)
-                                <td>
+                                @foreach ($reserva->venta->consumos as $consumo)
+                                    <td>
+                                        <a href="#modal-{{$reserva->id}}"
+                                            class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
                                     
-                                    <a href="#modal-{{--$reserva->venta->consumos->first()->id--}}"
-                                        class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
-                                
-                                    </a>
-                                </td>
+                                        </a>
+                                    </td>
+                                    @endforeach
+                                    
+
                             @endif
                                 <td>
                                     <a 
@@ -119,20 +122,24 @@
                             </td>
                         </tr>
                             
+
+
                         @endforeach
                         
+                        
+                        
+                    </tbody>
+                </table>
+                
+                
+                @endif
 
+                @foreach ($reservas as $reserva)
+                    
+                    @include('themes.backoffice.pages.reserva.includes.modal_boleta', ['reserva' => $reserva])
 
-                        </tbody>
-                    </table>
-
-
-            @endif
-
-
-            @include('themes.backoffice.pages.reserva.includes.modal_boleta')
-
-
+                @endforeach
+                
         </div>
     </div>
 </div>
@@ -140,6 +147,19 @@
 
 @section('foot')
 <script>
+
+    $(document).ready(function () {
+        $('.modal').modal();
+    });
+
+
+    // document.addEventListener('DOMContentLoaded', function() {
+    //     var modals = document.querySelectorAll('.modal');
+    //     M.Modal.init(modals);
+    // });
+
+
+
     // function activar_alerta(cliente)
     // {
     //     console.log(cliente);

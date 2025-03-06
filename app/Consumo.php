@@ -31,4 +31,14 @@ class Consumo extends Model
     {
         return $this->hasMany(PagoConsumo::class, 'id_consumo');
     }
+
+
+
+
+    //Validacion
+    public function getDetallesConsumoAttribute()
+    {
+        
+        return $this->detallesConsumos();
+    }
 }

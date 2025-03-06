@@ -150,6 +150,9 @@
                         </a>
                     </li>
 
+                @endif
+
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.cocina_role')))
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.insumo.index') }}">
                             <i class="material-icons">
