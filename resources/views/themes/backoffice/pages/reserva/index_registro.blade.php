@@ -66,8 +66,9 @@
                                 $primeraVisita  = $reserva->visitas->first();
                                 $ultimaVisita   = $reserva->visitas->last();
                                 $visitas        = $reserva->visitas;
-                                $menus          = $ultimaVisita->menus;
-                                $masajes        = $ultimaVisita->masajes;
+                                
+                                $menus = $ultimaVisita ? $ultimaVisita->menus : collect();
+                                $masajes = $ultimaVisita ? $ultimaVisita->masajes : collect();
 
                                 $totalMenus     = $menus->count();
                                 $totalMasajes   = $masajes->count();
