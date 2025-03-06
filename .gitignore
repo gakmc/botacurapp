@@ -20,5 +20,6 @@ yarn-error.log
 /resources/views/themes/backoffice/pages/reserva/OldOldindex.blade.php
 /resources/views/themes/backoffice/pages/reserva/indexNew.blade.php
 /resources/views/themes/backoffice/pages/barman/test.blade.php
+/resources/views/test.blade.php
 /storage/imagenes
 phpunit.xml*

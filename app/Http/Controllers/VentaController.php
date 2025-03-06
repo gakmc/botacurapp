@@ -373,8 +373,18 @@ class VentaController extends Controller
         ->where('fecha_visita', $hoy)
         ->get();
 
+        // $detalles = collect();
+
+        // foreach($reservas as $reserva)
+        // {
+        //     foreach($reserva->venta->consumos as $consumo){
+        //         $detalles = $detalles->merge($consumo->detallesConsumos);
+        //     }
+        // }
+
         return view('themes.backoffice.pages.venta.cierre.index_cierre',[
-            'reservas' => $reservas
+            'reservas' => $reservas,
+            // 'detalles' => $detalles
         ]);
     }
 }

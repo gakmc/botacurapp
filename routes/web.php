@@ -35,8 +35,8 @@ Route::get('/emitir', function () {
 
 
 Route::get('test', function () {
-    return 'hola';
-})->middleware('role:anfitriona');
+    return view('test');
+});
 
 Route::get('/', function () {
     return view('welcome');
