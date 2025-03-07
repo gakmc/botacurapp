@@ -857,14 +857,15 @@ class ReservaController extends Controller
             'cliente',
             'visitas',
             'visitas.masajes',
+            'visitas.ubicacion',
+            'visitas.menus',
             'programa',
-            'venta',
-            'visitas.menus'
+            'venta'
         ])
         ->orderBy('fecha_visita', 'asc')
         ->get();
 
-        $reservas->load(['visitas.masajes', 'visitas.ubicacion', 'visitas.menus', 'cliente']);
+        // $reservas->load(['visitas.masajes', 'visitas.ubicacion', 'visitas.menus', 'cliente']);
 
 
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
@@ -877,6 +878,8 @@ class ReservaController extends Controller
         $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
         $reservasPaginadas->setPath(request()->url());
 
+
+        
         return view('themes.backoffice.pages.reserva.index_registro', [
             'reservasPaginadas' => $reservasPaginadas
         ]);

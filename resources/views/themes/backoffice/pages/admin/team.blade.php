@@ -31,10 +31,10 @@
                                         data-state="guardar" hidden>Guardar
                                         sueldo base</a>
                                 </div>
-                                <div class="input-field col m4">
+                                <!-- <div class="input-field col m4">
                                     <input type="text" name="bono" id="bono">
                                     <label for="sueldoBase">Bono general</label>
-                                </div>
+                                </div> -->
                             </div>
                             @php
                             $counter = 0;
