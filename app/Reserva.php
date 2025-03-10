@@ -49,6 +49,11 @@ class Reserva extends Model
     {
         return $this->hasMany(Visita::class, 'id_reserva');
     }
+
+    public function visitasOrdenadas()
+    {
+        return $this->hasMany(Visita::class, 'id_reserva')->orderBy('horario_sauna', 'asc');
+    }
 //ALMACENAMIENTO
 
     public function store($request)

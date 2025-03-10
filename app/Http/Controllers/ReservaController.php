@@ -13,17 +13,14 @@ use App\Servicio;
 use App\TipoTransaccion;
 use App\User;
 use App\Venta;
-use Barryvdh\DomPDF\Facade\Pdf as FacadePdf;
-use Barryvdh\DomPDF\PDF as DomPDFPDF;
+use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
-use Illuminate\Support\Facades\Storage;
 // use PDF;
-use Barryvdh\DomPDF\Facade\Pdf;
-use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Facades\Storage;
 
 class ReservaController extends Controller
 {
@@ -32,54 +29,10 @@ class ReservaController extends Controller
     {
         Carbon::setLocale('es');
         $alternativeView = $request->query('alternative', false);
+        $mobileView = $request->query('mobileview', '');
         $fechaActual     = Carbon::now()->startOfDay();
-
-        if (!$alternativeView) {
-            $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-                ->with([
-                    'cliente',
-                    'visitas.ubicacion',
-                    'visitas.masajes',
-                    'programa',
-                    'venta',
-                ])
-                ->orderBy('fecha_visita', 'asc')
-                ->get();
-
-        } else {
-
-            $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-                ->with([
-                    'cliente',
-                    'visitas.ubicacion',
-                    'visitas.masajes',
-                    'programa',
-                    'venta',
-                ])
-                ->select('*')
-                ->selectSub(
-                    DB::table('visitas')
-                        ->whereColumn('visitas.id_reserva', 'reservas.id')
-                        ->orderBy('id_ubicacion', 'asc')
-                        ->limit(1)
-                        ->select('id_ubicacion'),
-                    'first_id_ubicacion'
-                )
-                ->orderBy('fecha_visita', 'asc')
-                ->orderBy('first_id_ubicacion', 'asc')
-                // ->orderBy('fecha_visita', 'asc')
-                // ->orderBy(function ($query) {
-                //     $query->select('id_ubicacion')
-                //           ->from('visitas')
-                //           ->whereColumn('visitas.id_reserva', 'reservas.id')
-                //           ->orderBy('id_ubicacion', 'asc');
-                // })
-                ->get();
-
-        }
-
-        /* Para dispositivos moviles */
-        $reservasMoviles = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+    
+        $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
         ->with([
             'cliente',
             'visitas.ubicacion',
@@ -97,32 +50,43 @@ class ReservaController extends Controller
             'first_id_ubicacion'
         )
         ->orderBy('fecha_visita', 'asc')
-        ->orderBy('first_id_ubicacion', 'asc')
-        // ->orderBy('fecha_visita', 'asc')
-        // ->orderBy(function ($query) {
-        //     $query->select('id_ubicacion')
-        //           ->from('visitas')
-        //           ->whereColumn('visitas.id_reserva', 'reservas.id')
-        //           ->orderBy('id_ubicacion', 'asc');
-        // })
+        ->orderBy('first_id_ubicacion', 'asc');
+    
+        $reservas = $reservasQuery->get();
+    
+        $reservasPorDia = $reservas->groupBy(function ($reserva) {
+            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
+        });
+    
+        // Paginación
+        $perPage           = 1;
+        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
+        $reservasPaginadas->setPath(request()->url());
+
+        //Reservas Para moviles
+        $reservasMoviles = Reserva::where('fecha_visita', '>=', $fechaActual)
+        ->with([
+            'cliente',
+            'visitas.ubicacion',
+            'visitas.masajes',
+            'programa',
+            'venta',
+        ])
+        ->select('reservas.*')
+        ->selectSub(
+            DB::table('visitas')
+                ->whereColumn('visitas.id_reserva', 'reservas.id')
+                ->orderBy('horario_sauna', 'asc')
+                ->limit(1)
+                ->select('horario_sauna'),
+            'first_horario_sauna'
+        )
+        ->orderBy('fecha_visita', 'asc')
+        ->orderBy('first_horario_sauna', 'asc')
         ->get();
 
-        //     dd(
-        //     Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-        //     ->with([
-        //         'cliente',
-        //         'visitas.ubicacion',
-        //         'visitas.masajes',
-        //         'programa',
-        //         'venta',
-        //     ])    ->join('visitas', 'visitas.id_reserva', '=', 'reservas.id')
-        //     ->orderBy('reservas.fecha_visita', 'asc')
-        //     ->orderBy('visitas.id_ubicacion', 'asc')
-        //     ->select('reservas.*') // Para evitar columnas repetidas al hacer join
-        //     ->get()
-        // );
-        
-        $reservasMoviles->load(['visitas.masajes', 'visitas.ubicacion']);
         $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
             return Carbon::parse($reservamovil->fecha_visita)->format('d-m-Y');
         });
@@ -132,95 +96,19 @@ class ReservaController extends Controller
         $itemsActuales      = $reservasDia->slice(($paginaActual - 1) * $porPagina, $porPagina)->all();
         $reservasMovilesPaginadas = new LengthAwarePaginator($itemsActuales, $reservasDia->count(), $porPagina, $paginaActual);
         $reservasMovilesPaginadas->setPath(request()->url());
-        /* Fin dispositivos moviles */
 
+        // if ($mobileView === 'masajes') {
+        //     dd('masajes'); // Retorna la vista 'masajes.blade.php'
+        // } elseif ($mobileView === 'ubicacion') {
+        //     dd('ubicacion'); // Retorna la vista 'ubicacion.blade.php'
+        // } else {
+        //     dd('default'); // Vista por defecto en caso de que no coincida con ninguna opción
+        // }
 
-
-        $reservas->load(['visitas.masajes', 'visitas.ubicacion']);
-
-
-        $reservasPorDia = $reservas->groupBy(function ($reserva) {
-            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
-        });
-
-        $perPage           = 1;
-        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
-        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
-        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
-        $reservasPaginadas->setPath(request()->url());
-
-        // dd($reservas);
-
-        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas'));
+    
+        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView'));
     }
 
-    public function indexOld(Request $request)
-    {
-        Carbon::setLocale('es');
-        $alternativeView = $request->query('alternative', false);
-        $fechaActual     = Carbon::now()->startOfDay();
-
-        if (! $alternativeView) {
-            $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-                ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-                ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-                ->leftjoin('masajes as m', 'm.id_visita', '=', 'v.id')
-                ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
-                ->join('programas as p', 'reservas.id_programa', '=', 'p.id')
-                ->join('ventas as vt', 'reservas.id', '=', 'vt.id_reserva')
-                ->select(
-                    'reservas.*',
-                    'v.horario_sauna',
-                    'v.horario_tinaja',
-                    'm.horario_masaje',
-                    'c.nombre_cliente',
-                    'u.nombre as ubicacion',
-                    'p.nombre_programa as programa_nombre',
-                    'vt.total_pagar as venta_total'
-                )
-                ->orderBy('reservas.fecha_visita', 'asc')
-                ->orderBy('v.horario_sauna', 'asc')
-                ->get();
-
-        } else {
-
-            $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-                ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-                ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-                ->leftjoin('masajes as m', 'm.id_visita', '=', 'v.id')
-                ->join('ubicaciones as u', 'v.id_ubicacion', '=', 'u.id')
-                ->join('programas as p', 'reservas.id_programa', '=', 'p.id')
-                ->join('ventas as vt', 'reservas.id', '=', 'vt.id_reserva')
-                ->select(
-                    'reservas.*',
-                    'v.horario_sauna',
-                    'v.horario_tinaja',
-                    'm.horario_masaje',
-                    'c.nombre_cliente',
-                    'u.nombre as ubicacion',
-                    'p.nombre_programa as programa_nombre',
-                    'vt.total_pagar as venta_total'
-                )
-                ->orderBy('reservas.fecha_visita', 'asc')
-                ->orderBy('v.horario_sauna', 'asc')
-                ->get();
-
-        }
-
-        $reservasPorDia = $reservas->groupBy(function ($reserva) {
-            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
-        });
-
-        $perPage           = 1;
-        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
-        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
-        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
-        $reservasPaginadas->setPath(request()->url());
-
-        // dd($reservas);
-
-        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView'));
-    }
 
     public function create($cliente)
     {
@@ -264,21 +152,21 @@ class ReservaController extends Controller
     public function store(StoreRequest $request, Reserva $reserva)
     {
         $request->merge([
-            'abono_programa' => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
+            'abono_programa'    => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
             'cantidad_personas' => (int) str_replace(['$', '.', ','], '', $request->cantidad_personas),
-            'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+            'total_pagar'       => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
         ]);
 
         $masajesExtra         = null;
         $almuerzosExtra       = null;
         $cantidadMasajesExtra = null;
-        
+
         // Verificar si el programa seleccionado incluye un masaje
         $programa = Programa::find($request->id_programa);
-        
+
         // Buscar si el programa tiene un servicio de masaje
         $incluyeMasaje = $programa->incluye_masajes;
-        
+
         try {
 
             // Iniciar la transacción
@@ -413,11 +301,11 @@ class ReservaController extends Controller
             ]);
 
             // Redirigir fuera de la transacción
-            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success','Reserva realizada con éxito');
+            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success', 'Reserva realizada con éxito');
 
         } catch (\Error $e) {
             // Alert::error('Falló', 'Error: ' . $e, 'Confirmar')->showConfirmButton();
-            return redirect()->back()->with('error','Error: ' . $e)->withInput();
+            return redirect()->back()->with('error', 'Error: ' . $e)->withInput();
         }
 
     }
@@ -427,23 +315,21 @@ class ReservaController extends Controller
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento', 'visitas.masajes');
 
         $servicios = Servicio::all();
-        $visitas = $reserva->visitas;
-        $masajes = null;
-
+        $visitas   = $reserva->visitas;
+        $masajes   = null;
 
         foreach ($visitas as $visita) {
             if ($visita->masajes->isNotEmpty()) {
-                
+
                 $masajes = $visita->masajes;
             }
         }
 
-
         return view('themes.backoffice.pages.reserva.show', [
             'reserva'   => $reserva,
             'servicios' => $servicios,
-            'visitas' => $visitas,
-            'masajes' => $masajes
+            'visitas'   => $visitas,
+            'masajes'   => $masajes,
         ]);
     }
 
@@ -509,7 +395,7 @@ class ReservaController extends Controller
         $ventaId             = $reserva->venta->id;
         $consumo             = Consumo::where('id_venta', '=', $ventaId)->first();
         if (isset($consumo)) {
-            $detalleServExtra    = DetalleServiciosExtra::where('id_consumo', '=', $consumo->id)->first();
+            $detalleServExtra = DetalleServiciosExtra::where('id_consumo', '=', $consumo->id)->first();
             if (isset($detalleServExtra)) {
                 $cantidadExtraMasaje = $detalleServExtra->cantidad_servicio;
             }
@@ -593,11 +479,10 @@ class ReservaController extends Controller
                     ->whereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])
                     ->exists();
 
-
                 $reserva->update([
                     'cantidad_personas' => $request->cantidad_personas,
-                    'observacion' => $request->observacion,
-                    'id_programa' => $request->id_programa,
+                    'observacion'       => $request->observacion,
+                    'id_programa'       => $request->id_programa,
                 ]);
                 // Actualizar cantidad_masajes si el programa incluye masaje
                 if ($incluyeMasaje) {
@@ -708,7 +593,7 @@ class ReservaController extends Controller
     public function generarPDF(Reserva $reserva)
     {
         $reserva->load('venta.consumos.detallesConsumos.producto', 'venta.consumos.detalleServiciosExtra.servicio', 'visitas.menus', 'visitas.menus.productoEntrada', 'visitas.menus.productoFondo', 'visitas.menus.productoacompanamiento');
-        
+
         $total   = 0;
         $propina = 'No Aplica';
         $visita  = $reserva->visitas->first();
@@ -718,7 +603,7 @@ class ReservaController extends Controller
         $idConsumo       = null;
         $cantidadPropina = null;
         // dd($menus);
-        
+
         if ($consumos->isEmpty()) {
             $propina = 'No Aplica';
         } else {
@@ -850,23 +735,22 @@ class ReservaController extends Controller
     public function indexReserva()
     {
         Carbon::setLocale('es');
-        $fechaActual     = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now()->startOfDay();
 
         $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-        ->with([
-            'cliente',
-            'visitas',
-            'visitas.masajes',
-            'visitas.ubicacion',
-            'visitas.menus',
-            'programa',
-            'venta'
-        ])
-        ->orderBy('fecha_visita', 'asc')
-        ->get();
+            ->with([
+                'cliente',
+                'visitas',
+                'visitas.masajes',
+                'visitas.ubicacion',
+                'visitas.menus',
+                'programa',
+                'venta',
+            ])
+            ->orderBy('fecha_visita', 'asc')
+            ->get();
 
         // $reservas->load(['visitas.masajes', 'visitas.ubicacion', 'visitas.menus', 'cliente']);
-
 
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
             return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
@@ -878,10 +762,8 @@ class ReservaController extends Controller
         $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
         $reservasPaginadas->setPath(request()->url());
 
-
-        
         return view('themes.backoffice.pages.reserva.index_registro', [
-            'reservasPaginadas' => $reservasPaginadas
+            'reservasPaginadas' => $reservasPaginadas,
         ]);
     }
 }

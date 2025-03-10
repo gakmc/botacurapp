@@ -45,7 +45,7 @@
                     </h5>
                 @else
 
-                        <table class="bordered centered">
+                        <table class="bordered centered responsive-table">
                             <thead>
                             <tr>
                                 <th>WhatsApp</th>
