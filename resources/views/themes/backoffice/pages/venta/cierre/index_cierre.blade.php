@@ -10,6 +10,23 @@
 @endsection
 
 @section('head')
+<style>
+    .dropdown-content {
+        position: absolute !important;
+        top: auto !important;
+        width: auto !important;
+        min-width: 150px !important;
+        max-width: 250px !important;
+    }
+
+    /* Centrar el botón del dropdown */
+    td .dropdown-button {
+        display: flex;
+        justify-content: center;
+        align-items: center;
+        padding: 5px;
+    }
+</style>
 @endsection
 
 @section('content')
@@ -30,7 +47,10 @@
     
     <div class="divider"></div>
     <div id="basic-form" class="section">
-        <div class="card-panel ">
+
+        <div class="col s12" data-tipo="sauna">
+            <div class="card-panel animate__animated animate__fadeInRight"
+                style="--animate-delay: 1s; --animate-duration: 2s;">       
 
 
             @if (!isset($reservas))
@@ -39,14 +59,14 @@
                 </h5>
             @else
 
-                    <table class="bordered responsive-table">
+                    <table class="">
                         <thead>
-                        <tr>
-                            <th>Nombre</th>
-                            <th>WhatsApp</th>
-                            <th>Ubicacion</th>
-                            <th>Acciones</th>
-                        </tr>
+                            <tr>
+                                <th>Nombre</th>
+                                <th>WhatsApp</th>
+                                <th>Ubicacion</th>
+                                <th>Acciones</th>
+                            </tr>
                         </thead>
                 
                         <tbody>
@@ -55,6 +75,7 @@
                         @php
                             $visita   = $reserva->visitas->last();
                             $visitas  = $reserva->visitas;
+                            $consumo = $reserva->venta->consumo;
                         @endphp
                         <tr>
                             <td>
@@ -76,70 +97,81 @@
                                     <a id="noRegistra" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}">No registra ubicación.</a>
                                 @endif
                             </td>
-                            @if (is_null($reserva->venta->diferencia_programa))
+                            <td>
+                                <a class='dropdown-ventas btn-flat' href='#' data-activates='dropdown-{{$reserva->id}}'><i class='material-icons'>more_vert</i></a>
+
+
+                                <ul id='dropdown-{{$reserva->id}}' class='dropdown-content'>
+                                    @if (is_null($reserva->venta->diferencia_programa))
+                                        @if(!empty($consumo))
+                                            
+                                                {{-- <td>
+                                                    <a href="#modal-{{$reserva->id}}"
+                                                        class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
+                                                
+                                                    </a>
+                                                </td> --}}
+        
+                                                <li><a href="#modal-{{$reserva->id}}" class="modal-trigger"><i class="material-icons">remove_red_eye</i>Ver Consumo</a></li>
+                                            
+                                        @endif
+                                        {{-- <td>
+                                            <a 
+                                                href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
+                                                class="collection-item center-align valign-wrapper left"
+                                                data-position="bottom" data-tooltip="Ingresar Consumo">
+                                                    <i class="left material-icons pink-text ">local_bar</i>
+                                                    Ingresar Consumo        
+                                            </a>
+                                        </td> --}}
+        
+                                        <li><a href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"><i class="material-icons">local_bar</i>Ingresar Consumo</a></li>
+        
+                                        {{-- <td>    
+                                            <a 
+                                                href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
+                                                class="collection-item center-align valign-wrapper left">
+                                                    <i class='material-icons red-text left' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
+                                            Cerrar Venta
+                                            </a>
+                                        </td> --}}
+        
+                                        <li><a href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"><i class="material-icons">attach_money</i>Cerrar venta</a></li>
                             
-                            @if(!empty($reserva->venta->consumos) && count($reserva->venta->consumos) > 0)
-                                @foreach ($reserva->venta->consumos as $consumo)
-                                    <td>
-                                        <a href="#modal-{{$reserva->id}}"
-                                            class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
-                                    
-                                        </a>
-                                    </td>
-                                    @endforeach
-                                    
-
-                            @endif
-                                <td>
-                                    <a 
-                                        href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
-                                        class="collection-item center-align valign-wrapper left"
-                                        data-position="bottom" data-tooltip="Ingresar Consumo">
-                                            <i class="left material-icons pink-text ">local_bar</i>
-                                            Ingresar Consumo        
-                                    </a>
-                                </td>
-
-                                <td>
-
-                                    
-                                    <a 
-                                        href="{{route('backoffice.reserva.venta.cerrar', ['reserva'=>$reserva, 'ventum'=>$reserva->venta]) }}"
-                                        class="collection-item center-align valign-wrapper left">
-                                            <i class='material-icons red-text left' data-position="bottom" data-tooltip="Cerrar Venta">attach_money</i>
-                                    Cerrar Venta
-                                    </a>
-
-                                </td>
-                    
-                            @else
-                    
-                                <a class="collection-item center-align valign-wrapper left" href="{{ route('backoffice.venta.pdf', $reserva) }}"
-                                    target="_blank">
-                                    <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Venta">picture_as_pdf</i>
-                                </a>
-                            @endif
+                                    @else
+                                        {{-- <td>
+                                            <a class="collection-item center-align valign-wrapper left" href="{{ route('backoffice.venta.pdf', $reserva) }}"
+                                                target="_blank">
+                                                <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Venta">picture_as_pdf</i>
+                                            </a>
+                                        </td> --}}
+                                        <li><a href="{{ route('backoffice.venta.pdf', $reserva) }}"><i class="material-icons">picture_as_pdf</i>PDF venta</a></li>
+                                    @endif
+                                </ul>
                             </td>
-                        </tr>
                             
-
-
+                        </tr>
                         @endforeach
                         
+
                         
                         
-                    </tbody>
-                </table>
+                        </tbody>
+                    </table>
                 
-                
-                @endif
 
-                @foreach ($reservas as $reserva)
-                    
-                    @include('themes.backoffice.pages.reserva.includes.modal_boleta', ['reserva' => $reserva])
-
-                @endforeach
                 
+                
+            @endif
+
+                
+            
+        </div>
+        @foreach ($reservas as $reserva)
+            
+            @include('themes.backoffice.pages.reserva.includes.modal_boleta', ['reserva' => $reserva])
+
+        @endforeach
         </div>
     </div>
 </div>
@@ -150,7 +182,20 @@
 
     $(document).ready(function () {
         $('.modal').modal();
+
+        $('.dropdown-ventas').dropdown({
+                alignment: 'right', // Alinea a la derecha
+                constrainWidth: false, // No limita el ancho
+                coverTrigger: false, // No cubre el botón
+                hover: false, // Solo abre al hacer clic
+                inDuration: 300, 
+                outDuration: 200, 
+                belowOrigin: true,
+                gutter: 0, // Ajusta el espacio para evitar que se desplace
+        });
+
     });
+
 
 
     // document.addEventListener('DOMContentLoaded', function() {

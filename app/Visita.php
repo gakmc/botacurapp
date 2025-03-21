@@ -31,28 +31,11 @@ class Visita extends Model
         return $this->belongsTo(Ubicacion::class, 'id_ubicacion');
     }
 
-    public function menus()
-    {
-        return $this->hasMany(Menu::class, 'id_visita');
-    }
-
-    public function masajes()
-    {
-        return $this->hasMany(Masaje::class, 'id_visita');
-    }
 
     //ALMACENAMIENTO
 
     //VALIDACION
-    public function getIncluyeMasajesExtraAttribute() 
-    {
-        return $this->masajes()->exists();    
-    }
 
-    public function getIncluyeAlmuerzosExtraAttribute() 
-    {
-        return $this->menus()->exists();
-    }
 
     //RECUPERACION DE INFORMACION
     // public function getFechaVisitaAttribute($value)
@@ -83,15 +66,15 @@ class Visita extends Model
         return $this->calcularHoraFin($this->horario_tinaja, ['Tinaja', 'Tinajas']);
     }
 
-    public function getHoraFinMasajeAttribute()
-    {
-        return $this->calcularHoraFin($this->horario_masaje, ['Masaje', 'Masajes']);
-    }
+    // public function getHoraFinMasajeAttribute()
+    // {
+    //     return $this->calcularHoraFin($this->horario_masaje, ['Masaje', 'Masajes']);
+    // }
 
-    public function getHoraFinMasajeExtraAttribute()
-    {
-        return $this->calcularHoraFinMasajeExtra($this->horario_masaje);
-    }
+    // public function getHoraFinMasajeExtraAttribute()
+    // {
+    //     return $this->calcularHoraFinMasajeExtra($this->horario_masaje);
+    // }
 
     private function calcularHoraFin($horarioInicio, $nombreServicio)
     {

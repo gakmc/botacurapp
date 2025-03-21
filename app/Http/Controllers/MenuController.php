@@ -19,10 +19,7 @@ class MenuController extends Controller
         $fechaActual = Carbon::now()->startOfDay();
 
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-            ->with(['cliente', 'visitas' => function ($q) {
-                $q->with('menus') // Incluir los menús asociados a la visita
-                    ->orderBy('horario_sauna', 'desc');
-            }, 'programa.servicios'])
+            ->with(['cliente','menus', 'programa.servicios'])
             ->orderBy('fecha_visita')
             ->get();
 
@@ -36,8 +33,8 @@ class MenuController extends Controller
             $platosContados = [];
 
             foreach ($reservasPorFecha as $reserva) {
-                foreach ($reserva->visitas as $visita) {
-                    foreach ($visita->menus as $menu) {
+                // foreach ($reserva->visitas as $visita) {
+                    foreach ($reserva->menus as $menu) {
                         if ($menu->id_producto_entrada !== null) {
                             $nombrePlato = $menu->productoEntrada->nombre;
                             if (isset($platosContados[$nombrePlato])) {
@@ -48,7 +45,7 @@ class MenuController extends Controller
                         }
                         
                     }
-                }
+                // }
             }
 
             return $platosContados;
@@ -59,8 +56,8 @@ class MenuController extends Controller
             $platosContados = [];
 
             foreach ($reservasPorFecha as $reserva) {
-                foreach ($reserva->visitas as $visita) {
-                    foreach ($visita->menus as $menu) {
+                // foreach ($reserva->visitas as $visita) {
+                    foreach ($reserva->menus as $menu) {
                         if ($menu->id_producto_fondo !== null) {
                             if (isset($platosContados[$menu->productoFondo->nombre])) {
                                 $platosContados[$menu->productoFondo->nombre]++;
@@ -69,7 +66,7 @@ class MenuController extends Controller
                             }
                         }
                     }
-                }
+                // }
             }
 
             return $platosContados;
@@ -79,8 +76,8 @@ class MenuController extends Controller
             $platosContados = [];
 
             foreach ($reservasPorFecha as $reserva) {
-                foreach ($reserva->visitas as $visita) {
-                    foreach ($visita->menus as $menu) {
+                // foreach ($reserva->visitas as $visita) {
+                    foreach ($reserva->menus as $menu) {
                         if ($menu->productoAcompanamiento !== null) {
                             if (isset($platosContados[$menu->productoAcompanamiento->nombre])) {
                                 $platosContados[$menu->productoAcompanamiento->nombre]++;
@@ -89,7 +86,7 @@ class MenuController extends Controller
                             }
                         }
                     }
-                }
+                // }
             }
 
             return $platosContados;

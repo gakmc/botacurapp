@@ -139,9 +139,31 @@ $(document).ready(function () {
                 // Obtener los datos del cliente y la reserva seleccionada
                 var clienteNombre = $(this).data('cliente');
                 var fechaReserva = $(this).data('fecha');
-                var observacionReserva = $(this).data('observacion');
+                var observacionReserva = $(this).data('observacion') || 'No registra';
                 var masajeReserva = $(this).data('masaje');
                 var personasReserva = $(this).data('personas');
+
+
+                var programaReserva = $(this).data('programa');
+                var abonoReserva = $(this).data('abono');
+                var tipoAbonoReserva = $(this).data('tipo_abono');
+
+                var diferenciaReserva = $(this).data('diferencia');
+                var tipoDiferenciaReserva = $(this).data('tipo_diferencia');
+
+                var saunaReserva = $(this).data('sauna');
+                var tinajaReserva = $(this).data('tinaja');
+                
+                var horaMasajesReserva = $(this).data('horariomasajes');
+
+                var saunaReservaFin = $(this).data('sauna-fin');
+                var tinajaReservaFin = $(this).data('tinaja-fin');
+                
+                var horaMasajesReservaFin = $(this).data('horariomasajes-fin');
+
+                
+
+                var menusReserva = $(this).data('menus');
 
                 // Insertar los datos en los elementos del modal
                 $('#modalClienteNombre').text(clienteNombre);
@@ -149,6 +171,45 @@ $(document).ready(function () {
                 $('#modalObservacionReserva').text(observacionReserva);
                 $('#modalMasajeReserva').text(masajeReserva);
                 $('#modalPersonasReserva').text(personasReserva);
+
+
+                $('#modalPrograma').text(programaReserva);
+                $('#modalAbono').text(abonoReserva);
+                $('#modalTipoAbono').text(tipoAbonoReserva);
+
+                $('#modalDiferencia').text(diferenciaReserva);
+                $('#modalTipoDiferencia').text(tipoDiferenciaReserva);
+                
+                $('#modalSauna').text(saunaReserva);
+                $('#modalTinaja').text(tinajaReserva);
+                $('#modalMasaje').text(horaMasajesReserva);
+
+                $('#modalSaunaFin').text(saunaReservaFin);
+                $('#modalTinajaFin').text(tinajaReservaFin);
+                $('#modalMasajeFin').text(horaMasajesReservaFin);
+
+            // Procesar los menús y poblar la tabla
+            var menuTableBody = $('#modalMenusTable');
+            menuTableBody.empty(); // Limpiar tabla anterior
+
+            if (menusReserva && Array.isArray(menusReserva) && menusReserva.length > 0) {
+                menusReserva.forEach(function(menu) {
+                    var alergiasClass = menu.alergias !== 'No registra' ? 'red-text' : '';
+                    var observacionClass = menu.observacion !== 'No registra' ? 'red-text' : '';
+
+                    
+                    var row = `<tr>
+                        <td>${menu.entrada}</td>
+                        <td>${menu.fondo}</td>
+                        <td>${menu.acompanamiento}</td>
+                        <td class="${alergiasClass}">${menu.alergias}</td>
+                        <td class="${observacionClass}">${menu.observacion}</td>
+                    </tr>`;
+                    menuTableBody.append(row);
+                });
+            } else {
+                menuTableBody.html('<tr><td colspan="3" class="center">No registra</td></tr>');
+            }
 
             // Abrir el modal
             $('#modalReserva').modal('open');

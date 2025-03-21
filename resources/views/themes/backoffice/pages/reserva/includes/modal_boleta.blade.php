@@ -4,10 +4,11 @@
           <div class="modal-content">
             <div id="boleta-contenido">
               <div class="row">
-                <div class="col s12">
-                  <h5 class="col s12 left">Centro Recreativo Botacura LTDA.</h5>
-                  <h6 class="col s12 left">Rut</h6>
-                  <h6 class="col s12 left">Dirección</h6>
+                <div class="col s12 center">
+                  <img src="{{asset('images\logo\logo.png')}}" alt="logo">
+                  <h5 class="col s12 center">Centro Recreativo Botacura LTDA.</h5>
+                  <h6 class="col s12 center"><strong>Rut: </strong>77.848.621-0</h6>
+                  <h6 class="col s12 center"><strong>Dirección: </strong>Cam. Al Volcán 13274, El Manzano, San José de Maipo, Región Metropolitana</h6>
                 </div>
               </div>
       
@@ -20,49 +21,103 @@
       
               <div class="row">
                 <div class="col s12">
-                  <p class="col s6 left"><strong>Cliente:</strong> <span> Nombre cliente </span></p>
-                  <p class="col s6 right"><strong>Ubicacion:</strong> <span>Nombre Ubicación</span></p>
+                  <p class="col s6 left"><strong>Cliente:</strong> <span> {{$reserva->cliente->nombre_cliente}} </span></p>
+                  <p class="col s6 right"><strong>Ubicacion:</strong> <span>{{$reserva->visitas->first()->ubicacion->nombre ?? "Aun no registra"}}</span></p>
                 </div>
               </div>
-              @php $total = 0; @endphp
-              @foreach($reserva->venta->consumos as $consumo)
-                @foreach ($consumo->detallesConsumos as $detalle)
-                  @php 
-                    $subtotal = $detalle['subtotal'];
-                    $total += $subtotal;
-                  @endphp
-              <div class="row">
-                <div class="col s8 offset-s2">
+              @php 
+              $total = 0; 
+              $consumo = $reserva->venta->consumo;
+              @endphp
+              {{-- @foreach($reserva->venta->consumos as $consumo) --}}
+              <br>
 
-                  <div class="col s6 left">
-                    {{ $detalle['cantidad_producto'] }} X {{ number_format($detalle->producto->valor, 0, ',', '.') }}
+              <div class="row">
+                <div class="col s12">
+                  <div class="col s12">
+                    <h6>
+                      <strong>Consumo</strong>
+                    </h6>
+                    @if (isset($consumo->detallesConsumos))
+                      @foreach ($consumo->detallesConsumos as $detalle)
+                          @php 
+                            $subtotal = $detalle['subtotal'];
+                            $total += $subtotal;
+                          @endphp
+                          <div class="row">
+                            <div class="col s8 offset-s2">
+                              
+                              <div class="col s6 left">
+                                {{ $detalle['cantidad_producto'] }} X {{ number_format($detalle->producto->valor, 0, ',', '.') }}
+                              </div>
+                            </div>
+                  
+                          </div>
+                  
+                          <div class="row">
+                            <div class="col s8 offset-s2">
+                              <div class="col s6 left">{{ $detalle->producto->nombre }}</div>
+                              <div class="col s6 right">${{ number_format($subtotal, 0, ',', '.') }}</div>
+                            </div>
+                          </div>
+              
+                          <br>
+                      @endforeach
+                    @endif
+                  </div>
+
+                    <br>
+
+                  <div class="col s12">
+
+
+                        <h6>
+                          <strong>Servicios</strong>
+                        </h6>
+                        @if (isset($consumo->detalleServiciosExtra))
+                          @foreach ($consumo->detalleServiciosExtra as $detalle)
+                              @php 
+                                $subtotal = $detalle['subtotal'];
+                                $total += $subtotal;
+                              @endphp
+                              <div class="row">
+                                <div class="col s8 offset-s2">
+                                  
+                                  <div class="col s6 left">
+                                    {{ $detalle['cantidad_servicio'] }} X {{ number_format($detalle->servicio->valor_servicio, 0, ',', '.') }}
+                                  </div>
+                                </div>
+                      
+                              </div>
+                      
+                              <div class="row">
+                                <div class="col s8 offset-s2">
+                                  <div class="col s6 left">{{ $detalle->servicio->nombre_servicio }}</div>
+                                  <div class="col s6 right">${{ number_format($subtotal, 0, ',', '.') }}</div>
+                                </div>
+                              </div>
+                  
+                              <br>
+                          @endforeach
+                        @endif
                   </div>
                 </div>
-      
               </div>
-      
-              <div class="row">
-                <div class="col s8 offset-s2">
-                  <div class="col s6 left">{{ $detalle->producto->nombre }}</div>
-                  <div class="col s6 right">${{ number_format($subtotal, 0, ',', '.') }}</div>
-                </div>
-              </div>
-      
-      <br>
-              @endforeach
-              @endforeach
+
+              {{-- @endforeach --}}
               <br><br>
               <div class="row">
                 
               </div>
-              <p class=""><strong class="">Subtotal:</strong> ${{ number_format($total, 0, ',', '.') }}</p>
-              <p class=""><strong class="">Propina 10%:</strong> ${{ number_format($total*0.1, 0, ',', '.') }}</p>
-              <p class=""><strong class="">Total a pagar:</strong> ${{ number_format($total*1.1, 0, ',', '.') }}</p>
+              <p><strong>Subtotal:</strong> ${{ number_format($total, 0, ',', '.') }}</p>
+              <p><strong>Propina 10%:</strong> ${{ number_format($total*0.1, 0, ',', '.') }}</p>
+              <p><strong>Total a pagar:</strong> ${{ number_format($total*1.1, 0, ',', '.') }}</p>
             </div>
           </div>
           <br><br>
           <div class="modal-footer">
-            <button class="waves-effect waves-light btn" onclick="imprimirBoleta()">Imprimir</button>
+            <button class="waves-effect waves-light btn" onclick="enviarFormulario();">Imprimir</button>
+
             <a href="#!" class="modal-action modal-close waves-effect waves-red btn-flat">Cerrar</a>
           </div>
       
@@ -70,11 +125,20 @@
 
 
 
+          <form id="boleta-form" action="{{ route('backoffice.boleta.reserva',$reserva) }}" method="POST" style="display: none;">
+            @csrf
+          </form>
 
 
 
-
-
+          <script>
+            function enviarFormulario() {
+                event.preventDefault();
+                let form = document.getElementById('boleta-form');
+                form.target = "_blank";  // 🔹 Abre el formulario en nueva pestaña
+                form.submit();
+            }
+            </script>
 
 
 

@@ -13,7 +13,6 @@
 
 
 @section('content')
-
 <div class="section">
     <p class="caption">Introduce los datos para planificar una Visita</p>
     <div class="divider"></div>
@@ -26,15 +25,16 @@
                     <div class="row">
                         @php
                         $indexSpa = ceil($reserva->cantidad_personas/5);
-                        $indexMasajes = ceil($reserva->cantidad_personas/2);
+                        if (!in_array('Masaje', $servicios)) {
+                            $indexMasajes = ceil($cantidadMasajesExtra/2);
+                        }else {
+                            $indexMasajes = ceil($reserva->cantidad_personas/2);
+                        }
                         @endphp
                         <form class="col s12" method="post"
                             action="{{route('backoffice.reserva.visitas.store', $reserva)}}">
 
-
                             {{csrf_field() }}
-
-
 
 
                             <div class="input-field col s12 m6 l4" hidden>
@@ -67,12 +67,7 @@
                                     <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" selected disabled="">-- Seleccione --</option>
-                                        {{-- @foreach($horasMasaje as $horario)
-                                        <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
-                                            : '' }}>
-                                            {{ $horario }}
-                                        </option>
-                                        @endforeach --}}
+
 
                                     </select>
                                     <label for="horario_masaje">Horario Masaje</label>

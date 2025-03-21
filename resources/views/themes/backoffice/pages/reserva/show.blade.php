@@ -16,8 +16,8 @@
     
   <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
     
-  @if ($reserva->programa->incluye_masajes || $reserva->visitas->last()->incluye_masajes_extra)
-    <li><a href="{{ route('backoffice.reserva.visitas.masaje', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
+  @if ($reserva->programa->incluye_masajes || $reserva->incluye_masajes_extra)
+    <li><a href="{{ route('backoffice.reserva.masajes', ['reserva' => $reserva]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
   @endif
   
   @if ($reserva->programa->incluye_almuerzos || $reserva->visitas->last()->incluye_almuerzos_extra)
@@ -37,7 +37,11 @@
         {{-- TABLA CLIENTE --}}
           <div class="card">
             <div class="card-content">
-              <span class="card-title activator grey-text text-darken-4">{{$reserva->cliente->nombre_cliente}}</span>
+              <span class="card-title activator grey-text text-darken-4">
+                <a href="{{route('backoffice.cliente.show',$reserva->cliente)}}">
+                  {{$reserva->cliente->nombre_cliente}}  
+                </a>
+                </span>
               <div class="row">
                 <div class="col s12 m6 l4">
                   <p>
@@ -114,75 +118,57 @@
         @elseif (Auth::user()->has_role(config('app.anfitriona_role')))
 
           @foreach($reserva->visitas as $visita)
-          @if ($visita->menus->isNotEmpty())
-
-
-            <div class="col s12 m12">
-              <ul id="projects-collection" class="collection z-depth-1">
-                <li class="collection-item avatar">
-                  <i class="material-icons light-blue darken-4 circle">restaurant_menu</i>
-                  <h6 class="collection-header m-0">Menú</h6>
-                  <p>Selecciones</p>
-                </li>
-
-
-                <table class="responsive-table">
-                  <thead>
-                    <tr>
-                      <th>Menú</th>
-                      <th>Entrada</th>
-                      <th>Fondo</th>
-                      <th>Acompañamiento</th>
-                      <th>Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
-
-                    @foreach($visita->menus as $index => $menu)
+            @if ($reserva->menus->isNotEmpty())
+              <div class="col s12 m12">
+                <ul id="projects-collection" class="collection z-depth-1">
+                  <li class="collection-item avatar">
+                    <i class="material-icons light-blue darken-4 circle">restaurant_menu</i>
+                    <h6 class="collection-header m-0">Menú</h6>
+                    <p>Selecciones</p>
+                  </li>
+                  <table class="responsive-table">
+                    <thead>
                       <tr>
-
-
-                        <td>
-                          <strong>Menú {{$index + 1}}:</strong>
-                        </td>
-                        <td>
-                          {{ $menu->productoEntrada->nombre }}
-                        </td>
-                        <td>
-
-                          {{ $menu->productoFondo->nombre }}
-                        </td>
-                        <td>
-
-                          @if ($menu->productoAcompanamiento == null)
-                            Sin Acompañamiento
-                          @else
-
-                            {{ $menu->productoAcompanamiento->nombre }}
-                          @endif
-                        </td>
-
-                        @if ($menu->observacion == null)
-                        <td> No Registra</td>
-                        @endif
-                        <td style="color: red">{{ $menu->observacion }}</td>
-
+                        <th>Menú</th>
+                        <th>Entrada</th>
+                        <th>Fondo</th>
+                        <th>Acompañamiento</th>
+                        <th>Observaciones</th>
                       </tr>
-                    @endforeach
+                    </thead>
+                    <tbody>
+                      @foreach($reserva->menus as $index => $menu)
+                        <tr>
+                          <td>
+                            <strong>Menú {{$index + 1}}:</strong>
+                          </td>
+                          <td>
+                            {{ $menu->productoEntrada->nombre }}
+                          </td>
+                          <td>
+                            {{ $menu->productoFondo->nombre }}
+                          </td>
+                          <td>
+                            @if ($menu->productoAcompanamiento == null)
+                              Sin Acompañamiento
+                            @else
+                              {{ $menu->productoAcompanamiento->nombre }}
+                            @endif
+                          </td>
+                          @if ($menu->observacion == null)
+                            <td> No Registra</td>
+                          @endif
+                          <td style="color: red">{{ $menu->observacion }}</td>
+                        </tr>
+                      @endforeach
+                    </tbody>
+                  </table>
+                </ul>
+              </div>
+            @endif
+          @endforeach
 
-
-
-
-                  </tbody>
-                </table>
-
-
-              </ul>
-            </div>
-              @endif
-            @endforeach
-
-          @endif
+        @endif
 
       </div>
 
@@ -191,24 +177,14 @@
           @include('themes.backoffice.pages.reserva.includes.reagendamiento')
         </div>
       @else
-
-
         <div class="col s12 m4">
           @include('themes.backoffice.pages.reserva.includes.consumo')
         </div>
-
-
       @endif
     </div>
 
-
-
-
-
     <div class="row">
       <div class="col s12 m8">
-
-
         {{-- TABLA PROGRAMA --}}
         <div id="work-collections">
           <div class="row">
@@ -220,25 +196,20 @@
                   <p>Servicios incluidos</p>
                 </li>
                 @foreach ($reserva->programa->servicios as $servicio)
-
-                <li class="collection-item">
-                  <div class="row">
-                    <div class="col s9">
-                      <p class="collections-title">{{$servicio->nombre_servicio}}</p>
-                      <p class="collections-content">{{$servicio->duracion}} minutos</p>
+                  <li class="collection-item">
+                    <div class="row">
+                      <div class="col s9">
+                        <p class="collections-title">{{$servicio->nombre_servicio}}</p>
+                        <p class="collections-content">{{$servicio->duracion}} minutos</p>
+                      </div>
+                      {{-- <div class="col s3">
+                        <span class="task-cat cyan accent-2">Pendiente</span>
+                      </div> --}}
                     </div>
-                    <div class="col s3">
-                      {{-- <span class="task-cat cyan accent-2">Pendiente</span> --}}
-                    </div>
-                  </div>
-                </li>
+                  </li>
                 @endforeach
-
-
               </ul>
             </div>
-
-
 
             {{-- TABLA VISITA --}}
 
@@ -249,16 +220,11 @@
                   <h6 class="collection-header m-0">Visita <a class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
                   <p>{{$reserva->visitas->first()->ubicacion->nombre ?? 'Ubicacion no registrada'}}</p>
                   @if ($reserva->visitas->isEmpty())
-
                       <h6>Aún no se registra la visita para esta reserva</h6>
                   @else
-
                       @php
                         $mostrados = [];
                       @endphp
-
-
-
                         <ul class="collapsible expandable">
                           <li>
                             <div class="collapsible-header"><i class="material-icons">filter_drama</i>Horarios Sauna</div>
@@ -308,18 +274,12 @@
                             @endforeach
                             </div>
                           </li>
-                        
+
                           @if (isset($masajes))
-                          
-                            <li>
-                              <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje</div>
-                              <div class="collapsible-body">
-                                @foreach ($masajes->groupBy('horario_masaje') as $indexM => $grupoMasajes)
-                                  @php
-                                      // Obtener el primer masaje del grupo, ya que todos tienen el mismo horario
-                                      $masaje = $grupoMasajes->first();
-                                  @endphp
-                            
+                          <li>
+                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje</div>
+                            <div class="collapsible-body">
+                              @foreach ($masajes as $indexM => $masaje)
                                   @if($reserva->programa->incluye_masajes)
                                       <div class="row">
                                           <div class="col s7">
@@ -359,50 +319,69 @@
                                   @endif
                             
                                   @if(!$reserva->programa->incluye_masajes && $masaje->horario_masaje)
-                                      <div class="row">
-                                          <div class="col s7">
-                                            <p class="collections-tittle">
-                                                Lugar: 
-                                                <strong name="lugar" id="lugar">
-                                                    {{ $masaje->lugarMasaje->nombre }}
+
+
+
+                                      {{-- <div class="row">
+                                        <div class="col s7">
+                                          <p class="collections-content">
+                                              Lugar: 
+                                              <strong name="lugar" id="lugar">
+                                                  {{ $masaje->lugarMasaje->nombre ?? 'No Registra' }}
+                                              </strong>
+                                          </p>
+                                          <br>
+                                            <p class="collections-title">
+                                                Masaje Extra: 
+                                                <strong id="horario-masaje-{{$indexM}}" class="horario-masaje"
+                                                    data-fecha="{{ $reserva->fecha_visita }}" 
+                                                    data-inicio="{{ $masaje->horario_masaje ?? "00:00"}}"
+                                                    data-fin="{{ $masaje->hora_fin_masaje ?? "00:30"}}">
+                                                    {{ $masaje->horario_masaje }}
+                                                </strong>
+                                            </p>
+                                            <p class="collections-content">
+                                                Hora Fin: 
+                                                <strong name="masaje" id="masaje" data-masaje="duracion-masaje">
+                                                    {{ $masaje->hora_fin_masaje }}
                                                 </strong>
                                             </p>
                                             <br>
-                                              <p class="collections-title">
-                                                  Masaje Extra: 
-                                                  <strong id="horario-masaje" class="horario-masaje"
-                                                      data-fecha="{{ $reserva->fecha_visita }}" 
-                                                      data-inicio="{{ $masaje->horario_masaje }}"
-                                                      data-fin="{{ $masaje->hora_fin_masaje_extra }}">
-                                                      {{ $masaje->horario_masaje }}
-                                                  </strong>
-                                              </p>
-                                              <p class="collections-content">
-                                                  Hora Fin: 
-                                                  <strong name="masaje" id="masaje" data-masaje="duracion-masaje">
-                                                      {{ $masaje->hora_fin_masaje_extra }}
-                                                  </strong>
-                                              </p>
-                                              <br>
-                                              <p>
-                                                <br><br>
-                                              </p>
+                                        </div>
+                                        <div class="col s3">
+                                          <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                        </div>
+                                        <div class="col s3">
+                                          <div class="progress">
+                                            <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
                                           </div>
-                                          <div class="col s3">
-                                              <span class="task-cat cyan" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                        </div>
+                                      </div> --}}
+
+                                      <div class="row">
+                                        <div class="col s7">
+                                          <p class="collections-title">Masaje Extra: <strong id="horario-masaje" class="horario-masaje"
+                                              data-fecha="{{ $reserva->fecha_visita }}" data-inicio="{{ $masaje->horario_masaje }}"
+                                              data-fin="{{ $masaje->hora_fin_masaje_extra }}">{{ $masaje->horario_masaje }}</strong></p>
+                                          <p class="collections-content">Hora Fin: <strong name="masaje" id="masaje" data-masaje="duracion-masaje">{{
+                                              $masaje->hora_fin_masaje_extra }}</strong></p>
+                                        </div>
+                                        <div class="col s3">
+                                          <span class="task-cat" id="task-cat-masaje-{{$indexM}}">Pendiente</span>
+                                        </div>
+                                        <div class="col s3">
+                                          <div class="progress">
+                                            <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
                                           </div>
-                                          <div class="col s3">
-                                              <div class="progress">
-                                                  <div class="determinate" id="progress-masaje-{{$indexM}}" style="width: 0%;"></div>
-                                              </div>
-                                          </div>
-                                          
+                                        </div>
                                       </div>
+
                                   @endif
-                                @endforeach
+                              @endforeach
                             
                               </div>
-                            </li>
+                          </li>
+
 
                           @else
 
@@ -424,82 +403,78 @@
 
             {{-- Menus --}}
             @if(Auth::user()->has_role(config('app.admin_role')))
-            @foreach($reserva->visitas as $visita)
-            @if ($visita->menus->isNotEmpty())
-            <div class="col s12 m12">
-              <ul id="projects-collection" class="collection z-depth-1">
-                <li class="collection-item avatar">
-                  <i class="material-icons light-blue darken-4 circle">restaurant_menu</i>
-                  <h6 class="collection-header m-0">Menú</h6>
-                  <p>Selecciones</p>
-                </li>
+
+              @if ($reserva->menus->isNotEmpty())
+                <div class="col s12 m12">
+                  <ul id="projects-collection" class="collection z-depth-1">
+                    <li class="collection-item avatar">
+                      <i class="material-icons light-blue darken-4 circle">restaurant_menu</i>
+                      <h6 class="collection-header m-0">Menú</h6>
+                      <p>Selecciones</p>
+                    </li>
 
 
-                <table class="responsive-table">
-                  <thead>
-                    <tr>
-                      <th>Menú</th>
-                      <th>Entrada</th>
-                      <th>Fondo</th>
-                      <th>Acompañamiento</th>
-                      <th>Alérgias</th>
-                      <th>Observaciones</th>
-                    </tr>
-                  </thead>
-                  <tbody>
+                    <table class="responsive-table">
+                      <thead>
+                        <tr>
+                          <th>Menú</th>
+                          <th>Entrada</th>
+                          <th>Fondo</th>
+                          <th>Acompañamiento</th>
+                          <th>Alérgias</th>
+                          <th>Observaciones</th>
+                        </tr>
+                      </thead>
+                      <tbody>
 
-                    @foreach($visita->menus as $index => $menu)
+                        @foreach($reserva->menus as $index => $menu)
+                          <tr>
+                            <td>
+                              <strong>Menú {{$index + 1}}:</strong>
+                            </td>
+                            <td>
+                              {{ $menu->productoEntrada->nombre ?? 'Sin Entrada' }}
+                            </td>
+                            <td>
 
+                              {{ $menu->productoFondo->nombre ?? 'No registra' }}
+                            </td>
+                            <td>
+                              @if ($menu->productoAcompanamiento == null)
+                              Sin Acompañamiento
+                              @else
 
-                    <tr>
+                              {{ $menu->productoAcompanamiento->nombre }}
+                              @endif
+                            </td>
 
+                            @if ($menu->alergias == null)
+                              <td> No Registra</td>
+                            @else
+                              <td style="color: red">{{ $menu->alergias }}</td>
+                            @endif
 
-                      <td>
-                        <strong>Menú {{$index + 1}}:</strong>
-                      </td>
-                      <td>
-                        {{ $menu->productoEntrada->nombre ?? 'Sin Entrada' }}
-                      </td>
-                      <td>
+                            @if ($menu->observacion == null)
+                              <td> No Registra</td>
+                            @else
+                              <td style="color: red">{{ $menu->observacion }}</td>
+                            @endif
 
-                        {{ $menu->productoFondo->nombre ?? 'No registra' }}
-                      </td>
-                      <td>
-                        @if ($menu->productoAcompanamiento == null)
-                        Sin Acompañamiento
-                        @else
-
-                        {{ $menu->productoAcompanamiento->nombre }}
-                        @endif
-                      </td>
-
-                      @if ($menu->alergias == null)
-                      <td> No Registra</td>
-                      @else
-                      <td style="color: red">{{ $menu->alergias }}</td>
-                      @endif
-
-                      @if ($menu->observacion == null)
-                      <td> No Registra</td>
-                      @else
-                      <td style="color: red">{{ $menu->observacion }}</td>
-                      @endif
-
-                    </tr>
-                    @endforeach
+                          </tr>
+                        @endforeach
 
 
 
-                  </tbody>
-                </table>
+                      </tbody>
+                    </table>
 
 
-              </ul>
-            </div>
+                  </ul>
+                </div>
 
-            @endif
+              @endif
 
-            @endforeach
+
             @endif
 
 
@@ -806,8 +781,6 @@
               const horaInicio = element.getAttribute('data-inicio');
               const horaFin = element.getAttribute('data-fin');
 
-              console.log(`Servicio: ${servicio}, Index: ${index}`, { fecha, horaInicio, horaFin });
-
               const progreso = calcularProgreso(horaInicio, horaFin, fecha);
 
               const progressBar = document.getElementById(`progress-${servicio}-${index}`);
@@ -841,7 +814,6 @@
         }, 1000);
 
 
-        console.log($('#horario_masaje').data('inicio'),$('#horario_masaje').data('fin'),$('#horario_masaje').data('fecha'));
     });
     
     

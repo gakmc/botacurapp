@@ -13,10 +13,10 @@
                 foreach ($reserva->visitas->sortBy('ubicacion.id') as $index=>$visita) {
 
                     $ubicacion[] = $visita->ubicacion->nombre ?? 'No registra';
-                    if ($visita->masajes->isEmpty()) {
+                    if ($reserva->masajes->isEmpty()) {
                         $horariosMasaje = null;
                     }else {
-                        $horariosMasaje = $visita->masajes->pluck('horario_masaje')->filter()->unique()->join(', '); // Obtener horarios de masaje
+                        $horariosMasaje = $reserva->masajes->pluck('horario_masaje')->filter()->unique()->join(', '); // Obtener horarios de masaje
                     }
                     
                 }

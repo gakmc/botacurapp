@@ -10,12 +10,12 @@ class Masaje extends Model
     protected $table = 'masajes';
 
     protected $fillable = [
-        'horario_masaje', 'tipo_masaje', 'id_lugar_masaje', 'persona', 'id_visita', 'user_id',
+        'horario_masaje', 'tipo_masaje', 'id_lugar_masaje', 'persona', 'id_reserva', 'user_id',
     ];
 
-    public function visita()
+    public function reserva()
     {
-        return $this->belongsTo(Visita::class, 'id_visita');
+        return $this->belongsTo(Reserva::class, 'id_reserva');
     }
 
     public function user()
@@ -29,20 +29,13 @@ class Masaje extends Model
     }
 
 
-
-
-
-
-
-
-
     public function getHorarioMasajeAttribute($value)
     {
         return $value ? Carbon::parse($value)->format('H:i') : null;
     }
     public function getHoraFinMasajeAttribute()
     {
-        return $this->calcularHoraFin($this->horario_masaje, ['Masaje', 'Masajes']);
+        return $this->calcularHoraFin($this->horario_masaje);
     }
 
     public function getHoraFinMasajeExtraAttribute()
@@ -50,13 +43,24 @@ class Masaje extends Model
         return $this->calcularHoraFinMasajeExtra($this->horario_masaje);
     }
 
-    private function calcularHoraFin($horarioInicio, $nombreServicio)
+    public function getHoraFinalMasajeAttribute()
     {
-        $visita = $this->visita;
+        $nombreServicio = ['Masaje', 'Masajes', 'masaje', 'masajes'];
 
-        $servicio = $visita->reserva->programa->servicios->first(function ($servicio) use ($nombreServicio) {
-            return in_array($servicio->nombre_servicio, $nombreServicio);
-        });
+        $servicio = Servicio::whereIn('nombre_servicio', $nombreServicio)->first();
+
+        if ($this->horario_masaje) {
+            return Carbon::parse($this->horario_masaje)->addMinutes($servicio->duracion)->format('H:i');
+        }
+        return null;
+    }
+
+    private function calcularHoraFin($horarioInicio)
+    {
+        $nombreServicio = ['Masaje', 'Masajes', 'masaje', 'masajes'];
+
+        $servicio = Servicio::whereIn('nombre_servicio', $nombreServicio)->first();
+
         if ($horarioInicio && $servicio) {
             $horaInicio = Carbon::parse($horarioInicio);
             return $horaInicio->addMinutes($servicio->duracion)->format('H:i');

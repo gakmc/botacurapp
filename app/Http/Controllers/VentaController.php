@@ -127,7 +127,7 @@ class VentaController extends Controller
     {
         $reserva->load('cliente', 'venta.tipoTransaccionAbono');
         $tipos = TipoTransaccion::all();
-        $ventum->load('consumos');
+        $ventum->load('consumo');
 
         return view('themes.backoffice.pages.venta.cerrar', [
             'reserva' => $reserva,
@@ -151,7 +151,7 @@ class VentaController extends Controller
 
 
         $venta       = $ventum;
-        $consumo     = $venta->consumos->first();
+        $consumo     = $venta->consumo;
         $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
 
@@ -265,15 +265,14 @@ class VentaController extends Controller
         $total   = 0;
         $propina = 'No Aplica';
         $visita  = $reserva->visitas->last();
-        $visita->load(['menus']);
-        $menus     = $visita->menus;
-        $consumos  = $venta->consumos;
+        $menus     = $reserva->menus;
+        $consumo  = $venta->consumo;
         $idConsumo = null;
 
-        if ($consumos->isEmpty()) {
+        if ($consumo->isEmpty()) {
             $propina = 'No Aplica';
         } else {
-            foreach ($consumos as $consumo) {
+
                 $idConsumo = $consumo->id;
                 foreach ($consumo->detallesConsumos as $detalles) {
 
@@ -285,7 +284,7 @@ class VentaController extends Controller
                         $propina = 'No';
                     }
                 }
-            }
+
 
             $cantidadPropina = DB::table('propinas')
                 ->where('id_consumo', '=', $idConsumo)
@@ -305,7 +304,7 @@ class VentaController extends Controller
             'programa'      => $reserva->programa->nombre_programa,
             'personas'      => $reserva->cantidad_personas,
             'menus'         => $menus,
-            'consumos'      => $consumos,
+            'consumo'      => $consumo,
             'venta'         => $reserva->venta,
             'total'         => $total,
             'propina'       => $propina,
@@ -332,7 +331,7 @@ class VentaController extends Controller
                 'fecha_visita'  => $reserva->fecha_visita,
                 'programa'      => $reserva->programa->nombre_programa,
                 'personas'      => $reserva->cantidad_personas,
-                'consumos'      => $consumos,
+                'consumo'      => $consumo,
                 'venta'         => $reserva->venta,
                 'total'         => $total,
                 'propina'       => $propina,

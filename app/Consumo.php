@@ -12,6 +12,11 @@ class Consumo extends Model
         'id_venta',
     ];
 
+    // public function venta()
+    // {
+    //     return $this->belongsTo(Venta::class, 'id_venta');
+    // }
+
     public function venta()
     {
         return $this->belongsTo(Venta::class, 'id_venta');

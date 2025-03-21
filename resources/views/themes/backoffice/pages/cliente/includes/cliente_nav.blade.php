@@ -11,7 +11,7 @@
             @foreach($cliente->reservas as $reserva)
             <div class="collection-item center-align valign-wrapper center" style="display: flex; justify-content:space-between;">
 
-                <a href="#modal-reserva{{$reserva->id}}" class="modal-trigger center-align valign-wrapper"
+                <a href="#modal-reserva" class="modal-trigger center-align valign-wrapper"
                     @if ($reserva->venta->total_pagar <= 0)
                         style="color:green;"
                     @else
@@ -23,6 +23,39 @@
                     data-observacion="{{ $reserva->observacion }}"
                     data-masaje="{{$reserva->cantidad_masajes}}"
                     data-personas="{{$reserva->cantidad_personas}}"
+                    data-programa="{{$reserva->programa->nombre_programa}}"
+                    data-abono="{{number_format($reserva->venta->abono_programa,0,'','.')}}"
+                    data-tipo_abono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No Registrado'}}"
+                    data-diferencia="{{is_null($reserva->venta->diferencia_programa) ? 'Aún no cierra venta' : number_format($reserva->venta->diferencia_programa,0,'','.')}}"
+                    data-tipo_diferencia="{{(!is_null($reserva->venta->id_tipo_transaccion_diferencia)) ? $reserva->venta->tipoTransaccionDiferencia->nombre : 'No registrado'}}"
+                    @if (isset($reserva->menus))
+                    data-menus="{{ $reserva->menus->map(function($menu) {
+                        return [
+                            'entrada' => optional($menu->productoEntrada)->nombre ?? 'No registra',
+                            'fondo' => optional($menu->productoFondo)->nombre ?? 'No registra',
+                            'acompanamiento' => optional($menu->productoAcompanamiento)->nombre ?? 'Sin Acompañamiento',
+                            'alergias' => optional($menu)->alergias ?? 'No registra',
+                            'observacion' => optional($menu)->observacion ?? 'No registra',
+                        ];
+                    })->toJson() }}"
+                    @else
+                        data-menus="No registra"
+                    @endif
+
+                    data-sauna="{{ $reserva->visitas->pluck('horario_sauna')->filter()->unique()->count() > 0 ? $reserva->visitas->pluck('horario_sauna')->filter()->unique()->join(', ') : 'No registra' }}"
+
+                    data-tinaja="{{ $reserva->visitas->pluck('horario_tinaja')->filter()->unique()->count() > 0 ? $reserva->visitas->pluck('horario_tinaja')->filter()->unique()->join(', ') : 'No registra' }}"
+
+                    data-horariomasajes="{{$masajes->pluck('horario_masaje')->filter()->unique()->isNotEmpty() ? $masajes->pluck('horario_masaje')->filter()->unique()->join(', ') : 'No registra' }}"
+
+
+                    data-sauna-fin="{{ $reserva->visitas->pluck('horario_sauna')->filter()->unique()->count() > 0 ? $reserva->visitas->pluck('hora_fin_sauna')->filter()->unique()->join(', ') : 'No registra' }}"
+
+                    data-tinaja-fin="{{ $reserva->visitas->pluck('horario_tinaja')->filter()->unique()->count() > 0 ? $reserva->visitas->pluck('hora_fin_tinaja')->filter()->unique()->join(', ') : 'No registra' }}"
+
+                    data-horariomasajes-fin="{{$masajes->pluck('horario_masaje')->filter()->unique()->isNotEmpty() ? $masajes->pluck('hora_final_masaje')->filter()->unique()->join(', ') : 'No registra' }}"
+
+
                     >Visita: {{ $reserva->fecha_visita }}</a>
 
                 <div style="display: flex; justify-content:space-between;">

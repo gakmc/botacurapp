@@ -160,7 +160,7 @@
 
 
 
-                @if ($reserva->venta->consumos->isEmpty())
+                @if (empty($reserva->venta->consumo))
 
                 <div class="input-field col s12 m3" id="noPropina">
 
@@ -237,77 +237,73 @@
 
 
 
-                @foreach ($reserva->venta->consumos as $consumo)
-                <p id="check">
-                  <label>
-                    <input type="checkbox" id="propina" name="propina" />
-                    <span class="black-text">Incluye Propina?</span>
-                  </label>
-                </p>
 
-                @php
-                  $totalSubtotal = $consumo->detallesConsumos->where('id_consumo', $consumo->id)->sum('subtotal');
-                @endphp
+                  <p id="check">
+                    <label>
+                      <input type="checkbox" id="propina" name="propina" />
+                      <span class="black-text">Incluye Propina?</span>
+                    </label>
+                  </p>
 
-                <div class="input-field col s12 m3" id="propinaBruta" hidden>
+                  @php
+                    $totalSubtotal = $reserva->venta->consumo->detallesConsumos->where('id_consumo', $reserva->venta->consumo->id)->sum('subtotal');
+                  @endphp
 
-                  <label for="propinaValue">ingrese Propina</label>
-                  <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
-                  @error('propinaValue')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
+                  <div class="input-field col s12 m3" id="propinaBruta" hidden>
 
-                </div>
+                    <label for="propinaValue">ingrese Propina</label>
+                    <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
+                    @error('propinaValue')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                    @enderror
 
-
-                <div class="input-field col s12 m3" id="noPropina">
-
-                  <label for="sinPropina">Consumo Sin Propina</label>
-                  <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$consumo->subtotal}}" value="{{$consumo->subtotal}}" readonly>
-                  @error('sinPropina')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div>
+                  </div>
 
 
+                  <div class="input-field col s12 m3" id="noPropina">
 
-                <div class="input-field col s12 m3" id="soloConsumo">
+                    <label for="sinPropina">Consumo Sin Propina</label>
+                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
+                    @error('sinPropina')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                    @enderror
 
-                  <label for="soloConsumo">Consumo</label>
-                  <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$consumo->subtotal}}" value="{{$consumo->subtotal}}" readonly>
-                  @error('sinPropina')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
+                  </div>
 
-                </div>
 
+                  <div class="input-field col s12 m3" id="soloConsumo">
+
+                    <label for="soloConsumo">Consumo</label>
+                    <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
+                    @error('sinPropina')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                    @enderror
+
+                  </div>
 
 
 
+                  <div class="input-field col s12 m3" id="siPropina" hidden>
+
+                    <label for="conPropina">Consumo Con Propina</label>
+                    <input id="conPropina" type="text" name="conPropina" class="money-format" value="{{$reserva->venta->consumo->total_consumo}}" data-conpropina="{{$reserva->venta->consumo->total_consumo}}"
+                      readonly>
+                    @error('conPropina')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                    @enderror
+
+                  </div>
 
 
-                <div class="input-field col s12 m3" id="siPropina" hidden>
 
-                  <label for="conPropina">Consumo Con Propina</label>
-                  <input id="conPropina" type="text" name="conPropina" class="money-format" value="{{$consumo->total_consumo}}" data-conpropina="{{$consumo->total_consumo}}"
-                    readonly>
-                  @error('conPropina')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div>
-
-
-                @endforeach
                 @endif
 
                 <div class="input-field col s12 m3">

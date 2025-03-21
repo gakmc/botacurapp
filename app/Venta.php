@@ -33,8 +33,13 @@ class Venta extends Model
         return $this->belongsTo(TipoTransaccion::class, 'id_tipo_transaccion_diferencia');
     }
 
-    public function consumos()
+    // public function consumos()
+    // {
+    //     return $this->hasMany(Consumo::class, 'id_venta');
+    // }
+
+    public function consumo()
     {
-        return $this->hasMany(Consumo::class, 'id_venta');
+        return $this->hasOne(Consumo::class, 'id_venta');
     }
 }

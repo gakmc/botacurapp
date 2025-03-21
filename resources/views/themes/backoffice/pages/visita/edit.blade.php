@@ -61,7 +61,7 @@
 
                                   <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
-                                      <option value="{{$visita->masajes->first()->horario_masaje}}" selected>{{$visita->masajes->first()->horario_masaje}}</option>
+                                      <option value="{{$reserva->masajes->first()->horario_masaje}}" selected>{{$reserva->masajes->first()->horario_masaje}}</option>
                                       {{-- @foreach($horasMasaje as $horario)
                                       <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
                                           : '' }}>

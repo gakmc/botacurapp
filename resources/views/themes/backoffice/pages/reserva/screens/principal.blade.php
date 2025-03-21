@@ -174,9 +174,9 @@
                                     $ultimaVisita = $ultimaVisitaPorReserva[$reserva->id];
                                 @endphp
 
-{{-- {{dd(isset($ultimaVisita->masajes),$ultimaVisita->masajes->isEmpty())}} --}}
+{{-- {{dd(isset($reserva->masajes),$reserva->masajes->isEmpty())}} --}}
 
-                                @if ($ultimaVisita->masajes->isEmpty())
+                                @if ($reserva->masajes->isEmpty())
                                     <tr>
                                         @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                                             <td class="orange" style="border-radius: 5px">
@@ -205,7 +205,7 @@
                                         </td>
                                     </tr>
                                 @else
-                                    @foreach ($ultimaVisita->masajes as $masaje)
+                                    @foreach ($reserva->masajes as $masaje)
                                         @if ($masaje->horario_masaje)
                                             @php
                                                 // Clave para agrupar: horario y cliente

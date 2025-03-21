@@ -204,9 +204,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/menu_update', 'VisitaController@menu_update')->name('reserva.visitas.menu_update');
 
 
-    Route::get('reserva/{reserva}/visita/{visita}/masaje', 'VisitaController@masaje')->name('reserva.visitas.masaje');
-    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/masaje_update', 'VisitaController@masaje_update')->name('reserva.visitas.masaje_update');
-
+    Route::get('reserva/{reserva}/masajes', 'ReservaController@masaje')->name('reserva.masajes');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/masaje_update', 'ReservaController@masaje_update')->name('reserva.masaje_update');
+    
+    Route::post('boleta/reserva/{reserva}', 'BoletaController@databoleta')->name('boleta.reserva');
 
     Route::get('reserva/{reserva}/visita/{visita}/spa', 'VisitaController@spa')->name('reserva.visitas.spa');
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/spa_update', 'VisitaController@spa_update')->name('reserva.visitas.spa_update');

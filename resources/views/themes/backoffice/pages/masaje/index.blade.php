@@ -46,8 +46,8 @@
 
 
 
-                    @foreach ($reserva->visitas as $visita)
-                    @foreach ($visita->masajes as $masaje)
+
+                    @foreach ($reserva->masajes as $masaje)
 
                     <tr>
                         <td>
@@ -120,7 +120,7 @@
 
                     </tr>
                     @endforeach
-                    @endforeach
+
 
                     @endforeach
 
@@ -135,7 +135,7 @@
 
             {{-- Paginación --}}
             <div class="center">
-                {{ $reservasPaginadas->links('vendor.pagination.materialize') }}
+                {{ $reservasPaginadas->links('vendor.pagination.date') }}
             </div>
         </div>
     </div>

@@ -19,7 +19,7 @@
                       Fecha:<strong>{{$reserva->fecha_visita}}</strong></h4>
                   <div class="row">
                       <form class="col s12" method="post"
-                          action="{{route('backoffice.reserva.visitas.masaje_update', [$reserva, $visita])}}">
+                          action="{{route('backoffice.reserva.masaje_update', [$reserva])}}">
 
 
                           {{csrf_field() }}
@@ -146,61 +146,6 @@
     @endif
 </script>
 
-{{-- <script>
-    $(document).ready(function () {
-          // Cargar horarios desde el backend
-          const horariosPorLugar = @json($horasMasaje);
-          console.log(horariosPorLugar);
-          
-  
-          // Inicializa Materialize para todos los selectores
-          $('select').material_select();
-  
-  
-          // Función para cargar horarios en horario_masaje según el lugar seleccionado
-          function cargarHorariosUnico(lugarId) {
-              const $horarioSelect = $('#horario_masaje');
-  
-  
-              if (horariosPorLugar[lugarId]) {
-                  horariosPorLugar[lugarId].forEach(function (horario) {
-                      $horarioSelect.append(new Option(horario, horario));
-                  });
-  
-                  // Reinicializa Materialize para el selector
-                  $horarioSelect.material_select();
-              }
-          }
-  
-          @php
-              $lugarDatabase = $visita->id_lugar_masaje;
-          @endphp
-  
-          var lugarDatabase = @json($lugarDatabase);
-  
-          // Detectar cambios en el lugar de masaje
-          $('#id_lugar_masaje').on('change', function () {
-              const $horarioSelect = $('#horario_masaje');
-              const lugarId = $(this).val(); // ID del lugar seleccionado
-  
-              if (lugarId == lugarDatabase) {
-                  
-                  $horarioSelect.empty().append('<option value="{{$visita->horario_masaje}}" selected>{{$visita->horario_masaje}}</option>');
-              }else{
-  
-                  $horarioSelect.empty().append('<option value="" disabled selected>-- Seleccione --</option>');
-              }
-              cargarHorariosUnico(lugarId); // Actualizar los horarios en horario_masaje
-          });
-  
-          // Carga inicial: verifica si hay un lugar preseleccionado
-          const lugarInicial = $('#id_lugar_masaje').val();
-          if (lugarInicial) {
-              cargarHorariosUnico(lugarInicial);
-          }
-      });
-  
-</script> --}}
 
 <script>
     $(document).ready(function () {

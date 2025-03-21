@@ -7,7 +7,7 @@ use Illuminate\Database\Eloquent\Model;
 class Menu extends Model
 {
     protected $fillable = [
-        'id_visita',
+        'id_reserva',
         'id_producto_entrada',
         'id_producto_fondo',
         'id_producto_acompanamiento',
@@ -16,9 +16,9 @@ class Menu extends Model
     ];
 
     // RELACIONES
-    public function visita()
+    public function reserva()
     {
-        return $this->belongsTo(Visita::class, 'id_visita');
+        return $this->belongsTo(Reserva::class, 'id_reserva');
     }
 
     // Relación con el producto de entrada

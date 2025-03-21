@@ -43,7 +43,7 @@
                 
                 <!-- Paginación -->
                 <div class="center-align">
-                    {{ $reservasPaginadas->appends(['alternative' => 1])->links('vendor.pagination.materialize') }}
+                    {{ $reservasPaginadas->appends(['alternative' => 1])->links('vendor.pagination.date') }}
                 </div>
 
                 {{-- Fin Vista Alternativa --}}    
@@ -54,7 +54,7 @@
                 @foreach ($reservasMovilesPaginadas as $fecha => $reservas)
 
                 {{-- Vista en Pantallas de dispositivos Moviles --}}
-                    @include('themes.backoffice.pages.reserva.screens.mobile', $reservasMovilesPaginadas)
+                    @include('themes.backoffice.pages.reserva.screens.mobile', $reservas)
                 {{-- Fin Vista en Pantallas de dispositivos Moviles --}}
                     
                 @endforeach
@@ -71,15 +71,15 @@
 
                 @if ($mobileView === 'masajes')
                                 <div class="center-align">
-                                    {{ $reservasPaginadas->appends(['mobileview' => 'masajes'])->links('vendor.pagination.materialize') }}
+                                    {{ $reservasPaginadas->appends(['mobileview' => 'masajes'])->links('vendor.pagination.date') }}
                                 </div>
                 @elseif ($mobileView === 'ubicacion')
                 <div class="center-align">
-                    {{ $reservasPaginadas->appends(['mobileview' => 'ubicacion'])->links('vendor.pagination.materialize') }}
+                    {{ $reservasPaginadas->appends(['mobileview' => 'ubicacion'])->links('vendor.pagination.date') }}
                 </div>
                 @else
                 <div class="center-align">
-                    {{ $reservasPaginadas->links('vendor.pagination.materialize') }}
+                    {{ $reservasPaginadas->links('vendor.pagination.date') }}
                 </div>
                     
                 @endif

@@ -33,13 +33,13 @@
             data-totalpagar="{{$reserva->venta->total_pagar}}"
             data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
             data-tipodiferencia="{{$reserva->venta->tipoTransaccionDiferencia->nombre ?? 'No registra'}}"
-            data-consumo="{{$reserva->venta->consumos}}" 
+            data-consumo="{{$reserva->venta->consumo}}" 
             
-            @foreach ($reserva->venta->consumos as $consumo)
-                @if ($consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
-                    data-pagoimg="{{$consumo->pagosConsumos ? route('backoffice.reserva.consumo.imagen', $reserva->id) : null}}"
+
+                @if ($reserva->venta->consumo->pagosConsumos->where('id_consumo', $reserva->venta->consumo->id)->isNotEmpty())
+                    data-pagoimg="{{$reserva->venta->consumo->pagosConsumos ? route('backoffice.reserva.consumo.imagen', $reserva->id) : null}}"
                 @endif
-            @endforeach
+
             >
             <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Venta">remove_red_eye</i>
         </a>

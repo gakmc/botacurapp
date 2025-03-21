@@ -3,8 +3,8 @@ namespace App\Http\Controllers;
 
 use App\Http\Requests\Visita\StoreRequest;
 use App\Http\Requests\Visita\UpdateRequest;
-use App\LugarMasaje;
 use App\Mail\RegistroReservaMailable;
+use App\LugarMasaje;
 use App\Masaje;
 use App\Menu;
 use App\Producto;
@@ -60,6 +60,7 @@ class VisitaController extends Controller
         $cantidadMasajesExtra = session()->get('cantidadMasajesExtra');
 
         $reserva              = Reserva::findOrFail($reserva);
+
         $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
 
         // Obtenemos la fecha seleccionada del formulario
@@ -130,7 +131,7 @@ class VisitaController extends Controller
         // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
         $horariosOcupadosMasajes = DB::table('visitas')
             ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('masajes as m', 'm.id_visita', '=', 'visitas.id')
+            ->join('masajes as m', 'm.id_reserva', '=', 'reservas.id')
             ->where('reservas.fecha_visita', $fechaSeleccionada)
             ->whereNotNull('m.horario_masaje')
             ->select('m.horario_masaje', 'm.id_lugar_masaje')
@@ -187,6 +188,7 @@ class VisitaController extends Controller
             'acompañamientos' => $acompañamientos,
             'masajesExtra'    => $masajesExtra,
             'almuerzosExtra'  => $almuerzosExtra,
+            'cantidadMasajesExtra' => $cantidadMasajesExtra
         ]);
     }
 
@@ -369,7 +371,7 @@ class VisitaController extends Controller
                             'tipo_masaje'     => $request->input('tipo_masaje'),
                             'id_lugar_masaje' => $request->input('id_lugar_masaje'),
                             'persona'         => $i,
-                            'id_visita'       => $visita->id,
+                            'id_reserva'      => $reserva->id,
                         ]);
                     }
 
@@ -411,7 +413,7 @@ class VisitaController extends Controller
                                 'tipo_masaje'     => $horario['tipo_masaje'],
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? null,
                                 'persona'         => $contadorPersonas,
-                                'id_visita'       => $visita->id,
+                                'id_reserva'       => $reserva->id,
                             ]);
                             $contadorPersonas++;
 
@@ -485,7 +487,7 @@ class VisitaController extends Controller
                                 'tipo_masaje'     => $horario['tipo_masaje'],
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? null,
                                 'persona'         => $contadorPersonas,
-                                'id_visita'       => $visita->id,
+                                'id_reserva'       => $reserva->id,
                             ]);
                             $contadorPersonas++;
 
@@ -508,7 +510,7 @@ class VisitaController extends Controller
                 // Caso 6: Sin data
                 if ((empty($arrayMasajes) || !$tieneHorarioMasaje) && empty($request->input('horario_masaje')) && empty($arraySpas) && empty($request->input('horario_sauna'))) {
 
-                    $cantidadPersonas     = $personas;
+                    $cantidadPersonas     = $reserva->cantidad_personas;
                     $maxPersonasPorVisita = 5;
                     $visita               = null;
 
@@ -523,14 +525,14 @@ class VisitaController extends Controller
                         ]);
                     }
 
-                    if ($visita && $incluyeMasaje) {
-                        for ($i = 1; $i <= $cantidadPersonas; $i++) {
+                    if ($incluyeMasaje) {
+                        for ($i = 1; $i <= $personas; $i++) {
                             Masaje::create([
                                 'horario_masaje'  => null,
                                 'tipo_masaje'     => null,
                                 'id_lugar_masaje' => null,
                                 'persona'         => $i,
-                                'id_visita'       => $visita->id,
+                                'id_reserva'      => $reserva->id,
                                 'user_id'         => null,
                             ]);
                         }
@@ -542,7 +544,7 @@ class VisitaController extends Controller
 
                     foreach ($request->menus as $menu) {
                         Menu::create([
-                            'id_visita'                  => $visita->id,
+                            'id_reserva'                 => $reserva->id,
                             'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
                             'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
                             'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
@@ -559,7 +561,7 @@ class VisitaController extends Controller
             }
 
             Alert::success('Éxito', 'Se ha generado la visita')->showConfirmButton();
-            return redirect()->route('backoffice.reserva.show', ['reserva' => $request->input('id_reserva')]);
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva]);
 
         } catch (\Exception $e) {
             Alert::error('Error', 'Debe completar todo el formulario o NO seleccionar nada')->showConfirmButton();
@@ -708,19 +710,19 @@ class VisitaController extends Controller
         
 
         // Obtener la última visita de la reserva
-$ultimaVisita = $reserva->visitas->last();
+        $ultimaVisita = $reserva->visitas->last();
 
-// Obtener la cantidad de personas en la reserva
-$cantidadPersonas = $reserva->cantidad_personas;
+        // Obtener la cantidad de personas en la reserva
+        $cantidadPersonas = $reserva->cantidad_personas;
 
-// Obtener los menús de la última visita
-$menus = $ultimaVisita ? $ultimaVisita->menus : collect([]);
+        // Obtener los menús de la última visita
+        $menus = $ultimaVisita ? $reserva->menus : collect([]);
 
-// Si la cantidad de menús es menor a la cantidad de personas en la reserva, agregamos menús vacíos
-$menusFaltantes = $cantidadPersonas - $menus->count();
-for ($i = 0; $i < $menusFaltantes; $i++) {
-    $menus->push(new Menu()); // Agregar menú vacío
-}
+        // Si la cantidad de menús es menor a la cantidad de personas en la reserva, agregamos menús vacíos
+        $menusFaltantes = $cantidadPersonas - $menus->count();
+        for ($i = 0; $i < $menusFaltantes; $i++) {
+            $menus->push(new Menu()); // Agregar menú vacío
+        }
 
 
         return view('themes.backoffice.pages.visita.edit', [
@@ -745,7 +747,7 @@ for ($i = 0; $i < $menusFaltantes; $i++) {
     public function update(UpdateRequest $request, Reserva $reserva, Visita $visita)
     {
         $visitas      = $reserva->visitas;
-        $menus        = $visitas->last()->menus;
+        $menus        = $reserva->menus;
         $idVisitaMenu = $visitas->last()->id;
         $menuIds      = [];
 
@@ -897,7 +899,7 @@ for ($i = 0; $i < $menusFaltantes; $i++) {
 
                             // Asignar menús a la nueva visita
                             foreach ($menusRequest as $menu) {
-                                $visita->menus()->create([
+                                $reserva->menus()->create([
                                     'id_producto_entrada'        => $menu['id_producto_entrada'],
                                     'id_producto_fondo'          => $menu['id_producto_fondo'],
                                     'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'],
@@ -1007,11 +1009,13 @@ for ($i = 0; $i < $menusFaltantes; $i++) {
     {
         $ubicacionNueva = Ubicacion::where('id', '=', $request->ubicacion)
             ->first();
-
-        $visita = Visita::findOrFail($visitum->id);
-        $visita->update([
-            'id_ubicacion' => $request->ubicacion,
-        ]);
+        $reserva = $visitum->reserva;
+        $visitas = $reserva->visitas;
+        foreach ($visitas as $visita) {
+            $visita->update([
+                'id_ubicacion' => $request->ubicacion,
+            ]);
+        }
 
         Alert::success('Éxito', 'Ubicacion cambiada a ' . $ubicacionNueva->nombre)->showConfirmButton('Confirmar');
         return redirect()->route('backoffice.reserva.show', ['reserva' => $visitum->id_reserva]);
@@ -1437,7 +1441,7 @@ for ($i = 0; $i < $menusFaltantes; $i++) {
     public function menu(Reserva $reserva, Visita $visita)
     {
         $servicios = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
-        $menus = $visita->menus;
+        $menus = $reserva->menus;
 
         $almuerzosExtra = null;
 
@@ -1506,105 +1510,7 @@ for ($i = 0; $i < $menusFaltantes; $i++) {
         }
     }
 
-    public function masaje(Reserva $reserva, Visita $visita)
-    {
-        $masajes = $visita->masajes;
-        $masajesExtra = null;
-        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
 
-        if (in_array('Masaje', $serviciosDisponibles)) {
-            $masajesExtra = false;
-        } else {
-            $masajesExtra = isset($masajes);
-        }
-        
-        // dd($masajesExtra);
-
-        $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-
-        // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
-        $horaInicioMasajes = new \DateTime('10:20');
-        $horaFinMasajes    = new \DateTime('19:00');
-        $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
-        $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
-        $horarios          = [];
-        
-        while ($horaInicioMasajes <= $horaFinMasajes) {
-            $horarios[] = $horaInicioMasajes->format('H:i');
-            $horaInicioMasajes->add($duracionMasaje);
-            $horaInicioMasajes->add($intervalos);
-        }
-
-        // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
-        $horariosOcupadosMasajes = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('masajes as m', 'm.id_visita', '=', 'visitas.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->whereNotNull('m.horario_masaje')
-            ->select('m.horario_masaje', 'm.id_lugar_masaje')
-            ->get()
-            ->groupBy('id_lugar_masaje');
-
-        // Procesar horarios ocupados
-        $ocupadosPorLugar = [
-            1 => [], // Containers
-            2 => [], // Toldos
-        ];
-
-        foreach ($horariosOcupadosMasajes as $lugar => $visitas) {
-            $ocupadosPorLugar[$lugar] = $visitas->pluck('horario_masaje')
-                ->map(function ($hora) {
-                    return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-                })
-                ->toArray();
-        }
-
-        // Filtrar horarios disponibles por lugar
-        $horariosDisponiblesMasajes = [
-            1 => array_values(array_diff($horarios, $ocupadosPorLugar[1])), // Containers
-            2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
-        ];
-
-        return view('themes.backoffice.pages.visita.masaje.edit',[
-            'masajes'       => $masajes,
-            'reserva'       => $reserva,
-            'visita'        => $visita,
-            'lugares'       => LugarMasaje::all(),
-            'horasMasaje'   => $horariosDisponiblesMasajes,
-            'servicios'     => $serviciosDisponibles,
-            'masajesExtra'  => $masajesExtra,
-        ]);
-
-    }
-
-    public function masaje_update(Request $request, Reserva $reserva, Visita $visita) 
-    {
-
-        $request->validate([
-            'masajes.*.horario_masaje' => 'required|string',
-            'masajes.*.tipo_masaje' => 'required|string|in:Relajante,Descontracturante',
-            'masajes.*.id_lugar_masaje' => 'required|exists:lugares_masajes,id',
-        ]);
-    
-        try {
-
-            foreach ($request->masajes as $id => $datos) {
-
-                $masaje = Masaje::findOrFail($id);
-    
-                $masaje->update([
-                    'horario_masaje' => $datos['horario_masaje'],
-                    'tipo_masaje' => $datos['tipo_masaje'],
-                    'id_lugar_masaje' => $datos['id_lugar_masaje'],
-                ]);
-            }
-    
-            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Masajes actualizados correctamente.');
-    
-        } catch (\Exception $e) {
-            return redirect()->back()->with('error', 'Ocurrió un error al actualizar los masajes.');
-        }
-    }
 
     public function spa(Reserva $reserva, Visita $visita)
     {

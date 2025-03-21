@@ -56,7 +56,7 @@
 
     <div>
         <h5 class="primario">Consumo Extra</h5>
-        @if ($consumos->isEmpty())
+        @if ($consumo->isEmpty())
 
         <h6 class="left"><span class="primario">Productos o Servicios:</span> No se registran consumos extras</h6>
 
@@ -79,28 +79,28 @@
             </thead>
 
             <tbody>
-                @foreach ($consumos as $index=>$consumo )
-                @foreach ( $consumo->detallesConsumos as $detalles)
-                <tr>
-                    <td class="primario">{{$detalles->producto->nombre}}</td>
-                    <td>${{number_format($detalles->producto->valor,0,'','.')}}</td>
-                    <td>X{{$detalles->cantidad_producto}}</td>
-                    <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
-                    @php
-                        $propina += $detalles->subtotal*0.1;
-                    @endphp
 
-                </tr>
-                @endforeach
-                @foreach ($consumo->detalleServiciosExtra as $servicios)
-                <tr>
-                    <td class="primario">{{$servicios->servicio->nombre_servicio}}</td>
-                    <td>${{number_format($servicios->servicio->valor_servicio,0,'','.')}}</td>
-                    <td>X{{$servicios->cantidad_servicio}}</td>
-                    <td>${{number_format($servicios->subtotal,0,'','.')}}</td>
+                    @foreach ( $consumo->detallesConsumos as $detalles)
+                    <tr>
+                        <td class="primario">{{$detalles->producto->nombre}}</td>
+                        <td>${{number_format($detalles->producto->valor,0,'','.')}}</td>
+                        <td>X{{$detalles->cantidad_producto}}</td>
+                        <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
+                        @php
+                            $propina += $detalles->subtotal*0.1;
+                        @endphp
 
-                </tr>
-                @endforeach
+                    </tr>
+                    @endforeach
+                    @foreach ($consumo->detalleServiciosExtra as $servicios)
+                    <tr>
+                        <td class="primario">{{$servicios->servicio->nombre_servicio}}</td>
+                        <td>${{number_format($servicios->servicio->valor_servicio,0,'','.')}}</td>
+                        <td>X{{$servicios->cantidad_servicio}}</td>
+                        <td>${{number_format($servicios->subtotal,0,'','.')}}</td>
+
+                    </tr>
+                    @endforeach
                 <tr>
                     <td colspan="3"></td>
                     <td style="font-weight: bold; text-align:right;">Subtotal:
@@ -115,7 +115,7 @@
                     <td colspan="3"></td>
                     <td style="font-weight: bold; text-align:right;">Total: ${{number_format($total,0,'','.')}}</td>
                 </tr>
-                @endforeach
+
             </tbody>
         </table>
         @endif

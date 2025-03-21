@@ -146,7 +146,7 @@
 
       @foreach($reservas as $reserva)
       @foreach($reserva->visitas as $visita)
-@if ($visita->menus->isNotEmpty())
+@if ($reserva->menus->isNotEmpty())
   
 
 
@@ -169,7 +169,7 @@
               </tr>
             </thead>
             <tbody>
-              @foreach($visita->menus as $index => $menu)
+              @foreach($reserva->menus as $index => $menu)
               <tr>
 
 
@@ -230,7 +230,7 @@
 
       {{-- Paginación --}}
       <div class="center">
-        {{ $menusPaginados->links('vendor.pagination.materialize') }}
+        {{ $menusPaginados->links('vendor.pagination.date') }}
       </div>
 
 

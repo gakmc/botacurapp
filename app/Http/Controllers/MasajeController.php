@@ -39,7 +39,7 @@ class MasajeController extends Controller
         //     ->orderBy('m.horario_masaje', 'asc')
         //     ->get();
 
-        $reservas = Reserva::with(['visitas.masajes.lugarMasaje', 'cliente'])
+        $reservas = Reserva::with(['masajes.lugarMasaje', 'cliente'])
             ->where('fecha_visita', '>=', $fechaActual)
             ->orderBy('fecha_visita', 'asc')
             ->get();
