@@ -160,11 +160,11 @@
 
 
 
-                @if (empty($reserva->venta->consumo))
+              @if (empty($reserva->venta->consumo))
 
                 <div class="input-field col s12 m3" id="noPropina">
 
-                  <label for="sinPropina">Consumo Sin Propina</label>
+                  <label for="sinPropina">Consumo</label>
                   <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="0" readonly>
                   @error('sinPropina')
                   <span class="invalid-feedback" role="alert">
@@ -175,7 +175,7 @@
                 </div>
 
 
-                @else
+              @else
 
 
 
@@ -249,22 +249,23 @@
                     $totalSubtotal = $reserva->venta->consumo->detallesConsumos->where('id_consumo', $reserva->venta->consumo->id)->sum('subtotal');
                   @endphp
 
-                  <div class="input-field col s12 m3" id="propinaBruta" hidden>
 
-                    <label for="propinaValue">ingrese Propina</label>
-                    <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
-                    @error('propinaValue')
+                  {{-- <div class="input-field col s12 m3" id="soloConsumo">
+
+                    <label for="soloConsumo">Consumo</label>
+                    <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
+                    @error('sinPropina')
                     <span class="invalid-feedback" role="alert">
                       <strong style="color:red">{{ $message }}</strong>
                     </span>
                     @enderror
 
-                  </div>
+                  </div> --}}
 
 
                   <div class="input-field col s12 m3" id="noPropina">
 
-                    <label for="sinPropina">Consumo Sin Propina</label>
+                    <label for="sinPropina">Consumo</label>
                     <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
                     @error('sinPropina')
                     <span class="invalid-feedback" role="alert">
@@ -275,16 +276,16 @@
                   </div>
 
 
-                  <div class="input-field col s12 m3" id="soloConsumo">
+                  <div class="input-field col s12 m3" id="propinaBruta" hidden>
 
-                    <label for="soloConsumo">Consumo</label>
-                    <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
-                    @error('sinPropina')
+                    <label for="propinaValue">ingrese Propina</label>
+                    <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
+                    @error('propinaValue')
                     <span class="invalid-feedback" role="alert">
                       <strong style="color:red">{{ $message }}</strong>
                     </span>
                     @enderror
-
+                    
                   </div>
 
 
@@ -306,6 +307,12 @@
 
                 @endif
 
+
+
+              </div>
+
+
+              <div class="row">
                 <div class="input-field col s12 m3">
 
                   <label for="diferencia">Diferencia por Pagar</label>
@@ -317,8 +324,10 @@
                   @enderror
 
                 </div>
+              </div>
 
 
+              <div class="row">
                 <div class="input-field col s12 m3">
 
                   <label for="total_pagar">Total a Pagar</label>
@@ -330,7 +339,6 @@
                   @enderror
 
                 </div>
-
               </div>
 
 
@@ -582,6 +590,11 @@
         valorConsumo = propina ? ConPropina : SinPropina;
         $('#valor_consumo').val(formatCLP(valorConsumo));
 
+          $('#noPropina').attr('hidden', true);
+          $('#sinPropina').attr('disabled', true);
+          $('#siPropina').attr('hidden', true);
+          $('#conPropina').attr('disabled', true);
+
         // Restar el consumo del total
         // nuevoTotal -= valorConsumo;
     } else {
@@ -589,6 +602,11 @@
         $('#valor_consumo').val('');
         valorConsumo = propina ? ConPropina : SinPropina;
         // $('#total_pagar').val(formatCLP(nuevoTotal+valorConsumo))
+
+          $('#noPropina').removeAttr('hidden');
+          $('#sinPropina').removeAttr('disabled');
+          $('#siPropina').removeAttr('hidden');
+          $('#conPropina').removeAttr('disabled');
     }
 
     if (!consumo) {
@@ -615,8 +633,9 @@
   function manejarPropina(activar, ConPropina) {
       if (activar) {
           // Ocultar opciones sin propina y habilitar opciones con propina
-          $('#noPropina').attr('hidden', true);
-          $('#sinPropina').attr('disabled', true);
+
+          // $('#noPropina').attr('hidden', true);
+          // $('#sinPropina').attr('disabled', true);
           $('#siPropina, #propinaBruta, #propinaValue').removeAttr('hidden disabled');
           $('#conPropina').removeAttr('disabled');
 

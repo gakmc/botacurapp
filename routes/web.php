@@ -54,6 +54,14 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home', 'AdminController@show')->name('admin.show');
     Route::get('home/masajes', 'AdminController@index')->name('admin.index');
     Route::get('home/equipos', 'AdminController@team')->name('admin.team');
+
+    Route::get('home/consumos', 'AdminController@consumos')->name('admin.consumos');
+    Route::get('consumos/{anio}/{mes}', 'AdminController@consumosMensuales')->name('admin.consumos.detalleMes');
+    
+    
+    Route::get('home/ingresos', 'AdminController@ingresos')->name('admin.ingresos');
+    Route::get('ingresos/{anio}/{mes}', 'AdminController@detalleMes')->name('admin.ingresos.detalleMes');
+    Route::get('ingresos/{anio}/{mes}/{dia}', 'AdminController@ingresosDiarios')->name('admin.ingresos.detalleDia');
     
     Route::resource('user', 'UserController');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
@@ -78,7 +86,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('reserva/{id}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     Route::get('reservas', 'ReservaController@indexall')->name('reservas.listar');
-    Route::get('reservas/registros', 'ReservaController@indexReserva')->name('reservas.registro');
+
+    Route::get('reservas/registro', 'ReservaController@indexReserva')->name('reservas.registro');
+
+    Route::get('reservas/registros', 'ReservaController@indexallRegistros')->name('reservas.registros');
+
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
 
     // Update - Actualizar una reserva específica
@@ -200,8 +212,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/register_update', 'VisitaController@register_update')->name('reserva.visita.register_update');
     
     
-    Route::get('reserva/{reserva}/visita/{visita}/menu', 'VisitaController@menu')->name('reserva.visitas.menu');
-    Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/menu_update', 'VisitaController@menu_update')->name('reserva.visitas.menu_update');
+    Route::get('reserva/{reserva}/menus', 'ReservaController@menu')->name('reserva.menus');
+
+    Route::match(['put', 'patch'], 'reserva/{reserva}/menu_update', 'ReservaController@menu_update')->name('reserva.menu_update');
 
 
     Route::get('reserva/{reserva}/masajes', 'ReservaController@masaje')->name('reserva.masajes');

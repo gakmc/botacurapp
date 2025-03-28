@@ -21,7 +21,7 @@
   @endif
   
   @if ($reserva->programa->incluye_almuerzos || $reserva->visitas->last()->incluye_almuerzos_extra)
-    <li><a href="{{ route('backoffice.reserva.visitas.menu', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Menú</a></li>
+    <li><a href="{{ route('backoffice.reserva.menus', ['reserva' => $reserva, 'visita' => $reserva->visitas->last()]) }}" class="grey-text text-darken-2">Editar Menú</a></li>
   @endif
 
 @endsection

@@ -24,7 +24,6 @@
                     <div id="calendar"></div>
 
 
-
             </div>
         </div>
     </div>
@@ -87,7 +86,6 @@ document.addEventListener('DOMContentLoaded', function() {
             // Evitar horarios sauna duplicados
             @if ($visita->horario_sauna && !in_array($visita->horario_sauna, $saunaHorarios))
             var horaSauna = convertirHora('{{ $visita->horario_sauna }}');
-
             eventos.push({
                 title: '{{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
                 start: formatoFecha + ' {{ $visita->horario_sauna }}',
@@ -188,12 +186,39 @@ document.addEventListener('DOMContentLoaded', function() {
     
     calendar.render();
     
-    let title = document.querySelector('.fc-center h2');
-    if (title) {
-                title.textContent = title.textContent.replace(/\b\w/g, function(char) {
+
+});
+</script>
+
+<script>
+    $(document).ready(function () {
+        function capitalizarTitulo(titleElement) {
+            if (titleElement) {
+                titleElement.textContent = titleElement.textContent.replace(/\b\w/g, function(char) {
                     return char.toUpperCase();
                 });
             }
-});
+        }
+
+        let title = document.querySelector('.fc-center h2');
+        capitalizarTitulo(title);
+
+        // Observar cambios en el h2
+        const observer = new MutationObserver(function (mutationsList, observer) {
+            for (const mutation of mutationsList) {
+                if (mutation.type === 'childList' || mutation.type === 'characterData') {
+                    capitalizarTitulo(mutation.target.nodeType === 3 ? mutation.target.parentNode : mutation.target);
+                }
+            }
+        });
+
+        if (title) {
+            observer.observe(title, {
+                childList: true,
+                subtree: true,
+                characterData: true
+            });
+        }
+    });
 </script>
 @endsection

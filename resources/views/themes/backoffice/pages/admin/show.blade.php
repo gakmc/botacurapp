@@ -16,7 +16,7 @@
 @section('content')
 
 <div class="section">
-    <p class="caption"><strong>Panel de Administración</strong></p>
+    <p class="caption"><strong>Administración</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -31,7 +31,7 @@
                             <div class="row mt-1">
                                 <!-- Tarjeta para mostrar el número de Reservas -->
                                 <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.reserva.index')}}">
+                                    <a href="{{route('backoffice.reservas.registros')}}">
                                         <div class="animate__animated animate__backInLeft card gradient-45deg-light-blue-cyan gradient-shadow min-height-100 white-text"
                                             style="--animate-delay: 1s; --animate-duration: 2s; ">
                                             <div class="padding-4">
@@ -118,12 +118,90 @@
 
 
 
+
+
+
+
+
+
+
                     </div>
                 </div>
             </div>
         </div>
     </div>
 </div>
+
+
+
+
+
+<div class="section">
+    <p class="caption"><strong>Finanzas</strong></p>
+    <div class="divider"></div>
+    <div id="basic-form" class="section">
+        <div class="row">
+            <div class="col s12 ">
+                <div class="card-panel">
+                    <div class="row">
+
+                        {{-- CONTENIDO --}}
+                        <div id="card-stats">
+                            <div class="row mt-1">
+                                <!-- Tarjeta para mostrar el número de Reservas -->
+                                <div class="col s12 m6 l3">
+                                    <a href="{{route('backoffice.admin.ingresos')}}">
+                                        <div class="animate__animated animate__backInLeft card gradient-45deg-amber-amber gradient-shadow min-height-100 black-text"
+                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                            <div class="padding-4">
+                                                <div class="col s7 m7">
+                                                    <i class="material-icons background-round mt-5">equalizer</i>
+                                                    <p>Programas Contratados</p>
+                                                </div>
+                                                <div class="col s5 m5 right-align">
+                                                    <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
+                                                    <p class="no-margin">Total</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+                                {{-- Incorporar nuevas tarjetas --}}
+
+                                <div class="col s12 m6 l3">
+                                    <a href="{{route('backoffice.admin.consumos')}}">
+                                        <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-purple gradient-shadow min-height-100 white-text"
+                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                            <div class="padding-4">
+                                                <div class="col s7 m7">
+                                                    <i class="material-icons background-round mt-5">monetization_on</i>
+                                                    <p>Consumos y Servicios</p>
+                                                </div>
+                                                <div class="col s5 m5 right-align">
+                                                    <h5 id="reservas-count" class="mb-0">{{$totalConsumos}}</h5>
+                                                    <p class="no-margin">Total</p>
+                                                </div>
+                                            </div>
+                                        </div>
+                                    </a>
+                                </div>
+
+                            </div>
+                        </div>
+
+
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>
+
+
+
+
+
+  
 @endsection
 
 

@@ -104,7 +104,7 @@
 
         <div>
             <h5 class="primario">Consumo Extra</h5>
-            @if ($consumo->isEmpty())
+            @if (is_null($consumo))
 
                 <h6 class="left"><span class="primario">Productos o Servicios:</span> No se registran consumos extras</h6>
 

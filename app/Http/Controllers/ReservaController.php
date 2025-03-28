@@ -8,6 +8,8 @@ use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
 use App\LugarMasaje;
 use App\Masaje;
+use App\Menu;
+use App\Producto;
 use App\Programa;
 use App\Reagendamiento;
 use App\Reserva;
@@ -604,7 +606,7 @@ class ReservaController extends Controller
         $cantidadPropina = null;
         // dd($menus);
 
-        if ($consumo->isEmpty()) {
+        if (is_null($consumo)) {
             $propina = 'No Aplica';
         } else {
 
@@ -666,7 +668,7 @@ class ReservaController extends Controller
         $idConsumo       = null;
         $cantidadPropina = null;
 
-        if ($consumo->isEmpty()) {
+        if (is_null($consumo)) {
             $propina = 'No Aplica';
         } else {
                 $idConsumo = $consumo->id;
@@ -732,10 +734,10 @@ class ReservaController extends Controller
     public function indexReserva()
     {
         Carbon::setLocale('es');
-        $fechaActual = Carbon::now()->startOfDay();
-
-        $reservas = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-            ->with([
+    
+        $fechaFiltro = request('fecha'); // formato esperado: Y-m-d
+    
+        $reservas = Reserva::with([
                 'cliente',
                 'visitas',
                 'masajes',
@@ -744,107 +746,37 @@ class ReservaController extends Controller
                 'programa',
                 'venta',
             ])
+            ->when($fechaFiltro, function ($query, $fechaFiltro) {
+                return $query->whereDate('fecha_visita', Carbon::parse($fechaFiltro)->format('Y-m-d'));
+            })
             ->orderBy('fecha_visita', 'asc')
             ->get();
-
-        // $reservas->load(['masajes', 'visitas.ubicacion', 'menus', 'cliente']);
-
+    
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
             return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
         });
-
-        $perPage           = 1;
-        $currentPage       = LengthAwarePaginator::resolveCurrentPage();
-        $currentItems      = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
-        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
-        $reservasPaginadas->setPath(request()->url());
-
-
-
-        // Crear una colección solo con las fechas
-        $fechasDisponibles = $reservasPorDia->keys()->map(function ($fecha) {
-            return Carbon::createFromFormat('d-m-Y', $fecha)->format('d/m'); // Cambiar a d/m
-        });
-
-        // Paginar las fechas directamente en `$reservasPorDia`
-        $perPage     = 1; // Número de fechas por página
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $items       = $fechasDisponibles->slice(($currentPage - 1) * $perPage, $perPage)->values(); // Obtener la página actual
-
-        // Crear el paginador con las fechas
-        $reservasPorDia = new LengthAwarePaginator(
-            $items, // Fechas actuales en la página
-            $fechasDisponibles->count(), // Total de fechas
-            $perPage, // Elementos por página
-            $currentPage, // Página actual
-            ['path' => request()->url()] // Mantener la URL correcta
-        );
-
+    
         return view('themes.backoffice.pages.reserva.index_registro', [
-            'reservasPaginadas' => $reservasPaginadas,
-            'reservasPorDia' => $reservasPorDia
+            'reservasPaginadas' => $reservasPorDia,
+            'fechaF' => $fechaFiltro
         ]);
+    }
 
+    public function indexallRegistros()
+    {
+        Carbon::setLocale('es');
 
+        $currentMonth = Carbon::now()->month;
+        $currentYear  = Carbon::now()->year;
 
+        $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios', 'venta', 'menus', 'masajes', 'venta.consumo'])
+            ->orderBy('fecha_visita')
+            ->get()
+            ->groupBy(function ($date) {
+                return Carbon::parse($date->fecha_visita)->format('Y-m');
+            });
 
-        // Carbon::setLocale('es');
-        // $fechaActual = Carbon::now()->startOfDay();
-    
-        // $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-        //     ->with([
-        //         'cliente',
-        //         'visitas',
-        //         'masajes',
-        //         'visitas.ubicacion',
-        //         'menus',
-        //         'programa',
-        //         'venta',
-        //     ])
-        //     ->orderBy('fecha_visita', 'asc')
-        //     ->get();
-    
-        // // Agrupar reservas por fecha exacta (formato "d-m-Y")
-        // $reservasPorDia = $reservas->groupBy(function ($reserva) {
-        //     return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
-        // });
-    
-        // // **Obtener todas las fechas disponibles**
-        // $fechasDisponibles = array_values($reservasPorDia->keys()->toArray());
-    
-        // // **Si no hay fechas, devolvemos la vista sin paginador**
-        // if (empty($fechasDisponibles)) {
-        //     return view('themes.backoffice.pages.reserva.index_registro', [
-        //         'reservasPaginadas' => null,
-        //         'fechasDisponibles' => [],
-        //         'fechaSeleccionada' => null,
-        //     ]);
-        // }
-    
-        // $perPage = 1;
-        // $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        
-        // // **Obtener la fecha seleccionada basada en la paginación**
-        // $fechaSeleccionada = $fechasDisponibles[$currentPage - 1] ?? $fechasDisponibles[0];
-    
-        // // **Obtener solo las reservas de la fecha seleccionada**
-        // $currentItems = [$fechaSeleccionada => $reservasPorDia[$fechaSeleccionada] ?? collect()];
-    
-        // // **Crear paginador con las fechas correctas**
-        // $reservasPaginadas = new LengthAwarePaginator(
-        //     $currentItems,
-        //     count($fechasDisponibles),
-        //     $perPage,
-        //     $currentPage,
-        //     ['path' => request()->url()]
-        // );
-    
-        // return view('themes.backoffice.pages.reserva.index_registro', [
-        //     'reservasPaginadas' => $reservasPaginadas,
-        //     'fechasDisponibles' => $fechasDisponibles, // 👈 Ahora se pasan todas las fechas reales
-        //     'fechaSeleccionada' => $fechaSeleccionada,
-        // ]);
-
+        return view('themes.backoffice.pages.reserva.all_registro', compact('reservasPorMes'));
     }
 
 
@@ -945,6 +877,77 @@ class ReservaController extends Controller
     
         } catch (\Exception $e) {
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar los masajes.');
+        }
+    }
+
+    public function menu(Reserva $reserva)
+    {
+        $servicios = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $menus = $reserva->menus;
+
+        $almuerzosExtra = null;
+
+        if (in_array('Almuerzo', $servicios)) {
+            $almuerzosExtra = false;
+        } else {
+            $almuerzosExtra = isset($menus);
+        }
+
+                // Obtener productos de tipo "entrada"
+                $entradas = Producto::whereHas('tipoProducto', function ($query) {
+                    $query->where('nombre', 'entrada');
+                })->get();
+        
+                // Obtener productos de tipo "fondo"
+                $fondos = Producto::whereHas('tipoProducto', function ($query) {
+                    $query->where('nombre', 'fondo');
+                })->get();
+        
+                // Obtener productos de tipo "acompañamiento"
+                $acompañamientos = Producto::whereHas('tipoProducto', function ($query) {
+                    $query->where('nombre', 'acompañamiento');
+                })->get();
+
+        return view('themes.backoffice.pages.reserva.menu.edit', [
+            'reserva'           => $reserva,
+            'servicios'         => $servicios,
+            'menus'             => $menus,
+            'entradas'          => $entradas,
+            'fondos'            => $fondos,
+            'acompañamientos'   => $acompañamientos,
+            'almuerzosExtra'    => $almuerzosExtra,
+        ]);
+    }
+
+    public function menu_update(Request $request, Reserva $reserva)
+    {
+        $request->validate([
+            'menus.*.id_producto_entrada' => 'required|integer|exists:productos,id',
+            'menus.*.id_producto_fondo' => 'required|integer|exists:productos,id',
+            'menus.*.id_producto_acompanamiento' => 'nullable|integer|exists:productos,id',
+            'menus.*.alergias' => 'nullable|string',
+            'menus.*.observacion' => 'nullable|string',
+        ]);
+
+
+        try {
+            
+            foreach ($request->menus as $id => $datos) {
+                $menu = Menu::findOrFail($id);
+
+                $menu->update([
+                    'id_producto_entrada'           => $datos['id_producto_entrada'],
+                    'id_producto_fondo'             => $datos['id_producto_fondo'],
+                    'id_producto_acompanamiento'    => $datos['id_producto_acompanamiento'],
+                    'alergias'                      => $datos['alergias'],
+                    'observacion'                   => $datos['observacion'],
+                ]);
+            }
+
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Menús actualizados correctamente.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar los menús. '.$e->getMessage());
         }
     }
 }

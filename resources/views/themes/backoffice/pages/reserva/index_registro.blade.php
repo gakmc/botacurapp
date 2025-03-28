@@ -3,10 +3,11 @@
 @section('title', 'Reservas')
 
 @section('breadcrumbs')
+<li><a href="{{route ('backoffice.reservas.registros') }}">Reservas</a></li>
 @endsection
 
 @section('dropdown_settings')
-{{-- <li><a href="{{route ('backoffice.reserva.listar') }}" class="grey-text text-darken-2">Todas las Reservas</a></li> --}}
+{{-- <li><a href="{{route ('backoffice.reservas.registros') }}" class="grey-text text-darken-2">Reservas</a></li> --}}
 @endsection
 
 @section('head')
@@ -14,7 +15,7 @@
 
 @section('content')
 <div class="section">
-    <a href="?page=1"><p class="caption"><strong>Reservas desde {{ now()->format('d-m-Y') }}</strong></p></a>
+    <a href="?page=1"><p class="caption"><strong>Reservas {{$fechaF}}</strong></p></a>
 
     <div class="row">
         <div class="col s2 green-text offset-s1">
@@ -36,6 +37,7 @@
         <div class="card-panel ">
 
             @foreach ($reservasPaginadas as $fecha => $reservas)
+
                 <p class="caption"><strong>Reservas: {{ $fecha }}</strong></p>
                     @if (!isset($reservas))
                         <h5 class="center">
@@ -92,7 +94,7 @@
                                         } elseif ($menusConProducto > 0) {
                                             $iconoMenu = 'check';
                                             $colorMenu = 'green';
-                                            $linkMenu = route('backoffice.reserva.visitas.menu', ['reserva' => $reserva]);
+                                            $linkMenu = route('backoffice.reserva.menus', ['reserva' => $reserva]);
                                         } elseif (!$reserva->programa->incluye_almuerzos && !$reserva->incluye_almuerzos_extra) {
                                             $iconoMenu = 'do_not_disturb_alt';
                                             $colorMenu = 'red';
@@ -100,7 +102,7 @@
                                         } else {
                                             $iconoMenu = 'close';
                                             $colorMenu = 'red';
-                                            $linkMenu = ($ultimaVisita) ? route('backoffice.reserva.visitas.menu', ['reserva' => $reserva]) : route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id]);
+                                            $linkMenu = ($ultimaVisita) ? route('backoffice.reserva.menus', ['reserva' => $reserva]) : route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id]);
                                         }
 
                                         if ($totalMasajes > 0 && ($masajesConHorario === $totalMasajes)) {
@@ -204,26 +206,6 @@
 
             @endforeach
         </div>
-        {{-- <pre>Fechas en index_registro: {{ print_r($reservasPaginadas, true) }}</pre> --}}
-        {{-- {{dd($reservasPaginadas)}} --}}
-              {{-- Paginación --}}
-
-              {{-- @php
-              dd(get_class($reservasPorDia), $reservasPorDia->items());
-          @endphp --}}
-
-
-      <div class="center">
-         {{ $reservasPorDia->links('vendor.pagination.date') }}
-      </div>
-
-{{-- Depuración: Ver si $fechasDisponibles se está enviando bien --}}
-{{-- <pre>Fechas en index_registro: {{ print_r($reservasPorDia, true) }}</pre> --}}
-
-
-
-
-
     
 
 
@@ -254,4 +236,5 @@
     //     });
     // }
    </script>
+
 @endsection

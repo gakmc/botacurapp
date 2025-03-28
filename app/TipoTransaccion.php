@@ -15,7 +15,7 @@ class TipoTransaccion extends Model
 //RELACIONES
     public function ventas()
     {
-        return $this->hasMany(Venta::class);
+        return $this->hasMany(Venta::class, 'id_tipo_transaccion');
     }
 
     public function pagosConsumos()

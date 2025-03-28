@@ -4,11 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Asignacion;
 use App\Cliente;
+use App\Consumo;
 use App\Insumo;
 use App\Masaje;
 use App\Reserva;
+use App\TipoTransaccion;
 use App\User;
+use App\Venta;
 use Carbon\Carbon;
+use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 
@@ -22,11 +27,19 @@ class AdminController extends Controller
 
     public function show()
     {
+
+        $reservas = Reserva::all();
+        $ventas = Venta::all();
+
+
+
         // Contar el número total de clientes
         $totalClientes = Cliente::count();
 
         // Contar el número total de reservas
         $totalReservas = Reserva::count();
+
+        $totalConsumos = Consumo::count();
 
         $insumosCriticos = Insumo::whereColumn('cantidad', '<=', 'stock_critico')->get();
 
@@ -40,9 +53,11 @@ class AdminController extends Controller
         // Consulta para contar las asignaciones que caen dentro de la semana actual
         $asignacionesSemanaActual = Asignacion::whereBetween('fecha', [$inicioSemana, $finSemana])->count();
 
+
+
         if ($user->has_role(config('app.admin_role'))) {
 
-            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual'));
+            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos'));
         }
 
         if ($user->has_role(config('app.anfitriona_role'))) {
@@ -228,6 +243,231 @@ class AdminController extends Controller
             'base' => $pagoBasePorUsuario,
             'fechasSemana' => $fechasSemana,
         ]);
+    }
+
+
+    public function ingresos()
+    {
+        $estadoMensual = DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->selectRaw('
+                YEAR(reservas.fecha_visita) AS anio,
+                MONTH(reservas.fecha_visita) AS mes,
+                COUNT(*) AS total_ventas,
+                SUM(ventas.abono_programa) AS total_abonos,
+                SUM(ventas.total_pagar) AS por_pagar
+            ')
+            ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
+            ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
+            ->orderByDesc(DB::raw('MONTH(reservas.fecha_visita)'))
+            ->paginate(12); // 12 meses por página
+
+        return view('themes.backoffice.pages.admin.finanzas.ingresos', [
+            'estadoMensual' => $estadoMensual
+        ]);
+    }
+
+    
+    public function detalleMes($anio, $mes)
+    {
+        $query = Venta::select(
+                DB::raw('DATE(reservas.fecha_visita) as fecha'),
+                DB::raw('DAY(reservas.fecha_visita) AS dia'),
+                DB::raw('SUM(ventas.abono_programa) as abono'),
+                DB::raw('SUM(ventas.total_pagar) as pendiente'),
+                DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
+            )
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->join('programas', 'reservas.id_programa', '=', 'programas.id')
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->groupBy(DB::raw('DATE(reservas.fecha_visita)'), DB::raw('DAY(reservas.fecha_visita)'))
+            ->orderBy('fecha', 'desc');
+    
+        $result = $query->get();
+    
+        // Paginación manual
+        $perPage = 10;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $result->slice(($currentPage - 1) * $perPage)->values();
+        $ventasAgrupadas = new LengthAwarePaginator($currentItems, $result->count(), $perPage, $currentPage, [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]);
+    
+        $ingresosVentas = $result->sum('abono');
+        $ventasPendientes = $result->sum('pendiente');
+    
+        // Mantener resumen por tipo de transacción
+        $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+                          ->whereHas('reserva', function ($query) use ($mes, $anio) {
+                              $query->whereMonth('fecha_visita', $mes)
+                                    ->whereYear('fecha_visita', $anio);
+                          })
+                          ->count();
+    
+            $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+                               ->whereHas('reserva', function ($query) use ($mes, $anio) {
+                                   $query->whereMonth('fecha_visita', $mes)
+                                         ->whereYear('fecha_visita', $anio);
+                               })
+                               ->count();
+    
+            $tipo->total_abonos = $abono;
+            $tipo->total_diferencias = $diferencia;
+    
+            return $tipo;
+        });
+    
+        $nombreMes = Carbon::createFromDate($anio, $mes, 1)
+            ->locale('es')->translatedFormat('F Y');
+    
+        return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact(
+            'ventasAgrupadas', 'nombreMes', 'anio', 'mes',
+            'ingresosVentas', 'ventasPendientes', 'tiposTransacciones'
+        ));
+    }
+    
+
+    // public function OLDdetalleMes($anio, $mes)
+    // {
+    //     $ingresosVentas = 0;
+    //     $ventasPendientes = 0;
+
+    //     $ventas = Venta::whereHas('reserva', function($query) use ($mes, $anio){
+    //         $query->whereMonth('fecha_visita', $mes)
+    //         ->whereYear('fecha_visita', $anio);
+    //     })->paginate(20);
+
+    //     $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+    //         $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+    //                       ->whereHas('reserva', function ($query) use ($mes, $anio) {
+    //                           $query->whereMonth('fecha_visita', $mes)
+    //                                 ->whereYear('fecha_visita', $anio);
+    //                       })
+    //                       ->count();
+    
+    //         $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+    //                            ->whereHas('reserva', function ($query) use ($mes, $anio) {
+    //                                $query->whereMonth('fecha_visita', $mes)
+    //                                      ->whereYear('fecha_visita', $anio);
+    //                            })
+    //                            ->count();
+    
+    //         $tipo->total_abonos = $abono;
+    //         $tipo->total_diferencias = $diferencia;
+    
+    //         return $tipo;
+    //     });
+    
+
+        
+    //     foreach ($ventas as $venta) {
+    //         $ingresosVentas += $venta->abono_programa;
+    //         $ingresosVentas += $venta->diferencia_programa;
+    //         $ventasPendientes += $venta->total_pagar;
+    //     }
+
+    //     // $ventas = Venta::whereYear('created_at', $anio)
+    //     //     ->whereMonth('created_at', $mes)
+    //     //     ->paginate(20); // o sin paginar, si prefieres
+
+    //     $nombreMes = Carbon::createFromDate($anio, $mes, 1)
+    //         ->locale('es')->translatedFormat('F Y');
+
+    //     return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact('ventas', 'nombreMes', 'anio', 'mes', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones'));
+
+
+    // }
+
+    public function ingresosDiarios($anio, $mes, $dia)
+    {
+        $ingresosVentas = 0;
+        $ventasPendientes = 0;
+        // dd($dia);
+
+        $ventas = Venta::whereHas('reserva', function($query) use ($mes, $anio, $dia){
+            $query->whereMonth('fecha_visita', $mes)
+            ->whereYear('fecha_visita', $anio)
+            ->whereDay('fecha_visita', $dia);
+        })->paginate(20);
+
+        $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
+            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+                              $query->whereMonth('fecha_visita', $mes)
+                                    ->whereYear('fecha_visita', $anio)
+                                    ->whereDay('fecha_visita', $dia);
+                          })
+                          ->count();
+    
+            $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+                               ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+                                   $query->whereMonth('fecha_visita', $mes)
+                                         ->whereYear('fecha_visita', $anio)
+                                         ->whereDay('fecha_visita', $dia);
+                               })
+                               ->count();
+    
+            $tipo->total_abonos = $abono;
+            $tipo->total_diferencias = $diferencia;
+    
+            return $tipo;
+        });
+    
+
+        
+        foreach ($ventas as $venta) {
+            $ingresosVentas += $venta->abono_programa;
+            $ingresosVentas += $venta->diferencia_programa;
+            $ventasPendientes += $venta->total_pagar;
+        }
+
+        // $ventas = Venta::whereYear('created_at', $anio)
+        //     ->whereMonth('created_at', $mes)
+        //     ->paginate(20); // o sin paginar, si prefieres
+
+        $nombreMes = Carbon::createFromDate($anio, $mes, $dia)
+        ->locale('es')
+        ->translatedFormat('d \d\e F \d\e Y');
+
+        return view('themes.backoffice.pages.admin.finanzas.detalle-dia', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones'));
+
+
+    }
+
+    public function consumos()
+    {
+        $consumoMensual = DB::table('consumos')
+        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->selectRaw('
+            YEAR(reservas.fecha_visita) AS anio,
+            MONTH(reservas.fecha_visita) AS mes,
+            COUNT(*) AS total_consumos,
+            SUM(consumos.subtotal) AS subtotales
+        ')
+        ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
+        ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
+        ->orderByDesc(DB::raw('MONTH(reservas.fecha_visita)'))
+        ->paginate(12); // 12 meses por página
+
+
+        return view('themes.backoffice.pages.admin.consumos.mensuales', compact('consumoMensual'));
+    }
+
+    public function consumosMensuales($anio,$mes) 
+    {
+
+        $ventas = Venta::with(['consumo.detallesConsumos.producto'])->whereHas('reserva', function($query) use ($mes, $anio) {
+            $query->whereMonth('fecha_visita', $mes)
+                  ->whereYear('fecha_visita', $anio);
+        })->get();
+        
+        
+
+        return view('themes.backoffice.pages.admin.consumos.detalle', compact('ventas'));
     }
 
 }

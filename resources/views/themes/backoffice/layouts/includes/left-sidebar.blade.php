@@ -87,7 +87,7 @@
                 </li>
 
                 <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reservas.registro') }}">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reservas.registros') }}">
                         <i class="material-icons">
                             assignment_ind
                         </i>

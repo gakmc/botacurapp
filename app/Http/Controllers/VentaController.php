@@ -155,7 +155,7 @@ class VentaController extends Controller
         $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
 
-        dd($request->input('total_pagar'), $venta->total_pagar, $venta);
+        // dd($request->input('total_pagar'), $venta->total_pagar, $venta);
 
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
 
@@ -198,12 +198,12 @@ class VentaController extends Controller
             // Guarda los cambios
             $venta->save();
 
-            if (! is_null($consumo)) {
+            if (!is_null($consumo)) {
 
                 $detalles      = $consumo->detallesConsumos;
                 $totalPropinas = 0;
 
-                if (! $request->has('propina')) {
+                if (!$request->has('propina')) {
                     DetalleConsumo::where('id_consumo', $consumo->id)
                         ->update(['genera_propina' => 0]);
                 } else {
@@ -236,7 +236,7 @@ class VentaController extends Controller
 
                 }
 
-                if (! $request->has('separar')) {
+                if (!$request->has('separar')) {
 
                 } else {
 
@@ -269,7 +269,7 @@ class VentaController extends Controller
         $consumo  = $venta->consumo;
         $idConsumo = null;
 
-        if ($consumo->isEmpty()) {
+        if (is_null($consumo)) {
             $propina = 'No Aplica';
         } else {
 

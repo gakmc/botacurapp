@@ -230,7 +230,7 @@
 
       {{-- Paginación --}}
       <div class="center">
-        {{ $menusPaginados->links('vendor.pagination.date') }}
+        {{ $menusPaginados->links('vendor.pagination.materialize') }}
       </div>
 
 
