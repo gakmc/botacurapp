@@ -94,7 +94,7 @@ class ConsumoController extends Controller
     {
         $venta = Venta::findOrFail($venta);
         $tipos = TipoProducto::all();
-        $listado = ['Bebestibles','Cócteles','Sandwich y Pastelería'];
+        $listado = ['Aguas','Bebidas','Cervezas','Cócteles','Jugos Naturales','Mocktails','Spritz','Sandwich y Pastelería'];
 
         return view('themes.backoffice.pages.consumo.create', [
             'venta' => $venta,
