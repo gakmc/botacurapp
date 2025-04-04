@@ -116,26 +116,23 @@
           </div>
           <br><br>
           <div class="modal-footer">
-            <button class="waves-effect waves-light btn" onclick="enviarFormulario();">Imprimir</button>
+            <button class="waves-effect waves-light btn" onclick="enviarFormulario({{$reserva->id}});">Imprimir</button>
 
             <a href="#!" class="modal-action modal-close waves-effect waves-red btn-flat">Cerrar</a>
           </div>
-      
-      
 
 
-
-          <form id="boleta-form" action="{{ route('backoffice.boleta.reserva',$reserva) }}" method="POST" style="display: none;">
+          <form id="boleta-form-{{$reserva->id}}" action="{{ route('backoffice.boleta.reserva',$reserva) }}" method="POST" style="display: none;">
             @csrf
           </form>
 
 
 
           <script>
-            function enviarFormulario() {
+            function enviarFormulario(reservaId) {
                 event.preventDefault();
-                let form = document.getElementById('boleta-form');
-                form.target = "_blank";  // 🔹 Abre el formulario en nueva pestaña
+                let form = document.getElementById('boleta-form-'+reservaId);
+                form.target = "_blank";
                 form.submit();
             }
             </script>

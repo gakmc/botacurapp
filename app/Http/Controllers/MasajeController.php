@@ -7,6 +7,7 @@ use App\Reserva;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class MasajeController extends Controller
@@ -17,7 +18,7 @@ class MasajeController extends Controller
      * @return \Illuminate\Http\Response
      */
 
-    public function indexlod()
+    public function indexload()
     {
         $masajes = Masaje::with(['visita.reserva'])->get();
         dd($masajes);
@@ -91,10 +92,63 @@ class MasajeController extends Controller
             }
         }
 
+
+
+
+        // $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+
+        // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
+        $horaInicioMasajes = new \DateTime('10:20');
+        $horaFinMasajes    = new \DateTime('19:00');
+        $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
+        $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
+        $horarios          = [];
+        
+        while ($horaInicioMasajes <= $horaFinMasajes) {
+            $horarios[] = $horaInicioMasajes->format('H:i');
+            $horaInicioMasajes->add($duracionMasaje);
+            $horaInicioMasajes->add($intervalos);
+        }
+
+        // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
+        $horariosOcupadosMasajes = DB::table('masajes')
+        ->join('reservas', 'masajes.id_reserva', '=', 'reservas.id')
+        ->where('reservas.fecha_visita', $fechaActual)
+        ->whereNotNull('masajes.horario_masaje')
+        ->select('masajes.id','masajes.horario_masaje', 'masajes.id_lugar_masaje', 'masajes.persona', 'masajes.tipo_masaje')
+        ->get()
+        ->groupBy('id_lugar_masaje');
+
+
+        // Procesar horarios ocupados
+        $ocupadosPorLugar = [
+            1 => [], // Containers
+            2 => [], // Toldos
+        ];
+
+        foreach ($horariosOcupadosMasajes as $lugar => $horariosMasajes) {
+            $ocupadosPorLugar[$lugar] = $horariosMasajes->pluck('horario_masaje')
+                ->map(function ($hora) {
+                    return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+                })
+                ->toArray();
+        }
+
+        // Filtrar horarios disponibles por lugar
+        $horariosDisponiblesMasajes = [
+            1 => array_values(array_diff($horarios, $ocupadosPorLugar[1])), // Containers
+            2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
+        ];
+
+
+
+
+
         // Retorno de la vista
         return view('themes.backoffice.pages.masaje.index', [
             'reservasPaginadas' => $reservasPaginadas,
             'distribucionHorarios' => $distribucionHorarios,
+            'horasDisponibles' => $horariosDisponiblesMasajes
         ]);
     }
 

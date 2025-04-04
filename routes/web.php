@@ -58,7 +58,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home/consumos', 'AdminController@consumos')->name('admin.consumos');
     Route::get('consumos/{anio}/{mes}', 'AdminController@consumosMensuales')->name('admin.consumos.detalleMes');
     
-    
+
     Route::get('home/ingresos', 'AdminController@ingresos')->name('admin.ingresos');
     Route::get('ingresos/{anio}/{mes}', 'AdminController@detalleMes')->name('admin.ingresos.detalleMes');
     Route::get('ingresos/{anio}/{mes}/{dia}', 'AdminController@ingresosDiarios')->name('admin.ingresos.detalleDia');

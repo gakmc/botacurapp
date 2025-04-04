@@ -31,27 +31,31 @@
                         <table>
                             <thead>
                                 <tr>
-                                    <th>Fecha</th>
                                     <th>Reserva</th>
                                     <th>Programa</th>
-                                    <th>Total pagar</th>
                                     <th>Abono</th>
+                                    <th>Diferencia</th>
                                     <th>Pendiente</th>
-
+                                    <th>Total pagar</th>
                                 </tr>
                             </thead>
-
+ 
                                 <tbody>
                                     @foreach ($ventas as $venta)
                                         <tr>
-                                            <td><a href="{{route('backoffice.admin.ingresos.detalleDia', [$anio, $mes, $venta->dia])}}">{{ \Carbon\Carbon::parse($venta->fecha)->format('d-m-Y') }}</a></td>
                                             <td>{{$venta->reserva->cliente->nombre_cliente}}</td>
                                             <td>{{$venta->reserva->programa->nombre_programa}}</td>
-                                            <td>${{ number_format($venta->reserva->programa->valor_programa*$venta->reserva->cantidad_personas, 0, ',', '.') }}</td>
                                             <td class="green-text">${{ number_format($venta->abono_programa, 0, ',', '.') }}</td>
+                                            @if ($venta->diferencia_programa == null)
+                                                <td>Por pagar</td>
+                                            @else
+                                                <td class="green-text">${{ number_format($venta->reserva->programa->valor_programa*$venta->reserva->cantidad_personas - $venta->abono_programa, 0, ',', '.') }}</td>
+                                                {{-- CONSIDERAR RESTAR TOTAL PAGAR DE ABONO --}}
+                                            @endif
                                             <td @if ($venta->total_pagar > 0) class="red-text" @endif>
                                                 ${{ number_format($venta->total_pagar, 0, ',', '.') }}
                                             </td>
+                                            <td>${{ number_format($venta->reserva->programa->valor_programa*$venta->reserva->cantidad_personas, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

@@ -148,20 +148,17 @@ class VentaController extends Controller
             'diferencia'      => (int) str_replace(['$', '.', ','], '', $request->diferencia),
         ]);
 
-
-
         $venta       = $ventum;
         $consumo     = $venta->consumo;
         $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
-
-        // dd($request->input('total_pagar'), $venta->total_pagar, $venta);
-
+        
         DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
-
+            
             // Verifica si el campo está en el request y luego asignar campo
-            if ($request->has('diferencia_programa')) {
-                $venta->diferencia_programa = $request->input('diferencia_programa');
+            if ($request->has('total_pagar')) {
+                $venta->diferencia_programa = $request->input('total_pagar');
+                $venta->total_pagar = $request->input('total_pagar') - $venta->diferencia_programa;
             }
 
             // Generar url para almacenar imagen
@@ -191,9 +188,6 @@ class VentaController extends Controller
             //     $venta->descuento = $request->input('descuento');
             // }
 
-            if ($request->has('total_pagar')) {
-                $venta->total_pagar = $request->input('total_pagar');
-            }
 
             // Guarda los cambios
             $venta->save();
@@ -255,20 +249,18 @@ class VentaController extends Controller
                         $pagoConsumo->imagen_transaccion = $path;
                         $pagoConsumo->save();
                     }
-
                 }
-
             }
-
         });
 
         $total   = 0;
         $propina = 'No Aplica';
-        $visita  = $reserva->visitas->last();
         $menus     = $reserva->menus;
         $consumo  = $venta->consumo;
         $idConsumo = null;
+        $diferencia = 0;
 
+        $diferencia = ($reserva->programa->valor_programa * $reserva->cantidad_personas) - $reserva->venta->abono_programa;
         if (is_null($consumo)) {
             $propina = 'No Aplica';
         } else {
@@ -309,8 +301,8 @@ class VentaController extends Controller
             'total'         => $total,
             'propina'       => $propina,
             'propinaPagada' => isset($cantidadPropina) && $cantidadPropina !== null ? $cantidadPropina : 'No Aplica',
+            'diferencia' => $diferencia
         ];
-
 
         // Generar el PDF
         $pdf     = Pdf::loadView('pdf.venta.viewPDF', $data);

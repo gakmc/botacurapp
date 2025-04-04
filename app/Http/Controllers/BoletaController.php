@@ -76,7 +76,8 @@ class BoletaController extends Controller
             'fecha_visita'  => $reserva->fecha_visita,
             'total'         => $total,
             'listaConsumos' => $listaConsumos,
-            'listaServicios' => $listaServicios
+            'listaServicios' => $listaServicios,
+            'venta' => $reserva->venta
         ];
 
         $pdf = pdf::loadView('pdf.boleta.viewPDF', $dataConsumo)->setPaper([0,0,226.77,9999], 'portrait');

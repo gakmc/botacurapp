@@ -31,9 +31,10 @@
                             <thead>
                                 <tr>
                                     <th>Fecha</th>
-                                    <th>Total pagar</th>
                                     <th>Abono</th>
+                                    <th>Diferencia</th>
                                     <th>Pendiente</th>
+                                    <th>Total pagar</th>
                                     <!-- Agrega más columnas si las necesitas -->
                                 </tr>
                             </thead>
@@ -42,11 +43,17 @@
                                     @foreach ($ventasAgrupadas as $venta)
                                         <tr>
                                             <td><a href="{{route('backoffice.admin.ingresos.detalleDia', [$anio, $mes, $venta->dia])}}">{{ \Carbon\Carbon::parse($venta->fecha)->format('d-m-Y') }}</a></td>
-                                            <td>${{ number_format($venta->total_pagar, 0, ',', '.') }}</td>
                                             <td class="green-text">${{ number_format($venta->abono, 0, ',', '.') }}</td>
+                                            @if ($venta->diferencia == null)
+                                                <td>Por pagar</td>
+                                            @else
+                                                <td class="green-text">${{ number_format($venta->total_pagar-$venta->abono, 0, ',', '.') }}</td>
+                                                {{-- CONSIDERAR RESTAR TOTAL PAGAR DE ABONO --}}
+                                            @endif
                                             <td @if ($venta->pendiente > 0) class="red-text" @endif>
                                                 ${{ number_format($venta->pendiente, 0, ',', '.') }}
                                             </td>
+                                            <td>${{ number_format($venta->total_pagar, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>

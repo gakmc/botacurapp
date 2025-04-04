@@ -41,124 +41,13 @@
                     required>
                 </div>
 
-
-                <div class="input-field col s12 m3">
-
-                  <label for="abono_programa">Cantidad de Abono</label>
-                  <input id="abono_programa" type="text" name="abono_programa" class="money-format"
-                    value="{{'$'.number_format(old('abono_programa') ?? $reserva->venta->abono_programa, 0,'', '.')}}" readonly>
-                  @error('abono_programa')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div>
-
-                <div class="file-field input-field col s12 m5">
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="{{$reserva->venta->imagen_abono}}"
-                      value="{{$reserva->venta->imagen_abono}}" readonly>
-                  </div>
-                  @error('imagen_abono')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-                </div>
-
-
-                <div class="input-field col s12 m4">
-                  @if (is_null($reserva->venta->tipoTransaccionAbono))
-                  <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono">
-
-                    <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" selected>
-                      No Registrada</option>
-                    @else
-                    <select name="id_tipo_transaccion_abono" id="id_tipo_transaccion_abono" disabled>
-                      <option value="{{$reserva->venta->id_tipo_transaccion_abono}}" disabled selected>
-                        {{$reserva->venta->tipoTransaccionAbono->nombre}}</option>
-
-                      @endif
-                      @foreach ($tipos as $tipo)
-                      <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
-                      @endforeach
-                    </select>
-                    <label for="id_tipo_transaccion_abono">Tipo Transaccion Abono</label>
-                </div>
-
-
-
               </div>
 
 
-              <div class="row">
 
-                <div class="input-field col s12 m3">
-
-                  <label for="diferencia_programa">Cantidad de diferencia</label>
-                  <input id="diferencia_programa" type="text" name="diferencia_programa" class="money-format" value="{{old('diferencia_programa')}}">
-                  @error('diferencia_programa')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div>
-
-                <div class="file-field input-field col s12 m5">
-                  <div class="btn">
-                    <span>Imagen Diferencia</span>
-                    <input type="file" id="imagen_diferencia" name="imagen_diferencia">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
-                  @error('imagen_diferencia')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-                </div>
-
-
-                <div class="input-field col s12 m4">
-                  <select name="id_tipo_transaccion_diferencia" id="id_tipo_transaccion_diferencia">
-                    <option selected disabled>-- Seleccione --</option>
-                    @foreach ($tipos as $tipo)
-                    <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
-                    @endforeach
-                  </select>
-                  @error('id_tipo_transaccion_diferencia')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-                  <label for="id_tipo_transaccion_diferencia">Tipo Transaccion Diferencia</label>
-
-                </div>
-
-
-              </div>
 
 
               <div class="row">
-
-
-
-                {{-- <div class="input-field col s12 m3">
-
-                  <label for="descuento">Descuento</label>
-                  <input id="descuento" type="number" name="descuento" class="" value="{{ old('descuento') }}">
-                  @error('descuento')
-                  <span class="invalid-feedback" role="alert">
-                    <strong style="color:red">{{ $message }}</strong>
-                  </span>
-                  @enderror
-
-                </div> --}}
-
-
 
               @if (empty($reserva->venta->consumo))
 
@@ -176,9 +65,6 @@
 
 
               @else
-
-
-
 
 
                 <p>
@@ -248,19 +134,6 @@
                   @php
                     $totalSubtotal = $reserva->venta->consumo->detallesConsumos->where('id_consumo', $reserva->venta->consumo->id)->sum('subtotal');
                   @endphp
-
-
-                  {{-- <div class="input-field col s12 m3" id="soloConsumo">
-
-                    <label for="soloConsumo">Consumo</label>
-                    <input id="soloConsumo" type="text" name="soloConsumo" class="money-format" data-sinpropina="{{$reserva->venta->consumo->subtotal}}" value="{{$reserva->venta->consumo->subtotal}}" readonly>
-                    @error('sinPropina')
-                    <span class="invalid-feedback" role="alert">
-                      <strong style="color:red">{{ $message }}</strong>
-                    </span>
-                    @enderror
-
-                  </div> --}}
 
 
                   <div class="input-field col s12 m3" id="noPropina">
@@ -339,23 +212,61 @@
                   @enderror
 
                 </div>
-              </div>
 
 
-              <div class="row">
-                <div class="input-field col s12 m6">
-                  <label for="imagenSeleccionadaAbono">Imagen Abono</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono"
-                    src="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
-                    alt="" style="max-height: 200px; max-width:300px;">
+
+
+
+
+                <div class="file-field input-field col s12 m5">
+                  <div class="btn">
+                    <span>Imagen Diferencia</span>
+                    <input type="file" id="imagen_diferencia" name="imagen_diferencia">
+                  </div>
+                  <div class="file-path-wrapper">
+                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
+                  </div>
+                  @error('imagen_diferencia')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
                 </div>
 
-                <div class="input-field col s12 m6">
-                  <label for="imagenSeleccionadaDiferencia">Imagen Diferencia</label>
-                  <img class="center-text" id="imagenSeleccionadaDiferencia" src="/images/gallary/no-image.png" alt=""
-                    style="max-height: 200px; max-width:300px;">
+
+                <div class="input-field col s12 m4">
+                  <select name="id_tipo_transaccion_diferencia" id="id_tipo_transaccion_diferencia">
+                    <option selected disabled>-- Seleccione --</option>
+                    @foreach ($tipos as $tipo)
+                    <option value="{{$tipo->id}}">{{$tipo->nombre}}</option>
+                    @endforeach
+                  </select>
+                  @error('id_tipo_transaccion_diferencia')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+                  <label for="id_tipo_transaccion_diferencia">Tipo Transaccion Diferencia</label>
+
                 </div>
               </div>
+
+              {{-- <div class="row">
+
+                <div class="input-field col s12 m3">
+
+                  <label for="diferencia_programa">Cantidad de diferencia</label>
+                  <input id="diferencia_programa" type="text" name="diferencia_programa" class="money-format" value="{{old('diferencia_programa')}}">
+                  @error('diferencia_programa')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
+                </div>
+
+              </div> --}}
+
 
 
 
@@ -379,29 +290,29 @@
 @section('foot')
 
 
-<script>
+{{-- <script>
 
 
-  $(document).ready(function (e) {   
-  $('#imagen_abono').change(function(){            
-      let reader = new FileReader();
-      reader.onload = (e) => { 
-          $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
-      }
-      reader.readAsDataURL(this.files[0]);
+    $(document).ready(function (e) {   
+    $('#imagen_abono').change(function(){            
+        let reader = new FileReader();
+        reader.onload = (e) => { 
+            $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
+        }
+        reader.readAsDataURL(this.files[0]);
+    });
   });
-});
 
-  $(document).ready(function (e) {   
-  $('#imagen_diferencia').change(function(){            
-      let reader = new FileReader();
-      reader.onload = (e) => { 
-          $('#imagenSeleccionadaDiferencia').attr('src', e.target.result); 
-      }
-      reader.readAsDataURL(this.files[0]);
+    $(document).ready(function (e) {   
+    $('#imagen_diferencia').change(function(){            
+        let reader = new FileReader();
+        reader.onload = (e) => { 
+            $('#imagenSeleccionadaDiferencia').attr('src', e.target.result); 
+        }
+        reader.readAsDataURL(this.files[0]);
+    });
   });
-});
-</script>
+</script> --}}
 
 
 

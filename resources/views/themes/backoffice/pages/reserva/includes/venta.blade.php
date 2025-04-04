@@ -28,20 +28,17 @@
         <a href="#modalVenta{{--$reserva->venta->id--}}"
             class="collection-item center-align valign-wrapper left modal-trigger" 
             data-id="{{ $reserva->venta->id }}"
-            data-abono="{{ $reserva->venta->abono_programa }}"
-            data-abonoimg="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
-            data-diferencia="{{ $reserva->venta->diferencia_programa }}"
-            data-diferenciaimg="{{$reserva->venta->imagen_diferencia ? route('backoffice.reserva.diferencia.imagen', $reserva->id) : '/images/gallary/no-image.png'}}"
-            data-descuento="{{$reserva->venta->descuento}}" 
-            data-totalpagar="{{$reserva->venta->total_pagar}}"
-            data-tipoabono="{{$reserva->venta->tipoTransaccionAbono->nombre ?? 'No registra'}}"
-            data-tipodiferencia="{{$reserva->venta->tipoTransaccionDiferencia->nombre ?? 'No registra'}}"
-            data-consumo="{{$reserva->venta->consumo}}" 
-            
 
-                @if (!is_null($consumo) && !is_null($consumo->pagosConsumos) && $consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
+            data-diferencia="{{ $reserva->venta->diferencia_programa }}"
+
+            data-totalpagar="{{$reserva->venta->total_pagar}}"
+
+
+            data-consumo="{{$consumo}}" 
+            
+                {{-- @if (!is_null($consumo) && !is_null($consumo->pagosConsumos) && $consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
                     data-pagoimg="{{$reserva->venta->consumo->pagosConsumos ? route('backoffice.reserva.consumo.imagen', $reserva->id) : null}}"
-                @endif
+                @endif --}}
 
             >
             <i class='material-icons tooltipped' data-position="bottom" data-tooltip="Ver Venta">remove_red_eye</i>

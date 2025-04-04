@@ -274,6 +274,7 @@ class AdminController extends Controller
                 DB::raw('DATE(reservas.fecha_visita) as fecha'),
                 DB::raw('DAY(reservas.fecha_visita) AS dia'),
                 DB::raw('SUM(ventas.abono_programa) as abono'),
+                DB::raw('SUM(ventas.diferencia_programa) as diferencia'),
                 DB::raw('SUM(ventas.total_pagar) as pendiente'),
                 DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
             )
@@ -395,7 +396,7 @@ class AdminController extends Controller
 
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
                               $query->whereMonth('fecha_visita', $mes)
                                     ->whereYear('fecha_visita', $anio)
                                     ->whereDay('fecha_visita', $dia);

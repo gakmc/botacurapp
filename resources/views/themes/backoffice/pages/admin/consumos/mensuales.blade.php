@@ -44,7 +44,7 @@
                                                 $nombreMes = \Carbon\Carbon::createFromDate($resumen->anio, $resumen->mes, 1)
                                                     ->locale('es')->translatedFormat('F Y');
                                             @endphp
-                                            <tr>
+                                            <tr> 
                                                 <td>{{ ucfirst($nombreMes) }}</td>
                                                 <td>{{ $resumen->total_consumos }}</td>
                                                 <td>${{ number_format($resumen->subtotales, 0, '', '.') }}</td>

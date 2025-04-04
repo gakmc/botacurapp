@@ -138,6 +138,10 @@
                 {{ $reservasPaginadas->links('vendor.pagination.date') }}
             </div>
         </div>
+
+        <div class="card-panel">
+            @include('themes.backoffice.pages.masaje.includes.horarios_disponibles')
+        </div>
     </div>
 </div>
 @endsection

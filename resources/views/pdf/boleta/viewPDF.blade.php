@@ -57,16 +57,25 @@
                     @endphp
                     <tr>
                         <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
-                            {{ $detalle->producto->nombre}} X {{ $detalle->cantidad_producto }}
+                            {{ $detalle->producto->nombre}} (${{number_format($detalle->producto->valor,0,'','.')}}) X {{ $detalle->cantidad_producto }}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             ${{ number_format($detalle->subtotal, 0, '', '.') }}
                         </td>
                     </tr>
                 @endforeach
-                .line
-            @endif
+                <br>
+                <tr>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <strong>Sub-Total Consumo:</strong>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                            <strong>${{ number_format($total, 0, '', '.') }}</strong>
 
+                    </td>
+                </tr>
+            @endif
+<br>
             @if (!empty($listaServicios))
                 <div class="etiqueta">Servicios</div>
                 @foreach($listaServicios as $servicio)
@@ -75,7 +84,7 @@
                     @endphp
                     <tr>
                         <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
-                            {{ $servicio->servicio->nombre_servicio}} X {{ $servicio->cantidad_servicio }}
+                            {{ $servicio->servicio->nombre_servicio}} (${{number_format($servicio->servicio->valor_servicio,0,'','.')}}) X {{ $servicio->cantidad_servicio }}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             ${{ number_format($servicio->subtotal, 0, '', '.') }}
@@ -83,6 +92,19 @@
                     </tr>
                 @endforeach
             @endif
+
+            <div class="etiqueta">Diferencia Reserva</div>
+            <tr>
+                <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
+                    Diferencia Visita
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                    ${{number_format($venta->total_pagar,0,'','.')}}
+                    @php
+                        $total += $venta->total_pagar
+                    @endphp
+                </td>
+            </tr>
         </table>
 
         {{-- @if (!empty($listaConsumos))

@@ -551,36 +551,35 @@
   $(document).ready(function(){
     $('.modal-trigger').on('click', function(){
           // Obtener los datos del cliente y la reserva seleccionada
-          var abono = $(this).data('abono') || 0;
+
           var abonoImg = $(this).data('abonoimg');
           var diferencia = $(this).data('diferencia') || 0;
-          var diferenciaImg = $(this).data('diferenciaimg');
+
           var descuento = $(this).data('descuento');
           var totalPagar = $(this).data('totalpagar');
-          var tipoAbono = $(this).data('tipoabono');
-          var tipoDiferencia = $(this).data('tipodiferencia');
-          var consumos = $(this).data('consumo');
-          var pagoconsumo = $(this).data('pagoimg') || null;
-          
 
-          if (pagoconsumo === null) {
-              $('#consumoSeparado').attr('hidden', true);
-              $('#pConsumoSeparado').attr('hidden', true);
-            } else {
-              $('#consumoSeparado').removeAttr('hidden'); 
-            }
+          var consumo = $(this).data('consumo');
+          // var pagoconsumo = $(this).data('pagoimg') || null;
+                    
+
+          // if (pagoconsumo === null) {
+          //     $('#consumoSeparado').attr('hidden', true);
+          //     $('#pConsumoSeparado').attr('hidden', true);
+          //   } else {
+          //     $('#consumoSeparado').removeAttr('hidden'); 
+          //   }
           
 
           // Insertar los datos en los elementos del modal
-          $('#modalAbono').text(formatCLP(abono));
-          $('#modalDiferencia').text(formatCLP(diferencia));
+          // $('#modalAbono').text(formatCLP(abono));
+          // $('#modalDiferencia').text(formatCLP(diferencia));
           
-          $('#linkAbono').attr('href',abonoImg);
-          $('#linkDiferencia').attr('href',diferenciaImg);
-          $('#linkConsumo').attr('href',pagoconsumo);
-          $('#modalAbonoImg').attr('src',abonoImg);
-          $('#modalDiferenciaImg').attr('src',diferenciaImg);
-          $('#modalConsumoImg').attr('src',pagoconsumo);
+          // $('#linkAbono').attr('href',abonoImg);
+          // $('#linkDiferencia').attr('href',diferenciaImg);
+          // $('#linkConsumo').attr('href',pagoconsumo);
+          // $('#modalAbonoImg').attr('src',abonoImg);
+          // $('#modalDiferenciaImg').attr('src',diferenciaImg);
+          // $('#modalConsumoImg').attr('src',pagoconsumo);
           
               // Validar si el descuento es nulo
               if (descuento == null || descuento == '') {
@@ -592,8 +591,6 @@
 
 
           $('#modalTotalPagar').text(formatCLP(totalPagar));
-          $('#modalTipoAbono').text(tipoAbono);
-          $('#modalTipoDiferencia').text(tipoDiferencia);
           
           
           // Limpiar el contenido anterior de consumos en el modal
@@ -610,21 +607,20 @@
           tablaConsumos += '<tbody>';
 
           // Iterar sobre los consumos y agregar filas a la tabla
-          if (Array.isArray(consumos) && consumos.length > 0) {
-              consumos.forEach(function(consumo, index) {
-                  if (Array.isArray(consumo.detalles_consumos) && consumo.detalles_consumos.length > 0) {
-                      consumo.detalles_consumos.forEach(function(detalle, detalleIndex) {
-                          tablaConsumos += '<tr>';
-                          tablaConsumos += '<td>' + detalle.producto.nombre + '</td>';  // Cambia si tienes un nombre específico del producto
-                          tablaConsumos += '<td>' + formatCLP(detalle.producto.valor) + '</td>';
-                          tablaConsumos += '<td>X' + detalle.cantidad_producto + '</td>';
-                          tablaConsumos += '<td>' + formatCLP(detalle.subtotal) + '</td>';
-                          subtotalConsumo += detalle.subtotal;
-                          totalConsumo += detalle.subtotal*1.1;
-                          tablaConsumos += '</tr>';
-                      });
-                  }
+
+          if (Array.isArray(consumo.detalles_consumos) && consumo.detalles_consumos.length > 0) {
+              consumo.detalles_consumos.forEach(function(detalle, detalleIndex) {
+                  tablaConsumos += '<tr>';
+                  tablaConsumos += '<td>' + detalle.producto.nombre + '</td>';  // Cambia si tienes un nombre específico del producto
+                  tablaConsumos += '<td>' + formatCLP(detalle.producto.valor) + '</td>';
+                  tablaConsumos += '<td>X' + detalle.cantidad_producto + '</td>';
+                  tablaConsumos += '<td>' + formatCLP(detalle.subtotal) + '</td>';
+                  subtotalConsumo += detalle.subtotal;
+                  totalConsumo += detalle.subtotal*1.1;
+                  tablaConsumos += '</tr>';
               });
+                  
+              
               tablaConsumos += '<tr>';
               tablaConsumos += '<td>' + '</td>'; 
               tablaConsumos += '<td>' + '</td>'; 
@@ -664,25 +660,23 @@
           tablaServicios += '<tbody>';
 
                 // Iterar sobre los consumos y agregar filas a la tabla
-                if (Array.isArray(consumos) && consumos.length > 0) {
-              consumos.forEach(function(consumo, index) {
-                  if (Array.isArray(consumo.detalle_servicios_extra) && consumo.detalle_servicios_extra.length > 0) {
-                      consumo.detalle_servicios_extra.forEach(function(detalle, detalleIndex) {
-                          tablaServicios += '<tr>';
-                          tablaServicios += '<td>' + detalle.servicio.nombre_servicio + '</td>';
-                          tablaServicios += '<td>' + formatCLP(detalle.servicio.valor_servicio) + '</td>';
-                          tablaServicios += '<td>' +'X'+ detalle.cantidad_servicio + '</td>';
-                          tablaServicios += '<td>' + formatCLP(detalle.subtotal) + '</td>';
-                          subtotalServicio += detalle.subtotal;
-                          tablaServicios += '</tr>';
-                      });
-                  }
+                
+          if (Array.isArray(consumo.detalle_servicios_extra) && consumo.detalle_servicios_extra.length > 0) {
+              consumo.detalle_servicios_extra.forEach(function(detalle, detalleIndex) {
+                  tablaServicios += '<tr>';
+                  tablaServicios += '<td>' + detalle.servicio.nombre_servicio + '</td>';
+                  tablaServicios += '<td>' + formatCLP(detalle.servicio.valor_servicio) + '</td>';
+                  tablaServicios += '<td>' +'X'+ detalle.cantidad_servicio + '</td>';
+                  tablaServicios += '<td>' + formatCLP(detalle.subtotal) + '</td>';
+                  subtotalServicio += detalle.subtotal;
+                  tablaServicios += '</tr>';
               });
+                  
               tablaServicios += '<tr>';
               tablaServicios += '<td>' + '</td>'; 
               tablaServicios += '<td>' + '</td>'; 
               tablaServicios += '<td>' + '</td>'; 
-              tablaServicios += '<td>' + '<strong>Total:'+formatCLP(subtotalServicio)+'</strong>' + '</td>'; 
+              tablaServicios += '<td class="right">' + '<strong>Total:'+formatCLP(subtotalServicio)+'</strong>' + '</td>'; 
               tablaServicios += '</tr>';
 
           } else {

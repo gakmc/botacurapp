@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('title', 'Reservas')
+@section('title', 'Gestión Consumo')
 
 @section('breadcrumbs')
 @endsection
@@ -145,7 +145,7 @@
                                                 <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Venta">picture_as_pdf</i>
                                             </a>
                                         </td> --}}
-                                        <li><a href="{{ route('backoffice.venta.pdf', $reserva) }}"><i class="material-icons">picture_as_pdf</i>PDF venta</a></li>
+                                        <li><a href="{{ route('backoffice.venta.pdf', $reserva) }}" target="_blank"><i class="material-icons">picture_as_pdf</i>PDF venta</a></li>
                                     @endif
                                 </ul>
                             </td>

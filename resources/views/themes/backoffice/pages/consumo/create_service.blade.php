@@ -115,7 +115,8 @@
 
     $(document).ready(function() {
         // Inicializar manualmente los tabs de Materialize
-        var tabs = M.Tabs.init($('.tabs'));
+        $('ul.tabs').tabs();
+
 
 
         // Desasociar cualquier evento anterior y luego asociar el evento click

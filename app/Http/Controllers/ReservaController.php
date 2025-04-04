@@ -604,7 +604,10 @@ class ReservaController extends Controller
         $consumo        = $reserva->venta->consumo;
         $idConsumo       = null;
         $cantidadPropina = null;
+        $diferencia = 0;
         // dd($menus);
+
+        $diferencia = ($reserva->programa->valor_programa * $reserva->cantidad_personas) - $reserva->venta->abono_programa;
 
         if (is_null($consumo)) {
             $propina = 'No Aplica';
@@ -648,6 +651,7 @@ class ReservaController extends Controller
             'total'         => $total,
             'propina'       => $propina,
             'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
+            'diferencia' => $diferencia
         ];
 
         // dd($data);
