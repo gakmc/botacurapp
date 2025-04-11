@@ -72,6 +72,41 @@
 
 
 
+                <div class="card-panel">
+                    <div class="row">
+
+                        <div class="col s4">
+                            <h5><strong>Resumen de programas</strong></h5>
+                            <table>
+                                <thead>
+                                  <tr>
+                                      <th>Programa</th>
+                                      <th>Contratado</th>
+                                  </tr>
+                                </thead>
+                        
+                                <tbody>
+                                    @foreach ($programas as $programa)
+                                        @php
+                                            
+                                        @endphp
+                                        <tr>
+                                            <td>{{$programa->nombre_programa}}</td>
+                                            <td>{{ $programa->total_programas }} 
+                                                @if ($programa->total_programas == 0 || $programa->total_programas > 1)
+                                                    veces
+                                                @else
+                                                    vez
+                                                @endif
+                                            </td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                            </table>
+                        </div>
+                    </div>
+            </div>
+
 
             </div>
         </div>

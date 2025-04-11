@@ -59,12 +59,15 @@ class BoletaController extends Controller
         $cantidadPropina = null;
 
 
-        foreach ($consumo->detallesConsumos as $detalles) {
-            $listaConsumos[] = $detalles;
-        }
+        if (isset($consumo)) {
+            foreach ($consumo->detallesConsumos as $detalles) {
+                $listaConsumos[] = $detalles;
+            }
 
-        foreach($consumo->detalleServiciosExtra as $servicios){
-            $listaServicios[] = $servicios;
+
+            foreach($consumo->detalleServiciosExtra as $servicios){
+                $listaServicios[] = $servicios;
+            }
         }
 
     

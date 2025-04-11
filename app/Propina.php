@@ -18,4 +18,9 @@ class Propina extends Model
                     ->withPivot('monto_asignado')
                     ->withTimestamps();
     }
+
+    public function consumo()
+    {
+        return $this->belongsTo(Consumo::class, 'id_consumo');
+    }
 }

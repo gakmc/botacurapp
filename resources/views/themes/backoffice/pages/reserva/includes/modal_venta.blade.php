@@ -1,11 +1,6 @@
 <div id="modalVenta" class="modal">
   <div class="modal-content">
     <h4>Detalles de la Venta</h4>
-    
-    
-    
-    
-
 
 
     <div class="col s12">
@@ -51,6 +46,28 @@
 
   </div>
   <div class="modal-footer">
+    <button class="waves-effect waves-light btn" onclick="enviarFormulario({{$reserva->id}});">Imprimir</button>
+
     <a href="#!" class="modal-close waves-effect waves-green btn-flat">Cerrar</a>
   </div>
+
+
+
+
+  <form id="boleta-form-{{$reserva->id}}" action="{{ route('backoffice.boleta.reserva',$reserva) }}" method="POST" style="display: none;">
+    @csrf
+  </form>
+
+
+
+  <script>
+    function enviarFormulario(reservaId) {
+        event.preventDefault();
+        let form = document.getElementById('boleta-form-'+reservaId);
+        form.target = "_blank";
+        form.submit();
+    }
+    </script>
+
+
 </div>

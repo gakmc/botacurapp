@@ -1,8 +1,22 @@
 @extends('themes.backoffice.layouts.admin')
 
+@section('title','Remuneraciones')
+
+@section('head')
+@endsection
+
+@section('breadcrumbs')
+<li><a href="{{ route('backoffice.sueldos.index') }}">Remuneraciones</a></li>
+<li><strong>{{$user->name}}</strong></li>
+@endsection
+
+
+@section('dropdown_settings')
+@endsection
+
 @section('content')
 <div class="section">
-    <p class="caption"><strong>Estado de Cuenta</strong></p>
+    <p class="caption"><strong>Remuneraciones {{$user->name}}</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -17,7 +31,7 @@
                             </p>
                         </div>
                         <div class="col s12 center-align">
-                            <h4 class="header2" style="margin-top: 50px;">Estado de cuenta <strong>{{ $user->name }}</strong></h4>
+                            <h4 class="header2" style="margin-top: 50px;">Remuneraciones <strong>{{ $user->name }}</strong></h4>
                         </div>
                     </div>
                 
@@ -55,44 +69,45 @@
                             <table class="centered">
                                 <thead>
                                     <tr>
-                                        <th>Semana</th>
-                                        <th>Dias Trabajados</th>
+                                        <th>Fecha</th>
                                         <th>Sueldos</th>
                                         <th>Propinas</th>
                                         <th>Total a Pagar</th>
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    @if ($sueldosAgrupados->isNotEmpty())
-                                        @foreach($sueldosAgrupados as $rangoSemana => $sueldos)
+                                    @if ($sueldos->isNotEmpty())
+                                        @foreach($sueldos as $index => $sueldo)
+                                        @php
+                                            $fecha =  \Carbon\Carbon::parse($sueldo->dia_trabajado);
+                                            $dia = $fecha->day;
+                                        @endphp
                                         <tr>
-                                            <td>{{ $rangoSemana }}</td>
+                                            <td><a href="{{route('backoffice.sueldo.view.diario', ['user'=>$user, $anio, $mes, $dia])}}">{{ \Carbon\Carbon::parse($sueldo->dia_trabajado)->locale('es')->isoFormat('ddd D [de] MMM') }}</a></td>
+                                            <td>${{ number_format($sueldo->valor_dia, 0, '', '.') }}</td>
+                                            <td>${{ number_format($sueldo->total_pagar - $sueldo->valor_dia, 0, '', '.') }}</td>
+                                            <td>${{ number_format($sueldo->total_pagar, 0, '', '.') }}</td>
                                             @php
-                                                foreach ($sueldos as $index => $sueldo){
-                                                    $diasTrabajados = $index+1;
+                                                $sueldoMes+=$sueldo->total_pagar;
+                                                $diasTrabajados = $index+1;
+                                                $dias = "";
+                                                if ($diasTrabajados > 1) {
+                                                    $dias = "dias";
+                                                }else {
+                                                    $dias = "dia";
                                                 }
                                             @endphp
-                                            <td>{{ $diasTrabajados }}</td>
-                                            <td>${{ number_format($sueldos->sum('valor_dia'), 0, '', '.') }}</td>
-                                            <td>${{ number_format($sueldos->sum('total_pagar') - $sueldos->sum('valor_dia'), 0, '', '.') }}</td>
-                                            <td>${{ number_format($sueldos->sum('total_pagar'), 0, '', '.') }}</td>
-                                            @php
-                                                $sueldoMes+=$sueldos->sum('total_pagar');
-                                            @endphp
-                                            {{-- @foreach($sueldos as $sueldo)
-                                                <li>{{ $sueldo->dia_trabajado }} - ${{ number_format($sueldo->total_pagar, 0, ',', '.') }}</li>
-                                            @endforeach --}}
-                                                
-                                            
+
                                         </tr>
                                         @endforeach
                                     @else
                                         <tr>
-                                            <td colspan="4">No hay registros para este período.</td>
+                                            <td colspan="3">No hay registros para este período.</td>
                                         </tr>
                                     @endif
                                     <tr>
-                                        <td colspan="4">  </td>
+                                        <td colspan="2">  </td>
+                                        <td><strong>Dias Trabajados: {{$diasTrabajados}} {{$dias}}</strong></td>
                                         <td><strong>Total del mes: ${{number_format($sueldoMes,0,'','.')}} </strong></td>
                                     </tr>
                                 </tbody>
@@ -122,25 +137,24 @@
         });
     </script>
 
-    <script>
+    {{-- <script>
         function cambiarMesAnio(valor) {
             const [mes, anio] = valor.split('-');
             const form = document.createElement('form');
             form.method = 'GET';
-            form.action = "{{ route('backoffice.sueldo.view', $user) }}";
-
-            const inputMes = document.createElement('input');
-            inputMes.name = 'mes';
-            inputMes.value = mes;
-            form.appendChild(inputMes);
-
-            const inputAnio = document.createElement('input');
-            inputAnio.name = 'anio';
-            inputAnio.value = anio;
-            form.appendChild(inputAnio);
-
+            form.action = `/sueldos/{{ $user->id }}/${anio}/${mes}`;
             document.body.appendChild(form);
             form.submit();
+        }
+    </script> --}}
+
+    <script>
+        function cambiarMesAnio(valor) {
+            const [mes, anio] = valor.split('-');
+            const ruta = "{{ route('backoffice.sueldo.view.admin', ['user' => $user->id, 'anio' => '__ANIO__', 'mes' => '__MES__']) }}"
+                    .replace('__ANIO__', anio)
+                    .replace('__MES__', mes);
+            window.location.href = ruta;
         }
     </script>
 

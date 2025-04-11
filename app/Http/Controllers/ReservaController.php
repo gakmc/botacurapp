@@ -1,6 +1,7 @@
 <?php
 namespace App\Http\Controllers;
 
+use App\Asignacion;
 use App\Cliente;
 use App\Consumo;
 use App\DetalleServiciosExtra;
@@ -318,6 +319,8 @@ class ReservaController extends Controller
     {
         $reserva->load('venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio', 'menus', 'menus.productoEntrada', 'menus.productoFondo', 'menus.productoacompanamiento', 'masajes');
 
+        $asignados = Asignacion::all();
+
         $servicios = Servicio::all();
         $visitas   = $reserva->visitas;
         $masajes   = null;
@@ -333,6 +336,7 @@ class ReservaController extends Controller
             'servicios' => $servicios,
             'visitas'   => $visitas,
             'masajes'   => $masajes,
+            'asignados' => $asignados
         ]);
     }
 
@@ -769,10 +773,11 @@ class ReservaController extends Controller
     public function indexallRegistros()
     {
         Carbon::setLocale('es');
-
+        
         $currentMonth = Carbon::now()->month;
         $currentYear  = Carbon::now()->year;
 
+        
         $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios', 'venta', 'menus', 'masajes', 'venta.consumo'])
             ->orderBy('fecha_visita')
             ->get()
@@ -780,7 +785,9 @@ class ReservaController extends Controller
                 return Carbon::parse($date->fecha_visita)->format('Y-m');
             });
 
-        return view('themes.backoffice.pages.reserva.all_registro', compact('reservasPorMes'));
+        return view('themes.backoffice.pages.reserva.all_registro', [
+            'reservasPorMes' => $reservasPorMes,
+        ]);
     }
 
 

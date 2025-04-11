@@ -56,7 +56,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home/equipos', 'AdminController@team')->name('admin.team');
 
     Route::get('home/consumos', 'AdminController@consumos')->name('admin.consumos');
+
     Route::get('consumos/{anio}/{mes}', 'AdminController@consumosMensuales')->name('admin.consumos.detalleMes');
+
+    Route::get('servicios/{anio}/{mes}', 'AdminController@serviciosMensuales')->name('admin.servicios.detalleMes');
     
 
     Route::get('home/ingresos', 'AdminController@ingresos')->name('admin.ingresos');
@@ -229,7 +232,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
 
+    Route::get('sueldos/{user}/{anio}/{mes}','SueldoController@adminViewSueldos')->name('sueldo.view.admin');
     Route::get('sueldos/{user}','SueldoController@view')->name('sueldo.view');
+    Route::get('sueldos/{user}/{anio}/{mes}/{dia}','SueldoController@detalle_diario')->name('sueldo.view.diario');
     Route::get('sueldo/{user}','SueldoController@view_maso')->name('sueldo.view_maso');
 
     Route::get('/actualizar-sueldo-base','SueldoController@actualizarSueldoBase');

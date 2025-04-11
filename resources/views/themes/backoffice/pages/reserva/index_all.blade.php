@@ -92,9 +92,9 @@ document.addEventListener('DOMContentLoaded', function() {
                 end: formatoFecha + ' {{ $visita->hora_fin_sauna }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
                 description: '{{ addslashes($reserva->observacion) }}',
-                @if (isset($reserva->venta) && $reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
+                @if (isset($reserva->venta) && ($reserva->venta->total_pagar <= 0) && is_null($reserva->venta->diferencia_programa))
                     color: 'orange'
-                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
+                @elseif (($reserva->venta->total_pagar <= 0) && !is_null($reserva->venta->diferencia_programa))
                     color: 'green'
                 @else
                     color: 'primary'
@@ -190,7 +190,7 @@ document.addEventListener('DOMContentLoaded', function() {
 });
 </script>
 
-<script>
+{{-- <script>
     $(document).ready(function () {
         function capitalizarTitulo(titleElement) {
             if (titleElement) {
@@ -220,5 +220,5 @@ document.addEventListener('DOMContentLoaded', function() {
             });
         }
     });
-</script>
+</script> --}}
 @endsection

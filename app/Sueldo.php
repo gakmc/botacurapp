@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Model;
 
 class Sueldo extends Model
@@ -26,5 +27,10 @@ class Sueldo extends Model
             return $this->belongsToMany(Propina::class, 'propina_user', 'id', 'id_propina')
                         ->withPivot('monto_asignado')
                         ->withTimestamps();
+        }
+
+        public function getDiaTrabajadoAttribute($value)
+        {
+            return Carbon::parse($value)->format('d-m-Y');
         }
 }

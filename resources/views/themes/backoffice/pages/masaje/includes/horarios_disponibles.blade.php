@@ -1,23 +1,31 @@
 <div class="collection">
-
-
-    <a href="" class="collection-item active" style="flex-basis: 100%">
+    <a class="collection-item active pink white-text">
         <h5>Horarios Disponibles:</h5>
     </a>
 
     @if(is_null($horasDisponibles))
-    <a class="collection-item center">No existen horarios disponibles. </a>
-
+        <a class="collection-item center-align">No existen horarios disponibles.</a>
     @else
-    <div style="display: flex; width: 100%; flex-direction:column;">
-        @foreach ($horasDisponibles as $disponible)
-            
-        <a class="collection-item center-align valign-wrapper">
-            En Proceso
-        </a>
-        @endforeach
-
+        <div class="container">
+            @foreach ($horasDisponibles as $lugar => $horarios)
+                <div class="row">
+                    <div class="col s12">
+                        <span class="collection-item grey lighten-3 pink-text text-darken-2" style="display: inline-block; font-weight: bold;">
+                            {{ $lugar == 1 ? 'Container: ' : 'Toldo: ' }}
+                        </span>
+                        <div class="row" style="margin-top: 0;">
+                            @foreach ($horarios as $hora)
+                                <div class="col s3 m2 l1">
+                                    <a class="collection-item center-align pink-text text-darken-1">
+                                        {{ $hora }}
+                                    </a>
+                                </div>
+                            @endforeach
+                        </div>
+                    </div>
+                </div>
+            @endforeach
+        </div>
     @endif
 </div>
 
-</div>

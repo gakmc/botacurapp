@@ -7,7 +7,9 @@ use App\Cliente;
 use App\Consumo;
 use App\Insumo;
 use App\Masaje;
+use App\Programa;
 use App\Reserva;
+use App\Sueldo;
 use App\TipoTransaccion;
 use App\User;
 use App\Venta;
@@ -53,11 +55,11 @@ class AdminController extends Controller
         // Consulta para contar las asignaciones que caen dentro de la semana actual
         $asignacionesSemanaActual = Asignacion::whereBetween('fecha', [$inicioSemana, $finSemana])->count();
 
-
+        $sueldosMes = Sueldo::whereMonth("dia_trabajado",Carbon::now()->month);
 
         if ($user->has_role(config('app.admin_role'))) {
 
-            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos'));
+            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
         }
 
         if ($user->has_role(config('app.anfitriona_role'))) {
@@ -320,13 +322,29 @@ class AdminController extends Controller
     
             return $tipo;
         });
+
+
+        $programas = Programa::all()->map(function ($programa) use ($mes, $anio) {
+            $cuenta = Reserva::where('id_programa', $programa->id)
+                ->whereHas('programa', function($query) use ($mes, $anio){
+                    $query->whereMonth('fecha_visita', $mes)
+                          ->whereYear('fecha_visita', $anio);
+                })
+                ->count();
+
+
+                $programa->total_programas = $cuenta;
+
+                return $programa;
+        });
+        
     
         $nombreMes = Carbon::createFromDate($anio, $mes, 1)
             ->locale('es')->translatedFormat('F Y');
     
         return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact(
             'ventasAgrupadas', 'nombreMes', 'anio', 'mes',
-            'ingresosVentas', 'ventasPendientes', 'tiposTransacciones'
+            'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'
         ));
     }
     
@@ -416,6 +434,22 @@ class AdminController extends Controller
     
             return $tipo;
         });
+
+
+        $programas = Programa::all()->map(function ($programa) use ($dia, $mes, $anio) {
+            $cuenta = Reserva::where('id_programa', $programa->id)
+                ->whereHas('programa', function($query) use ($dia, $mes, $anio){
+                    $query->whereDay('fecha_visita', $dia)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereYear('fecha_visita', $anio);
+                })
+                ->count();
+
+
+                $programa->total_programas = $cuenta;
+
+                return $programa;
+        });
     
 
         
@@ -433,7 +467,7 @@ class AdminController extends Controller
         ->locale('es')
         ->translatedFormat('d \d\e F \d\e Y');
 
-        return view('themes.backoffice.pages.admin.finanzas.detalle-dia', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones'));
+        return view('themes.backoffice.pages.admin.finanzas.detalle-dia', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'));
 
 
     }
@@ -443,11 +477,12 @@ class AdminController extends Controller
         $consumoMensual = DB::table('consumos')
         ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
         ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->join('detalles_consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
         ->selectRaw('
             YEAR(reservas.fecha_visita) AS anio,
             MONTH(reservas.fecha_visita) AS mes,
             COUNT(*) AS total_consumos,
-            SUM(consumos.subtotal) AS subtotales
+            SUM(detalles_consumos.subtotal) AS subtotales
         ')
         ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
         ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
@@ -455,7 +490,24 @@ class AdminController extends Controller
         ->paginate(12); // 12 meses por página
 
 
-        return view('themes.backoffice.pages.admin.consumos.mensuales', compact('consumoMensual'));
+
+        $servicioMensual = DB::table('consumos')
+        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->join('detalle_servicios_extra', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+        ->selectRaw('
+            YEAR(reservas.fecha_visita) AS anio,
+            MONTH(reservas.fecha_visita) AS mes,
+            COUNT(*) AS total_servicios,
+            SUM(detalle_servicios_extra.subtotal) AS subtotales
+        ')
+        ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
+        ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
+        ->orderByDesc(DB::raw('MONTH(reservas.fecha_visita)'))
+        ->paginate(12); // 12 meses por página
+
+
+        return view('themes.backoffice.pages.admin.consumos.mensuales', compact('consumoMensual', 'servicioMensual'));
     }
 
     public function consumosMensuales($anio,$mes) 
@@ -470,5 +522,19 @@ class AdminController extends Controller
 
         return view('themes.backoffice.pages.admin.consumos.detalle', compact('ventas'));
     }
+
+    public function serviciosMensuales($anio,$mes) 
+    {
+
+        $ventas = Venta::with(['consumo.detalleServiciosExtra.servicio'])->whereHas('reserva', function($query) use ($mes, $anio) {
+            $query->whereMonth('fecha_visita', $mes)
+                  ->whereYear('fecha_visita', $anio);
+        })->get();
+        
+        
+
+        return view('themes.backoffice.pages.admin.servicios.detalle', compact('ventas'));
+    }
+
 
 }

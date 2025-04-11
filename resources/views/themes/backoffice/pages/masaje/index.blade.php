@@ -13,6 +13,11 @@
     <p class="caption"><strong>Masajes desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
+        <div class="row">
+
+<div class="col s12">
+
+
         <div class="card-panel">
 
             <table class="responsive-table">
@@ -129,19 +134,20 @@
             </table>
 
 
-
-
-
-
             {{-- Paginación --}}
             <div class="center">
                 {{ $reservasPaginadas->links('vendor.pagination.date') }}
             </div>
         </div>
 
+    </div>
+
+    <div class="col s12">
         <div class="card-panel">
             @include('themes.backoffice.pages.masaje.includes.horarios_disponibles')
         </div>
+    </div>
+    </div>
     </div>
 </div>
 @endsection

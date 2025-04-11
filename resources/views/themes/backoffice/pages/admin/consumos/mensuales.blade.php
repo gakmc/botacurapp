@@ -33,7 +33,7 @@
                                     <thead>
                                         <tr>
                                             <th>Mes</th>
-                                            <th>Programas contratados</th>
+                                            <th>Consumos registrados</th>
                                             <th>Total Consumos</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -49,7 +49,7 @@
                                                 <td>{{ $resumen->total_consumos }}</td>
                                                 <td>${{ number_format($resumen->subtotales, 0, '', '.') }}</td>
                                                 <td>
-                                                    <a href="{{ route('backoffice.admin.consumos.detalle', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
+                                                    <a href="{{ route('backoffice.admin.consumos.detalleMes', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
                                                         Ver detalle
                                                     </a>
                                                 </td>
@@ -71,44 +71,40 @@
                         <h5><strong>Servicios</strong></h5>
 
 
-                            {{-- <div class="card-content">
+                        <div class="card-content">
 
-                                <span class="card-title">Movimientos recientes</span>
-                                <table class="responsive-table">
-                                    <thead>
-                                        <tr>
-                                            <th>Mes</th>
-                                            <th>Programas contratados</th>
-                                            <th>Abonos</th>
-                                            <th>Montos Pendientes</th>
-                                            <th>Saldo final</th>
-                                            <th>Acciones</th>
+                            <span class="card-title">Movimientos recientes</span>
+                            <table class="responsive-table">
+                                <thead>
+                                    <tr>
+                                        <th>Mes</th>
+                                        <th>Servicios registrados</th>
+                                        <th>Total Servicios</th>
+                                        <th>Acciones</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    @foreach ($servicioMensual as $resumen)
+                                        @php
+                                            $nombreMes = \Carbon\Carbon::createFromDate($resumen->anio, $resumen->mes, 1)
+                                                ->locale('es')->translatedFormat('F Y');
+                                        @endphp
+                                        <tr> 
+                                            <td>{{ ucfirst($nombreMes) }}</td>
+                                            <td>{{ $resumen->total_servicios }}</td>
+                                            <td>${{ number_format($resumen->subtotales, 0, '', '.') }}</td>
+                                            <td>
+                                                <a href="{{ route('backoffice.admin.servicios.detalleMes', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
+                                                    Ver detalle
+                                                </a>
+                                            </td>
                                         </tr>
-                                    </thead>
-                                    <tbody>
-                                        @foreach ($estadoMensual as $resumen)
-                                            @php
-                                                $nombreMes = \Carbon\Carbon::createFromDate($resumen->anio, $resumen->mes, 1)
-                                                    ->locale('es')->translatedFormat('F Y');
-                                            @endphp
-                                            <tr>
-                                                <td>{{ ucfirst($nombreMes) }}</td>
-                                                <td>{{ $resumen->total_ventas }}</td>
-                                                <td>${{ number_format($resumen->total_abonos, 0, ',', '.') }}</td>
-                                                <td>${{ number_format($resumen->por_pagar, 0, ',', '.') }}</td>
-                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar, 0, ',', '.') }}</td>
-                                                <td>
-                                                    <a href="{{ route('backoffice.admin.ingresos.detalle', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
-                                                        Ver detalle
-                                                    </a>
-                                                </td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                </table>
-                                
-                                {{ $estadoMensual->links() }}
-                            </div> --}}
+                                    @endforeach
+                                </tbody>
+                            </table>
+                            
+                            {{ $servicioMensual->links() }}
+                        </div>
 
 
 
