@@ -14,7 +14,8 @@ class DetalleConsumo extends Model
         'genera_propina',
         'id_consumo',
         'id_producto',
-        'estado'
+        'estado',
+        'observacion'
     ];
     
 

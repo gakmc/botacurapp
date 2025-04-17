@@ -37,6 +37,25 @@
         <div class="card-panel ">
 
             @foreach ($reservasPaginadas as $fecha => $reservas)
+            <div id="work-collections">
+                <div class="row">
+        
+                  <div class="col s12 m4 l4">
+                    <ul class="collection">
+                        <li class="collection-item avatar">
+                          <i class="material-icons circle red">group_add</i>
+                          <span class="title">Cantidad de Asistentes</span>
+                          <p>Total:</p>
+                          {{-- <a href="#!" class="secondary-content"><i class="material-icons">group_add</i></a> --}}
+                          <span class="secondary-content" style="color: #039B7B">
+                            {{$reservas->sum('cantidad_personas')}} {{$reservas->sum('cantidad_personas') > 1 ? "Personas" : "Persona"}}
+                          </span>
+                        </li>
+                      </ul>
+
+                  </div>
+                </div>
+            </div>
 
                 <p class="caption"><strong>Reservas: {{ $fecha }}</strong></p>
                     @if (!isset($reservas))

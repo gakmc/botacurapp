@@ -34,28 +34,54 @@ class ReservaController extends Controller
     {
         Carbon::setLocale('es');
         $alternativeView = $request->query('alternative', false);
+        $alternativeView = $alternativeView == 1 ? true : false;
         $mobileView = $request->query('mobileview', '');
         $fechaActual     = Carbon::now()->startOfDay();
     
-        $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
-        ->with([
-            'cliente',
-            'visitas.ubicacion',
-            'masajes',
-            'programa',
-            'venta',
-        ])
-        ->select('*')
-        ->selectSub(
-            DB::table('visitas')
-                ->whereColumn('visitas.id_reserva', 'reservas.id')
-                ->orderBy('id_ubicacion', 'asc')
-                ->limit(1)
-                ->select('id_ubicacion'),
-            'first_id_ubicacion'
-        )
-        ->orderBy('fecha_visita', 'asc')
-        ->orderBy('first_id_ubicacion', 'asc');
+
+        if ($alternativeView) {
+
+            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+            ->with([
+                'cliente',
+                'visitas.ubicacion',
+                'masajes',
+                'programa',
+                'venta',
+            ])
+            ->select('*')
+            ->selectSub(
+                DB::table('visitas')
+                    ->whereColumn('visitas.id_reserva', 'reservas.id')
+                    ->orderBy('id_ubicacion', 'asc')
+                    ->limit(1)
+                    ->select('id_ubicacion'),
+                'first_id_ubicacion'
+            )
+            ->orderBy('fecha_visita', 'asc')
+            ->orderBy('first_id_ubicacion', 'asc');
+
+        }else{
+            $reservasQuery = Reserva::where('fecha_visita', '>=', $fechaActual)
+            ->with([
+                'cliente',
+                'visitas.ubicacion',
+                'masajes',
+                'programa',
+                'venta',
+            ])
+            ->select('reservas.*')
+            ->selectSub(
+                DB::table('visitas')
+                    ->whereColumn('visitas.id_reserva', 'reservas.id')
+                    ->orderBy('horario_sauna', 'asc')
+                    ->limit(1)
+                    ->select('horario_sauna'),
+                'first_horario_sauna'
+            )
+            ->orderBy('fecha_visita', 'asc')
+            ->orderBy('first_horario_sauna', 'asc');
+        }
     
         $reservas = $reservasQuery->get();
     
@@ -101,15 +127,6 @@ class ReservaController extends Controller
         $itemsActuales      = $reservasDia->slice(($paginaActual - 1) * $porPagina, $porPagina)->all();
         $reservasMovilesPaginadas = new LengthAwarePaginator($itemsActuales, $reservasDia->count(), $porPagina, $paginaActual);
         $reservasMovilesPaginadas->setPath(request()->url());
-
-        // if ($mobileView === 'masajes') {
-        //     dd('masajes'); // Retorna la vista 'masajes.blade.php'
-        // } elseif ($mobileView === 'ubicacion') {
-        //     dd('ubicacion'); // Retorna la vista 'ubicacion.blade.php'
-        // } else {
-        //     dd('default'); // Vista por defecto en caso de que no coincida con ninguna opción
-        // }
-
     
         return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView'));
     }

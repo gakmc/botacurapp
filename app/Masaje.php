@@ -10,7 +10,7 @@ class Masaje extends Model
     protected $table = 'masajes';
 
     protected $fillable = [
-        'horario_masaje', 'tipo_masaje', 'id_lugar_masaje', 'persona', 'id_reserva', 'user_id',
+        'horario_masaje', 'tipo_masaje', 'id_lugar_masaje', 'persona', 'tiempo_extra', 'id_reserva', 'user_id',
     ];
 
     public function reserva()

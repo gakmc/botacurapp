@@ -10,17 +10,17 @@
         body {
             width: 80mm;
             font-family: Arial, sans-serif;
-            font-size: 12px;
+            font-size: 14px;
             text-align: center;
             padding: 5px;
         }
         .ticket { width: 100%; }
-        .title { font-size: 14px; font-weight: bold; }
+        .title { font-size: 16px; font-weight: bold; }
         .line { border-top: 1px dashed black; margin: 5px 0; }
         .item { display: flex; justify-content: center; font-size: 12px; width: 100%; white-space: nowrap;}
-        .etiqueta { font-size: 12px; font-weight: bold; margin-top: 10px; margin-right: 5%; text-align: left;}
-        .subtotal { font-size: 12px; font-weight: bold; margin-top: 10px; margin-right: 7%; text-align: right;}
-        .total { font-size: 14px; font-weight: bold; margin-top: 10px; margin-right: 7%; text-align: right;}
+        .etiqueta { font-size: 14px; font-weight: bold; margin-top: 10px; margin-right: 5%; text-align: left;}
+        .subtotal { font-size: 14px; font-weight: bold; margin-top: 10px; margin-right: 7%; text-align: right;}
+        .total { font-size: 16px; font-weight: bold; margin-top: 10px; margin-right: 7%; text-align: right;}
         .producto{
             text-align: left; 
             flex-grow: 1;  /* Permite que el nombre del producto ocupe todo el espacio disponible */
@@ -38,10 +38,11 @@
 </head>
 <body>
     <div class="ticket">
-
+        <img src="https://botacura.cl/wp-content/uploads/2024/04/logo.png" alt="botacura logo" style="max-height: 125px; max-width:125px; padding:0px; margin:0px"/>
         <div class="title">Centro Recreativo Botacura LTDA.</div>
-        <div>Cliente: {{ $nombre }}</div>
+        <div class="title">Cliente: {{ $nombre }}</div>
         <div>Fecha: {{ date('d/m/Y H:i') }}</div>
+        <br>
         <div class="line"></div>
         @php
             $propina = 0;
@@ -67,10 +68,28 @@
                 <br>
                 <tr>
                     <td style="text-align: right; white-space: nowrap;">
-                        <strong>Sub-Total Consumo:</strong>
+                        <strong>Consumo:</strong>
                     </td>
                     <td style="text-align: right; white-space: nowrap;">
                             <strong>${{ number_format($total, 0, '', '.') }}</strong>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <strong>Propina Sugerida:</strong>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                            <strong>${{ number_format($propina, 0, '', '.') }}</strong>
+
+                    </td>
+                </tr>
+                <tr>
+                    <td style="text-align: right; white-space: nowrap;">
+                        <strong>Sub-Total Consumo:</strong>
+                    </td>
+                    <td style="text-align: right; white-space: nowrap;">
+                            <strong>${{ number_format($total+$propina, 0, '', '.') }}</strong>
 
                     </td>
                 </tr>
@@ -136,8 +155,6 @@
 
 
         <div class="line"></div>
-        <div class="subtotal">Sub-total: ${{ number_format($total, 0,'','.') }}</div>
-        <div class="subtotal">Propina Sugerida: ${{ number_format($propina, 0,'','.') }}</div>
         <div class="total">Total: ${{ number_format($total+$propina, 0,'','.') }}</div>
 
         <div class="line"></div>
