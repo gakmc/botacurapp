@@ -132,14 +132,14 @@ class ReservaController extends Controller
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada   = \Carbon\Carbon::now()->format('Y-m-d');
         $ubicacionesOcupadas = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
-            ->toArray();
+        ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
+        ->where('reservas.fecha_visita', $fechaSeleccionada)
+        ->pluck('ubicaciones.nombre')
+        ->map(function ($nombre) {
+            return $nombre;
+        })
+        ->toArray();
 
         $ubicacionesAll = DB::table('ubicaciones')
             ->select('id', 'nombre')
@@ -166,7 +166,12 @@ class ReservaController extends Controller
             ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
             ->where('reservas.fecha_visita', $fechaSeleccionada)
             ->pluck('visitas.horario_sauna')
+            ->filter(function ($hora) {
+                // Filtrar valores nulos o vacíos
+                return ! is_null($hora) && $hora !== '';
+            })
             ->map(function ($hora) {
+                // Formatear solo los horarios válidos
                 return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
             })
             ->toArray();
