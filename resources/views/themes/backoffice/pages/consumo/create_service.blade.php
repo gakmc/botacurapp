@@ -128,6 +128,17 @@
             var nombre = $(this).data('nombre');
             var precio = $(this).data('precio');
 
+            var esMasaje = nombre.toLowerCase().includes('masaje');
+
+            var extraHTML = esMasaje ? `
+                <div class="col s12">
+                    <label>
+                        <input type="checkbox" name="servicios[${id}][tiempo_extra]" />
+                        <span>¿Agregar tiempo extra (1 hora)?</span>
+                    </label>
+                </div>
+            ` : '';
+
 
 
             // Verificar si el servicio ya fue seleccionado
@@ -147,7 +158,7 @@
                         '<div class="col s4">' +
                             '<input type="number" name="servicios[' + id + '][cantidad]" placeholder="Cantidad" min="1">' +
                             '<input type="hidden" name="servicios[' + id + '][precio]" value="' + precio + '">' +
-                        '</div>' +
+                        '</div>' + extraHTML +
                     '</div>'
                 );
 

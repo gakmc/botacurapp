@@ -76,13 +76,14 @@
 
                   @php
                     $totalSubtotal = $reserva->venta->consumo->detallesConsumos->sum('subtotal');
+                    $subtotalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal');
                   @endphp
 
 
                   <div class="input-field col s12 m4" id="noPropina">
 
                     <label for="sinPropina">Consumo</label>
-                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$totalSubtotal}}" value="{{$totalSubtotal}}">
+                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$totalSubtotal+$subtotalServicios}}" value="{{$totalSubtotal+$subtotalServicios}}">
                     @error('sinPropina')
                     <span class="invalid-feedback" role="alert">
                       <strong style="color:red">{{ $message }}</strong>

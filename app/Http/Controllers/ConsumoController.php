@@ -40,6 +40,7 @@ class ConsumoController extends Controller
 
     public function service_store(Request $request, Venta $venta)
     {
+        dd($request);
 
         DB::transaction(function () use ($request, &$venta) {
             // Verificar si ya existe un consumo para esta venta
@@ -65,16 +66,21 @@ class ConsumoController extends Controller
 
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($serviciosValidos as $servicio_id => $servicio) {
+                $tiempoExtra = isset($servicio['tiempo_extra']) ? true : false;
+
+                $unidad = $tiempoExtra ? ($servicio['precio']*2) : $servicio['precio'];
+                $subtotal = $unidad * $servicio['cantidad'];
+
                 DetalleServiciosExtra::create([
                     'id_consumo' => $consumo->id,
                     'id_servicio_extra' => $servicio_id,
                     'cantidad_servicio' => $servicio['cantidad'],
-                    'subtotal' => $servicio['precio'] * $servicio['cantidad'],
+                    'subtotal' => $subtotal,
                 ]);
 
                 // Sumar al subtotal del nuevo consumo
-                $nuevoSubtotal += $servicio['cantidad'] * $servicio['precio'];
-
+                $nuevoSubtotal += $subtotal;
+                
             }
 
             $consumo->subtotal += $nuevoSubtotal;

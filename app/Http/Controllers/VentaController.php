@@ -360,9 +360,11 @@ class VentaController extends Controller
         $hoy    = Carbon::today();
         
         // Filtrar las reservas que tienen visitas y cuya fecha de visita es hoy o mañana
-        $reservas = Reserva::with('visitas', 'cliente', 'programa', 'user', 'venta')
+        $reservas = Reserva::with('visitas', 'cliente', 'programa', 'user', 'venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio')
         ->where('fecha_visita', $hoy)
         ->get();
+
+        $asignados = Asignacion::all();
 
         // $detalles = collect();
 
@@ -375,6 +377,7 @@ class VentaController extends Controller
 
         return view('themes.backoffice.pages.venta.cierre.index_cierre',[
             'reservas' => $reservas,
+            'asignados' => $asignados,
             // 'detalles' => $detalles
         ]);
     }

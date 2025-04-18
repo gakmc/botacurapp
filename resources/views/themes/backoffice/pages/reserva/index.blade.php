@@ -21,11 +21,13 @@
     <div id="basic-form" class="section">
         <div class="card-panel ">
             <a href="{{ route('backoffice.reserva.index', ['alternative' => !$alternativeView]) }}" class="waves-effect waves-light btn right hide-on-small-only hide-on-med-only">
-            @if ($alternativeView)
+                @if ($alternativeView)
                 Horarios <i class='material-icons right'>list</i>
-            @else
+                @else
                 Ubicación <i class='material-icons right'>apps</i>
-            @endif</a>
+                @endif</a>
+                
+                <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
             
             {{-- Vista Alternativa --}}
             @if ($alternativeView)
@@ -86,6 +88,10 @@
 
                 {{-- Fin Vista Comun --}}
             @endif
+
+                {{-- Modal para mostrar los horarios disponibles --}}
+                @include('themes.backoffice.pages.reserva.includes.modal_sauna_disponible')
+
         </div>
     </div>
 </div>
@@ -113,6 +119,12 @@
                 }
         });
     }
+</script>
+
+<script>
+    $(document).ready(function() {
+        $('.modal').modal();
+    });
 </script>
 
 {{-- Vista Movil --}}

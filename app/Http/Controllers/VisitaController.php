@@ -117,7 +117,7 @@ class VisitaController extends Controller
 
         // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
         $horaInicioMasajes = new \DateTime('10:20');
-        $horaFinMasajes    = new \DateTime('19:00');
+        $horaFinMasajes    = new \DateTime('18:30');
         $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
         $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
         $horarios          = [];
@@ -249,7 +249,7 @@ class VisitaController extends Controller
 
         // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
         $horaInicioMasajes = new \DateTime('10:20');
-        $horaFinMasajes    = new \DateTime('19:00');
+        $horaFinMasajes    = new \DateTime('18:30');
         $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
         $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
         $horarios          = [];
@@ -261,10 +261,10 @@ class VisitaController extends Controller
         }
 
         // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
-        $horariosOcupadosMasajes = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+        $horariosOcupadosMasajes = DB::table('masajes')
+            ->join('reservas', 'masajes.id_reserva', '=', 'reservas.id')
             ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('visitas.horario_masaje')
+            ->pluck('masajes.horario_masaje')
             ->filter(function ($hora) {
                 return ! is_null($hora); // Filtra valores nulos
             })
