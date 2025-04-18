@@ -19,7 +19,7 @@
                       Fecha:<strong>{{$reserva->fecha_visita}}</strong></h4>
                   <div class="row">
                       <form class="col s12" method="post"
-                          action="{{route('backoffice.reserva.menu_update', [$reserva, $visita])}}">
+                          action="{{route('backoffice.reserva.menu_update', $reserva)}}">
 
 
                           {{csrf_field() }}
