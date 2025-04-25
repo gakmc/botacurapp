@@ -15,129 +15,200 @@
 
 @section('content')
 
-<div class="section">
-    <p class="caption"><strong>Administración</strong></p>
-    <div class="divider"></div>
-    <div id="basic-form" class="section">
-        <div class="row">
-            <div class="col s12 ">
-                <div class="card-panel">
-                    <div class="row">
+@if (Auth::user()->has_role(config('app.admin_role')))
+    <div class="section">
+        <p class="caption"><strong>Administración</strong></p>
+        <div class="divider"></div>
+        <div id="basic-form" class="section">
+            <div class="row">
+                <div class="col s12 ">
+                    <div class="card-panel">
+                        <div class="row">
 
 
 
-                        {{-- CONTENIDO --}}
-                        <div id="card-stats">
-                            <div class="row mt-1">
-                                <!-- Tarjeta para mostrar el número de Reservas -->
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.reservas.registros')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-light-blue-cyan gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">assignment</i>
-                                                    <p>Reservas</p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
-                                                    <p class="no-margin">Total</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-
-                                <!-- Tarjeta para mostrar el número de Clientes -->
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.cliente.index')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-red-pink gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s;">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">airport_shuttle</i>
-                                                    <p>Clientes</p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="clientes-count" class="mb-0">{{$totalClientes}}</h5>
-                                                    <p class="no-margin">Total</p>
+                            {{-- CONTENIDO --}}
+                            <div id="card-stats">
+                                <div class="row mt-1">
+                                    <!-- Tarjeta para mostrar el número de Reservas -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.reservas.registros')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-light-blue-cyan gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">assignment</i>
+                                                        <p>Reservas</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </a>
-                                </div>
+                                        </a>
+                                    </div>
 
-
-
-                                <!-- Tarjeta para mostrar el número de Masajes Asignados -->
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.admin.index')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-green-teal gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s;">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">spa</i>
-                                                    <p>Masajes Asignados</p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="clientes-count" class="mb-0">{{$masajesAsignados}}</h5>
-                                                    <p class="no-margin">Total</p>
+                                    <!-- Tarjeta para mostrar el número de Clientes -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.cliente.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-red-pink gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s;">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">airport_shuttle</i>
+                                                        <p>Clientes</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="clientes-count" class="mb-0">{{$totalClientes}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </a>
-                                </div>
+                                        </a>
+                                    </div>
 
 
-                                <!-- Tarjeta para mostrar el número de Equipos de la semana -->
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.admin.team')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-light-blue gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s;">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">people</i>
-                                                    <p>Equipos de la semana</p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="clientes-count" class="mb-0">{{$asignacionesSemanaActual}}</h5>
-                                                    <p class="no-margin">Total</p>
+
+                                    <!-- Tarjeta para mostrar el número de Masajes Asignados -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.admin.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-green-teal gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s;">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">spa</i>
+                                                        <p>Masajes Asignados</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="clientes-count" class="mb-0">{{$masajesAsignados}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
                                                 </div>
                                             </div>
-                                        </div>
-                                    </a>
+                                        </a>
+                                    </div>
+
+
+                                    <!-- Tarjeta para mostrar el número de Equipos de la semana -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.admin.team')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-light-blue gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s;">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">people</i>
+                                                        <p>Equipos de la semana</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="clientes-count" class="mb-0">{{$asignacionesSemanaActual}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    {{-- Incorporar nuevas tarjetas --}}
+
                                 </div>
-
-                                {{-- Incorporar nuevas tarjetas --}}
-
                             </div>
+
+
+
+
                         </div>
-
-
-
-
-
-
-
-
-
-
-
-
-
                     </div>
                 </div>
             </div>
         </div>
     </div>
-</div>
 
 
+    <div class="section">
+        <p class="caption"><strong>Finanzas</strong></p>
+        <div class="divider"></div>
+        <div id="basic-form" class="section">
+            <div class="row">
+                <div class="col s12 ">
+                    <div class="card-panel">
+                        <div class="row">
+
+                            {{-- CONTENIDO --}}
+                            <div id="card-stats">
+                                <div class="row mt-1">
+                                    <!-- Tarjeta para mostrar el número de Reservas -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.admin.ingresos')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-amber-amber gradient-shadow min-height-100 black-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">equalizer</i>
+                                                        <p>Programas Contratados</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    {{-- Incorporar nuevas tarjetas --}}
+
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.admin.consumos')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-purple gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">shopping_cart</i>
+                                                        <p>Consumos y Servicios</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">{{$totalConsumos}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.sueldos.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">monetization_on</i>
+                                                        <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">${{number_format($sueldosMes->sum("total_pagar"),0,"",".")}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+                                </div>
+                            </div>
 
 
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
+@endif
 
+@if (Auth::user()->has_role(config('app.anfitriona_role')))
+ 
 <div class="section">
-    <p class="caption"><strong>Finanzas</strong></p>
+    <p class="caption"><strong>Caja</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -145,22 +216,28 @@
                 <div class="card-panel">
                     <div class="row">
 
+                        @php
+                            $anio = \Carbon\Carbon::now()->year;
+                            $mes = \Carbon\Carbon::now()->month;
+                            $dia = \Carbon\Carbon::now()->day;
+                        @endphp
+
                         {{-- CONTENIDO --}}
                         <div id="card-stats">
                             <div class="row mt-1">
                                 <!-- Tarjeta para mostrar el número de Reservas -->
                                 <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.admin.ingresos')}}">
+                                    <a href="{{route('backoffice.admin.cierreCaja',[$anio, $mes, $dia])}}">
                                         <div class="animate__animated animate__backInLeft card gradient-45deg-amber-amber gradient-shadow min-height-100 black-text"
                                             style="--animate-delay: 1s; --animate-duration: 2s; ">
                                             <div class="padding-4">
                                                 <div class="col s7 m7">
                                                     <i class="material-icons background-round mt-5">equalizer</i>
-                                                    <p>Programas Contratados</p>
+                                                    <p>Caja del Dia</p>
                                                 </div>
                                                 <div class="col s5 m5 right-align">
-                                                    <h5 id="reservas-count" class="mb-0">{{$totalReservas}}</h5>
-                                                    <p class="no-margin">Total</p>
+                                                    <h5 id="reservas-count" class="mb-0">{{$totalAsistentesDia}}</h5>
+                                                    <p class="no-margin">Total Asistentes</p>
                                                 </div>
                                             </div>
                                         </div>
@@ -168,42 +245,8 @@
                                 </div>
                                 {{-- Incorporar nuevas tarjetas --}}
 
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.admin.consumos')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-purple gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">shopping_cart</i>
-                                                    <p>Consumos y Servicios</p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="reservas-count" class="mb-0">{{$totalConsumos}}</h5>
-                                                    <p class="no-margin">Total</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
 
-                                <div class="col s12 m6 l3">
-                                    <a href="{{route('backoffice.sueldos.index')}}">
-                                        <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 white-text"
-                                            style="--animate-delay: 1s; --animate-duration: 2s; ">
-                                            <div class="padding-4">
-                                                <div class="col s7 m7">
-                                                    <i class="material-icons background-round mt-5">monetization_on</i>
-                                                    <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
-                                                </div>
-                                                <div class="col s5 m5 right-align">
-                                                    <h5 id="reservas-count" class="mb-0">${{number_format($sueldosMes->sum("total_pagar"),0,"",".")}}</h5>
-                                                    <p class="no-margin">Total</p>
-                                                </div>
-                                            </div>
-                                        </div>
-                                    </a>
-                                </div>
-
+                                
                             </div>
                         </div>
 
@@ -215,7 +258,7 @@
     </div>
 </div>
 
-
+@endif
 
 
 

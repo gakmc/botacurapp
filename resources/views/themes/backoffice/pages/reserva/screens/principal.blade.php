@@ -234,6 +234,9 @@
                             @endif
                         @endforeach
                 
+                        @php
+                            $horariosAgrupados = collect($horariosAgrupados)->sortBy('horario_inicio')->toArray();
+                        @endphp
                         @foreach($horariosAgrupados as $horario)
                         <tr>
                                 @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))

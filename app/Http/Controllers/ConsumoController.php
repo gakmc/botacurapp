@@ -100,7 +100,7 @@ class ConsumoController extends Controller
     {
         $venta = Venta::findOrFail($venta);
         $tipos = TipoProducto::all();
-        $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pastelería'];
+        $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
         return view('themes.backoffice.pages.consumo.create', [
             'venta' => $venta,
@@ -130,7 +130,7 @@ class ConsumoController extends Controller
 
 
         // Iniciar una transacción en la base de datos
-        DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesConsumo) {
+        DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesConsumo, $nombres) {
 
             // Verificar si ya existe un consumo para esta venta
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
@@ -152,6 +152,9 @@ class ConsumoController extends Controller
             // Inicializar variables
             $totalSubtotal = 0;
             $nuevoSubtotal = 0;
+            
+            // Siempre se registra con propina activa por defecto.
+            // La validación final de si se aplica o no se hace en el cierre de venta.
             $generaPropina = true;
 
             // Filtrar los productos del request con cantidad válida (mayor que 0)
@@ -194,28 +197,29 @@ class ConsumoController extends Controller
                 'total_consumo' => $totalConPropina,
             ]);
 
+
+            $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
+                $producto = Producto::find($detalle->id_producto);
+                return [
+                    'id' => $detalle->id,
+                    'nombre' => $producto->nombre,
+                    'cantidad' => $detalle->cantidad_producto,
+                    'cliente' => $cliente ?? 'Cliente Desconocido', // Ajusta según los datos disponibles
+                    'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
+                ];
+            }, $detallesConsumo);
+            
+            
+            broadcast(new NuevoConsumoAgregado([
+                'mensaje'=>'Nuevo consumo agregado '.$nombres,
+                'productos' => $productosEvento,
+                'estado' => 'por-procesar'
+            ]));
+
         });
-
-        $venta = Venta::where('id', $request->id_venta)->first();
-
-        $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
-            $producto = Producto::find($detalle->id_producto);
-            return [
-                'id' => $detalle->id,
-                'nombre' => $producto->nombre,
-                'cantidad' => $detalle->cantidad_producto,
-                'cliente' => $cliente ?? 'Cliente Desconocido', // Ajusta según los datos disponibles
-                'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
-            ];
-        }, $detallesConsumo);
-
-
-        broadcast(new NuevoConsumoAgregado([
-            'mensaje'=>'Nuevo consumo agregado '.$nombres,
-            'productos' => $productosEvento,
-            'estado' => 'por-procesar'
-        ]));
         
+        $venta = Venta::find($request->id_venta);
+
         // Redirigir con éxito
         Alert::success('Éxito', 'Consumo ingresado correctamente', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.reserva.show', $venta->reserva->id);

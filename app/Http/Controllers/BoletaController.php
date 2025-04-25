@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Reserva;
 use App\Consumo;
+use App\VentaDirecta;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -87,4 +88,41 @@ class BoletaController extends Controller
         // dd($pdf);
         return $pdf->stream("Boleta" . "_" . $saveName . "_" . $reserva->fecha_visita . ".pdf");
     }
+
+    public function databoletaventadirecta(Request $request ,VentaDirecta $ventaDirecta)
+    {
+
+        $ventaDirecta->load('tipoTransaccion', 'user', 'detalles', 'propina');
+
+        $total   = 0;
+        $listaProductos = [];
+        $idConsumo       = null;
+        $cantidadPropina = null;
+
+
+        if (isset($ventaDirecta)) {
+            foreach ($ventaDirecta->detalles as $detalles) {
+                $listaProductos[] = $detalles;
+            }
+
+        }
+
+    
+
+        $saveName = str_replace(' ', '_', $ventaDirecta->fecha);
+
+        $dataConsumo = [
+            'nombre'        => $ventaDirecta->user->name,
+            'fecha_visita'  => $ventaDirecta->fecha,
+            'total'         => $total,
+            'listaConsumos' => $listaProductos,
+            'venta' => $ventaDirecta,
+        ];
+
+        $pdf = pdf::loadView('pdf.boleta.ventaDirectaPDF', $dataConsumo)->setPaper([0,0,226.77,9999], 'portrait');
+        // dd($pdf);
+        return $pdf->stream("Boleta" . "_" . $saveName . "_" . $ventaDirecta->fecha_visita . ".pdf");
+    }
+
+
 }

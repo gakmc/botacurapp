@@ -65,6 +65,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home/ingresos', 'AdminController@ingresos')->name('admin.ingresos');
     Route::get('ingresos/{anio}/{mes}', 'AdminController@detalleMes')->name('admin.ingresos.detalleMes');
     Route::get('ingresos/{anio}/{mes}/{dia}', 'AdminController@ingresosDiarios')->name('admin.ingresos.detalleDia');
+
+    Route::get('cierre-caja/{anio}/{mes}/{dia}', 'AdminController@cierreCaja')->name('admin.cierreCaja');
     
     Route::resource('user', 'UserController');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
@@ -225,6 +227,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     Route::post('boleta/reserva/{reserva}', 'BoletaController@databoleta')->name('boleta.reserva');
 
+    Route::post('boleta/venta_directa/{venta_directa}', 'BoletaController@databoletaventadirecta')->name('boleta.venta_directa');
+
     Route::get('reserva/{reserva}/visita/{visita}/spa', 'VisitaController@spa')->name('reserva.visitas.spa');
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/spa_update', 'VisitaController@spa_update')->name('reserva.visitas.spa_update');
 
@@ -263,5 +267,6 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('servicio', 'ServicioController');
     Route::resource('sueldos', 'SueldoController');
     Route::resource('venta.consumo', 'ConsumoController');
+    Route::resource('venta_directa', 'VentaDirectaController');
     Route::resource('visita', 'VisitaController');
 });

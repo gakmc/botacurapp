@@ -229,9 +229,10 @@ class SueldoController extends Controller
             ->first();
 
         // Obtener propinas del día con las relaciones necesarias
-        $propinas = Propina::with('consumo.venta.reserva')
-            ->whereDate('fecha', $fecha)
-            ->get();
+        $propinas = Propina::with('propinable.venta.reserva')
+        ->whereDate('fecha', $fecha)
+        ->get();
+    
 
         // Filtrar solo las asignaciones del usuario actual
         $asignaciones = collect();
@@ -241,7 +242,7 @@ class SueldoController extends Controller
             $pivot = $propina->users()->where('users.id', $user->id)->first();
             if ($pivot) {
                 $asignaciones->push((object)[
-                    'nombre_cliente' => optional($propina->consumo->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido',
+                    'nombre_cliente' => optional($propina->propinable->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido',
                     'monto_asignado' => $pivot->pivot->monto_asignado,
                 ]);
                 $total_propina_usuario += $pivot->pivot->monto_asignado;

@@ -79,10 +79,76 @@
                     $subtotalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal');
                   @endphp
 
+                  
 
+
+                    <div class="input-field col s12 m4" id="siConsumoBruto">
+                      
+                      <label for="consumo_bruto">Consumo</label>
+                      <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly>
+                      @error('consumo_bruto')
+                      <span class="invalid-feedback" role="alert">
+                        <strong style="color:red">{{ $message }}</strong>
+                      </span>
+                      @enderror
+                      
+                    </div>
+
+
+                    <div class="input-field col s12 m4" id="propinaBruta" hidden>
+
+                      <label for="propinaValue">ingrese Propina</label>
+                      <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
+                      @error('propinaValue')
+                      <span class="invalid-feedback" role="alert">
+                        <strong style="color:red">{{ $message }}</strong>
+                      </span>
+                      @enderror
+                      
+                    </div>
+  
+  
+  
+                    <div class="input-field col s12 m4" id="siPropina" hidden>
+  
+                      <label for="conPropina">Consumo Con Propina</label>
+                      <input id="conPropina" type="text" name="conPropina" class="money-format" value="{{$totalSubtotal*1.1}}" data-conpropina="{{$totalSubtotal*1.1}}" readonly>
+                      @error('conPropina')
+                      <span class="invalid-feedback" role="alert">
+                        <strong style="color:red">{{ $message }}</strong>
+                      </span>
+                      @enderror
+  
+                    </div>
+
+
+                    <div class="row">
+
+                    </div>
+
+                      <div class="input-field col s12 m4" id="siServicio">
+                        
+                        <label for="servicio_bruto">Servicios</label>
+                        <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" data-servicio_bruto="{{$subtotalServicios}}" value="${{number_format($subtotalServicios,0,'','.')}}" readonly>
+                        @error('servicio_bruto')
+                        <span class="invalid-feedback" role="alert">
+                          <strong style="color:red">{{ $message }}</strong>
+                        </span>
+                        @enderror
+                        
+                      </div>
+
+
+
+
+
+
+                    <div class="row">
+                    </div>
+                    
                   <div class="input-field col s12 m4" id="noPropina">
 
-                    <label for="sinPropina">Consumo</label>
+                    <label for="sinPropina">Servicios + Consumo</label>
                     <input id="sinPropina" type="text" name="sinPropina" class="money-format" data-sinpropina="{{$totalSubtotal+$subtotalServicios}}" value="{{$totalSubtotal+$subtotalServicios}}">
                     @error('sinPropina')
                     <span class="invalid-feedback" role="alert">
@@ -91,35 +157,7 @@
                     @enderror
 
                   </div>
-
-
-                  <div class="input-field col s12 m4" id="propinaBruta" hidden>
-
-                    <label for="propinaValue">ingrese Propina</label>
-                    <input id="propinaValue" type="text" name="propinaValue" data-propinavalue="{{$totalSubtotal*0.1}}" class="money-format" value="{{$totalSubtotal*0.1}}">
-                    @error('propinaValue')
-                    <span class="invalid-feedback" role="alert">
-                      <strong style="color:red">{{ $message }}</strong>
-                    </span>
-                    @enderror
-                    
-                  </div>
-
-
-
-                  <div class="input-field col s12 m4" id="siPropina" hidden>
-
-                    <label for="conPropina">Consumo Con Propina</label>
-                    <input id="conPropina" type="text" name="conPropina" class="money-format" value="{{$reserva->venta->consumo->total_consumo}}" data-conpropina="{{$reserva->venta->consumo->total_consumo}}"
-                      readonly>
-                    @error('conPropina')
-                    <span class="invalid-feedback" role="alert">
-                      <strong style="color:red">{{ $message }}</strong>
-                    </span>
-                    @enderror
-
-                  </div>
-
+                
 
 
 

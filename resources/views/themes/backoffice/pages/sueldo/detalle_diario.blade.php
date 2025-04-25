@@ -124,7 +124,7 @@
                     
 
                     <div class="center-align">
-                        <a href="{{ route('backoffice.sueldo.view', $user) }}" class="btn waves-effect teal darken-2">
+                        <a href="{{ route('backoffice.sueldo.view.admin',[$user,$fecha->year, $fecha->month]) }}" class="btn waves-effect teal darken-2">
                             <i class="material-icons left">arrow_back</i> Volver al Estado de Cuenta
                         </a>
                     </div>

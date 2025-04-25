@@ -12,6 +12,7 @@ use App\Masaje;
 use App\Menu;
 use App\Producto;
 use App\Programa;
+use App\Propina;
 use App\Reagendamiento;
 use App\Reserva;
 use App\Servicio;
@@ -745,8 +746,8 @@ class ReservaController extends Controller
                 }
             
 
-            $cantidadPropina = DB::table('propinas')
-                ->where('id_consumo', '=', $idConsumo)
+                $cantidadPropina = Propina::where('propinable_id', $idConsumo)
+                ->where('propinable_type', Consumo::class)
                 ->first();
 
             if ($cantidadPropina) {
@@ -806,8 +807,12 @@ class ReservaController extends Controller
                     }
                 }
 
-            $cantidadPropina = DB::table('propinas')
-                ->where('id_consumo', '=', $idConsumo)
+            // $cantidadPropina = DB::table('propinas')
+            //     ->where('id_consumo', '=', $idConsumo)
+            //     ->first();
+
+            $cantidadPropina = Propina::where('propinable_id', $idConsumo)
+                ->where('propinable_type', Consumo::class)
                 ->first();
 
             if ($cantidadPropina) {

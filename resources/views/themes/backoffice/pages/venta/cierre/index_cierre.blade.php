@@ -54,9 +54,9 @@
                 style="--animate-delay: 1s; --animate-duration: 2s;">       
 
 
-            @if (!isset($reservas))
+            @if ($reservas->isEmpty())
                 <h5 class="center">
-                    No se registran ventas
+                    No se registran reservas para el día de hoy.
                 </h5>
             @else
 
@@ -159,23 +159,26 @@
                 
                 
             @endif
-
-                
+ 
             
         </div>
-        @foreach ($reservas as $reserva)
-            
-            @include('themes.backoffice.pages.reserva.includes.modal_boleta', ['reserva' => $reserva])
+        @if ($reservas->isNotEmpty())
 
-            @include('themes.backoffice.pages.reserva.includes.modal_venta', ['reserva' => $reserva])
+            @foreach ($reservas as $reserva)
+                
+                @include('themes.backoffice.pages.reserva.includes.modal_boleta', ['reserva' => $reserva])
 
-        @endforeach
+                @include('themes.backoffice.pages.reserva.includes.modal_venta', ['reserva' => $reserva])
+
+            @endforeach
+        @endif
         </div>
     </div>
 </div>
 @endsection
 
 @section('foot')
+{{-- Inicializar Materialize --}}
 <script>
 
     $(document).ready(function () {
@@ -197,6 +200,7 @@
 
 </script>
 
+{{-- Alerta de no registrar ubicación --}}
 <script>
     $(document).ready(function () {
         $('.collection-item').on('click', function (event) {
@@ -225,6 +229,9 @@
     });
 </script>
 
+{{-- Poblar el modal de venta --}}
+
+@if ($reservas->isNotEmpty())
 <script>
     function formatCLP(number) {
         return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
@@ -381,11 +388,16 @@
       });
     });
 </script>
+@endif
 
+{{-- Ruta de asignación --}}
+@if ($reservas->isNotEmpty())
 <script>
     const rutaAsignacion = "{{ route('backoffice.asignacion.create') . '?' .\Carbon\Carbon::parse($reserva->fecha_visita)->format('Y-m-d') }}";
 </script>
+@endif
 
+{{-- Alerta de reserva sin equipo asignado --}}
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         // Detectar clic en enlaces con clase btn-alerta

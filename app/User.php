@@ -74,6 +74,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Sueldo::class, 'id_user');
     }
 
+    public function ventas_directas()
+    {
+        return $this->hasMany(VentaDirecta::class, 'id_user');
+    }
+
     public function masajes()
     {
         return $this->hasMany(Masaje::class, 'user_id');
@@ -197,11 +202,27 @@ class User extends Authenticatable implements MustVerifyEmail
             return self::all();
         }
 
+        if ($this->has_role(config('app.jefe_local_role'))) {
+            return self::whereHas('roles', function ($q) {
+                $q->whereIn('slug', [
+                    config('app.anfitriona_role'),
+                    config('app.garzon_role'),
+                    config('app.barman_role'),
+                    config('app.cocina_role'),
+                    config('app.masoterapeuta_role'),
+                    config('app.mantencion_role'),
+                ]);
+            })->get();
+        }
         // Si tiene el rol de anfitriona, muestra los usuarios que tienen los roles de 'anfitriona' o 'visitante'
         if ($this->has_role(config('app.anfitriona_role'))) {
             return self::whereHas('roles', function ($q) {
                 $q->whereIn('slug', [
-                    config('app.visit_role'),
+                    config('app.garzon_role'),
+                    config('app.barman_role'),
+                    config('app.cocina_role'),
+                    config('app.masoterapeuta_role'),
+                    config('app.mantencion_role'),
                 ]);
             })->get();
         }

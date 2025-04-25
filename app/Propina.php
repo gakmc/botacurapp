@@ -23,4 +23,9 @@ class Propina extends Model
     {
         return $this->belongsTo(Consumo::class, 'id_consumo');
     }
+
+    public function propinable()
+    {
+        return $this->morphTo();
+    }
 }

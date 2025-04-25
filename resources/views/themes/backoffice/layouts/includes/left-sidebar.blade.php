@@ -63,7 +63,7 @@
         <li class="no-padding">
             <ul class="collapsible" data-collapsible="accordion">
 
-                @if(Auth::user()->has_role(config('app.admin_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')))
                 <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.admin.show') }}">
                         <i class="material-icons">
@@ -74,6 +74,11 @@
                         </span>
                     </a>
                 </li>
+
+                @endif
+
+                @if (Auth::user()->has_role(config('app.admin_role')))
+                    
 
                 <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.cliente.index') }}">
@@ -231,7 +236,23 @@
 
                 @endif
                 
-                
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.garzon_role')))
+
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.venta_directa.index') }}">
+                            <i class="material-icons">
+                                local_mall
+                            </i>
+                            <span class="nav-text">
+                                Venta Directa
+                            </span>
+                        </a>
+                    </li>
+
+
+
+                @endif
+
                 @if (Auth::user()->has_role(config('app.admin_role')))
 
                     <li class="bold">

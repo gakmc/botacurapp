@@ -8,11 +8,13 @@ use App\Consumo;
 use App\Insumo;
 use App\Masaje;
 use App\Programa;
+use App\Propina;
 use App\Reserva;
 use App\Sueldo;
 use App\TipoTransaccion;
 use App\User;
 use App\Venta;
+use App\VentaDirecta;
 use Carbon\Carbon;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Collection;
@@ -29,10 +31,9 @@ class AdminController extends Controller
 
     public function show()
     {
-
+        $hoy = Carbon::today();
         $reservas = Reserva::all();
         $ventas = Venta::all();
-
 
 
         // Contar el número total de clientes
@@ -40,6 +41,9 @@ class AdminController extends Controller
 
         // Contar el número total de reservas
         $totalReservas = Reserva::count();
+
+        // $totalAsistentesDia = $reservas->sum('cantidad_personas');
+        $totalAsistentesDia = Reserva::where('fecha_visita',$hoy)->sum('cantidad_personas');
 
         $totalConsumos = Consumo::count();
 
@@ -63,7 +67,7 @@ class AdminController extends Controller
         }
 
         if ($user->has_role(config('app.anfitriona_role'))) {
-            return redirect()->action([ReservaController::class, 'index']);
+            return view('themes.backoffice.pages.admin.show', compact('totalAsistentesDia', 'totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
         }
 
         if ($user->has_role(config('app.cocina_role')) || $user->has_role(config('app.garzon_role'))) {
@@ -536,5 +540,126 @@ class AdminController extends Controller
         return view('themes.backoffice.pages.admin.servicios.detalle', compact('ventas'));
     }
 
+
+    // Role Anfitriona
+
+    public function cierreCaja($anio, $mes, $dia)
+    {
+        $ingresosVentas = 0;
+        $ventasPendientes = 0;
+        // dd($dia);
+
+        $ventas = Venta::whereHas('reserva', function($query) use ($mes, $anio, $dia){
+            $query->whereMonth('fecha_visita', $mes)
+            ->whereYear('fecha_visita', $anio)
+            ->whereDay('fecha_visita', $dia);
+        })->with('consumo.propina.users')->paginate(20);
+
+
+        $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
+            // Suma de abonos donde el tipo de transacción de abono coincide
+            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
+                              $query->whereMonth('fecha_visita', $mes)
+                                    ->whereYear('fecha_visita', $anio)
+                                    ->whereDay('fecha_visita', $dia);
+                          })
+                          ->sum('abono_programa');
+        
+            // Suma de diferencias donde el tipo de transacción de diferencia coincide
+            $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+                               ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+                                   $query->whereMonth('fecha_visita', $mes)
+                                         ->whereYear('fecha_visita', $anio)
+                                         ->whereDay('fecha_visita', $dia);
+                               })
+                               ->sum('diferencia_programa');
+        
+            // Se asigna al objeto TipoTransaccion
+            $tipo->total_abonos = $abono;
+            $tipo->total_diferencias = $diferencia;
+        
+            return $tipo;
+        });
+
+
+        $programas = Programa::all()->map(function ($programa) use ($dia, $mes, $anio) {
+            $cuenta = Reserva::where('id_programa', $programa->id)
+                ->whereHas('programa', function($query) use ($dia, $mes, $anio){
+                    $query->whereDay('fecha_visita', $dia)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereYear('fecha_visita', $anio);
+                })
+                ->count();
+
+
+                $programa->total_programas = $cuenta;
+
+                return $programa;
+        });
+    
+
+        
+        foreach ($ventas as $venta) {
+            $ingresosVentas += $venta->abono_programa;
+            $ingresosVentas += $venta->diferencia_programa;
+            $ventasPendientes += $venta->total_pagar;
+        }
+
+        // $ventas = Venta::whereYear('created_at', $anio)
+        //     ->whereMonth('created_at', $mes)
+        //     ->paginate(20); // o sin paginar, si prefieres
+
+        // $propinas = Propina::whereHasMorph('propinable', [Consumo::class], function ($query) use ($dia, $mes, $anio) {
+        //     $query->whereHas('venta.reserva', function ($q) use ($dia, $mes, $anio) {
+        //         $q->whereDay('fecha', $dia)
+        //           ->whereMonth('fecha', $mes)
+        //           ->whereYear('fecha', $anio);
+        //     });
+        // })
+        // ->with('users')
+        // ->get();
+
+
+        $propinas = Propina::whereHasMorph('propinable', [Consumo::class, VentaDirecta::class], function ($query, $type) use ($dia, $mes, $anio) {
+            if ($type === Consumo::class) {
+                $query->whereHas('venta.reserva', function ($q) use ($dia, $mes, $anio) {
+                    $q->whereDay('fecha_visita', $dia)
+                      ->whereMonth('fecha_visita', $mes)
+                      ->whereYear('fecha_visita', $anio);
+                });
+            }
+            if ($type === VentaDirecta::class) {
+                $query->whereDay('fecha', $dia)
+                      ->whereMonth('fecha', $mes)
+                      ->whereYear('fecha', $anio);
+            }
+        })
+        ->with('users')
+        ->get();
+
+
+        $totalPropina = $propinas->sum('cantidad');
+
+        $usuariosUnicos = collect();
+
+        foreach ($propinas as $propina) {
+            foreach ($propina->users as $user) {
+                $usuariosUnicos->put($user->id, $user);
+            }
+        }
+
+        $cantidadUsuarios = $usuariosUnicos->count();
+        $propinaPorUsuario = $cantidadUsuarios > 0 ? ($totalPropina / $cantidadUsuarios) : 0;
+
+
+        $nombreMes = Carbon::createFromDate($anio, $mes, $dia)
+        ->locale('es')
+        ->translatedFormat('d \d\e F \d\e Y');
+
+        return view('themes.backoffice.pages.admin.anfitriona.cierre_caja', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'totalPropina', 'cantidadUsuarios', 'propinaPorUsuario', 'usuariosUnicos'));
+
+
+    }
 
 }

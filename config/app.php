@@ -4,6 +4,7 @@ return [
 
 
     'admin_role' => env('ADMIN_ROLE', 'administrador'),
+    'jefe_local_role' => env('JEFE_LOCAL_ROLE', 'jefe-local'),
     'visit_role' => env('VISIT_ROLE', 'visitante'),
     'anfitriona_role'=>env('ANFITRIONA_ROLE', 'anfitriona'),
     'barman_role'=>env('BARMAN_ROLE', 'barman'),

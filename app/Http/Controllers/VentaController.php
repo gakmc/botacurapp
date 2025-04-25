@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Asignacion;
+use App\Consumo;
 use App\DetalleConsumo;
 use App\Mail\ConsumoMailable;
 use App\Mail\VentaCerradaMailable;
@@ -207,10 +208,9 @@ class VentaController extends Controller
                     // }
                     $totalPropinas += $request->propinaValue;
 
-                    $propina = Propina::create([
+                    $propina = $consumo->propina()->create([
                         'fecha'      => $fecha,
                         'cantidad'   => $totalPropinas,
-                        'id_consumo' => $consumo->id,
                     ]);
 
                     $asignacion = Asignacion::where('fecha', $fecha)->first();
@@ -278,14 +278,12 @@ class VentaController extends Controller
                 }
 
 
-            $cantidadPropina = DB::table('propinas')
-                ->where('id_consumo', '=', $idConsumo)
+            $cantidadPropina = Propina::where('propinable_id', $idConsumo)
+                ->where('propinable_type', Consumo::class)
                 ->first();
 
-            if ($cantidadPropina) {
+            $cantidadPropina = $cantidadPropina ? $cantidadPropina->cantidad : null;
 
-                $cantidadPropina = $cantidadPropina->cantidad;
-            }
         }
 
         $data = [

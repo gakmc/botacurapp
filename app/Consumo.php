@@ -37,7 +37,10 @@ class Consumo extends Model
         return $this->hasMany(PagoConsumo::class, 'id_consumo');
     }
 
-
+    public function propina()
+    {
+        return $this->morphOne(Propina::class, 'propinable');
+    }
 
 
     //Validacion
