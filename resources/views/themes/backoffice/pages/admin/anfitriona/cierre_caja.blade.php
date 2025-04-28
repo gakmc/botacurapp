@@ -52,7 +52,10 @@
                                             <td @if ($venta->total_pagar > 0) class="red-text" @endif>
                                                 ${{ number_format($venta->total_pagar, 0, ',', '.') }}
                                             </td>
-                                            <td>${{($venta->consumo->propina != null) ? number_format($venta->consumo->propina->cantidad,0,'','.') : 0}}</td>
+                                           {{-- <td>${{($venta->consumo->propina != null) ? number_format($venta->consumo->propina->cantidad,0,'','.') : 0}}</td>--}}
+<td>
+    ${{ number_format(optional(optional($venta->consumo)->propina)->cantidad ?? 0, 0, '', '.') }}
+</td>
                                             <td>${{ number_format($venta->reserva->programa->valor_programa*$venta->reserva->cantidad_personas, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach

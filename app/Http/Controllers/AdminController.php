@@ -63,7 +63,7 @@ class AdminController extends Controller
 
         if ($user->has_role(config('app.admin_role'))) {
 
-            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
+            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia'));
         }
 
         if ($user->has_role(config('app.anfitriona_role'))) {
