@@ -205,7 +205,7 @@
     </div>
 @endif
 
-@if (Auth::user()->has_role(config('app.anfitriona_role')))
+@if (Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
  
 <div class="section">
     <p class="caption"><strong>Caja</strong></p>

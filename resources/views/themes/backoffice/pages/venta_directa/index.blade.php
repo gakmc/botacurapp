@@ -42,9 +42,9 @@
                                     <td>${{ $ventaDirecta->tiene_propina ? number_format($ventaDirecta->total,0,'','.') : number_format($ventaDirecta->subtotal,0,'','.') }}</td>
                                     <td>
                                         @if ($ventaDirecta->tiene_propina)
-                                        <a class="btn disabled"><span class="black-text">${{number_format($ventaDirecta->valor_propina, 0,'','.')}}</span><i class='material-icons green-text left '>check_circle</i></a>
+                                        <a class="btn-small disabled"><span class="black-text">${{number_format($ventaDirecta->valor_propina, 0,'','.')}}</span><i class='material-icons green-text left '>check_circle</i></a>
                                         @else
-                                        <a class="btn disabled"><span class="black-text">${{number_format($ventaDirecta->valor_propina, 0,'','.')}}</span><i class='material-icons red-text left '>cancel</i></a>
+                                        <a class="btn-small disabled"><span class="black-text">${{number_format($ventaDirecta->valor_propina, 0,'','.')}}</span><i class='material-icons red-text left '>cancel</i></a>
                                         @endif
                                         </td>
                                     <td>{{ $ventaDirecta->created_at->format('H:i:s') }}</td>
@@ -52,8 +52,10 @@
                                         {{-- <a href="{{ route('backoffice.venta_directa.show', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light blue"><i class="material-icons">visibility</i></a> --}}
                                         <a href="#modal{{$ventaDirecta->id }}" class="btn-floating btn-small waves-effect waves-light blue modal-trigger"><i class="material-icons">visibility</i></a>
                                         @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')) )
-                                        <a href="{{ route('backoffice.venta_directa.edit', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light purple"><i class="material-icons">edit</i></a>
-                                        <a href="{{ route('backoffice.venta_directa.destroy', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light red"><i class="material-icons">delete</i></a>
+                                        
+                                        {{-- EN PROCESO --}}
+                                        {{-- <a href="{{ route('backoffice.venta_directa.edit', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light purple"><i class="material-icons">edit</i></a>
+                                        <a href="{{ route('backoffice.venta_directa.destroy', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light red"><i class="material-icons">delete</i></a> --}}
                                             
                                         @endif
 

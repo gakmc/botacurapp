@@ -115,7 +115,7 @@
             </div>
           </div>
 
-        @elseif (Auth::user()->has_role(config('app.anfitriona_role')))
+        @elseif (Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
           @foreach($reserva->visitas as $visita)
             @if ($reserva->menus->isNotEmpty())
@@ -176,6 +176,15 @@
         <div class="col s12 m4">
           @include('themes.backoffice.pages.reserva.includes.reagendamiento')
         </div>
+      @elseif(Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
+        <div class="col s12 m4">
+          @include('themes.backoffice.pages.reserva.includes.venta')
+        </div>
+        <div class="col s12 m4">
+          @include('themes.backoffice.pages.reserva.includes.consumo')
+        </div>
+        @include('themes.backoffice.pages.reserva.includes.modal_venta')
+
       @else
         <div class="col s12 m4">
           @include('themes.backoffice.pages.reserva.includes.consumo')
@@ -486,15 +495,16 @@
       </div>
 
       @if(Auth::user()->has_role(config('app.admin_role')))
-      <div class="col s12 m4">
-        @include('themes.backoffice.pages.reserva.includes.venta')
-      </div>
+        <div class="col s12 m4">
+          @include('themes.backoffice.pages.reserva.includes.venta')
+        </div>
 
-      <div class="col s12 m4">
-        @include('themes.backoffice.pages.reserva.includes.consumo')
-      </div>
+        <div class="col s12 m4">
+          @include('themes.backoffice.pages.reserva.includes.consumo')
+        </div>
 
-      @include('themes.backoffice.pages.reserva.includes.modal_venta')
+        @include('themes.backoffice.pages.reserva.includes.modal_venta')
+
       @endif
     </div>
 

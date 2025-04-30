@@ -69,7 +69,7 @@
 
             @if (is_null($consumo))
                 {{-- @foreach ($reserva->venta->consumos as $consumo) --}}
-                    @if (!is_null($consumo->pagosConsumos->where('id_consumo', $consumo->id)))
+                    @if (!is_null($consumo) && !is_null($consumo->pagosConsumos) && $consumo->pagosConsumos->where('id_consumo', $consumo->id)->isNotEmpty())
                         <a href="{{ route('backoffice.consumo.pdf', $reserva) }}" target="_blank"
                         class="collection-item center-align valign-wrapper left">
                         <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Consumo">local_bar</i></a>

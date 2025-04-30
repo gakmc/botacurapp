@@ -26,11 +26,24 @@ class AdminController extends Controller
 
     public function __construct()
     {
-        $this->middleware('role:' . config('app.admin_role') . '-' . config('app.anfitriona_role') . '-' . config('app.cocina_role') . '-' . config('app.garzon_role') . '-' . config('app.masoterapeuta_role') . '-' . config('app.barman_role'));
+        // $this->middleware('role:' . config('app.admin_role') . '-' . config('app.anfitriona_role') . '-' . config('app.cocina_role') . '-' . config('app.garzon_role') . '-' . config('app.masoterapeuta_role') . '-' . config('app.barman_role') . '-' . config('app.jefe_local_role'));
+
+        $this->middleware('role:' . implode('|', [
+            config('app.admin_role'),
+            config('app.anfitriona_role'),
+            config('app.cocina_role'),
+            config('app.garzon_role'),
+            config('app.masoterapeuta_role'),
+            config('app.barman_role'),
+            config('app.jefe_local_role'),
+        ]));
+        
+
     }
 
     public function show()
     {
+
         $hoy = Carbon::today();
         $reservas = Reserva::all();
         $ventas = Venta::all();
@@ -66,7 +79,7 @@ class AdminController extends Controller
             return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia'));
         }
 
-        if ($user->has_role(config('app.anfitriona_role'))) {
+        if ($user->has_role(config('app.anfitriona_role')) || $user->has_role(config('app.jefe_local_role'))) {
             return view('themes.backoffice.pages.admin.show', compact('totalAsistentesDia', 'totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
         }
 
@@ -250,6 +263,157 @@ class AdminController extends Controller
             'fechasSemana' => $fechasSemana,
         ]);
     }
+
+
+
+
+    // public function team()
+    // {
+    //     Carbon::setLocale('es');
+
+    //     // Obtener usuarios con roles específicos
+    //     $usuarios = User::whereHas('roles', function ($query) {
+    //         $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+    //     })->get();
+
+    //     $inicioSemana = Carbon::now()->startOfWeek();
+    //     $finSemana = Carbon::now()->endOfWeek();
+
+    //     // Días de la semana
+    //     $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+
+    //     // Obtener asignaciones con usuarios, filtradas por semana y agrupadas por nombre del día
+    //     $asignacionesPorDia = Asignacion::with('users')
+    //         ->whereBetween('fecha', [$inicioSemana, $finSemana])
+    //         ->get()
+    //         ->groupBy(function ($asignacion) {
+    //             return Carbon::parse($asignacion->fecha)->locale('es')->isoFormat('dddd');
+    //         });
+
+    //     // Asegurar que la primera letra esté en mayúscula
+    //     $asignacionesPorDia = $asignacionesPorDia->mapWithKeys(function ($value, $key) {
+    //         return [ucfirst($key) => $value];
+    //     });
+
+    //     // Obtener todas las propinas de la semana
+    //     $propinas = Propina::with('propinable')
+    //         ->whereBetween('fecha', [$inicioSemana, $finSemana])
+    //         ->get();
+
+    //     // Arreglos para propinas por día y usuario
+    //     $propinasPorDia = [];
+    //     $propinasPorUsuarioYFecha = [];
+
+    //     $totalPropinasSemana = 0;
+    //     $diaTrabajado = null;
+
+    //     foreach ($propinas as $propina) {
+    //         $fecha = Carbon::parse($propina->fecha)->format('Y-m-d');
+    //         $diaSemana = ucfirst(Carbon::parse($propina->fecha)->locale('es')->isoFormat('dddd'));
+
+    //         $diaTrabajado = $fecha; // última fecha procesada
+
+    //         // Buscamos usuarios asignados ese día
+    //         $usuariosAsignados = $asignacionesPorDia[$diaSemana] ?? collect();
+
+    //         if ($usuariosAsignados->isEmpty()) {
+    //             // No hay usuarios asignados este día
+    //             continue;
+    //         }
+
+    //         $usuariosDelDia = $usuariosAsignados->pluck('users')->flatten();
+    //         $totalUsuarios = $usuariosDelDia->count();
+
+    //         if ($totalUsuarios > 0) {
+    //             $montoPorUsuario = $propina->cantidad / $totalUsuarios;
+
+    //             foreach ($usuariosDelDia as $usuario) {
+    //                 $propinasPorUsuarioYFecha[$fecha][$usuario->id] = 
+    //                     ($propinasPorUsuarioYFecha[$fecha][$usuario->id] ?? 0) + $montoPorUsuario;
+    //             }
+
+    //             // Para mostrar la propina general del día (lo que tu vista espera en propinasPorDia)
+    //             if (!isset($propinasPorDia[$diaSemana])) {
+    //                 $propinasPorDia[$diaSemana] = [
+    //                     'propina' => 0,
+    //                     'dia_trabajado' => $fecha
+    //                 ];
+    //             }
+    //             $propinasPorDia[$diaSemana]['propina'] += $propina->cantidad;
+    //             $totalPropinasSemana += $propina->cantidad;
+    //         } else {
+    //             // Nadie asignado, pero registramos 0 para la vista
+    //             $propinasPorDia[$diaSemana] = [
+    //                 'propina' => 0,
+    //                 'dia_trabajado' => $fecha
+    //             ];
+    //         }
+    //     }
+
+    //     // Calcular total de propinas por usuario
+    //     $totalPropinasUsuario = [];
+
+    //     foreach ($propinasPorUsuarioYFecha as $fecha => $usuarios) {
+    //         foreach ($usuarios as $userId => $monto) {
+    //             $totalPropinasUsuario[$userId] = ($totalPropinasUsuario[$userId] ?? 0) + $monto;
+    //         }
+    //     }
+
+    //     // Sueldo base
+    //     $pagoBasePorUsuario = Cache::get('sueldoBase') ?? 45000;
+
+    //     // Calcular el total a pagar por usuario
+    //     $totalPorUsuario = [];
+
+    //     foreach ($usuarios as $usuario) {
+    //         $totalDiasAsignados = 0;
+
+    //         foreach ($diasSemana as $dia) {
+    //             if (isset($asignacionesPorDia[$dia])) {
+    //                 $usuariosDia = $asignacionesPorDia[$dia]->pluck('users')->flatten();
+
+    //                 if ($usuariosDia->contains('id', $usuario->id)) {
+    //                     $totalDiasAsignados++;
+    //                 }
+    //             }
+    //         }
+
+    //         $propinaUsuario = $totalPropinasUsuario[$usuario->id] ?? 0;
+
+    //         $totalPorUsuario[$usuario->name] = ($totalDiasAsignados * $pagoBasePorUsuario) + $propinaUsuario;
+    //     }
+
+    //     $totalSueldoGeneral = array_sum($totalPorUsuario);
+
+    //     // Fechas de cada día de la semana
+    //     $fechasSemana = [];
+    //     for ($i = 0; $i < 7; $i++) {
+    //         $fechasSemana[$diasSemana[$i]] = $inicioSemana->copy()->addDays($i)->format('Y-m-d');
+    //     }
+
+    //     dd($diasSemana,
+    //     $asignacionesPorDia,
+    //     $propinasPorDia,
+    //     $totalPorUsuario,
+    //     $totalSueldoGeneral,
+    //     $usuarios,
+    //     $diaTrabajado,
+    //     $pagoBasePorUsuario,
+    //     $fechasSemana);
+
+    //     return view('themes.backoffice.pages.admin.team', [
+    //         'diasSemana' => $diasSemana,
+    //         'asignacionesPorDia' => $asignacionesPorDia,
+    //         'propinasPorDia' => $propinasPorDia,
+    //         'totalPorUsuario' => $totalPorUsuario,
+    //         'totalSueldos' => $totalSueldoGeneral,
+    //         'usuarios' => $usuarios,
+    //         'diaT' => $diaTrabajado,
+    //         'base' => $pagoBasePorUsuario,
+    //         'fechasSemana' => $fechasSemana,
+    //     ]);
+    // }
+
 
 
     public function ingresos()
@@ -638,6 +802,11 @@ class AdminController extends Controller
         ->with('users')
         ->get();
 
+        $propinasVentaDirecta = VentaDirecta::whereDay('fecha', $dia)
+                  ->whereMonth('fecha', $mes)
+                  ->whereYear('fecha', $anio)
+                  ->get();
+
 
         $totalPropina = $propinas->sum('cantidad');
 
@@ -657,7 +826,7 @@ class AdminController extends Controller
         ->locale('es')
         ->translatedFormat('d \d\e F \d\e Y');
 
-        return view('themes.backoffice.pages.admin.anfitriona.cierre_caja', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'totalPropina', 'cantidadUsuarios', 'propinaPorUsuario', 'usuariosUnicos'));
+        return view('themes.backoffice.pages.admin.anfitriona.cierre_caja', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'totalPropina', 'cantidadUsuarios', 'propinaPorUsuario', 'usuariosUnicos', 'propinasVentaDirecta', 'propinas'));
 
 
     }

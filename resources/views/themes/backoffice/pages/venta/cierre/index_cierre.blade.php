@@ -90,7 +90,7 @@
                         <tr>
                             <td>
                                 <a href="{{route('backoffice.reserva.show', $reserva)}}">
-                                    {{$reserva->cliente->nombre_cliente}}
+                                    {{$reserva->cliente->nombre_cliente ?? 'Desconocido'}}
                                 </a>
                             </td>
                             <td>
@@ -102,7 +102,7 @@
                             </td>
                             <td>
                                 @if (!is_null($visita->id_ubicacion))
-                                    {{$visita->ubicacion->nombre}}
+                                    {{$visita->ubicacion->nombre ?? 'No registra ubicación'}}
                                 @else
                                     <a id="noRegistra" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}">No registra ubicación.</a>
                                 @endif
@@ -149,7 +149,6 @@
                         </tr>
                         @endforeach
                         
-
                         
                         
                         </tbody>

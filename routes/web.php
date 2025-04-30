@@ -249,6 +249,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::post('barman/bebidas/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
     Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
 
+
+    // Ruta Delete para eliminar detalle de consumo
+    Route::delete('/consumo/detalle/{tipo}/{id}', 'ConsumoController@destroyDetalle')->name('consumo.detalle.destroy');
+
     
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('barman', 'BarmanController');

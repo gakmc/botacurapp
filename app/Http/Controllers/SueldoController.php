@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\Consumo;
 use App\Propina;
 use App\Sueldo;
 use App\User;
+use App\VentaDirecta;
 use Exception;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Cache;
@@ -229,25 +231,52 @@ class SueldoController extends Controller
             ->first();
 
         // Obtener propinas del día con las relaciones necesarias
-        $propinas = Propina::with('propinable.venta.reserva')
+        $propinas = Propina::with('propinable')
         ->whereDate('fecha', $fecha)
         ->get();
     
+
+
 
         // Filtrar solo las asignaciones del usuario actual
         $asignaciones = collect();
         $total_propina_usuario = 0;
 
+        // foreach ($propinas as $propina) {
+        //     $pivot = $propina->users()->where('users.id', $user->id)->first();
+        //     if ($pivot) {
+        //         $asignaciones->push((object)[
+        //             'nombre_cliente' => optional($propina->propinable->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido',
+        //             'monto_asignado' => $pivot->pivot->monto_asignado,
+        //         ]);
+        //         $total_propina_usuario += $pivot->pivot->monto_asignado;
+        //     }
+        // }
+
+
         foreach ($propinas as $propina) {
             $pivot = $propina->users()->where('users.id', $user->id)->first();
             if ($pivot) {
+                $nombre_cliente = 'Desconocido';
+        
+                if ($propina->propinable) {
+                    if ($propina->propinable_type == VentaDirecta::class) {
+                        $nombre_cliente = 'Venta Directa';
+                    } elseif ($propina->propinable_type == Consumo::class) {
+                        $nombre_cliente = optional($propina->propinable->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido';
+                    }
+                }
+        
                 $asignaciones->push((object)[
-                    'nombre_cliente' => optional($propina->propinable->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido',
+                    'nombre_cliente' => $nombre_cliente,
                     'monto_asignado' => $pivot->pivot->monto_asignado,
                 ]);
+        
                 $total_propina_usuario += $pivot->pivot->monto_asignado;
             }
         }
+
+        dd($propinas,$asignaciones);
 
         return view('themes.backoffice.pages.sueldo.detalle_diario', [
             'user' => $user,

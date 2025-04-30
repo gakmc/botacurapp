@@ -40,7 +40,7 @@ class ConsumoController extends Controller
 
     public function service_store(Request $request, Venta $venta)
     {
-        dd($request);
+
 
         DB::transaction(function () use ($request, &$venta) {
             // Verificar si ya existe un consumo para esta venta
@@ -268,5 +268,40 @@ class ConsumoController extends Controller
     public function destroy(Consumo $consumo)
     {
         //
+    }
+
+    public function destroyDetalle($tipo, $id){
+        
+        
+        if($tipo === 'consumo'){
+            $detalle = DetalleConsumo::with('consumo')->findOrFail($id);
+            $consumo = $detalle->consumo;
+            $consumo->subtotal -= $detalle->subtotal;
+            $consumo->total_consumo -= $detalle->subtotal*1.1;
+
+            $consumo->subtotal = max($consumo->subtotal, 0);
+            $consumo->total_consumo = max($consumo->total_consumo, 0);
+            $consumo->save();
+            $detalle->delete();
+
+        }else if($tipo === 'servicio'){
+            $detalle = DetalleServiciosExtra::with('consumo')->findOrFail($id);
+            $consumo = $detalle->consumo;
+
+            $consumo->subtotal -= $detalle->subtotal;
+            $consumo->total_consumo -= $detalle->subtotal;
+
+            $consumo->subtotal = max($consumo->subtotal, 0);
+            $consumo->total_consumo = max($consumo->total_consumo, 0);
+
+            $consumo->save();
+            $detalle->delete();
+        }else{
+            return back()->with('error', 'Tipo de detalle no válido');
+        }
+
+        $tipoCapitalizado = ucfirst($tipo);
+
+        return back()->with('success', $tipoCapitalizado.' eliminado correctamente');
     }
 }

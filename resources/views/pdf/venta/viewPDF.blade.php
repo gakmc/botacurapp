@@ -163,9 +163,10 @@
             @endif
         </div>
 
+        @if (!is_null($consumo) && $consumo->detalleServiciosExtra)
+        @if ($consumo->detalleServiciosExtra->isNotEmpty())
         <div>
             <h5 class="primario">Servicio Extra</h5>
-            @if (!is_null($consumo))
 
                 <table class="striped centered">
                     <thead>
@@ -189,8 +190,9 @@
 
                     </tbody>
                 </table>
+            </div>
             @endif
-        </div>
+            @endif
 
         <br>
 
@@ -198,14 +200,21 @@
             <h5 class="primario">Diferencia Visita</h5>
             <h6 class="left"><span class="primario">Diferencia:</span></h6>
             <h6 class="right"><span>${{number_format($diferencia,0,'','.')}}</span></h6>
+            {{-- Diferencia o total --}}
             <h6 class="center">  </h6>
         </div>
         <br>
         <br>
         <div>
-            <h6 class="left"><span class="primario" style="font-weight: bold">Total a Pagar: </span> 
-                ${{number_format($venta->diferencia_programa,0,'','.')}}
-            </h6>
+            @if ($venta->diferencia_programa != null || $venta->diferencia_programa > 0)
+                <h6 class="left"><span class="primario" style="font-weight: bold">Total Pagado: </span> 
+                    ${{number_format($venta->diferencia_programa,0,'','.')}}
+                </h6>
+            @else
+                <h6 class="left"><span class="primario" style="font-weight: bold">Total a Pagar: </span> 
+                    ${{number_format($venta->total_pagar,0,'','.')}}
+                </h6>
+            @endif
 
         </div>
         <br>

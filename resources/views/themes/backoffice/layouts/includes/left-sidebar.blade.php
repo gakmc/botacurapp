@@ -63,7 +63,7 @@
         <li class="no-padding">
             <ul class="collapsible" data-collapsible="accordion">
 
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                 <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.admin.show') }}">
                         <i class="material-icons">
@@ -103,7 +103,7 @@
                 </li>
                 @endif
 
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
                 <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reserva.index') }}">
@@ -118,7 +118,7 @@
 
                 @endif
 
-                @if(Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.admin_role')))
+                @if(Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reserva.venta.cierre') }}">
@@ -236,7 +236,7 @@
 
                 @endif
                 
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.garzon_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.venta_directa.index') }}">

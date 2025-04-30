@@ -127,6 +127,38 @@
     });
 </script>
 
+<script>
+        @if(session('success'))
+        Swal.fire({
+            toast: true,
+            icon: 'success',
+            title: '{{ session('success') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
+
+    @if(session('error'))
+        Swal.fire({
+            toast: true,
+            icon: 'error',
+            title: '{{ session('error') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
+</script>
+
 {{-- Vista Movil --}}
 {{-- <script>
 
