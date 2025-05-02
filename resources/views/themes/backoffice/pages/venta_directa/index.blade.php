@@ -51,11 +51,14 @@
                                     <td>
                                         {{-- <a href="{{ route('backoffice.venta_directa.show', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light blue"><i class="material-icons">visibility</i></a> --}}
                                         <a href="#modal{{$ventaDirecta->id }}" class="btn-floating btn-small waves-effect waves-light blue modal-trigger"><i class="material-icons">visibility</i></a>
+
+
                                         @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')) )
                                         
-                                        {{-- EN PROCESO --}}
-                                        {{-- <a href="{{ route('backoffice.venta_directa.edit', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light purple"><i class="material-icons">edit</i></a>
-                                        <a href="{{ route('backoffice.venta_directa.destroy', $ventaDirecta->id) }}" class="btn-floating btn-small waves-effect waves-light red"><i class="material-icons">delete</i></a> --}}
+                                            {{-- EN PROCESO --}}
+                                            <a href="{{ route('backoffice.venta_directa.edit', $ventaDirecta) }}" class="btn-floating btn-small waves-effect waves-light purple"><i class="material-icons">edit</i></a>
+
+                                            <a href="#" class="btn-floating btn-small waves-effect waves-light red btn-eliminar-venta" data-url="{{ route('backoffice.venta_directa.destroy', ['venta_directum' => $ventaDirecta->id]) }}"><i class="material-icons">delete</i></a>
                                             
                                         @endif
 
@@ -73,7 +76,11 @@
                         </tbody>
                     </table>
 
-
+                    <form id="form-eliminar-venta" method="POST" style="display: none;">
+                        @csrf
+                        @method('DELETE')
+                    </form>
+                    
                 </div>
             </div>
         </div>
@@ -86,6 +93,34 @@
     $(document).ready(function() {
         $('select').material_select();
         $('.modal').modal();
+    });
+</script>
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        document.querySelectorAll('.btn-eliminar-venta').forEach(function (btn) {
+            btn.addEventListener('click', function (e) {
+                e.preventDefault();
+                const url = this.dataset.url;
+    
+                Swal.fire({
+                    title: '¿Estás seguro?',
+                    text: "Esta acción no se puede deshacer",
+                    icon: 'error',
+                    showCancelButton: true,
+                    confirmButtonColor: '#d33',
+                    cancelButtonColor: '#aaa',
+                    confirmButtonText: 'Sí, eliminar',
+                    cancelButtonText: 'Cancelar'
+                }).then((result) => {
+                    if (result.isConfirmed) {
+                        const form = document.getElementById('form-eliminar-venta');
+                        form.setAttribute('action', url);
+                        form.submit();
+                    }
+                });
+            });
+        });
     });
 </script>
 @endsection

@@ -60,11 +60,11 @@
                 </h5>
             @else
 
-                    <table class="">
+                    <table>
                         <thead>
                             <tr>
                                 <th>Nombre</th>
-                                <th>WhatsApp</th>
+                                {{-- <th>WhatsApp</th> --}}
                                 <th>Ubicacion</th>
                                 <th>Acciones</th>
                             </tr>
@@ -81,7 +81,8 @@
                                     $asignar = true;
                                 }
                             }
-                            @endphp
+                        @endphp
+
                         @php
                             $visita   = $reserva->visitas->last();
                             $visitas  = $reserva->visitas;
@@ -93,13 +94,13 @@
                                     {{$reserva->cliente->nombre_cliente ?? 'Desconocido'}}
                                 </a>
                             </td>
-                            <td>
+                            {{-- <td>
                                 @if(is_null($reserva->cliente->whatsapp_cliente)) 
                                     No Registra
                                 @else
                                     <a href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}" target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                                 @endif
-                            </td>
+                            </td> --}}
                             <td>
                                 @if (!is_null($visita->id_ubicacion))
                                     {{$visita->ubicacion->nombre ?? 'No registra ubicación'}}
@@ -108,19 +109,12 @@
                                 @endif
                             </td>
                             <td>
-                                <a class='dropdown-ventas btn-flat' href='#' data-activates='dropdown-{{$reserva->id}}'><i class='material-icons'>more_vert</i></a>
+                                {{-- <a class='dropdown-ventas btn-flat' href='#' data-activates='dropdown-{{$reserva->id}}'><i class='material-icons'>more_vert</i></a>
 
 
                                 <ul id='dropdown-{{$reserva->id}}' class='dropdown-content'>
                                     @if (is_null($reserva->venta->diferencia_programa))
                                         @if(!empty($consumo))
-                                            
-                                                {{-- <td>
-                                                    <a href="#modal-{{$reserva->id}}"
-                                                        class="collection-item center-align valign-wrapper left modal-trigger"><i class='material-icons left blue-text' data-position="bottom" data-tooltip="Ver Consumo">remove_red_eye</i>Ver Consumo
-                                                
-                                                    </a>
-                                                </td> --}}
         
                                                 <li><a href="#modal-{{$reserva->id}}" class="modal-trigger"><i class="material-icons">remove_red_eye</i>Ver Consumo</a></li>
                                             
@@ -135,16 +129,33 @@
                                         <li><a href="{{ $asignar ? route('backoffice.reserva.venta.cerrar', ['reserva' => $reserva, 'ventum' => $reserva->venta]) : 'javascript:void(0)' }}" class="collection-item center-align valign-wrapper left {{ !$asignar ? 'btn-alerta' : '' }}"><i class="material-icons">attach_money</i>Cerrar venta</a></li>
                             
                                     @else
-                                        {{-- <td>
-                                            <a class="collection-item center-align valign-wrapper left" href="{{ route('backoffice.venta.pdf', $reserva) }}"
-                                                target="_blank">
-                                                <i class="material-icons tooltipped" data-position="bottom" data-tooltip="PDF Venta">picture_as_pdf</i>
-                                            </a>
-                                        </td> --}}
                                         <li><a href="{{ route('backoffice.venta.pdf', $reserva) }}" target="_blank"><i class="material-icons">picture_as_pdf</i>PDF venta</a></li>
                                     @endif
-                                </ul>
+                                </ul> --}}
+
+
+
+                                @if (is_null($reserva->venta->diferencia_programa))
+                                    @if(!empty($consumo))
+                                        
+                                        <a href="#modal-{{$reserva->id }}" class="btn-floating btn-small waves-effect waves-light blue modal-trigger tooltipped" data-position="bottom" data-tooltip="Ver consumo"><i class="material-icons">remove_red_eye</i></a>
+                                    @endif
+
+                                    <a href="#modalVenta" class="btn-floating btn-small waves-effect waves-light purple  modal-trigger tooltipped" data-position="bottom" data-tooltip="Detalles Venta" data-id="{{ $reserva->venta->id }}" data-diferencia="{{ $reserva->venta->diferencia_programa }}" data-totalpagar="{{$reserva->venta->total_pagar}}" data-consumo="{{$consumo}}"><i class="material-icons">view_list</i></a>
+
+                                    <a href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}" class="btn-floating btn-small waves-effect waves-light pink tooltipped" data-position="bottom" data-tooltip="Ingresar consumo" ><i class="material-icons">local_bar</i></a>
+
+                                    <a href="{{ $asignar ? route('backoffice.reserva.venta.cerrar', ['reserva' => $reserva, 'ventum' => $reserva->venta]) : 'javascript:void(0)' }}" class="btn-floating btn-small waves-effect waves-light green {{ !$asignar ? 'btn-alerta' : '' }} tooltipped" data-position="bottom" data-tooltip="Cerrar venta"><i class="material-icons">attach_money</i></a>
+
+                                @else
+                                    <a href="{{ route('backoffice.venta.pdf', $reserva) }}" class="btn-floating btn-small waves-effect waves-light red tooltipped" data-position="bottom" data-tooltip="PDF venta" target="_blank"><i class="material-icons">picture_as_pdf</i>PDF venta</a>
+                                @endif
+
+
+
+
                             </td>
+
                             
                         </tr>
                         @endforeach

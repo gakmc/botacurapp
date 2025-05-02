@@ -470,24 +470,48 @@ class AdminController extends Controller
         $ventasPendientes = $result->sum('pendiente');
     
         // Mantener resumen por tipo de transacción
+        // $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+        //     $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+        //                   ->whereHas('reserva', function ($query) use ($mes, $anio) {
+        //                       $query->whereMonth('fecha_visita', $mes)
+        //                             ->whereYear('fecha_visita', $anio);
+        //                   })
+        //                   ->count();
+    
+        //     $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+        //                        ->whereHas('reserva', function ($query) use ($mes, $anio) {
+        //                            $query->whereMonth('fecha_visita', $mes)
+        //                                  ->whereYear('fecha_visita', $anio);
+        //                        })
+        //                        ->count();
+    
+        //     $tipo->total_abonos = $abono;
+        //     $tipo->total_diferencias = $diferencia;
+    
+        //     return $tipo;
+        // });
+
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+            // Suma de abonos donde el tipo de transacción de abono coincide
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                          ->whereHas('reserva', function ($query) use ($mes, $anio) {
+                          ->whereHas('reserva', function ($query) use ($mes, $anio ) {
                               $query->whereMonth('fecha_visita', $mes)
                                     ->whereYear('fecha_visita', $anio);
                           })
-                          ->count();
-    
+                          ->sum('abono_programa');
+        
+            // Suma de diferencias donde el tipo de transacción de diferencia coincide
             $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
                                ->whereHas('reserva', function ($query) use ($mes, $anio) {
                                    $query->whereMonth('fecha_visita', $mes)
                                          ->whereYear('fecha_visita', $anio);
                                })
-                               ->count();
-    
+                               ->sum('diferencia_programa');
+        
+            // Se asigna al objeto TipoTransaccion
             $tipo->total_abonos = $abono;
             $tipo->total_diferencias = $diferencia;
-    
+        
             return $tipo;
         });
 
@@ -580,26 +604,52 @@ class AdminController extends Controller
             ->whereDay('fecha_visita', $dia);
         })->paginate(20);
 
+        // $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
+        //     $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+        //                   ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
+        //                       $query->whereMonth('fecha_visita', $mes)
+        //                             ->whereYear('fecha_visita', $anio)
+        //                             ->whereDay('fecha_visita', $dia);
+        //                   })
+        //                   ->count();
+    
+        //     $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+        //                        ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+        //                            $query->whereMonth('fecha_visita', $mes)
+        //                                  ->whereYear('fecha_visita', $anio)
+        //                                  ->whereDay('fecha_visita', $dia);
+        //                        })
+        //                        ->count();
+    
+        //     $tipo->total_abonos = $abono;
+        //     $tipo->total_diferencias = $diferencia;
+    
+        //     return $tipo;
+        // });
+
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
+            // Suma de abonos donde el tipo de transacción de abono coincide
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
                           ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
                               $query->whereMonth('fecha_visita', $mes)
                                     ->whereYear('fecha_visita', $anio)
                                     ->whereDay('fecha_visita', $dia);
                           })
-                          ->count();
-    
+                          ->sum('abono_programa');
+        
+            // Suma de diferencias donde el tipo de transacción de diferencia coincide
             $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
                                ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
                                    $query->whereMonth('fecha_visita', $mes)
                                          ->whereYear('fecha_visita', $anio)
                                          ->whereDay('fecha_visita', $dia);
                                })
-                               ->count();
-    
+                               ->sum('diferencia_programa');
+        
+            // Se asigna al objeto TipoTransaccion
             $tipo->total_abonos = $abono;
             $tipo->total_diferencias = $diferencia;
-    
+        
             return $tipo;
         });
 
@@ -627,6 +677,11 @@ class AdminController extends Controller
             $ventasPendientes += $venta->total_pagar;
         }
 
+        $propinasVentaDirecta = VentaDirecta::whereDay('fecha', $dia)
+        ->whereMonth('fecha', $mes)
+        ->whereYear('fecha', $anio)
+        ->get();
+
         // $ventas = Venta::whereYear('created_at', $anio)
         //     ->whereMonth('created_at', $mes)
         //     ->paginate(20); // o sin paginar, si prefieres
@@ -635,7 +690,7 @@ class AdminController extends Controller
         ->locale('es')
         ->translatedFormat('d \d\e F \d\e Y');
 
-        return view('themes.backoffice.pages.admin.finanzas.detalle-dia', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'));
+        return view('themes.backoffice.pages.admin.finanzas.detalle-dia', compact('ventas', 'nombreMes', 'anio', 'mes','dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'propinasVentaDirecta'));
 
 
     }

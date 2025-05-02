@@ -77,7 +77,7 @@
 
                 @endif
 
-                @if (Auth::user()->has_role(config('app.admin_role')))
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     
 
                 <li class="bold">
@@ -101,6 +101,7 @@
                         </span>
                     </a>
                 </li>
+
                 @endif
 
                 @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
@@ -157,7 +158,7 @@
 
                 @endif
 
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.cocina_role')))
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.jefe_local_role'))) 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.insumo.index') }}">
                             <i class="material-icons">
@@ -288,6 +289,10 @@
                         </a>
                     </li>
 
+                @endif
+
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
+
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.asignacion.index') }}">
                             <i class="material-icons">
@@ -298,6 +303,11 @@
                             </span>
                         </a>
                     </li>
+
+                @endif
+
+
+                @if (Auth::user()->has_role(config('app.admin_role')))
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">

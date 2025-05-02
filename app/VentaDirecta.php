@@ -22,6 +22,22 @@ class VentaDirecta extends Model
         'id_user',
     ];
 
+    protected static function boot()
+    {
+        parent::boot();
+
+        static::deleting(function ($ventaDirecta) {
+            // Eliminar detalles asociados
+            $ventaDirecta->detalles()->delete();
+
+            // Eliminar propina si existe
+            if ($ventaDirecta->propina) {
+                $ventaDirecta->propina->delete();
+            }
+        });
+    }
+
+
     public function tipoTransaccion()
     {
         return $this->belongsTo(TipoTransaccion::class, 'id_tipo_transaccion');

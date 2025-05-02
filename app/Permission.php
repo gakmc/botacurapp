@@ -18,12 +18,12 @@ class Permission extends Model
     // RELACIONES 
     public function role() 
     {
-        return $this->belongsTo('App\Role');
+        return $this->belongsTo(Role::class, 'role_id');
     }
     
     public function users()
     {
-        return $this->belongsToMany('App\User')->withTimestamps();
+        return $this->belongsToMany(User::class)->withTimestamps();
     }
 
 

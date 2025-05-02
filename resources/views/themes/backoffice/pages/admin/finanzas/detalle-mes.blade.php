@@ -42,18 +42,27 @@
                                 <tbody>
                                     @foreach ($ventasAgrupadas as $venta)
                                         <tr>
-                                            <td><a href="{{route('backoffice.admin.ingresos.detalleDia', [$anio, $mes, $venta->dia])}}">{{ \Carbon\Carbon::parse($venta->fecha)->format('d-m-Y') }}</a></td>
-                                            <td class="green-text">${{ number_format($venta->abono, 0, ',', '.') }}</td>
-                                            @if ($venta->diferencia == null)
+                                            <td>
+                                                <a href="{{route('backoffice.admin.ingresos.detalleDia', [$anio, $mes, $venta->dia])}}">
+                                                    {{ \Carbon\Carbon::parse($venta->fecha)->format('d-m-Y') }}
+                                                </a>
+                                            </td>
+                                            <td class="green-text">
+                                                ${{ number_format($venta->abono, 0, ',', '.') }}
+                                            </td>
+                                            
+                                            @if ($venta->diferencia == null && $venta->pendiente > 0)
                                                 <td>Por pagar</td>
                                             @else
-                                                <td class="green-text">${{ number_format($venta->total_pagar-$venta->abono, 0, ',', '.') }}</td>
+                                                <td class="green-text">${{ number_format($venta->diferencia, 0, ',', '.') }}</td>
                                                 {{-- CONSIDERAR RESTAR TOTAL PAGAR DE ABONO --}}
                                             @endif
+
+
                                             <td @if ($venta->pendiente > 0) class="red-text" @endif>
                                                 ${{ number_format($venta->pendiente, 0, ',', '.') }}
                                             </td>
-                                            <td>${{ number_format($venta->total_pagar, 0, ',', '.') }}</td>
+                                            <td>${{ number_format($venta->abono+$venta->diferencia, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -80,14 +89,14 @@
                                     <a href="#!" class="collection-item"><span class="badge red white-text">${{number_format($ventasPendientes,0,'','.')}}</span>Saldo Pendiente</a>
                                 </div>
                             </div> --}}
-                            <div class="col s6">
+                            <div class="col s12 m3">
                                 <h5><strong>Resumen de transacciones</strong></h5>
-                                <table>
+                                <table class="striped bordered">
                                     <thead>
                                       <tr>
-                                          <th>Tipo Transaccion</th>
-                                          <th>Abono</th>
-                                          <th>Diferencia</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Tipo Transaccion</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Abono</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
                                       </tr>
                                     </thead>
                             
@@ -98,22 +107,31 @@
                                             @endphp
                                             <tr>
                                                 <td>{{$tipo->nombre}}</td>
-                                                <td>{{ $tipo->total_abonos }}</td>
-                                                <td>{{ $tipo->total_diferencias }}</td>
+                                                <td>${{ number_format($tipo->total_abonos,0,'','.') }}</td>
+                                                <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
+                                    <tr>
+                                        <td style=" text-align: center;"><strong>Subtotal:</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style=" text-align: center;"><strong>Total:</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                    </tr>
                                 </table>
                             </div>
 
 
-                            <div class="col s6">
+                            <div class="col s12 m3">
                                 <h5><strong>Resumen de programas</strong></h5>
-                                <table>
+                                <table class="striped centered">
                                     <thead>
                                       <tr>
-                                          <th>Programa</th>
-                                          <th>Contratado</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Programa</th>
+                                          {{-- <th>Contratado</th> --}}
                                       </tr>
                                     </thead>
                             
@@ -121,20 +139,14 @@
                                         @foreach ($programas as $programa)
                                             @php
                                                 // dd($programa->count());
+                                                $contratado = ($programa->total_programas == 0 || $programa->total_programas > 1) ? 'contratados' : 'contratado';
                                             @endphp
                                             <tr>
-                                                <td>{{$programa->nombre_programa}}</td>
-                                                <td>
-                                                    {{ $programa->total_programas }}
-                                                    @if ($programa->total_programas == 0 || $programa->total_programas > 1)
-                                                        veces
-                                                    @else
-                                                        vez
-                                                    @endif
-                                                </td>
+                                                <td>{{$programa->nombre_programa}}: {{$programa->total_programas }} {{$contratado}}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
+                                    
                                 </table>
                             </div>
                         </div>
