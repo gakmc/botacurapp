@@ -14,7 +14,7 @@
                                 Perfil
                             </a>
                         </li>
-                        @if (Auth::user()->has_any_role([config('app.garzon_role') , config('app.anfitriona_role') , config('app.barman_role'), config('app.cocina_role')]))     
+                        @if (Auth::user()->has_any_role([config('app.garzon_role') , config('app.anfitriona_role') , config('app.barman_role'), config('app.cocina_role'), config('app.jefe_local_role')]))     
                         <li>
                             <a class="grey-text text-darken-1" href="{{route('backoffice.sueldo.view', Auth::user())}}">
                                 <i class="material-icons">account_balance_wallet</i>

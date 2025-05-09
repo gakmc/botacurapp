@@ -49,7 +49,7 @@ class AsignacionController extends Controller
         // })->get();
 
         $users = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
         })->get();
 
         return view('themes.backoffice.pages.asignacion.create', ['fecha'=>$fecha, 'users'=>$users]);
@@ -90,7 +90,7 @@ class AsignacionController extends Controller
     public function edit(asignacion $asignacion)
     {
         $users = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
         })->get();
 
         $fecha = $asignacion->fecha;

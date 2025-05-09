@@ -164,7 +164,7 @@ class AdminController extends Controller
         Carbon::setLocale('es');
         // Obtener usuarios con roles especificos
         $usuarios = User::whereHas('roles', function ($query) {
-            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+            $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
         })->get();
 
         $inicioSemana = Carbon::now()->startOfWeek();
@@ -273,7 +273,7 @@ class AdminController extends Controller
 
     //     // Obtener usuarios con roles específicos
     //     $usuarios = User::whereHas('roles', function ($query) {
-    //         $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon']);
+    //         $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
     //     })->get();
 
     //     $inicioSemana = Carbon::now()->startOfWeek();
@@ -629,26 +629,58 @@ class AdminController extends Controller
 
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
             // Suma de abonos donde el tipo de transacción de abono coincide
+            // $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+            //               ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
+            //                   $query->whereMonth('fecha_visita', $mes)
+            //                         ->whereYear('fecha_visita', $anio)
+            //                         ->whereDay('fecha_visita', $dia);
+            //               })
+            //               ->sum('abono_programa');
+
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
-                              $query->whereMonth('fecha_visita', $mes)
-                                    ->whereYear('fecha_visita', $anio)
-                                    ->whereDay('fecha_visita', $dia);
-                          })
-                          ->sum('abono_programa');
+                ->whereHas('reserva', function ($query) use ($anio, $mes, $dia) {
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereDay('fecha_visita', $dia);
+                })
+                ->sum('abono_programa');
         
-            // Suma de diferencias donde el tipo de transacción de diferencia coincide
-            $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
-                               ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
-                                   $query->whereMonth('fecha_visita', $mes)
-                                         ->whereYear('fecha_visita', $anio)
-                                         ->whereDay('fecha_visita', $dia);
-                               })
-                               ->sum('diferencia_programa');
-        
-            // Se asigna al objeto TipoTransaccion
-            $tipo->total_abonos = $abono;
-            $tipo->total_diferencias = $diferencia;
+            // // Suma de diferencias donde el tipo de transacción de diferencia coincide
+            // $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+            //                    ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+            //                        $query->whereMonth('fecha_visita', $mes)
+            //                              ->whereYear('fecha_visita', $anio)
+            //                              ->whereDay('fecha_visita', $dia);
+            //                    })
+            //                    ->sum('diferencia_programa');
+
+
+
+
+                        // Suma de pagos del campo pago1 con tipo 1
+            $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes, $dia) {
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereDay('fecha_visita', $dia);
+                })
+                ->sum('pago1');
+
+            // Suma de pagos del campo pago2 con tipo 2 (solo si no es null)
+            $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
+                ->whereNotNull('pago2')
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes, $dia) {
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereDay('fecha_visita', $dia);
+                })
+                ->sum('pago2');
+
+                
+                // Se asigna al objeto TipoTransaccion
+                $tipo->total_abonos = $abono;
+                // $tipo->total_diferencias = $diferencia;
+                $tipo->total_diferencias = $total_pago1 + $total_pago2;
         
             return $tipo;
         });
@@ -775,31 +807,58 @@ class AdminController extends Controller
         })->with('consumo.propina.users')->paginate(20);
 
 
+        // $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
+        //     // Suma de abonos donde el tipo de transacción de abono coincide
+        //     $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+        //                   ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
+        //                       $query->whereMonth('fecha_visita', $mes)
+        //                             ->whereYear('fecha_visita', $anio)
+        //                             ->whereDay('fecha_visita', $dia);
+        //                   })
+        //                   ->sum('abono_programa');
+        
+        //     // Suma de diferencias donde el tipo de transacción de diferencia coincide
+        //     $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+        //                        ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
+        //                            $query->whereMonth('fecha_visita', $mes)
+        //                                  ->whereYear('fecha_visita', $anio)
+        //                                  ->whereDay('fecha_visita', $dia);
+        //                        })
+        //                        ->sum('diferencia_programa');
+        
+        //     // Se asigna al objeto TipoTransaccion
+        //     $tipo->total_abonos = $abono;
+        //     $tipo->total_diferencias = $diferencia;
+        
+        //     return $tipo;
+        // });
+
+
+
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
-            // Suma de abonos donde el tipo de transacción de abono coincide
-            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                          ->whereHas('reserva', function ($query) use ($mes, $anio, $dia ) {
-                              $query->whereMonth('fecha_visita', $mes)
-                                    ->whereYear('fecha_visita', $anio)
-                                    ->whereDay('fecha_visita', $dia);
-                          })
-                          ->sum('abono_programa');
-        
-            // Suma de diferencias donde el tipo de transacción de diferencia coincide
-            $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
-                               ->whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
-                                   $query->whereMonth('fecha_visita', $mes)
-                                         ->whereYear('fecha_visita', $anio)
-                                         ->whereDay('fecha_visita', $dia);
-                               })
-                               ->sum('diferencia_programa');
-        
-            // Se asigna al objeto TipoTransaccion
-            $tipo->total_abonos = $abono;
-            $tipo->total_diferencias = $diferencia;
-        
+            // Suma de pagos del campo pago1 con tipo 1
+            $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes, $dia) {
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereDay('fecha_visita', $dia);
+                })
+                ->sum('pago1');
+
+            // Suma de pagos del campo pago2 con tipo 2 (solo si no es null)
+            $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
+                ->whereNotNull('pago2')
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes, $dia) {
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes)
+                        ->whereDay('fecha_visita', $dia);
+                })
+                ->sum('pago2');
+
+            $tipo->total_diferencias = $total_pago1 + $total_pago2;
             return $tipo;
         });
+
 
 
         $programas = Programa::all()->map(function ($programa) use ($dia, $mes, $anio) {
@@ -857,11 +916,12 @@ class AdminController extends Controller
         ->with('users')
         ->get();
 
+        
         $propinasVentaDirecta = VentaDirecta::whereDay('fecha', $dia)
-                  ->whereMonth('fecha', $mes)
-                  ->whereYear('fecha', $anio)
-                  ->get();
-
+        ->whereMonth('fecha', $mes)
+        ->whereYear('fecha', $anio)
+        ->get();
+        
 
         $totalPropina = $propinas->sum('cantidad');
 

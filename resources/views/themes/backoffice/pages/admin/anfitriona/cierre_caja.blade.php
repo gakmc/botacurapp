@@ -41,15 +41,7 @@
                             </thead>
  
                                 <tbody>
-                                    @php
 
-                                        if ($propinasVentaDirecta->contains('tiene_propina', true)) {
-                                            $ventaDirectaTotalPropina = $propinasVentaDirecta->sum("subtotal")*0.1;
-                                        }
-
-                                        $totalPosiblePropina = 0;
-                                        
-                                    @endphp
 
                                     @foreach ($ventas as $venta)
                                     @php
@@ -57,16 +49,17 @@
                                         $serviciosSinPropina = 0;
                                         $posiblePropina = 0;
 
-                                        $totalDiferencia = $venta->total_pagar;
+                                        $totalDiferencia = ($venta->total_pagar != 0 && is_null($venta->diferencia_programa)) ? $venta->total_pagar : $venta->diferencia_programa;
+
                                         if ($venta->consumo != null)
                                         {
                                             $consumoSinPropina = $venta->consumo->detallesConsumos->sum("subtotal");  
                                             $serviciosSinPropina = $venta->consumo->detalleServiciosExtra->sum("subtotal");
 
-                                                if ($venta->consumo->detallesConsumos->contains('genera_propina', true)) {
-                                                    $posiblePropina = $consumoSinPropina*0.1;
-                                                    $totalPosiblePropina += $posiblePropina;
-                                                }
+                                                // if ($venta->consumo->detallesConsumos->contains('genera_propina', true)) {
+                                                //     $posiblePropina = $consumoSinPropina*0.1;
+                                                //     $totalPosiblePropina += $posiblePropina;
+                                                // }
                                              
                                         }
 
@@ -74,7 +67,7 @@
                                         <tr>
                                             <td><a href="{{route("backoffice.reserva.show",$venta->reserva->id)}}">{{$venta->reserva->cliente->nombre_cliente}}</a></td>
 
-                                            @if ($venta->diferencia_programa == null)
+                                            @if (is_null($venta->diferencia_programa))
                                                 <td >
                                                     <a class="btn-small disabled"><span class="red-text">Por Pagar</span><i class='material-icons red-text right '>cancel</i></a>
                                                 </td>
@@ -83,8 +76,8 @@
                                                     <a class="btn-small disabled"><span class="green-text">Pagado</span><i class='material-icons green-text right '>check_circle</i></a>
                                                 </td>
                                             @endif
-                                            <td @if ($totalDiferencia > 0) class="red-text" @endif>
-                                                ${{ number_format($totalDiferencia, 0, ',', '.') }}
+                                            <td @if ($venta->total_pagar > 0) class="red-text" @endif>
+                                                ${{ number_format($venta->total_pagar, 0, ',', '.') }}
                                             </td>
 
                                             <td>
@@ -99,12 +92,14 @@
                                             </td>
 
                                             <td>
-                                                {{-- ${{ number_format(optional(optional($venta->consumo)->propina)->cantidad ?? 0, 0, '', '.') }} --}}
-                                                ${{ number_format($posiblePropina ?? 0, 0, '', '.') }}
+                                                ${{ number_format(optional(optional($venta->consumo)->propina)->cantidad ?? 0, 0, ',', '.') }}
                                             </td>
 
+                                            @php
+                                                $propinaReal = optional(optional($venta->consumo)->propina)->cantidad ?? 0;
+                                            @endphp
                                             <td>${{ number_format($consumoSinPropina+$totalDiferencia+$serviciosSinPropina, 0, ',', '.') }}</td>
-                                            <td>${{ number_format($consumoSinPropina+$totalDiferencia+$serviciosSinPropina+$posiblePropina, 0, ',', '.') }}</td>
+                                            <td>${{ number_format($consumoSinPropina+$totalDiferencia+$serviciosSinPropina+$propinaReal, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -199,14 +194,14 @@
                             
                                     <tbody>
 
-                                        <tr>
+                                        {{-- <tr>
                                             <td>
                                                 Propinas Sugeridas:
                                             </td>
                                             <td>
                                                 ${{number_format($totalPosiblePropina+($ventaDirectaTotalPropina ?? 0),0,'','.')}}
                                             </td>
-                                        </tr>
+                                        </tr> --}}
                                         <tr>
                                             <td>
                                                 Propinas Pagadas:

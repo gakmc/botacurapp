@@ -128,22 +128,37 @@
         <h6 class="left"><span class="primario">Propina Sugerida:</span>${{number_format($propina,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Propina Pagada:</span>
 
-            @if ($propinaPagada == "No Aplica")
+            {{-- @if ($propinaPagada == "No Aplica")
                 {{$propinaPagada}}
             @else
-                
-            ${{number_format($propinaPagada,0,'','.')}}</h6>
+                ${{number_format($propinaPagada,0,'','.')}}</h6>
+            @endif --}}
+
+            @if (is_numeric($propinaPagada))
+                ${{ number_format($propinaPagada, 0, ',', '.') }}
+            @else
+                {{ $propinaPagada }}
             @endif
+
         <h6 class="center">  </h6>
     </div>
 <br>
+    @php
+        $montoTotal = is_numeric($propinaPagada) 
+            ? $consumo->subtotal + $propinaPagada 
+            : $consumo->subtotal;
+    @endphp
     <div>
         <h6 class="left"><span class="primario">Subtotal: </span> ${{number_format($consumo->subtotal,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Total: </span>
-            ${{number_format(($propinaPagada != 'No Aplica') ? $consumo->subtotal + $propinaPagada : $consumo->subtotal,0,'','.')}}</h6>
+            ${{number_format($montoTotal,0,'','.')}}</h6>
             @if ($total !== 0)
             <h6 class="center "><span class="primario">Propina: </span>
-                ${{number_format($propinaPagada,0,'','.')}}
+                @if (is_numeric($propinaPagada))
+                    ${{ number_format($propinaPagada, 0, ',', '.') }}
+                @else
+                    {{ $propinaPagada }}
+                @endif
             </h6>
             @else
                 

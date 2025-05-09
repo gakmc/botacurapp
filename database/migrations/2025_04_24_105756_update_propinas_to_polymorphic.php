@@ -42,7 +42,7 @@ class UpdatePropinasToPolymorphic extends Migration
             $table->dropColumn(['propinable_id', 'propinable_type']);
 
             // Restaurar el campo id_consumo (si lo deseas)
-            $table->unsignedBigInteger('id_consumo')->nullable()->after('cantidad');
+            $table->unsignedInteger('id_consumo')->after('cantidad');
             $table->foreign('id_consumo')->references('id')->on('consumos')
             ->onDelete('cascade')
             ->onUpdate('cascade');

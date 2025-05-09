@@ -19,8 +19,10 @@ use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 // use PDF;
 use Barryvdh\DomPDF\Facade\Pdf;
+use Illuminate\Support\Facades\Log;
 // use Barryvdh\Snappy\Facades\SnappyPdf;
 use RealRashid\SweetAlert\Facades\Alert;
+use Illuminate\Support\Str;
 
 class VentaController extends Controller
 {
@@ -139,207 +141,324 @@ class VentaController extends Controller
 
     public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
     {
+
         $request->merge([
-            'diferencia_programa' => (int) str_replace(['$', '.', ','], '', $request->diferencia_programa),
-            'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+            'consumo_bruto'         => (int) str_replace(['$', '.', ','], '', $request->consumo_bruto),
             'propinaValue'        => (int) str_replace(['$', '.', ','], '', $request->propinaValue),
-            'valor_consumo'       => (int) str_replace(['$', '.', ','], '', $request->valor_consumo),
-            'abono_programa'      => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
-            'conPropina'      => (int) str_replace(['$', '.', ','], '', $request->conPropina),
+            'conPropina'       => (int) str_replace(['$', '.', ','], '', $request->conPropina),
+            'servicio_bruto'       => (int) str_replace(['$', '.', ','], '', $request->servicio_bruto),
+            'servicio_consumo'       => (int) str_replace(['$', '.', ','], '', $request->sinPropina),
+            'pago1'       => (int) str_replace(['$', '.', ','], '', $request->pago1),
+            'pago2'       => (int) str_replace(['$', '.', ','], '', $request->pago2),
+            
             'diferencia'      => (int) str_replace(['$', '.', ','], '', $request->diferencia),
+            'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
         ]);
 
+        $request->validate([
+            'propinaValue' => 'nullable|integer|min:0',
+            'pago1'        => 'required_if:dividir_pago,on|integer|min:0',
+            'pago2'        => 'required_if:dividir_pago,on|integer|min:0',
+            'id_tipo_transaccion_diferencia' => 'nullable|exists:tipos_transacciones,id',
+            'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id',
+            'id_tipo_transaccion2' => 'nullable|exists:tipos_transacciones,id',
+        ]);
+
+        // dd($request->all());
+        
         $venta       = $ventum;
         $consumo     = $venta->consumo;
         $cliente     = $reserva->cliente->nombre_cliente;
         $pagoConsumo = null;
         
-        DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
+        try {
             
-            // Verifica si el campo está en el request y luego asignar campo
-            if ($request->has('total_pagar')) {
-                $venta->diferencia_programa = $request->input('total_pagar');
-                $venta->total_pagar = $request->input('total_pagar') - $venta->diferencia_programa;
-            }
 
-            // Generar url para almacenar imagen
-            $url_diferencia = null;
-            $filename       = null;
-            if ($request->hasFile('imagen_diferencia')) {
+            DB::transaction(function () use ($request, &$venta, $reserva, $consumo, &$pagoConsumo) {
+                
+                // Modificar los valores en la tabla venta
+                $venta->diferencia_programa = $request->input('diferencia');
+                $venta->total_pagar = 0;
+                $venta->id_tipo_transaccion_diferencia = ($request->has('id_tipo_transaccion_diferencia') ? $request->id_tipo_transaccion_diferencia : $request->id_tipo_transaccion_diferencia_dividida);
 
-                $diferencia     = $request->file('imagen_diferencia');
-                $filename       = time() . '-' . $diferencia->getClientOriginalName();
-                $url_diferencia = 'temp/' . $filename; // Almacenamiento temporal
-                Storage::disk('imagen_diferencia')->put($url_diferencia, File::get($diferencia));
 
-            }
+                $pagoConsumo = PagoConsumo::create([
+                    "valor_consumo" => $request->total_pagar,
+                    "pago1"         => 0,
+                    "pago2"         => 0,
+                    "imagen_pago1"  => null,
+                    "imagen_pago2"  => null,
+                    "id_venta"    => $venta->id,
+                    "id_tipo_transaccion1" => ($request->has('id_tipo_transaccion_diferencia') ? $request->id_tipo_transaccion_diferencia : $request->id_tipo_transaccion_diferencia_dividida),
+                    "id_tipo_transaccion2" => null,
 
-            // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
-            if ($filename) {
-                $finalPath = '/' . $filename;
-                Storage::disk('imagen_diferencia')->move('temp/' . $filename, $finalPath);
-                $venta->imagen_diferencia = $finalPath;
-            }
+                ]);
 
-            if ($request->has('id_tipo_transaccion_diferencia')) {
-                $venta->id_tipo_transaccion_diferencia = $request->input('id_tipo_transaccion_diferencia');
-            }
+                if ($request->has('dividir_pago')) {
 
-            // if ($request->has('descuento')) {
-            //     $venta->descuento = $request->input('descuento');
+
+                    if ($request->hasFile('imagen_diferencia_dividida')) {
+
+                        //* Se cambio el almacenamiento por un metodo mas limpio
+                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_diferencia_dividida'));
+                        $venta->imagen_diferencia = $ruta;
+                        $pagoConsumo->imagen_pago1 = $ruta;
+        
+                    }
+
+
+                    if ($request->hasFile('imagen_pago2')) {
+
+                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_pago2'));
+                        $pagoConsumo->imagen_pago2 = $ruta;
+
+                    }
+        
+
+        
+                    if ($request->has('id_tipo_transaccion2')) {
+                        $pagoConsumo->id_tipo_transaccion2 = $request->input('id_tipo_transaccion2');
+                    }
+
+                    $pagoConsumo->pago1 = $request->input('pago1');
+                    $pagoConsumo->pago2 = $request->input('pago2');
+
+                }else {
+
+                    if ($request->hasFile('imagen_diferencia')) {
+
+
+                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_diferencia'));
+                        $venta->imagen_diferencia = $ruta;
+                        $pagoConsumo->imagen_pago1 = $ruta;
+        
+                    }
+
+
+                    $pagoConsumo->pago1 = $request->input('total_pagar');
+
+                }
+
+
+
+
+                //? Manejo anterior de imagenes
+                // if ($request->hasFile('imagen_diferencia')) {
+
+                //     $diferencia     = $request->file('imagen_diferencia');
+                //     $filename       = time() . '-' . $diferencia->getClientOriginalName();
+                //     $url_diferencia = 'temp/' . $filename; // Almacenamiento temporal
+                //     Storage::disk('imagen_diferencia')->put($url_diferencia, File::get($diferencia));
+
+                // }
+
+                // // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
+                // if ($filename) {
+                //     $finalPath = '/' . $filename;
+                //     Storage::disk('imagen_diferencia')->move('temp/' . $filename, $finalPath);
+                //     $venta->imagen_diferencia = $finalPath;
+                // }
+
+                //? Manejo anterior de transaccion
+                // if ($request->has('id_tipo_transaccion_diferencia')) {
+                //     $venta->id_tipo_transaccion_diferencia = $request->input('id_tipo_transaccion_diferencia');
+                // }
+
+                // if ($request->has('descuento')) {
+                //     $venta->descuento = $request->input('descuento');
+                // }
+
+
+                //* Guarda los cambios
+                $pagoConsumo->save();
+                $venta->save();
+
+                $totalPropinas = null;
+                
+                //* Si la venta tiene consumo
+                if (!is_null($consumo)) {
+                    if ($consumo->detallesConsumos->isEmpty()) {
+                        throw new \Exception('No se puede generar propina porque no hay consumo registrado o equipo asignado en esta venta.');
+
+                    }
+
+                    if ($request->has('propina')) {
+                        $totalPropinas = $this->asignarPropinas($consumo, $reserva, $request);
+                    } else {      
+                        DetalleConsumo::where('id_consumo', $consumo->id)->update(['genera_propina' => 0]);
+                    }
+                    
+                }
+
+
+
+                //! Codigo anterior que separaba el consumo de la venta (Solo si tenia consumo)
+                // if (!$request->has('separar')) {
+
+                // } else {
+
+                //     $pagoConsumo = PagoConsumo::create([
+                //         'valor_consumo'       => $request->valor_consumo,
+                //         'imagen_transaccion'  => null,
+                //         'id_consumo'          => $consumo->id,
+                //         'id_tipo_transaccion' => $request->id_tipo_transaccion,
+                //     ]);
+
+                //     // Manejo de la imagen
+                //     if ($request->hasFile('imagen_consumo')) {
+                //         $imagen                          = $request->file('imagen_consumo');
+                //         $filename                        = time() . '-' . $imagen->getClientOriginalName();
+                //         $path                            = $imagen->storeAs('/', $filename, 'imagen_consumo');
+                //         $pagoConsumo->imagen_transaccion = $path;
+                //         $pagoConsumo->save();
+                //     }
+                // }
+            });
+
+            $total   = 0;
+            $propina = 'No Aplica';
+            $menus     = $reserva->menus;
+            $idConsumo = null;
+            $diferencia = $request->diferencia;
+
+            //! Codigo registraba propina sin solicitarla
+            // if (is_null($consumo)) {
+            //     $propina = 'No Aplica';
+            // } else {
+
+            //         $idConsumo = $consumo->id;
+            //         foreach ($consumo->detallesConsumos as $detalles) {
+
+            //             if ($detalles->genera_propina) {
+            //                 $total   = $consumo->total_consumo;
+            //                 $propina = 'Si';
+            //             } else {
+            //                 $total   = $consumo->subtotal;
+            //                 $propina = 'No';
+            //             }
+            //         }
+
+
+            //     $cantidadPropina = Propina::where('propinable_id', $idConsumo)
+            //         ->where('propinable_type', Consumo::class)
+            //         ->first();
+
+            //     $cantidadPropina = $cantidadPropina ? $cantidadPropina->cantidad : null;
+
             // }
 
+            if (is_null($consumo)) {
+                $propina = 'No Aplica';
+                $cantidadPropina = 'No Aplica';
+            } else {
+                $idConsumo = $consumo->id;
 
-            // Guarda los cambios
-            $venta->save();
+                $tienePropina = $consumo->detallesConsumos->contains('genera_propina', 1);
+                
+                if ($tienePropina && $request->has('propina')) {
+                    $propina = 'Si';
+                    $total = $consumo->total_consumo;
 
-            if (!is_null($consumo)) {
+                    $propinaModel = Propina::where('propinable_id', $idConsumo)
+                        ->where('propinable_type', Consumo::class)
+                        ->first();
 
-                $detalles      = $consumo->detallesConsumos;
-                $totalPropinas = 0;
-
-                if (!$request->has('propina')) {
-                    DetalleConsumo::where('id_consumo', $consumo->id)
-                        ->update(['genera_propina' => 0]);
+                    $cantidadPropina = $propinaModel ? $propinaModel->cantidad : 'No Aplica';
                 } else {
-                    $fecha = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-                    // foreach ($detalles as $detalle) {
-                    //     $totalPropinas += $detalle->subtotal*0.1;
-                    // }
-                    $totalPropinas += $request->propinaValue;
-
-                    $propina = $consumo->propina()->create([
-                        'fecha'      => $fecha,
-                        'cantidad'   => $totalPropinas,
-                    ]);
-
-                    $asignacion = Asignacion::where('fecha', $fecha)->first();
-
-                    if ($asignacion) {
-                        $usuarios = $asignacion->users;
-                        foreach ($usuarios as $user) {
-                            DB::table('propina_user')->insert([
-                                'id_user'        => $user->id,
-                                'id_propina'     => $propina->id,
-                                'monto_asignado' => $totalPropinas / count($usuarios),
-                                'created_at'     => now(),
-                                'updated_at'     => now(),
-                            ]);
-                        }
-                    }
-
-                }
-
-                if (!$request->has('separar')) {
-
-                } else {
-
-                    $pagoConsumo = PagoConsumo::create([
-                        'valor_consumo'       => $request->valor_consumo,
-                        'imagen_transaccion'  => null,
-                        'id_consumo'          => $consumo->id,
-                        'id_tipo_transaccion' => $request->id_tipo_transaccion,
-                    ]);
-
-                    // Manejo de la imagen
-                    if ($request->hasFile('imagen_consumo')) {
-                        $imagen                          = $request->file('imagen_consumo');
-                        $filename                        = time() . '-' . $imagen->getClientOriginalName();
-                        $path                            = $imagen->storeAs('/', $filename, 'imagen_consumo');
-                        $pagoConsumo->imagen_transaccion = $path;
-                        $pagoConsumo->save();
-                    }
+                    $propina = 'No';
+                    $total = $consumo->subtotal;
+                    $cantidadPropina = 'No Aplica';
                 }
             }
-        });
-
-        $total   = 0;
-        $propina = 'No Aplica';
-        $menus     = $reserva->menus;
-        $consumo  = $venta->consumo;
-        $idConsumo = null;
-        $diferencia = 0;
-
-        $diferencia = ($reserva->programa->valor_programa * $reserva->cantidad_personas) - $reserva->venta->abono_programa;
-        if (is_null($consumo)) {
-            $propina = 'No Aplica';
-        } else {
-
-                $idConsumo = $consumo->id;
-                foreach ($consumo->detallesConsumos as $detalles) {
-
-                    if ($detalles->genera_propina) {
-                        $total   = $consumo->total_consumo;
-                        $propina = 'Si';
-                    } else {
-                        $total   = $consumo->subtotal;
-                        $propina = 'No';
-                    }
-                }
 
 
-            $cantidadPropina = Propina::where('propinable_id', $idConsumo)
-                ->where('propinable_type', Consumo::class)
-                ->first();
-
-            $cantidadPropina = $cantidadPropina ? $cantidadPropina->cantidad : null;
-
-        }
-
-        $data = [
-            'nombre'        => $reserva->cliente->nombre_cliente,
-            'numero'        => $reserva->cliente->whatsapp_cliente,
-            'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
-            'fecha_visita'  => $reserva->fecha_visita,
-            'programa'      => $reserva->programa->nombre_programa,
-            'personas'      => $reserva->cantidad_personas,
-            'menus'         => $menus,
-            'consumo'      => $consumo,
-            'venta'         => $reserva->venta,
-            'total'         => $total,
-            'propina'       => $propina,
-            'propinaPagada' => isset($cantidadPropina) && $cantidadPropina !== null ? $cantidadPropina : 'No Aplica',
-            'diferencia' => $diferencia
-        ];
-
-        // Generar el PDF
-        $pdf     = Pdf::loadView('pdf.venta.viewPDF', $data);
-        $pdfPath = storage_path('app/public/') . 'Detalle_Venta_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
-        $pdf->save($pdfPath);
-        $data['pdfPath'] = $pdfPath;
-
-        // Enviar el correo con el PDF adjunto
-        Mail::to($reserva->cliente->correo)->send(new VentaCerradaMailable($data, $pdfPath));
-
-        // Si se genera la separación de consumo con venta
-        if ($pagoConsumo !== null) {
-
-            $dataConsumo = [
+            //* Carga la data para enviarla al PDF
+            $data = [
                 'nombre'        => $reserva->cliente->nombre_cliente,
                 'numero'        => $reserva->cliente->whatsapp_cliente,
                 'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
                 'fecha_visita'  => $reserva->fecha_visita,
                 'programa'      => $reserva->programa->nombre_programa,
                 'personas'      => $reserva->cantidad_personas,
-                'consumo'      => $consumo,
-                'venta'         => $reserva->venta,
+                'menus'         => $menus,
+                'consumo'       => $consumo,
+                'pagoConsumo'   => $pagoConsumo,
+                'venta'         => $venta,
                 'total'         => $total,
                 'propina'       => $propina,
-                'propinaPagada' => $cantidadPropina ? $cantidadPropina : 'No Aplica',
+                'propinaPagada' => isset($cantidadPropina) && $cantidadPropina !== null ? $cantidadPropina : 'No Aplica',
+                'diferencia' => $diferencia,
+                'correo' => $reserva->cliente->correo,
             ];
 
-            // Generar el PDF
-            $pdf     = Pdf::loadView('pdf.consumo_separado.viewPDF', $dataConsumo);
-            $pdfRuta = storage_path('app/public/') . 'Detalle_Consumo_' . str_replace(' ', '_', $reserva->cliente->nombre_cliente) . '_' . $reserva->fecha_visita . '.pdf';
-            $pdf->save($pdfRuta);
-            $data['pdfRuta'] = $pdfRuta;
+            //* Generar el PDF
+            $this->generarYEnviarPDF(
+                'pdf.venta.viewPDF',
+                $data,
+                'Detalle_Venta',
+                $reserva->cliente->nombre_cliente,
+                $reserva->fecha_visita,
+                VentaCerradaMailable::class
 
-            // Enviar el correo con el PDF adjunto
-            Mail::to($reserva->cliente->correo)->send(new ConsumoMailable($data, $pdfRuta));
+            );
+
+            //? Si se genera la separación de consumo con venta
+            if ($request->has('dividir_pago')) {
+
+                //* Carga la data para enviarla al PDF
+                $dataConsumo = [
+                    'nombre'        => $reserva->cliente->nombre_cliente,
+                    'numero'        => $reserva->cliente->whatsapp_cliente,
+                    'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
+                    'fecha_visita'  => $reserva->fecha_visita,
+                    'programa'      => $reserva->programa->nombre_programa,
+                    'personas'      => $reserva->cantidad_personas,
+                    'consumo'       => $consumo,
+                    'pagoConsumo'   => $pagoConsumo,
+                    'venta'         => $venta,
+                    'total'         => $total,
+                    'propina'       => $propina,
+                    'propinaPagada' => $cantidadPropina ?? 'No Aplica',
+                    'correo' => $reserva->cliente->correo,
+                ];
+                // Log::info('Enviando correo de consumo', $dataConsumo);
+
+                //* Generar el PDF
+                try {
+                    $this->generarYEnviarPDF(
+                        'pdf.consumo_separado.viewPDF',
+                        $dataConsumo,
+                        'Detalle_Consumo',
+                        $reserva->cliente->nombre_cliente,
+                        $reserva->fecha_visita,
+                        ConsumoMailable::class
+                    );
+                } catch (\Throwable $e) {
+                    Log::error('Fallo al enviar correo de consumo: ' . $e->getMessage());
+                    // session()->flash('error', 'No se pudo enviar el correo con el detalle del consumo.');
+                }
+
+
+                // try {
+                //     $this->generarYEnviarPDF(
+                //         'pdf.consumo_separado.viewPDF',
+                //         $dataConsumo,
+                //         'Detalle_Consumo',
+                //         $reserva->cliente->nombre_cliente,
+                //         $reserva->fecha_visita,
+                //         ConsumoMailable::class
+                //     );
+                // } catch (\Exception $e) {
+                //     return back()->withInput()->with('error', 'Error al enviar correo de consumo: ' . $e->getMessage());
+                // }
+            }
+
+            Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')->showConfirmButton();
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id]);
+
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', $e->getMessage());
         }
-
-        Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')->showConfirmButton();
-        return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id]);
     }
 
     public function update(Request $request, Venta $venta)
@@ -379,4 +498,59 @@ class VentaController extends Controller
             // 'detalles' => $detalles
         ]);
     }
+
+    private function guardarImagenYObtenerRuta($archivo, $disk = 'imagen_diferencia')
+    {
+        $nombreArchivo = Carbon::now()->format('Ymd_His') . '-' . uniqid() . '.' . $archivo->getClientOriginalExtension();
+        $rutaTemporal = 'temp/' . $nombreArchivo;
+
+        Storage::disk($disk)->put($rutaTemporal, File::get($archivo));
+
+        $rutaFinal = '/' . $nombreArchivo;
+        Storage::disk($disk)->move($rutaTemporal, $rutaFinal);
+
+        return $rutaFinal;
+    }
+
+    private function asignarPropinas(Consumo $consumo, Reserva $reserva, Request $request)
+    {
+
+        $fecha = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+        $totalPropinas = $request->propinaValue;
+
+        $propina = $consumo->propina()->create([
+            'fecha'    => $fecha,
+            'cantidad' => $totalPropinas,
+        ]);
+
+        $asignacion = Asignacion::where('fecha', $fecha)->first();
+
+        if ($asignacion && $asignacion->users->count() > 0) {
+            foreach ($asignacion->users as $user) {
+                DB::table('propina_user')->insert([
+                    'id_user'        => $user->id,
+                    'id_propina'     => $propina->id,
+                    'monto_asignado' => $totalPropinas / count($asignacion->users),
+                    'created_at'     => now(),
+                    'updated_at'     => now(),
+                ]);
+            }
+        }
+
+        return $totalPropinas;
+    }
+
+    private function generarYEnviarPDF($view, $data, $nombreBase, $clienteNombre, $fecha, $mailClass)
+    {
+        $nombreArchivo = $nombreBase . '_' . Str::slug($clienteNombre) . '_' . $fecha . '.pdf';
+        $rutaPDF = storage_path('app/public/') . $nombreArchivo;
+
+        $pdf = Pdf::loadView($view, $data);
+        $pdf->save($rutaPDF);
+
+        $data['pdfPath'] = $rutaPDF;
+
+        Mail::to($data['correo'])->send(new $mailClass($data, $rutaPDF));
+    }
+
 }

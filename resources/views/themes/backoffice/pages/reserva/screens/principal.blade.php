@@ -83,7 +83,7 @@
                         @foreach($reservas as $idx => $reserva)
 
                         @foreach ($reserva->visitas->sortBy('horario_tinaja') as $visita)
-                            
+                            {{-- {{dd($visita->hora_fin_tinaja)}} --}}
                         <tr>
                             @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
                             <td class="orange" style="border-radius: 5px">

@@ -5,10 +5,10 @@
         @if (is_null($reserva->venta))
             ''
         @else 
-            {{($reserva->venta->total_pagar === 0) ? 'green' : ''}}
+            {{(!is_null($reserva->venta->pagoConsumo)) ? 'green' : ''}}
         @endif ">
 
-        <h5>Venta: {{(is_null($reserva->venta)) ? '' : ($reserva->venta->total_pagar === 0) ? 'Pagado' : '' }} </h5>
+        <h5>Venta: {{(is_null($reserva->venta->pagoConsumo)) ? '' : ($reserva->venta->total_pagar === 0) ? 'Pagado' : '' }} </h5>
     </a>
 
     @php

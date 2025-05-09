@@ -51,7 +51,7 @@
                                         $serviciosSinPropina = 0;
                                         $diferencia = 0;
 
-                                        $totalDiferencia = $venta->total_pagar;
+                                                                                                                        $totalDiferencia = ($venta->total_pagar != 0 && is_null($venta->diferencia_programa)) ? $venta->total_pagar : $venta->diferencia_programa;
                                         if ($venta->consumo != null)
                                         {
                                             $consumoSinPropina = $venta->consumo->detallesConsumos->sum("subtotal");  
@@ -59,11 +59,6 @@
                                             
                                         }
 
-                                        if ($venta->diferencia_programa == null && $venta->total_pagar > 0){
-                                            $diferencia = $venta->total_pagar;
-                                        }else{
-                                            $diferencia = $venta->diferencia_programa;    
-                                        }
 
 
                                     @endphp

@@ -9,17 +9,26 @@ class PagoConsumo extends Model
     protected $table = 'pago_consumos';
     protected $fillable = [
         'valor_consumo',
-        'imagen_transaccion',
-        'id_consumo',
-        'id_tipo_transaccion'
+        'pago1',
+        'pago2',
+        'imagen_pago1',
+        'imagen_pago2',
+        'id_tipo_transaccion1',
+        'id_tipo_transaccion2',
+        'id_venta',
     ];
 
-    public function consumo()
+    public function venta()
     {
-        return $this->belongsTo(Consumo::class, 'id_consumo');
+        return $this->belongsTo(Venta::class, 'id_venta');
     }
 
-    public function tipoTransaccion()
+    public function tipoTransaccion1()
+    {
+        return $this->belongsTo(TipoTransaccion::class, 'id_tipo_transaccion');
+    }
+    
+    public function tipoTransaccion2()
     {
         return $this->belongsTo(TipoTransaccion::class, 'id_tipo_transaccion');
     }

@@ -16,7 +16,8 @@ class ClienteController extends Controller
 {
     public function index(Request $request)
     {
-        $this->authorize('index', User::class);
+
+        $this->authorize('index', Cliente::class);
         if ($request) {
             $query = trim($request->get('search'));
 
@@ -40,7 +41,7 @@ class ClienteController extends Controller
 
     public function create()
     {
-        $this->authorize('create', User::class);
+        $this->authorize('create', Cliente::class);
         return view('themes.backoffice.pages.cliente.create');
     }
 

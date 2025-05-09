@@ -42,4 +42,9 @@ class Venta extends Model
     {
         return $this->hasOne(Consumo::class, 'id_venta');
     }
+
+    public function pagoConsumo()
+    {
+        return $this->hasOne(PagoConsumo::class, 'id_venta');
+    }
 }
