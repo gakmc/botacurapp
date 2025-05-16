@@ -49,7 +49,7 @@
                                         $serviciosSinPropina = 0;
                                         $posiblePropina = 0;
 
-                                        $totalDiferencia = ($venta->total_pagar != 0 && is_null($venta->diferencia_programa)) ? $venta->total_pagar : $venta->diferencia_programa;
+                                        $totalDiferencia = ($venta->pendiente_de_pago) ? $venta->total_pagar : $venta->diferencia_programa;
 
                                         if ($venta->consumo != null)
                                         {
@@ -67,7 +67,7 @@
                                         <tr>
                                             <td><a href="{{route("backoffice.reserva.show",$venta->reserva->id)}}">{{$venta->reserva->cliente->nombre_cliente}}</a></td>
 
-                                            @if (is_null($venta->diferencia_programa))
+                                            @if ($venta->pendiente_de_pago)
                                                 <td >
                                                     <a class="btn-small disabled"><span class="red-text">Por Pagar</span><i class='material-icons red-text right '>cancel</i></a>
                                                 </td>
@@ -157,6 +157,8 @@
                                     <tr>
                                         <th class="white-text" style="background-color: #039B7B;">Medio de Pago</th>
                                         <th class="white-text" style="background-color: #039B7B">Total Dia</th>
+                                        <th class="white-text" style="background-color: #039B7B">Venta Directa</th>
+                                        <th class="white-text" style="background-color: #039B7B">Poro Poro</th>
                                     </tr>
                                     </thead>
                             
@@ -168,12 +170,21 @@
                                             <tr>
                                                 <td>{{$transaccion->nombre}}:</td>
                                                 <td>${{ number_format($transaccion->total_diferencias,0,'','.') }}</td>
+                                                <td>${{ number_format($transaccion->venta_directa,0,'','.') }}</td>
+                                                <td>${{ number_format($transaccion->poro_poro,0,'','.') }}</td>
                                             </tr>
                                         @endforeach
                                     </tbody>
                                     <tr>
-                                        <td style=" text-align: center;"><strong>Total:</strong></td>
+                                        <td style=" text-align: center;"><strong>Sub-Total:</strong></td>
                                         <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("poro_poro"),0,'','.') }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style=" text-align: center;"><strong>Total:</strong></td>
+                                        <td></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa")+$tiposTransacciones->sum("poro_poro"),0,'','.') }}</strong></td>
                                     </tr>
                                 </table>
                             </div>

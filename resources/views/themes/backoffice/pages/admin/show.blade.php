@@ -157,7 +157,7 @@
                                     </div>
                                     {{-- Incorporar nuevas tarjetas --}}
 
-                                    <div class="col s12 m6 l3">
+                                    {{-- <div class="col s12 m6 l3">
                                         <a href="{{route('backoffice.admin.consumos')}}">
                                             <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-purple gradient-shadow min-height-100 white-text"
                                                 style="--animate-delay: 1s; --animate-duration: 2s; ">
@@ -173,7 +173,7 @@
                                                 </div>
                                             </div>
                                         </a>
-                                    </div>
+                                    </div> --}}
 
                                     <div class="col s12 m6 l3">
                                         <a href="{{route('backoffice.sueldos.index')}}">

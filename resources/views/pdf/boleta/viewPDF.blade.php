@@ -38,7 +38,7 @@
 </head>
 <body>
     <div class="ticket">
-        <img src="https://botacura.cl/wp-content/uploads/2024/04/logo.png" alt="botacura logo" style="max-height: 125px; max-width:125px; padding:0px; margin:0px"/>
+        <img src="https://botacura.cl/wp-content/uploads/2024/04/logo_boletas.jpg" alt="botacura logo" style="max-height: 125px; max-width:125px; padding:0px; margin:0px"/>
         <div class="title">Centro Recreativo Botacura LTDA.</div>
         <div class="title">Cliente: {{ $nombre }}</div>
         <div>Fecha: {{ date('d/m/Y H:i') }}</div>
@@ -112,6 +112,42 @@
                 @endforeach
             @endif
 
+            @if ($venta->tiene_saldo_a_favor)
+            <tr>
+                <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
+                    Saldo a favor
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                    ${{number_format(abs($venta->total_pagar),0,'','.')}}
+                </td>
+            </tr>
+
+            <tr>
+                <td style="text-align: right; white-space: nowrap;">
+                    <strong>Sub-Total Servicios:</strong>
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                        <strong>${{ number_format($servicio->subtotal+$venta->total_pagar, 0, '', '.') }}</strong>
+
+                </td>
+            </tr>
+
+            <div class="etiqueta">Diferencia Reserva</div>
+            <tr>
+                <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
+                    Diferencia Visita
+                </td>
+                <td style="text-align: right; white-space: nowrap;">
+                    ${{number_format(0,0,'','.')}}
+                    @php
+                        $total += $venta->total_pagar
+                    @endphp
+                </td>
+            </tr>
+
+            @else
+                
+
             <div class="etiqueta">Diferencia Reserva</div>
             <tr>
                 <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
@@ -124,6 +160,10 @@
                     @endphp
                 </td>
             </tr>
+
+            @endif
+
+
         </table>
 
         {{-- @if (!empty($listaConsumos))

@@ -47,4 +47,24 @@ class Venta extends Model
     {
         return $this->hasOne(PagoConsumo::class, 'id_venta');
     }
+
+
+    public function getPendienteDePagoAttribute()
+    {
+        return $this->total_pagar != 0 && is_null($this->diferencia_programa);
+    }
+
+    public function getTieneSaldoAFavorAttribute()
+    {
+        return $this->total_pagar < 0;
+    }
+
+    public function getSaldoAFavorAttribute()
+    {
+        if ($this->total_pagar < 0) {
+            return $this->total_pagar;
+        }
+        return 0;
+    }
+
 }

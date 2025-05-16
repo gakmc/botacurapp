@@ -8,7 +8,7 @@
             {{(!is_null($reserva->venta->pagoConsumo)) ? 'green' : ''}}
         @endif ">
 
-        <h5>Venta: {{(is_null($reserva->venta->pagoConsumo)) ? '' : ($reserva->venta->total_pagar === 0) ? 'Pagado' : '' }} </h5>
+        <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Saldo a favor cliente: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} </h5>
     </a>
 
     @php
@@ -28,10 +28,10 @@
             $consumo = $reserva->venta->consumo;
         @endphp
         <a class="collection-item center-align valign-wrapper left">
-            Abono: {{$reserva->venta->abono_programa}}
+            Abono: ${{number_format($reserva->venta->abono_programa,0,'','.')}}
         </a>
         <a class="collection-item center-align valign-wrapper left">
-            Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Debe Realizar pago' : $reserva->venta->diferencia_programa}}
+            Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Pago Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
         </a>
 
         <a href="#modalVenta{{--$reserva->venta->id--}}"
@@ -40,7 +40,7 @@
 
             data-diferencia="{{ $reserva->venta->diferencia_programa }}"
 
-            data-totalpagar="{{$reserva->venta->total_pagar}}"
+            data-totalpagar="{{($reserva->venta->pendiente_de_pago) ? ($reserva->venta->tiene_saldo_a_favor ? 0 : $reserva->venta->total_pagar) : $reserva->venta->diferencia_programa}}"
 
 
             data-consumo="{{$consumo}}" 

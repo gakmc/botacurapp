@@ -36,6 +36,8 @@
                                             <th>Programas contratados</th>
                                             <th>Abonos</th>
                                             <th>Montos Pendientes</th>
+                                            <th>Consumos</th>
+                                            <th>Servicios Extra</th>
                                             <th>Saldo final</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -45,13 +47,25 @@
                                             @php
                                                 $nombreMes = \Carbon\Carbon::createFromDate($resumen->anio, $resumen->mes, 1)
                                                     ->locale('es')->translatedFormat('F Y');
+
+                                                $consumoSinPropina = 0;
+                                                $serviciosExtras = 0;
+
+                                                if (!empty($resumen->consumo)) {
+                                                    foreach ($resumen->consumo as $consumo) {
+                                                        $consumoSinPropina += $consumo->detallesConsumos->sum('subtotal');
+                                                        $serviciosExtras += $consumo->detalleServiciosExtra->sum('subtotal');
+                                                    }
+                                                }
                                             @endphp
                                             <tr>
                                                 <td>{{ ucfirst($nombreMes) }}</td>
                                                 <td>{{ $resumen->total_ventas }}</td>
                                                 <td>${{ number_format($resumen->total_abonos, 0, ',', '.') }}</td>
                                                 <td>${{ number_format($resumen->por_pagar, 0, ',', '.') }}</td>
-                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar, 0, ',', '.') }}</td>
+                                                <td>${{number_format($consumoSinPropina,0,'','.')}}</td>
+                                                <td>${{number_format($serviciosExtras,0,'','.')}}</td>
+                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar + $consumoSinPropina + $serviciosExtras, 0, ',', '.') }}</td>
                                                 <td>
                                                     <a href="{{ route('backoffice.admin.ingresos.detalleMes', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
                                                         Ver detalle

@@ -44,6 +44,11 @@
  
                                 <tbody>
 
+                                    @php
+                                        $totalConsumo = 0;
+                                        $totalServicios = 0;
+                                        $diferencias = 0;
+                                    @endphp
 
                                     @foreach ($ventas as $venta)
                                     @php
@@ -51,7 +56,9 @@
                                         $serviciosSinPropina = 0;
                                         $diferencia = 0;
 
-                                                                                                                        $totalDiferencia = ($venta->total_pagar != 0 && is_null($venta->diferencia_programa)) ? $venta->total_pagar : $venta->diferencia_programa;
+                                        $totalDiferencia = ($venta->pendiente_de_pago) ? $venta->total_pagar : $venta->diferencia_programa;
+                                        $diferencias += $totalDiferencia;
+
                                         if ($venta->consumo != null)
                                         {
                                             $consumoSinPropina = $venta->consumo->detallesConsumos->sum("subtotal");  
@@ -59,7 +66,8 @@
                                             
                                         }
 
-
+                                        $totalConsumo += $consumoSinPropina;
+                                        $totalServicios += $serviciosSinPropina;
 
                                     @endphp
                                         <tr>
@@ -67,7 +75,8 @@
                                             <td>{{$venta->reserva->programa->nombre_programa}}</td>
                                             <td class="green-text">${{ number_format($venta->abono_programa, 0, ',', '.') }}</td>
 
-                                            @if ($venta->diferencia_programa == null && $venta->total_pagar > 0)
+                                            {{-- @if ($venta->diferencia_programa == null && $venta->total_pagar > 0) --}}
+                                            @if ($venta->pendiente_de_pago)
                                                 <td>Por pagar</td>
                                             @else
                                                 <td class="green-text">${{ number_format($venta->diferencia_programa, 0, ',', '.') }}</td>
@@ -88,8 +97,8 @@
                                             </td>
                                             <td>
                                                 @if ($serviciosSinPropina >= 0)
-                                                ${{ number_format($serviciosSinPropina, 0, ',', '.') }}
-                                            @endif
+                                                    ${{ number_format($serviciosSinPropina, 0, ',', '.') }}
+                                                @endif
                                             </td>
 
 
@@ -148,6 +157,7 @@
                                       <th class="white-text" style="background-color: #039B7B;">Tipo Transaccion</th>
                                       <th class="white-text" style="background-color: #039B7B;">Abono</th>
                                       <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
+                                      <th class="white-text" style="background-color: #039B7B;">Venta Directa</th>
                                   </tr>
                                 </thead>
                         
@@ -160,6 +170,7 @@
                                             <td>{{$tipo->nombre}}</td>
                                             <td>${{ number_format($tipo->total_abonos,0,'','.') }}</td>
                                             <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
+                                            <td>${{ number_format($tipo->venta_directa,0,'','.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -167,10 +178,58 @@
                                     <td style=" text-align: center;"><strong>Subtotal:</strong></td>
                                     <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
                                     <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                    <td><strong>${{ number_format($tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
                                 </tr>
                                 <tr>
                                     <td style=" text-align: center;"><strong>Total:</strong></td>
-                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                    <td></td>
+                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
+                                </tr>
+                            </table>
+                        </div>
+
+
+
+                                                <div class="col s12 m3">
+                            <h5><strong>Resumen del día</strong></h5>
+                            <table class="striped bordered">
+                                <thead>
+                                  <tr>
+                                      <th class="white-text" style="background-color: #039B7B;">Total Día</th>
+                                      <th class="white-text" style="background-color: #039B7B;"></th>
+                                  </tr>
+                                </thead>
+                        
+                                <tbody>
+
+                                        <tr>
+                                            <td>Total Entradas</td>
+                                            {{-- <td>${{ number_format($tiposTransacciones->sum("total_abonos") + $tiposTransacciones->sum("total_diferencias"),0,'','.') }}</td> --}}
+                                            <td>${{ number_format($tiposTransacciones->sum("total_abonos") + $diferencias,0,'','.') }}</td>
+                                        </tr>
+
+                                </tbody>
+                                <tr>
+                                    <td>Total Abonos</td>
+                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
+                                </tr>
+                                <tr>
+                                    <td>Total Diferencias</td>
+                                    {{-- <td>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</td> --}}
+                                    <td>${{ number_format($diferencias,0,'','.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Total Consumo</td>
+                                    <td>${{ number_format($totalConsumo+$tiposTransacciones->sum("venta_directa"),0,'','.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td>Servicios Extras</td>
+                                    <td>${{ number_format($totalServicios,0,'','.') }}</td>
+                                </tr>
+                                <tr>
+                                    <td><strong>Total Dia</strong></td>
+                                    {{-- <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $tiposTransacciones->sum("total_diferencias")+ $totalConsumo + $totalServicios,0,'','.') }}</strong></td> --}}
+                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $diferencias + $totalConsumo + $totalServicios,0,'','.') }}</strong></td>
                                 </tr>
                             </table>
                         </div>

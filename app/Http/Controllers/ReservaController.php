@@ -234,7 +234,7 @@ class ReservaController extends Controller
 
     public function create($cliente)
     {
-        $this->authorize('create', User::class);
+        $this->authorize('create', Reserva::class);
         $cliente   = Cliente::findOrFail($cliente);
         $programas = Programa::with('servicios')->get();
         $tipos     = TipoTransaccion::all();
@@ -514,7 +514,7 @@ class ReservaController extends Controller
 
     public function edit(Reserva $reserva)
     {
-        // $this->authorize('create', User::class);
+        // $this->authorize('create', Reserva::class);
         $cantidadExtraMasaje = null;
         $ventaId             = $reserva->venta->id;
         $consumo             = Consumo::where('id_venta', '=', $ventaId)->first();
@@ -728,7 +728,7 @@ class ReservaController extends Controller
         $diferencia = 0;
         // dd($menus);
 
-        $diferencia = ($reserva->programa->valor_programa * $reserva->cantidad_personas) - $reserva->venta->abono_programa;
+        $diferencia = $reserva->venta->diferencia_programa;
 
         if (is_null($consumo)) {
             $propina = 'No Aplica';

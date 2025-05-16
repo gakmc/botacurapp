@@ -251,6 +251,18 @@
                     </li>
 
 
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.ventas_poroporo.index') }}">
+                            <i class="material-icons">
+                                local_florist
+                            </i>
+                            <span class="nav-text">
+                                Poro Poro
+                            </span>
+                        </a>
+                    </li>
+
+
 
                 @endif
 

@@ -206,13 +206,14 @@
         <br>
         <br>
         <div>
-            @if ($venta->diferencia_programa != null || $venta->diferencia_programa > 0)
-                <h6 class="left"><span class="primario" style="font-weight: bold">Total Pagado: </span> 
-                    ${{number_format($venta->diferencia_programa,0,'','.')}}
-                </h6>
-            @else
+            {{-- @if ($venta->diferencia_programa != null || $venta->diferencia_programa > 0) --}}
+            @if ($venta->pendiente_de_pago)
                 <h6 class="left"><span class="primario" style="font-weight: bold">Total a Pagar: </span> 
                     ${{number_format($venta->total_pagar,0,'','.')}}
+                </h6>
+            @else
+                <h6 class="left"><span class="primario" style="font-weight: bold">Total Pagado: </span> 
+                    ${{number_format($venta->pagoConsumo->valor_consumo,0,'','.')}}
                 </h6>
             @endif
 

@@ -34,13 +34,35 @@
                                     <th>Abono</th>
                                     <th>Diferencia</th>
                                     <th>Pendiente</th>
-                                    <th>Total pagar</th>
+                                    <th>Consumo</th>
+                                    <th>Servicios Extra</th>
+                                    <th>Total pagado</th>
                                     <!-- Agrega más columnas si las necesitas -->
                                 </tr>
                             </thead>
 
                                 <tbody>
                                     @foreach ($ventasAgrupadas as $venta)
+                                    @php
+                                        $consumoSinPropina = 0;
+                                        $serviciosExtras = 0;
+
+                                        // dd($venta);
+
+                                        // if ($venta->consumo != null)
+                                        // {
+                                        //     $consumoSinPropina = $venta->consumo->detallesConsumos->sum("subtotal");  
+                                        //     $serviciosExtras = $venta->consumo->detalleServiciosExtra->sum("subtotal");
+                                            
+                                        // }
+
+                                        if (!empty($venta->consumo)) {
+                                            foreach ($venta->consumo as $consumo) {
+                                                $consumoSinPropina += $consumo->detallesConsumos->sum('subtotal');
+                                                $serviciosExtras += $consumo->detalleServiciosExtra->sum('subtotal');
+                                            }
+                                        }
+                                    @endphp
                                         <tr>
                                             <td>
                                                 <a href="{{route('backoffice.admin.ingresos.detalleDia', [$anio, $mes, $venta->dia])}}">
@@ -62,7 +84,13 @@
                                             <td @if ($venta->pendiente > 0) class="red-text" @endif>
                                                 ${{ number_format($venta->pendiente, 0, ',', '.') }}
                                             </td>
-                                            <td>${{ number_format($venta->abono+$venta->diferencia, 0, ',', '.') }}</td>
+                                            <td>
+                                                ${{ number_format($consumoSinPropina, 0, ',', '.') }}
+                                            </td>
+                                            <td>
+                                                ${{ number_format($serviciosExtras, 0, ',', '.') }}
+                                            </td>
+                                            <td>${{ number_format($venta->abono + $venta->diferencia + $consumoSinPropina + $serviciosExtras, 0, ',', '.') }}</td>
                                         </tr>
                                     @endforeach
                                 </tbody>
@@ -89,42 +117,8 @@
                                     <a href="#!" class="collection-item"><span class="badge red white-text">${{number_format($ventasPendientes,0,'','.')}}</span>Saldo Pendiente</a>
                                 </div>
                             </div> --}}
-                            <div class="col s12 m3">
-                                <h5><strong>Resumen de transacciones</strong></h5>
-                                <table class="striped bordered">
-                                    <thead>
-                                      <tr>
-                                          <th class="white-text" style="background-color: #039B7B;">Tipo Transaccion</th>
-                                          <th class="white-text" style="background-color: #039B7B;">Abono</th>
-                                          <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
-                                      </tr>
-                                    </thead>
                             
-                                    <tbody>
-                                        @foreach ($tiposTransacciones as $tipo)
-                                            @php
-                                                
-                                            @endphp
-                                            <tr>
-                                                <td>{{$tipo->nombre}}</td>
-                                                <td>${{ number_format($tipo->total_abonos,0,'','.') }}</td>
-                                                <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
-                                            </tr>
-                                        @endforeach
-                                    </tbody>
-                                    <tr>
-                                        <td style=" text-align: center;"><strong>Subtotal:</strong></td>
-                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
-                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td style=" text-align: center;"><strong>Total:</strong></td>
-                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
-                                    </tr>
-                                </table>
-                            </div>
-
-
+                            
                             <div class="col s12 m3">
                                 <h5><strong>Resumen de programas</strong></h5>
                                 <table class="striped centered">
@@ -149,6 +143,53 @@
                                     
                                 </table>
                             </div>
+
+
+
+                            
+                            
+                            <div class="col s12 m3">
+                                <h5><strong>Resumen de transacciones</strong></h5>
+                                <table class="striped bordered">
+                                    <thead>
+                                      <tr>
+                                          <th class="white-text" style="background-color: #039B7B;">Tipo Transaccion</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Abono</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
+                                          <th class="white-text" style="background-color: #039B7B;">Venta Directa</th>
+                                      </tr>
+                                    </thead>
+                            
+                                    <tbody>
+                                        @foreach ($tiposTransacciones as $tipo)
+                                            @php
+                                                
+                                            @endphp
+                                            <tr>
+                                                <td>{{$tipo->nombre}}</td>
+                                                <td>${{ number_format($tipo->total_abonos,0,'','.') }}</td>
+                                                <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
+                                                <td>${{ number_format($tipo->venta_directa,0,'','.') }}</td>
+                                            </tr>
+                                        @endforeach
+                                    </tbody>
+                                    <tr>
+                                        <td style=" text-align: center;"><strong>Subtotal:</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
+                                    </tr>
+                                    <tr>
+                                        <td style=" text-align: center;"><strong>Total:</strong></td>
+                                        <td></td>
+                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
+                                    </tr>
+                                </table>
+                            </div>
+
+
+
+
                         </div>
                 </div>
 

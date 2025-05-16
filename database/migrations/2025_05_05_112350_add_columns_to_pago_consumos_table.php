@@ -24,7 +24,7 @@ class AddColumnsToPagoConsumosTable extends Migration
             // Nuevas versiones de las columnas
             $table->string('imagen_pago1')->nullable()->after('valor_consumo');
             $table->unsignedInteger('id_tipo_transaccion1')->nullable()->after('imagen_pago1');
-            $table->unsignedInteger('id_venta')->nullable()->after('id_tipo_transaccion1');
+            $table->unsignedInteger('id_venta')->after('id_tipo_transaccion1');
 
             // Nuevas columnas adicionales
             $table->integer('pago1')->after('valor_consumo');

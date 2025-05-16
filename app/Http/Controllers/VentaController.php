@@ -132,11 +132,23 @@ class VentaController extends Controller
         $tipos = TipoTransaccion::all();
         $ventum->load('consumo');
 
-        return view('themes.backoffice.pages.venta.cerrar', [
-            'reserva' => $reserva,
-            'tipos'   => $tipos,
-            'venta'   => $ventum,
-        ]);
+        if ($ventum->tiene_saldo_a_favor) {
+            
+            return view('themes.backoffice.pages.venta.cerrar_a_favor', [
+                'reserva' => $reserva,
+                'tipos'   => $tipos,
+                'venta'   => $ventum,
+            ]);
+
+        }else {
+            
+            return view('themes.backoffice.pages.venta.cerrar', [
+                'reserva' => $reserva,
+                'tipos'   => $tipos,
+                'venta'   => $ventum,
+            ]);
+        }
+
     }
 
     public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
