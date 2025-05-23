@@ -50,7 +50,11 @@ class Role extends Model
 
 
     // RECUPERACION DE INFORMACIÓN
-
+    public function getUsersWithRoleAttribute()
+    {
+        $nombres = $this->users()->pluck('name')->implode(', ');
+        return $nombres;
+    }
 
     // OTRAS OPERACIONES
 

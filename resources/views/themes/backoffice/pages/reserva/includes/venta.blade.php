@@ -8,7 +8,7 @@
             {{(!is_null($reserva->venta->pagoConsumo)) ? 'green' : ''}}
         @endif ">
 
-        <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Saldo a favor cliente: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} </h5>
+        <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Abono por servicio Extra: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} </h5>
     </a>
 
     @php

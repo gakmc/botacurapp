@@ -63,7 +63,7 @@
                        
                         <div class="row">
                           <div class="input-field col s12 m6">
-                            <input id="whatsapp_cliente" type="text" name="whatsapp_cliente" class="form-control @error('nombre_cliente') is-invalid @enderror" value="{{  $cliente->whatsapp_cliente }}">
+                            <input id="whatsapp_cliente" type="text" name="whatsapp_cliente" class="form-control @error('nombre_cliente') is-invalid @enderror" value="{{  $cliente->whatsapp_cliente }}" data-cliente-id="{{ $cliente->id }}">
                             <label for="whatsapp_cliente">Whatsapp Cliente</label>
                               @error('whatsapp_cliente')
                                     <span class="invalid-feedback" role="alert">
@@ -128,5 +128,55 @@
   $(document).ready(function () {
     $('select').formSelect();
   });
+</script>
+
+<script>
+$(document).ready(function () {
+
+  $('#whatsapp_cliente').on('blur', function () {
+    let numeroOriginal = $(this).val().trim();
+    let numero = numeroOriginal.replace(/\D/g, '');
+
+    if (numero.length === 8) {
+      numero = '569' + numero;
+    } else if (numero.length === 11 && numero.startsWith('56') && !numero.startsWith('569')) {
+      numero = '569' + numero.slice(3);
+    }
+
+    const clienteId = $(this).data('cliente-id');
+
+    if (numero !== '') {
+      $.ajax({
+        url: '{{ route("backoffice.validar.whatsapp.edit") }}',
+        method: 'POST',
+        data: {
+          whatsapp_cliente: numero,
+          id_cliente: clienteId,
+          _token: '{{ csrf_token() }}'
+        },
+        success: function (response) {
+          $('#error-whatsapp').remove();
+          $('#whatsapp_cliente').nextAll('.material-icons').remove();
+
+          if (!response.disponible) {
+            $('#whatsapp_cliente').after('<span id="error-whatsapp" style="color:red">Este número ya está registrado por otro cliente.</span>');
+          } else {
+            $('#whatsapp_cliente').after('<i class="material-icons green-text">check_circle</i>');
+          }
+        },
+        error: function () {
+          Swal.fire({
+            icon: "error",
+            title: "Error al validar número de WhatsApp.",
+            toast: true,
+            position: "center",
+            timer: 3000,
+            showConfirmButton: false
+          });
+        }
+      });
+    }
+  });
+});
 </script>
 @endsection

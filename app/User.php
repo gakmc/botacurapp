@@ -84,7 +84,10 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(Masaje::class, 'user_id');
     }
 
-
+    public function estadosRecepcion()
+    {
+        return $this->hasMany(EstadoRecepcion::class, 'user_id');
+    }
 
 //ALMACENAMIENTO
 

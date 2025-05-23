@@ -31,7 +31,7 @@ class StoreRequest extends FormRequest
     {
         return [
             'nombre_cliente'=>['required', 'string', 'max:255'],
-            'whatsapp_cliente'=>['max:12','string', 'nullable'],
+            'whatsapp_cliente'=>['max:12','string', 'nullable', 'unique:clientes'],
             'instagram_cliente'=>['max:255', 'string','nullable'],
             'sexo'=>['required','in:Masculino,Femenino,na'],
             'correo'=>['required', 'string', 'email', 'max:255', 'unique:clientes']
@@ -48,6 +48,7 @@ class StoreRequest extends FormRequest
             'correo.unique'=>'Este email ya esta registrado',
             'whatsapp_cliente.max'=>'Excede el máximo de 12 caracteres',
             'whatsapp_cliente.string'=>'La informacion puede ser alfanumerica',
+            'whatsapp_cliente.unique'=>'Este numero ya esta registrado',
             'instagram_cliente.string'=>'La informacion puede ser alfanumerica',
             'sexo.required'=>'El campo Genero es requerido',
             'sexo.in'=>'Debe seleccionar una opcion'

@@ -53,22 +53,22 @@
                                             <p><strong>Total de esta Semana: {{
                                                     $cantidadMasajesPorSemana[$masoterapeuta->id] }}</strong></p>
                                             <p><strong>Total a pagar: {{
-                                                    $cantidadMasajesPorSemana[$masoterapeuta->id]*8000}}</strong></p>
+                                                    $cantidadMasajesPorSemana[$masoterapeuta->id]*10000}}</strong></p>
 
                                             <h6>Masajes Realizados por Día</h6>
                                             <ul>
                                                 @foreach ($cantidadMasajesPorDia[$masoterapeuta->id] as $dia =>
                                                 $cantidad)
-                                                <li>{{ $dia }}: {{ $cantidad }} masajes - ${{$cantidad*8000}}</li>
+                                                <li>{{ $dia }}: {{ $cantidad }} masajes - ${{$cantidad*10000}}</li>
 
-                                                @if($cantidad * 8000 > 0)
+                                                @if($cantidad * 10000 > 0)
                                                 <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
                                                     value="{{ $fechasDiasSemana[$dia] }}">
-                                                <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="8000">
+                                                <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="10000">
                                                 <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
-                                                    value="{{$cantidad*8000}}">
+                                                    value="{{$cantidad*10000}}">
                                                 <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
-                                                    value="{{$cantidad*8000}}">
+                                                    value="{{$cantidad*10000}}">
                                                 <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
                                                     value="{{$masoterapeuta->id}}">
 

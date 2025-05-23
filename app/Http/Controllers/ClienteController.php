@@ -127,4 +127,55 @@ class ClienteController extends Controller
     {
         //
     }
+
+    public function validarWhatsapp(Request $request)
+    {
+
+        $numero = preg_replace('/\D/', '', $request->whatsapp_cliente); // solo dígitos
+
+        if (strlen($numero) === 8) {
+            $numero = '569' . $numero;
+        } elseif (strlen($numero) === 11 && substr($numero, 0, 2) === '56') {
+            $numero = '569' . substr($numero, 3);
+        }
+
+        $existe = Cliente::whereRaw("REPLACE(REPLACE(REPLACE(whatsapp_cliente, '+', ''), ' ', ''), '-', '') LIKE ?", ["%$numero"])->exists();
+
+
+        // $existe = Cliente::where('whatsapp_cliente', $request->whatsapp_cliente)->exists();
+        return response()->json([
+            'disponible' => !$existe,
+        ]);
+    }
+
+    public function validarWhatsappEdit(Request $request)
+    {
+        // Normalizar el número del request (el que viene desde el input)
+            $numero = preg_replace('/\D/', '', $request->whatsapp_cliente);
+
+            if (strlen($numero) === 8) {
+                $numero = '569' . $numero;
+            } elseif (strlen($numero) === 11 && substr($numero, 0, 2) === '56' && substr($numero, 0, 3) !== '569') {
+                $numero = '569' . substr($numero, 3);
+            }
+
+            // Normalizar también todos los números desde la base de datos
+            $clientes = Cliente::where('id', '!=', $request->id_cliente)->get();
+
+            $duplicado = $clientes->first(function ($cliente) use ($numero) {
+                $guardado = preg_replace('/\D/', '', $cliente->whatsapp_cliente);
+
+                if (strlen($guardado) === 8) {
+                    $guardado = '569' . $guardado;
+                } elseif (strlen($guardado) === 11 && substr($guardado, 0, 2) === '56' && substr($guardado, 0, 3) !== '569') {
+                    $guardado = '569' . substr($guardado, 3);
+                }
+
+                return $guardado === $numero;
+            });
+
+            return response()->json(['disponible' => !$duplicado]);
+    }
+
+
 }

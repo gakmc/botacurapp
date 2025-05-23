@@ -728,12 +728,21 @@ class AdminController extends Controller
                 ->whereDay('fecha', $dia)
                 ->sum('subtotal');
 
+
+            $poroPoro = PoroPoroVenta::where('id_tipo_transaccion', $tipo->id)
+                ->whereYear('fecha', $anio)
+                ->whereMonth('fecha', $mes)
+                ->whereDay('fecha', $dia)
+                ->sum('total');
+
                 
                 // Se asigna al objeto TipoTransaccion
                 $tipo->total_abonos = $abono;
                 // $tipo->total_diferencias = $diferencia;
                 $tipo->total_diferencias = $total_pago1 + $total_pago2;
                 $tipo->venta_directa = $ventaDirecta;
+
+                $tipo->poro = $poroPoro;
         
             return $tipo;
         });

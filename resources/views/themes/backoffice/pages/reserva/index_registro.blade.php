@@ -67,7 +67,7 @@
                             <table class="bordered centered responsive-table">
                                 <thead>
                                 <tr>
-                                    <th>WhatsApp</th>
+                                    <th>Recepcionado</th>
                                     <th>Nombre</th>
                                     <th>Cant. Personas</th>
                                     <th>Programa</th>
@@ -158,13 +158,24 @@
 
                                     @endphp
                                     <tr>
+
                                         <td>
+                                            @if (is_null($reserva->estadoRecepcion))
+                                                <a id="icono-reserva-{{ $reserva->id }}" onclick="recepcionar({{ $reserva->id }})" class="btn-floating white">
+                                                    <i id="icono-reserva-{{ $reserva->id }}" class="material-icons red-text">exit_to_app</i>
+                                                </a>
+                                            @else
+                                                <i class="material-icons green-text tooltipped" style="cursor: pointer" data-position="top" data-tooltip="Recepcionado por {{ $reserva->estadoRecepcion->user->name }}">person_pin</i>
+                                            @endif
+                                        </td>
+                                                                                    
+                                        {{-- <td>
                                             @if(is_null($reserva->cliente->whatsapp_cliente)) 
                                                 No Registra
                                             @else
                                                 <a href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}" target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                                             @endif
-                                        </td>
+                                        </td> --}}
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                 {{$reserva->cliente->nombre_cliente}}
@@ -254,6 +265,76 @@
     //             }
     //     });
     // }
+   </script>
+
+   <script>
+        function recepcionar(reservaId) { 
+            $.ajax({
+                url: '{{route("backoffice.estado_recepcion.store")}}',
+                method: 'POST',
+                data: {
+                    reserva_id: reservaId,
+                    _token: '{{ csrf_token() }}'
+                },
+                success: function (response) {
+
+                    const icono = document.querySelector(`#icono-reserva-${reservaId}`);
+                    if (icono) {
+                        icono.outerHTML = `
+                            <i class="material-icons green-text tooltipped"
+                            style="cursor: pointer"
+                            data-position="top"
+                            data-tooltip="Recepcionado por ${response.user_name}">
+                            person_pin
+                            </i>`;
+                        $('.tooltipped').tooltip(); // reactivar tooltips nuevos
+                    }
+
+                    Swal.fire({
+                        toast: true,
+                        position: 'center', // Esto lo centra en la pantalla
+                        icon: 'success',
+                        title: response.message,
+                        showConfirmButton: false,
+                        timer: 2000,
+                        timerProgressBar: true,
+                        customClass: {
+                            popup: 'swal2-toast' // importante para conservar estilo toast
+                        },
+                        didOpen: (toast) => {
+                            toast.addEventListener('mouseenter', Swal.stopTimer)
+                            toast.addEventListener('mouseleave', Swal.resumeTimer)
+                        }
+                    });
+                },
+                error: function () {
+                    Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
+                }
+            });
+         }
+   </script>
+
+   <script>
+    $(document).ready(function () {
+        if (typeof window.Echo !== 'undefined') {
+        window.Echo.channel('recepcion-cliente')
+        .listen('.cliente-recepcionado', (e) => {
+            const icono = document.querySelector(`#icono-reserva-${e.reservaId}`);
+            if (icono) {
+                icono.outerHTML = `
+                    <i class="material-icons green-text tooltipped"
+                    style="cursor: pointer"
+                    data-position="top"
+                    data-tooltip="Recepcionado por ${e.userName}">
+                    person_pin
+                    </i>`;
+                $('.tooltipped').tooltip();
+            }
+        });
+        }else{
+            console.error('Echo no está inicializado.');
+        }
+    });
    </script>
 
 @endsection

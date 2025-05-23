@@ -149,7 +149,61 @@ class PoroPoroVentaController extends Controller
      */
     public function update(Request $request, $id)
     {
-        dd($request->all());
+        $request->validate([
+            'id_tipo_transaccion' => 'required|exists:tipos_transacciones,id',
+            'productos' => 'required|array|min:1',
+            'productos.*.cantidad' => 'required|integer|min:1',
+        ], [
+            'id_tipo_transaccion.required' => 'Debe seleccionar un método de pago.',
+            'id_tipo_transaccion.exists' => 'El método de pago seleccionado no es válido.',
+            
+            'productos.required' => 'Debe seleccionar al menos un producto para registrar la venta.',
+            'productos.array' => 'El formato de los productos no es válido.',
+            'productos.min' => 'Debe agregar al menos un producto a la venta.',
+            
+            'productos.*.cantidad.required' => 'Debe ingresar una cantidad para cada producto.',
+            'productos.*.cantidad.integer' => 'La cantidad del producto debe ser un número entero.',
+            'productos.*.cantidad.min' => 'La cantidad mínima para cada producto es 1.',
+        ]);
+
+
+        $poroVenta = PoroPoroVenta::findOrFail($id);
+
+        DB::transaction(function () use ($request, $poroVenta){
+
+            $poroVenta->detalles()->delete();
+            
+            $poroVenta->total = 0;
+            $totalVenta = 0;
+            
+            foreach ($request->productos as $id => $detalle) {
+                $producto = PoroPoro::findOrFail($id);
+                $cantidad = $detalle['cantidad'];
+                $precioUnitario = $producto->valor;
+                $subtotal = $precioUnitario * $cantidad;
+                
+                $detalleVenta = $poroVenta->detalles()->create([
+                    'poro_id' => $producto->id,
+                    'cantidad' => $cantidad,
+                    'precio_unitario' => $precioUnitario,
+                    'subtotal' => $subtotal
+                ]);
+                
+                $totalVenta += $subtotal;
+            }
+            
+            $poroVenta->fecha = Carbon::now();
+            $poroVenta->total = $totalVenta;
+            $poroVenta->id_tipo_transaccion = $request->id_tipo_transaccion;
+            $poroVenta->save();
+
+
+
+        });
+
+        Alert::success('Éxito','Venta actualizada exitosamente')->showConfirmButton('Confirmar');
+        return redirect()->route('backoffice.ventas_poroporo.index');
+
     }
 
     /**
@@ -160,6 +214,13 @@ class PoroPoroVentaController extends Controller
      */
     public function destroy($id)
     {
-        //
+        $poroVenta = PoroPoroVenta::findOrFail($id);
+
+        DB::transaction(function () use ($poroVenta) {
+            $poroVenta->delete();
+        });
+        
+        Alert::success('Éxito','Venta eliminada exitosamente')->showConfirmButton('Confirmar');
+        return redirect()->route('backoffice.ventas_poroporo.index');
     }
 }

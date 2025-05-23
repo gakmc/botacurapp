@@ -13,22 +13,18 @@ class CategoriaCompra extends Model
     ];
 
 
-//RELACIONES
-// public function programa()
-// {
-//     return $this->belongsTo('App\Programa');
-// }
+    //RELACIONES
+    public function egresos()
+    {
+        return $this->hasMany(Egreso::class, 'categoria_id');
+    }
 
-// public function reservaciones()
-// {
-//     return $this->belongsToMany('App\Reserva');
-// }
 
-//ALMACENAMIENTO
+    //ALMACENAMIENTO
 
-//VALIDACION
+    //VALIDACION
 
-//RECUPERACION DE INFORMACION
+    //RECUPERACION DE INFORMACION
 
-//OTRAS OPERACIONES
+    //OTRAS OPERACIONES
 }

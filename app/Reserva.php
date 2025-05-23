@@ -64,6 +64,11 @@ class Reserva extends Model
     {
         return $this->hasMany(Visita::class, 'id_reserva')->orderBy('horario_sauna', 'asc');
     }
+
+    public function estadoRecepcion()
+    {
+        return $this->hasOne(EstadoRecepcion::class, 'reserva_id');
+    }
     //ALMACENAMIENTO
 
     public function store($request)

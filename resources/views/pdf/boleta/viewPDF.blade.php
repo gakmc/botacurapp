@@ -115,7 +115,7 @@
             @if ($venta->tiene_saldo_a_favor)
             <tr>
                 <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
-                    Saldo a favor
+                    Abono por servicio extra
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
                     ${{number_format(abs($venta->total_pagar),0,'','.')}}

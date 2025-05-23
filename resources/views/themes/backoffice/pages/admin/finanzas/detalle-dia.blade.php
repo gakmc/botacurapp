@@ -155,9 +155,9 @@
                                 <thead>
                                   <tr>
                                       <th class="white-text" style="background-color: #039B7B;">Tipo Transaccion</th>
-                                      <th class="white-text" style="background-color: #039B7B;">Abono</th>
-                                      <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
-                                      <th class="white-text" style="background-color: #039B7B;">Venta Directa</th>
+                                      <th class="white-text" style="background-color: #039B7B;">Pagos recibidos</th>
+                                      {{-- <th class="white-text" style="background-color: #039B7B;">Diferencia</th>
+                                      <th class="white-text" style="background-color: #039B7B;">Venta Directa</th> --}}
                                   </tr>
                                 </thead>
                         
@@ -168,21 +168,21 @@
                                         @endphp
                                         <tr>
                                             <td>{{$tipo->nombre}}</td>
-                                            <td>${{ number_format($tipo->total_abonos,0,'','.') }}</td>
-                                            <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
-                                            <td>${{ number_format($tipo->venta_directa,0,'','.') }}</td>
+                                            <td>${{ number_format($tipo->total_abonos + $tipo->total_diferencias + $tipo->venta_directa,0,'','.') }}</td>
+                                            {{-- <td>${{ number_format($tipo->total_diferencias,0,'','.') }}</td>
+                                            <td>${{ number_format($tipo->venta_directa,0,'','.') }}</td> --}}
                                         </tr>
                                     @endforeach
                                 </tbody>
-                                <tr>
+                                {{-- <tr>
                                     <td style=" text-align: center;"><strong>Subtotal:</strong></td>
-                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
+                                    <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $tiposTransacciones->sum("total_diferencias") + $tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
                                     <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
                                     <td><strong>${{ number_format($tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
-                                </tr>
+                                </tr> --}}
                                 <tr>
                                     <td style=" text-align: center;"><strong>Total:</strong></td>
-                                    <td></td>
+                                    {{-- <td></td> --}}
                                     <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos")+$tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
                                 </tr>
                             </table>
@@ -190,7 +190,7 @@
 
 
 
-                                                <div class="col s12 m3">
+                        <div class="col s12 m3">
                             <h5><strong>Resumen del día</strong></h5>
                             <table class="striped bordered">
                                 <thead>
@@ -231,6 +231,33 @@
                                     {{-- <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $tiposTransacciones->sum("total_diferencias")+ $totalConsumo + $totalServicios,0,'','.') }}</strong></td> --}}
                                     <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $diferencias + $totalConsumo + $totalServicios,0,'','.') }}</strong></td>
                                 </tr>
+                            </table>
+                        </div>
+
+
+                        <div class="col s12 m3">
+                            <h5><strong>Ventas Poro Poro del día</strong></h5>
+                            <table class="striped bordered">
+                                <thead>
+                                  <tr>
+                                      <th class="white-text" style="background-color: #039B7B;">Total Día</th>
+                                      <th class="white-text" style="background-color: #039B7B;"></th>
+                                  </tr>
+                                </thead>
+                        
+                                <tbody>
+                                    @foreach ($tiposTransacciones as $tipo)
+                                        <tr>
+                                            <td>{{$tipo->nombre}}</td>
+                                            <td>${{ number_format($tipo->poro,0,'','.') }}</td>
+                                        </tr>
+                                    @endforeach
+                                </tbody>
+                                <tr>
+                                    <td style=" text-align: center;"><strong>Total:</strong></td>
+                                    <td>${{ number_format($tiposTransacciones->sum('poro'),0,'','.') }}</td>
+                                </tr>
+
                             </table>
                         </div>
 

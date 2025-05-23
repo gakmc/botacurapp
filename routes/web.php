@@ -1,6 +1,7 @@
 <?php
 
 use App\CategoriaCompra;
+use App\Cliente;
 use App\Events\EjemploEvento;
 use App\Http\Controllers\EmailPreviewController;
 use App\Sector;
@@ -80,6 +81,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     // Create - Ingresa al formulario para nueva reserva
     Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
+    Route::post('/validar-whatsapp', 'ClienteController@validarWhatsapp')->name('validar.whatsapp');
+    Route::post('/validar-whatsapp-edit', 'ClienteController@validarWhatsappEdit')->name('validar.whatsapp.edit');
 
     // Store - Guardar la nueva reserva
     Route::post('reserva', 'ReservaController@store')->name('reserva.store');
@@ -259,6 +262,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('barman', 'BarmanController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');
+    Route::resource('egreso', 'EgresoController');
+    Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('insumo', 'InsumoController');
     Route::resource('masaje', 'MasajeController');
     Route::resource('menu', 'MenuController');

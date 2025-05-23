@@ -19,13 +19,24 @@
             <div class="col s12 m8 offset-m2">
                 <div class="card">
                   <div class="card-content">
-                    <span class="card-title">Usuario con el rol de {{$role->name}}</span>
+                    <span class="card-title">Rol de {{$role->name}}</span>
                       <p><strong>Descripción: </strong>{{$role->description}}</p>
                       <p><strong>Slug: </strong>{{$role->slug}}</p>
                   </div>
                   <div class="card-action">
                       <a href="{{route('backoffice.role.edit', $role) }}">Editar</a>
                       <a href="#" style="color: red" onclick="enviar_formulario()">Eliminar</a>
+                  </div>
+                </div>
+            </div>
+        </div>
+
+        <div class="row">
+            <div class="col s12 m8 offset-m2">
+                <div class="card">
+                  <div class="card-content">
+                    <span class="card-title">Usuarios con el Rol de {{$role->name}}</span>
+                      <p><strong>{{($role->users_with_role !== "") ? $role->users_with_role : "Sin Usuarios"}}</strong></p>
                   </div>
                 </div>
             </div>

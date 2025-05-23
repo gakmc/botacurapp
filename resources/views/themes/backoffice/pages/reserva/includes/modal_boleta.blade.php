@@ -26,7 +26,8 @@
                 </div>
               </div>
               @php 
-              $total = 0; 
+              $totalConsumo = 0; 
+              $totalServicio = 0; 
               $consumo = $reserva->venta->consumo;
               @endphp
               {{-- @foreach($reserva->venta->consumos as $consumo) --}}
@@ -42,7 +43,7 @@
                       @foreach ($consumo->detallesConsumos as $detalle)
                           @php 
                             $subtotal = $detalle['subtotal'];
-                            $total += $subtotal;
+                            $totalConsumo += $subtotal;
                           @endphp
                           <div class="row">
                             <div class="col s8 offset-s2">
@@ -78,7 +79,7 @@
                           @foreach ($consumo->detalleServiciosExtra as $detalle)
                               @php 
                                 $subtotal = $detalle['subtotal'];
-                                $total += $subtotal;
+                                $totalServicio += $subtotal;
                               @endphp
                               <div class="row">
                                 <div class="col s8 offset-s2">
@@ -109,9 +110,9 @@
               <div class="row">
                 
               </div>
-              <p><strong>Subtotal:</strong> ${{ number_format($total, 0, ',', '.') }}</p>
-              <p><strong>Propina 10%:</strong> ${{ number_format($total*0.1, 0, ',', '.') }}</p>
-              <p><strong>Total a pagar:</strong> ${{ number_format($total*1.1, 0, ',', '.') }}</p>
+              <p><strong>Subtotal:</strong> ${{ number_format($totalConsumo+$totalServicio, 0, ',', '.') }}</p>
+              <p><strong>Propina 10%:</strong> ${{ number_format($totalConsumo*0.1, 0, ',', '.') }}</p>
+              <p><strong>Total a pagar:</strong> ${{ number_format(($totalConsumo*1.1)+$totalServicio, 0, ',', '.') }}</p>
             </div>
           </div>
           <br><br>

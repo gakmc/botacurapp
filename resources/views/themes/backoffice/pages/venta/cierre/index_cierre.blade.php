@@ -64,7 +64,7 @@
                         <thead>
                             <tr>
                                 <th>Nombre</th>
-                                {{-- <th>WhatsApp</th> --}}
+                                <th>Programa</th>
                                 <th>Ubicacion</th>
                                 <th>Acciones</th>
                             </tr>
@@ -93,6 +93,13 @@
                                 <a href="{{route('backoffice.reserva.show', $reserva)}}">
                                     {{$reserva->cliente->nombre_cliente ?? 'Desconocido'}}
                                 </a>
+                            </td>
+                            <td>
+                                @if ($reserva->programa)
+                                    {{$reserva->programa->nombre_programa}}
+                                @else
+                                    <span class="red-text">No registra programa</span>
+                                @endif
                             </td>
                             {{-- <td>
                                 @if(is_null($reserva->cliente->whatsapp_cliente)) 

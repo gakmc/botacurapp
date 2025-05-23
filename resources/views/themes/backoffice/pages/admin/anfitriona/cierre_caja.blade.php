@@ -157,8 +157,8 @@
                                     <tr>
                                         <th class="white-text" style="background-color: #039B7B;">Medio de Pago</th>
                                         <th class="white-text" style="background-color: #039B7B">Total Dia</th>
-                                        <th class="white-text" style="background-color: #039B7B">Venta Directa</th>
-                                        <th class="white-text" style="background-color: #039B7B">Poro Poro</th>
+                                        {{-- <th class="white-text" style="background-color: #039B7B">Venta Directa</th>
+                                        <th class="white-text" style="background-color: #039B7B">Poro Poro</th> --}}
                                     </tr>
                                     </thead>
                             
@@ -169,21 +169,20 @@
                                             @endphp
                                             <tr>
                                                 <td>{{$transaccion->nombre}}:</td>
-                                                <td>${{ number_format($transaccion->total_diferencias,0,'','.') }}</td>
-                                                <td>${{ number_format($transaccion->venta_directa,0,'','.') }}</td>
-                                                <td>${{ number_format($transaccion->poro_poro,0,'','.') }}</td>
+                                                <td>${{ number_format($transaccion->total_diferencias+$transaccion->venta_directa+$transaccion->poro_poro,0,'','.') }}</td>
+                                                {{-- <td>${{ number_format($transaccion->venta_directa,0,'','.') }}</td>
+                                                <td>${{ number_format($transaccion->poro_poro,0,'','.') }}</td> --}}
                                             </tr>
                                         @endforeach
                                     </tbody>
-                                    <tr>
+                                    {{-- <tr>
                                         <td style=" text-align: center;"><strong>Sub-Total:</strong></td>
                                         <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias"),0,'','.') }}</strong></td>
                                         <td><strong>${{ number_format($tiposTransacciones->sum("venta_directa"),0,'','.') }}</strong></td>
                                         <td><strong>${{ number_format($tiposTransacciones->sum("poro_poro"),0,'','.') }}</strong></td>
-                                    </tr>
+                                    </tr> --}}
                                     <tr>
                                         <td style=" text-align: center;"><strong>Total:</strong></td>
-                                        <td></td>
                                         <td><strong>${{ number_format($tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa")+$tiposTransacciones->sum("poro_poro"),0,'','.') }}</strong></td>
                                     </tr>
                                 </table>
