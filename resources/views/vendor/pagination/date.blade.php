@@ -63,9 +63,9 @@
 
 
 
-@if ($paginator->hasPages())
+{{-- @if ($paginator->hasPages())
     <ul class="pagination">
-        {{-- Botón Anterior --}}
+
         @if ($paginator->onFirstPage())
             <li class="disabled"><a href="#!"><i class="material-icons">chevron_left</i></a></li>
         @else
@@ -76,7 +76,7 @@
             </li>
         @endif
 
-        {{-- Mostrar las fechas paginadas --}}
+
         @foreach ($elements as $element)
             @if (is_string($element))
                 <li class="disabled"><a href="#!">{{ $element }}</a></li>
@@ -98,6 +98,59 @@
          @endforeach
 
 
+
+        @if ($paginator->hasMorePages())
+            <li>
+                <a href="{{ $paginator->nextPageUrl() }}">
+                    <i class="material-icons">chevron_right</i>
+                </a>
+            </li>
+        @else
+            <li class="disabled"><a href="#!"><i class="material-icons">chevron_right</i></a></li>
+        @endif
+    </ul>
+@endif --}}
+
+
+
+@if ($paginator->hasPages())
+    <ul class="pagination">
+        {{-- Botón Anterior --}}
+        @if ($paginator->onFirstPage())
+            <li class="disabled"><a href="#!"><i class="material-icons">chevron_left</i></a></li>
+        @else
+            <li>
+                <a href="{{ $paginator->previousPageUrl() }}">
+                    <i class="material-icons">chevron_left</i>
+                </a>
+            </li>
+        @endif
+
+        {{-- Mostrar fechas reales --}}
+        {{-- @php $index = 0; @endphp --}}
+        @foreach ($elements as $element)
+            @if (is_string($element))
+                <li class="disabled"><a href="#!">{{ $element }}</a></li>
+            @endif
+
+            @if (is_array($element))
+                @foreach ($element as $page => $url)
+                    @php
+                        $fechaOriginal = $fechasPaginadas[$page - 1] ?? null;
+                        $fecha = $fechaOriginal
+                        ? Carbon\Carbon::createFromFormat('d-m-Y', $fechaOriginal)->format('d M')
+                        : 'Sin fecha';
+                    @endphp
+
+                    @if ($page == $paginator->currentPage())
+                        <li class="active"><a href="#!">{{ $fecha }}</a></li>
+                    @else
+                        <li class="waves-effect"><a href="{{ $url }}">{{ $fecha }}</a></li>
+                    @endif
+                @endforeach
+            @endif
+        @endforeach
+
         {{-- Botón Siguiente --}}
         @if ($paginator->hasMorePages())
             <li>
@@ -110,5 +163,4 @@
         @endif
     </ul>
 @endif
-
 

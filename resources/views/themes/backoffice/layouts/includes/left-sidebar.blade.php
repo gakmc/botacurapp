@@ -52,7 +52,7 @@
                         </li>
                     </ul>
                     <a class="btn-flat dropdown-button waves-effect waves-light white-text profile-btn dropdown-trigger"
-                        data-activates="profile-dropdown-nav" data-target="profile-dropdown-nav" href="#">
+                        data-activates="profile-dropdown-nav"  href="#">
                         {{Auth::user()->name}}
                         <i class="mdi-navigation-arrow-drop-down right"></i>
                     </a>
@@ -62,6 +62,16 @@
         </li>
         <li class="no-padding">
             <ul class="collapsible" data-collapsible="accordion">
+                <li class="bold hide-on-med-and-up">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.admin.menu') }}">
+                        <i class="material-icons">
+                            apps
+                        </i>
+                        <span class="nav-text">
+                            Panel del Usuario
+                        </span>
+                    </a>
+                </li>
 
                 @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                 <li class="bold">
@@ -91,7 +101,7 @@
                     </a>
                 </li>
 
-                <li class="bold">
+                {{-- <li class="bold">
                     <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reservas.registros') }}">
                         <i class="material-icons">
                             assignment_ind
@@ -100,8 +110,24 @@
                             Reservas
                         </span>
                     </a>
-                </li>
+                </li> --}}
 
+                @endif
+                
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')) || Auth::user()->has_role(config('app.garzon_role')))
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ 
+                        Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) 
+                        ? route ('backoffice.reservas.registro',["fecha" => now()->format('d-m-Y')]) 
+                        : route ('backoffice.reservas.registros') }}">
+                        <i class="material-icons">
+                            assignment_ind
+                        </i>
+                        <span class="nav-text">
+                            Reservas
+                        </span>
+                    </a>
+                </li>
                 @endif
 
                 @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))

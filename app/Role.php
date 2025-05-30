@@ -25,6 +25,11 @@ class Role extends Model
         return $this->belongsToMany('App\User')->withTimestamps();
     }
 
+    public function rangoSueldo()
+    {
+        return $this->hasMany(RangoSueldoRole::class, 'role_id');
+    }
+
     // ALMACENAMIENTO 
     public function store($request)
     {

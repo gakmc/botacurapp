@@ -1048,4 +1048,11 @@ class AdminController extends Controller
 
     }
 
+
+    // Menu Movil
+    public function menuMovil()
+    {
+
+        return view('themes.backoffice.pages.admin.moviles.admin');
+    }
 }

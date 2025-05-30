@@ -24,12 +24,13 @@
                 <ul class="right hide-on-med-and-down">
                     
                     <li>
-                        <a class="waves-effect waves-block waves-light toggle-fullscreen" href="javascript:void(0);">
+                        <a class="waves-effect waves-block waves-light toggle-fullscreen" data-activates="profile-dropdown" href="javascript:void(0);">
+                            {{-- data-target="profile-dropdown" --}}
                             <i class="material-icons">settings_overscan</i>
                         </a>
                     </li>
                     <li>
-                        <a class="waves-effect waves-block waves-light profile-button dropdown-trigger" data-activates="profile-dropdown" data-target="profile-dropdown" href="javascript:void(0);">
+                        <a class="waves-effect waves-block waves-light profile-button dropdown-trigger" data-activates="profile-dropdown"  href="javascript:void(0);">
                             <span class="avatar-status avatar-online">
                                 <img alt="avatar" src="/images/avatar/avatar-7.png">
                                 <i></i>

@@ -89,6 +89,11 @@ class User extends Authenticatable implements MustVerifyEmail
         return $this->hasMany(EstadoRecepcion::class, 'user_id');
     }
 
+    public function anularSueldo()
+    {
+        return $this->hasMany(AnularSueldoUsuario::class, 'user_id');
+    }
+
 //ALMACENAMIENTO
 
     public function store($request)
@@ -273,6 +278,31 @@ class User extends Authenticatable implements MustVerifyEmail
         $roles = $this->roles->pluck('name')->toArray();
         $string = implode(', ', $roles);
         return $string;
+    }
+
+
+
+    public function getSalarioAttribute()
+    {
+        if ($this->anularSueldo) {
+            return $this->anularSueldo->salario;
+        }
+
+        $hoy = now()->toDateString();
+
+        $rango = $this->roles()
+            ->with('rangoSueldo')
+            ->get()
+            ->pluck('rangoSueldo')
+            ->flatten()
+            ->where('vigente_desde', '<=', $hoy)
+            ->filter(function ($r) use ($hoy) {
+                return is_null($r->vigente_hasta) || $r->vigente_hasta >= $hoy;
+            })
+            ->sortByDesc('vigente_desde')
+            ->first();
+
+        return $rango ? $rango->salario_base : 0;
     }
 
 }

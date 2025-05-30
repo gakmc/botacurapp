@@ -57,6 +57,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('home/equipos', 'AdminController@team')->name('admin.team');
 
     Route::get('home/consumos', 'AdminController@consumos')->name('admin.consumos');
+    Route::get('home/menu', 'AdminController@menuMovil')->name('admin.menu');
 
     Route::get('consumos/{anio}/{mes}', 'AdminController@consumosMensuales')->name('admin.consumos.detalleMes');
 
@@ -271,6 +272,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('poroporo', 'PoroPoroController');
     Route::resource('producto', 'ProductoController');
     Route::resource('programa', 'ProgramaController');
+    Route::resource('rango-sueldos', 'RangoSueldoRoleController');
     Route::resource('reserva.reagendamientos', 'ReagendamientoController');
     Route::resource('reserva.venta', 'VentaController');
     Route::resource('reserva.visitas', 'VisitaController');

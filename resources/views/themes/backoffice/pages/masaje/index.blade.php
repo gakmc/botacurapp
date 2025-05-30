@@ -35,6 +35,7 @@
 
                 <tbody>
                     @foreach ($reservasPaginadas as $fecha=>$reservasPorFecha)
+
                     <h5>@if (now()->format('d-m-Y') == $fecha)
                         <strong>Hoy</strong>
                         @endif
@@ -42,7 +43,6 @@
                     </h5>
 
                     @foreach ($reservasPorFecha as $reserva)
-
                     @if (isset($distribucionHorarios[$reserva->id]))
                     @else
                     <p>No hay horarios disponibles para esta visita.</p>
@@ -50,9 +50,10 @@
 
 
 
-
-
-                    @foreach ($reserva->masajes as $masaje)
+                    
+                    @foreach ($reserva->masajes->sortBy(function($m) {
+                        return $m->horario_masaje . '-' . $m->persona;
+                    }) as $masaje)
 
                     <tr>
                         <td>
@@ -134,9 +135,12 @@
             </table>
 
 
+
             {{-- Paginación --}}
             <div class="center">
-                {{ $reservasPaginadas->links('vendor.pagination.date') }}
+                {{-- {{ $reservasPaginadas->links('vendor.pagination.date') }} --}}
+                {{ $reservasPaginadas->appends(request()->query())->links('vendor.pagination.date', ['fechasPaginadas' => $fechasPaginadas]) }}
+
             </div>
         </div>
 

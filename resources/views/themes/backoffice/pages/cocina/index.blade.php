@@ -1,6 +1,6 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('title', 'Menus')
+@section('title', 'Menús')
 
 @section('breadcrumbs')
 @endsection
@@ -10,7 +10,7 @@
 
 @section('content')
 <div class="section">
-  <p class="caption"><strong>Menus desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
+  <p class="caption"><strong>Menús desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
   <div class="divider"></div>
   <div id="basic-form" class="section">
     <div class="card-panel ">
@@ -153,7 +153,7 @@
       <div class="card-panel">
         <div class="card-content gradient-45deg-light-blue-cyan">
           <h5 class="card-title center white-text"><i class='material-icons white-text'>restaurant_menu</i> Menús para
-            {{ $reserva->cliente->nombre_cliente }}</h5>
+            {{ $reserva->cliente->nombre_cliente." - ".$reserva->programa->nombre_programa}}</h5>
         </div>
 
         <div class="card-content  grey lighten-4">

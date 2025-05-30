@@ -40,10 +40,31 @@ class MasajeController extends Controller
         //     ->orderBy('m.horario_masaje', 'asc')
         //     ->get();
 
-        $reservas = Reserva::with(['masajes.lugarMasaje', 'cliente'])
-            ->where('fecha_visita', '>=', $fechaActual)
+        // $reservas = Reserva::with(['masajes.lugarMasaje', 'cliente'])
+        //     ->where('fecha_visita', '>=', $fechaActual)
+        //     ->orderBy('fecha_visita', 'asc')
+        //     ->get();
+
+
+        $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
+            ->with([
+                'masajes',
+                'masajes.lugarMasaje',
+                'cliente'
+            ])
+            ->select('reservas.*')
+            ->selectSub(
+                DB::table('masajes')
+                    ->whereColumn('masajes.id_reserva', 'reservas.id')
+                    ->orderBy('horario_masaje', 'asc')
+                    ->limit(1)
+                    ->select('horario_masaje'),
+                'first_horario_masaje'
+            )
             ->orderBy('fecha_visita', 'asc')
+            ->orderBy('first_horario_masaje', 'asc')
             ->get();
+
 
         // Agrupar reservas por fecha
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
@@ -53,6 +74,9 @@ class MasajeController extends Controller
         // Paginación manual por días
         $perPage = 1; // Número de días por página
         $currentPage = LengthAwarePaginator::resolveCurrentPage();
+
+        $todasLasFechas = $reservasPorDia->keys()->values();
+
         $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
 
         // Crear el paginador manualmente
@@ -142,13 +166,12 @@ class MasajeController extends Controller
 
 
 
-
-
         // Retorno de la vista
         return view('themes.backoffice.pages.masaje.index', [
             'reservasPaginadas' => $reservasPaginadas,
             'distribucionHorarios' => $distribucionHorarios,
-            'horasDisponibles' => $horariosDisponiblesMasajes
+            'horasDisponibles' => $horariosDisponiblesMasajes,
+            'fechasPaginadas' => $todasLasFechas,
         ]);
     }
 

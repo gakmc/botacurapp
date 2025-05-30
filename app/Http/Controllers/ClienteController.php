@@ -49,7 +49,7 @@ class ClienteController extends Controller
     {
 
         $cliente = $cliente->store($request);
-        return redirect()->route('backoffice.cliente.show', $cliente);
+        return redirect()->route('backoffice.reserva.create', $cliente);
     }
 
     public function show(Cliente $cliente)
@@ -130,6 +130,7 @@ class ClienteController extends Controller
 
     public function validarWhatsapp(Request $request)
     {
+        $cliente = null;
 
         $numero = preg_replace('/\D/', '', $request->whatsapp_cliente); // solo dígitos
 
@@ -141,10 +142,15 @@ class ClienteController extends Controller
 
         $existe = Cliente::whereRaw("REPLACE(REPLACE(REPLACE(whatsapp_cliente, '+', ''), ' ', ''), '-', '') LIKE ?", ["%$numero"])->exists();
 
+        if ($existe) {
+            $cliente = Cliente::whereRaw("REPLACE(REPLACE(REPLACE(whatsapp_cliente, '+', ''), ' ', ''), '-', '') LIKE ?", ["%$numero"])->first();
+        }
 
+        
         // $existe = Cliente::where('whatsapp_cliente', $request->whatsapp_cliente)->exists();
         return response()->json([
             'disponible' => !$existe,
+            'cliente' => ($existe) ? $cliente : null,
         ]);
     }
 

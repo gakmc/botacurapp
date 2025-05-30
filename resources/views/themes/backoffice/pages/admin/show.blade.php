@@ -203,6 +203,68 @@
             </div>
         </div>
     </div>
+
+
+    <div class="section">
+        <p class="caption"><strong>Funcionarios</strong></p>
+        <div class="divider"></div>
+        <div id="basic-form" class="section">
+            <div class="row">
+                <div class="col s12 ">
+                    <div class="card-panel">
+                        <div class="row">
+
+                            {{-- CONTENIDO --}}
+                            <div id="card-stats">
+                                <div class="row mt-1">
+                                    <!-- Tarjeta para mostrar el número de Reservas -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.rango-sueldos.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-blue-grey-blue gradient-shadow min-height-100 black-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5 white-text">equalizer</i>
+                                                        <p class="white-text">Sueldos por Roles</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0 white-text">0 cambiar</h5>
+                                                        <p class="no-margin white-text">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+
+                                    {{-- <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.sueldos.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">monetization_on</i>
+                                                        <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">${{number_format($sueldosMes->sum("total_pagar"),0,"",".")}}</h5>
+                                                        <p class="no-margin">Total</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div> --}}
+
+                                </div>
+                            </div>
+
+
+                        </div>
+                    </div>
+                </div>
+            </div>
+        </div>
+    </div>
 @endif
 
 @if (Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))

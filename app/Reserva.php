@@ -57,7 +57,7 @@ class Reserva extends Model
 
     public function masajes()
     {
-        return $this->hasMany(Masaje::class, 'id_reserva');
+        return $this->hasMany(Masaje::class, 'id_reserva')->orderBy('horario_masaje', 'asc');
     }
 
     public function visitasOrdenadas()

@@ -47,6 +47,10 @@
             closeOnClick: true // Cierra el dropdown al hacer clic fuera
         });
 
+
+        $("#modal-acciones").modal();              // para los móviles
+
+
     });
     
 
