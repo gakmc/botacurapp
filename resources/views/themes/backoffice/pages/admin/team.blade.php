@@ -19,7 +19,7 @@
                     <div class="row">
                         <form method="POST" action="{{ route('backoffice.sueldos.store') }}">
                             @csrf
-                            <div class="row">
+                            {{-- <div class="row">
 
                                 <div class="input-field col m4">
                                     <input type="number" name="sueldoBase" id="sueldoBase" value="{{$base}}" readonly>
@@ -35,7 +35,7 @@
                                     <input type="text" name="bono" id="bono">
                                     <label for="sueldoBase">Bono general</label>
                                 </div> -->
-                            </div>
+                            </div> --}}
                             @php
                             $counter = 0;
                             @endphp
@@ -50,7 +50,7 @@
                                         @if (isset($asignacionesPorDia[$dia]))
                                         @foreach ($asignacionesPorDia[$dia] as $asignacion)
                                         @foreach ($asignacion->users as $user)
-                                        <p><strong>{{ $user->name }}</strong> - ${{number_format($base,0,',','.')}}
+                                        <p><strong>{{ $user->name }}</strong> - ${{number_format($user->salario,0,',','.')}}
 
                                             @if (isset($propinasPorDia[$dia]))
                                             - Propinas del dia: ${{ number_format($propinasPorDia[$dia]['propina'], 0,
@@ -62,11 +62,11 @@
                                                     <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
                                                         value="{{ $propinasPorDia[$dia]['dia_trabajado'] }}">
                                                     <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]"
-                                                        value="{{$base}}">
+                                                        value="{{$user->salario}}">
                                                     <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
-                                                        value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                                        value="{{ $user->salario + $propinasPorDia[$dia]['propina'] }}">
                                                     <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
-                                                        value="{{ number_format($base + $propinasPorDia[$dia]['propina'],0,',', '') }}">
+                                                        value="{{ $user->salario + $propinasPorDia[$dia]['propina'] }}">
                                                     <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
                                                         value="{{ $user->id }}">
 
@@ -81,11 +81,11 @@
                                             <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
                                             value="{{$fechasSemana[$dia]}}">
                                             <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]"
-                                            value="{{$base}}">
+                                            value="{{$user->salario}}">
                                             <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
-                                            value="{{ number_format($base,0,',', '') }}">
+                                            value="{{ $user->salario }}">
                                             <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
-                                            value="{{ number_format($base,0,',', '') }}">
+                                            value="{{ $user->salario }}">
                                             <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
                                             value="{{ $user->id }}">
                                             
@@ -161,85 +161,86 @@
 
 
 </script>
-<script>
+
+{{-- <script>
     $(document).ready(function () {
-    const sueldoBaseInput = $('#sueldoBase');
-    const editarBaseBtn = $("#editarBase");
-    const guardarBaseBtn = $("#guardarBase");
-    
-    editarBaseBtn.on('click', function (e) {
-        e.preventDefault();
-        sueldoBaseInput.prop('readonly', false);
-        guardarBaseBtn.prop('hidden', false);
-        editarBaseBtn.prop('hidden', true);
+        const sueldoBaseInput = $('#sueldoBase');
+        const editarBaseBtn = $("#editarBase");
+        const guardarBaseBtn = $("#guardarBase");
         
-    });
-    
-    guardarBaseBtn.on('click', function (e) { 
-        e.preventDefault();
-        if (sueldoBaseInput.val() === '') {
-            const Toast = Swal.mixin({
-                  toast: true,
-                  position: "",
-                  showConfirmButton: false,
-                  timer: 3000,
-                  timerProgressBar: true,
-                  didOpen: (toast) => {
-                    toast.onmouseenter = Swal.stopTimer;
-                    toast.onmouseleave = Swal.resumeTimer;
-                  }
-                });
-                Toast.fire({
-                  icon: "error",
-                  title: "Debe especificar un monto"
-                });
+        editarBaseBtn.on('click', function (e) {
+            e.preventDefault();
+            sueldoBaseInput.prop('readonly', false);
+            guardarBaseBtn.prop('hidden', false);
+            editarBaseBtn.prop('hidden', true);
             
-        }else{
-            sueldoBaseInput.prop('readonly', true);
-            editarBaseBtn.prop('hidden', false);
-            guardarBaseBtn.prop('hidden', true);
-            window.location.href = `/actualizar-sueldo-base?sueldoBase=${sueldoBaseInput.val()}`;
+        });
+        
+        guardarBaseBtn.on('click', function (e) { 
+            e.preventDefault();
+            if (sueldoBaseInput.val() === '') {
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: "",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                    });
+                    Toast.fire({
+                    icon: "error",
+                    title: "Debe especificar un monto"
+                    });
+                
+            }else{
+                sueldoBaseInput.prop('readonly', true);
+                editarBaseBtn.prop('hidden', false);
+                guardarBaseBtn.prop('hidden', true);
+                window.location.href = `/actualizar-sueldo-base?sueldoBase=${sueldoBaseInput.val()}`;
 
-        }
-     });
-});
-
-
-// $(document).ready(function () {
-//     // Escucha clic en el botón
-//     $('#editarBase').on('click', function (e) {
-//         e.preventDefault();
-
-//         // Referencias
-//         const sueldoBaseInput = $('#sueldoBase');
-//         const editarBaseBtn = $(this);
-
-//         // Si el texto del botón es "Modificar sueldo"
-//         if (editarBaseBtn.text().trim() === 'Modificar sueldo') {
-//             // Cambiar el texto del botón
-//             editarBaseBtn.text('Guardar sueldo');
-
-//             // Hacer el input editable
-//             sueldoBaseInput.prop('readonly', false);
-//         } else {
-//             // Cambiar el texto del botón
-//             editarBaseBtn.text('Modificar sueldo');
-
-//             // Obtener el valor del input
-//             const sueldoBase = sueldoBaseInput.val();
-
-//             // Validar que el sueldo no esté vacío
-//             if (sueldoBase === '') {
-//                 alert('El sueldo base no puede estar vacío.');
-//                 return;
-//             }
-
-//             // Redirigir con el valor del sueldo en la URL
-//             window.location.href = `/actualizar-sueldo-base?sueldoBase=${sueldoBase}`;
-//         }
-//     });
-// });
+            }
+        });
+    });
 
 
-</script>
+    // $(document).ready(function () {
+    //     // Escucha clic en el botón
+    //     $('#editarBase').on('click', function (e) {
+    //         e.preventDefault();
+
+    //         // Referencias
+    //         const sueldoBaseInput = $('#sueldoBase');
+    //         const editarBaseBtn = $(this);
+
+    //         // Si el texto del botón es "Modificar sueldo"
+    //         if (editarBaseBtn.text().trim() === 'Modificar sueldo') {
+    //             // Cambiar el texto del botón
+    //             editarBaseBtn.text('Guardar sueldo');
+
+    //             // Hacer el input editable
+    //             sueldoBaseInput.prop('readonly', false);
+    //         } else {
+    //             // Cambiar el texto del botón
+    //             editarBaseBtn.text('Modificar sueldo');
+
+    //             // Obtener el valor del input
+    //             const sueldoBase = sueldoBaseInput.val();
+
+    //             // Validar que el sueldo no esté vacío
+    //             if (sueldoBase === '') {
+    //                 alert('El sueldo base no puede estar vacío.');
+    //                 return;
+    //             }
+
+    //             // Redirigir con el valor del sueldo en la URL
+    //             window.location.href = `/actualizar-sueldo-base?sueldoBase=${sueldoBase}`;
+    //         }
+    //     });
+    // });
+
+
+</script> --}}
 @endsection

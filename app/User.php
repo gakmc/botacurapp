@@ -2,6 +2,7 @@
 
 namespace App;
 
+use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -38,6 +39,8 @@ class User extends Authenticatable implements MustVerifyEmail
     protected $casts = [
         'email_verified_at' => 'datetime',
     ];
+
+    protected $appends = ['salario'];
 
     //RELACIONES
 
@@ -91,7 +94,12 @@ class User extends Authenticatable implements MustVerifyEmail
 
     public function anularSueldo()
     {
-        return $this->hasMany(AnularSueldoUsuario::class, 'user_id');
+        return $this->hasOne(AnularSueldoUsuario::class, 'user_id');
+    }
+
+    public function asistencias()
+    {
+        return $this->belongsToMany(Asistencia::class);
     }
 
 //ALMACENAMIENTO
@@ -288,7 +296,8 @@ class User extends Authenticatable implements MustVerifyEmail
             return $this->anularSueldo->salario;
         }
 
-        $hoy = now()->toDateString();
+        // $hoy = now()->toDateString();
+        $hoy = Carbon::now();
 
         $rango = $this->roles()
             ->with('rangoSueldo')
@@ -302,7 +311,7 @@ class User extends Authenticatable implements MustVerifyEmail
             ->sortByDesc('vigente_desde')
             ->first();
 
-        return $rango ? $rango->salario_base : 0;
+        return $rango ? $rango->sueldo_base : 0;
     }
 
 }

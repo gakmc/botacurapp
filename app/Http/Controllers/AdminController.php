@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Asignacion;
+use App\Asistencia;
 use App\Cliente;
 use App\Consumo;
 use App\Insumo;
@@ -11,6 +12,7 @@ use App\PoroPoroVenta;
 use App\Programa;
 use App\Propina;
 use App\Reserva;
+use App\Role;
 use App\Sueldo;
 use App\TipoTransaccion;
 use App\User;
@@ -31,12 +33,16 @@ class AdminController extends Controller
 
         $this->middleware('role:' . implode('|', [
             config('app.admin_role'),
+            config('app.administracion_role'),
+            config('app.aseo_role'),
             config('app.anfitriona_role'),
+            config('app.barman_role'),
             config('app.cocina_role'),
             config('app.garzon_role'),
-            config('app.masoterapeuta_role'),
-            config('app.barman_role'),
+            config('app.informatica_role'),
             config('app.jefe_local_role'),
+            config('app.masoterapeuta_role'),
+            config('app.mantencion_role'),
         ]));
         
 
@@ -61,6 +67,9 @@ class AdminController extends Controller
 
         $totalConsumos = Consumo::count();
 
+        $cantidadFuncionarios = User::count();
+        $cantidadRoles = Role::count();
+
         $insumosCriticos = Insumo::whereColumn('cantidad', '<=', 'stock_critico')->get();
 
         $masajesAsignados = Masaje::count();
@@ -73,11 +82,15 @@ class AdminController extends Controller
         // Consulta para contar las asignaciones que caen dentro de la semana actual
         $asignacionesSemanaActual = Asignacion::whereBetween('fecha', [$inicioSemana, $finSemana])->count();
 
+        $asistenciaHoy = Asistencia::whereDate('fecha', Carbon::today())->with('users')->first();
+
+        $asistentesConteo = $asistenciaHoy ? $asistenciaHoy->users->count() : 0;
+
         $sueldosMes = Sueldo::whereMonth("dia_trabajado",Carbon::now()->month);
 
         if ($user->has_role(config('app.admin_role'))) {
 
-            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia'));
+            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia','cantidadFuncionarios','cantidadRoles', 'asistentesConteo'));
         }
 
         if ($user->has_role(config('app.anfitriona_role')) || $user->has_role(config('app.jefe_local_role'))) {
@@ -100,16 +113,16 @@ class AdminController extends Controller
     public function index()
     {
         Carbon::setLocale('es');
-        $masajes = Masaje::with('users', 'visitas');
+        $masajes = Masaje::with('users', 'reservas');
 
         // Obtener usuarios con el rol de masoterapeuta
         $masoterapeutas = User::whereHas('roles', function ($query) {
             $query->where('name', 'masoterapeuta');
         })->get();
 
-        // Configurar la semana para que comience el lunes
-        Carbon::setWeekStartsAt(Carbon::MONDAY);
-        Carbon::setWeekEndsAt(Carbon::SUNDAY);
+        // // Configurar la semana para que comience el lunes
+        // Carbon::setWeekStartsAt(Carbon::MONDAY);
+        // Carbon::setWeekEndsAt(Carbon::SUNDAY);
 
         // Obtener la cantidad de masajes realizados por cada masoterapeuta en la semana en curso
         $inicioSemana = Carbon::now()->startOfWeek();
@@ -124,31 +137,64 @@ class AdminController extends Controller
             $fechasDiasSemana[$dia] = $inicioSemana->copy()->addDays($indice)->toDateString();
         }
 
+        
         // Crear un array para almacenar la cantidad de masajes por semana y por día por masoterapeuta
         $cantidadMasajesPorSemana = [];
         $cantidadMasajesPorDia = [];
+        
+        // foreach ($masoterapeutas as $masoterapeuta) {
+        //     // Cantidad total de masajes en la semana por masoterapeuta
+        //     $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
+        //     ->whereBetween('created_at', [$inicioSemana, $finSemana])
+        //     ->count();
+            
+        //     // Cantidad de masajes por cada día de la semana
+        //     $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
+        //         ->whereBetween('created_at', [$inicioSemana, $finSemana])
+        //         ->get()
+        //         ->groupBy(function ($masaje) {
+        //             return Carbon::parse($masaje->created_at)->format('N');
+        //         });
+            
+        //     // Crear un array para contener la cantidad de masajes por día
+        //     $cantidadMasajesPorDia[$masoterapeuta->id] = [];
+        //     foreach ($diasSemana as $indice => $dia) {
+        //         $diaNumero = $indice + 1;
+        //         $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero]) ? $masajesPorDia[$diaNumero]->count() : 0;
+        //     }
+        // }
+
 
         foreach ($masoterapeutas as $masoterapeuta) {
-            // Cantidad total de masajes en la semana por masoterapeuta
+            // Total de masajes de la semana (por fecha de reserva)
             $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
-                ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+                    $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+                })
                 ->count();
 
-            // Cantidad de masajes por cada día de la semana
+            // Masajes por día según la fecha de la reserva
             $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
-                ->whereBetween('created_at', [$inicioSemana, $finSemana])
+                ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+                    $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+                })
+                ->with('reserva') // para evitar múltiples consultas al acceder a la fecha
                 ->get()
                 ->groupBy(function ($masaje) {
-                    return Carbon::parse($masaje->created_at)->format('N');
+                    return Carbon::parse($masaje->reserva->fecha_visita)->format('N');
                 });
 
-            // Crear un array para contener la cantidad de masajes por día
+            // Inicializa los días de la semana
             $cantidadMasajesPorDia[$masoterapeuta->id] = [];
             foreach ($diasSemana as $indice => $dia) {
                 $diaNumero = $indice + 1;
-                $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero]) ? $masajesPorDia[$diaNumero]->count() : 0;
+                $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero])
+                    ? $masajesPorDia[$diaNumero]->count()
+                    : 0;
             }
         }
+
+            
 
         return view('themes.backoffice.pages.admin.index', [
             'masoterapeutas' => $masoterapeutas,
@@ -220,7 +266,30 @@ class AdminController extends Controller
         }
 
         // Calcular el total a pagar por usuario en la semana
-        $pagoBasePorUsuario = Cache::get('sueldoBase') ?? 45000;
+        // $pagoBasePorUsuario = Cache::get('sueldoBase') ?? 45000;
+        // $totalPorUsuario = [];
+
+        // foreach ($usuarios as $usuario) {
+        //     $totalDiasAsignados = 0;
+        //     $propinaUsuario = 0;
+
+        //     foreach ($diasSemana as $dia) {
+        //         if (isset($asignacionesPorDia[$dia])) {
+        //             $usuariosDia = $asignacionesPorDia[$dia]->pluck('users')->flatten();
+
+        //             // Verifica si el usuario está asignado en este día
+        //             if ($usuariosDia->contains('id', $usuario->id)) {
+        //                 $totalDiasAsignados++;
+        //                 $propinaUsuario += $propinasPorDia[$dia]['propina'] ?? 0;
+
+        //             }
+        //         }
+        //     }
+
+        //     // Calcular el total a pagar para el usuario
+        //     $totalPorUsuario[$usuario->name] = ($totalDiasAsignados * $pagoBasePorUsuario) + $propinaUsuario;
+        // }
+
         $totalPorUsuario = [];
 
         foreach ($usuarios as $usuario) {
@@ -231,17 +300,17 @@ class AdminController extends Controller
                 if (isset($asignacionesPorDia[$dia])) {
                     $usuariosDia = $asignacionesPorDia[$dia]->pluck('users')->flatten();
 
-                    // Verifica si el usuario está asignado en este día
                     if ($usuariosDia->contains('id', $usuario->id)) {
                         $totalDiasAsignados++;
                         $propinaUsuario += $propinasPorDia[$dia]['propina'] ?? 0;
-
                     }
                 }
             }
 
-            // Calcular el total a pagar para el usuario
-            $totalPorUsuario[$usuario->name] = ($totalDiasAsignados * $pagoBasePorUsuario) + $propinaUsuario;
+            // Obtener el sueldo base individual del usuario (si no tiene, usar 45000 por defecto)
+            $sueldoBase = $usuario->salario;
+
+            $totalPorUsuario[$usuario->name] = ($totalDiasAsignados * $sueldoBase) + $propinaUsuario;
         }
 
         $totalSueldoGeneral = array_sum($totalPorUsuario);
@@ -260,7 +329,6 @@ class AdminController extends Controller
             'totalSueldos' => $totalSueldoGeneral,
             'usuarios' => $usuarios,
             'diaT' => $diaTrabajado,
-            'base' => $pagoBasePorUsuario,
             'fechasSemana' => $fechasSemana,
         ]);
     }

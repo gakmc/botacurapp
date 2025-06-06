@@ -69,6 +69,7 @@
                                 <tr>
                                     <th>Recepcionado</th>
                                     <th>Nombre</th>
+                                    <th>WhatsApp</th>
                                     <th>Cant. Personas</th>
                                     <th>Programa</th>
                                     <th>Ubicación</th>
@@ -169,13 +170,13 @@
                                             @endif
                                         </td>
                                                                                     
-                                        {{-- <td>
+                                        <td>
                                             @if(is_null($reserva->cliente->whatsapp_cliente)) 
                                                 No Registra
                                             @else
                                                 <a href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}" target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                                             @endif
-                                        </td> --}}
+                                        </td>
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
                                                 {{$reserva->cliente->nombre_cliente}}

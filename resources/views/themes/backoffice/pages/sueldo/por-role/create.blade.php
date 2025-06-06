@@ -10,7 +10,8 @@
 
 
 @section('breadcrumbs')
-{{-- <li><a href="{{route('backoffice.cliente.index')}}">Clientes del Sistema</a></li> --}}
+<li><a href="{{route('backoffice.rango-sueldos.index')}}">Sueldos por Rol</a></li>
+<li>Generando sueldo por rol</li>
 {{-- <li>{{$cliente->nombre_cliente}}</li> --}}
 @endsection
 
@@ -32,12 +33,12 @@
 
 
                         {{-- CONTENIDO --}}
-                        <form method="POST" action="{{ isset($rango) ? route('backoffice.rango-sueldos.update', $rango) : route('backoffice.rango-sueldos.store') }}">
+                        <form method="POST" action="{{ isset($rango) ? route('backoffice.rango-sueldos.update', ['rango_sueldo'=>$rango]) : route('backoffice.rango-sueldos.store') }}">
                         @csrf
                         @if(isset($rango)) @method('PUT') @endif
 
                         <div class="input-field col s12 m6">
-                            <select name="role_id">
+                            <select name="role_id" {{(isset($rango) && $rango->role_id) ? 'disabled' : ''}}>
                                 <option value="" selected>-- Seleccione --</option>
                                 @foreach($roles as $role)
                                     <option value="{{ $role->id }}" {{ (isset($rango) && $rango->role_id == $role->id) ? 'selected' : '' }}>{{ $role->name }}</option>
@@ -47,8 +48,8 @@
                         </div>
 
                         <div class="input-field col s12 m6">
-                            <input type="text" id="salario_base" name="salario_base" value="{{ old('salario_base', $rango->salario_base ?? "$0") }}">
-                            <label>Salario Base</label>
+                            <input type="text" id="sueldo_base" name="sueldo_base" value="{{ old('sueldo_base', isset($rango) ? '$'.number_format($rango->sueldo_base, 0, ',', '.') : '$0') }}">
+                            <label>Sueldo Base</label>
                         </div>
 
                         {{-- <div class="input-field col s12 m6">
@@ -105,19 +106,22 @@
 </script>
 
 <script>
-    function formatCLP(number) {
-        number = number.toString().replace(/\D/g, ''); // Elimina todo lo que no sea dígito
-        return number ? '$' + parseInt(number, 10).toLocaleString('es-CL') : '';
-    }
-
-    $('#salario_base').on('input', function () {
-        const cursorPos = this.selectionStart;
-        const rawValue = $(this).val().replace(/\D/g, '');
-        const formatted = formatCLP(rawValue);
-        $(this).val(formatted);
-
-        // Intenta mantener la posición del cursor (opcional)
-        // this.setSelectionRange(cursorPos, cursorPos);
+    
+    $(document).ready(function () {
+        function formatCLP(number) {
+            number = number.toString().replace(/\D/g, ''); // Elimina todo lo que no sea dígito
+            return number ? '$' + parseInt(number, 10).toLocaleString('es-CL') : '';
+        }
+        
+        $('#sueldo_base').on('input', function () {
+            const cursorPos = this.selectionStart;
+            const rawValue = $(this).val().replace(/\D/g, '');
+            const formatted = formatCLP(rawValue);
+            $(this).val(formatted);
+    
+            // Intenta mantener la posición del cursor (opcional)
+            // this.setSelectionRange(cursorPos, cursorPos);
+        });
     });
 </script>
 @endsection

@@ -3,18 +3,19 @@
 return [
 
 
-    'admin_role' => env('ADMIN_ROLE', 'administrador'),
-    'jefe_local_role' => env('JEFE_LOCAL_ROLE', "jefe-local"),
-    'visit_role' => env('VISIT_ROLE', 'visitante'),
     'anfitriona_role'=>env('ANFITRIONA_ROLE', 'anfitriona'),
+    'admin_role' => env('ADMIN_ROLE', 'administrador'),
+    'administracion_role'=>env('ADMINISTRACION_ROLE','administracion'),
     'barman_role'=>env('BARMAN_ROLE', 'barman'),
     'cajera_role'=>env('CAJERA_ROLE','cajera'),
     'cocina_role'=>env('COCINA_ROLE','cocina'),
-    'garzon_role'=>env('GARZON_ROLE','garzon'),
-    'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'compra_role'=>env('COMPRA_ROLE','comprador'),
+    'garzon_role'=>env('GARZON_ROLE','garzon'),
+    'informatica'=>env('INFORMATICA_ROLE','informatica'),
+    'jefe_local_role' => env('JEFE_LOCAL_ROLE', "jefe-local"),
     'mantencion_role'=>env('MANTENCION_ROLE','mantencion'),
-    'administracion_role'=>env('ADMINISTRACION_ROLE','administracion'),
+    'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
+    'visit_role' => env('VISIT_ROLE', 'visitante'),
     /*
     |--------------------------------------------------------------------------
     | Application Name

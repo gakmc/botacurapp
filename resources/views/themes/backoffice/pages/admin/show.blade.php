@@ -140,7 +140,7 @@
                                     <!-- Tarjeta para mostrar el número de Reservas -->
                                     <div class="col s12 m6 l3">
                                         <a href="{{route('backoffice.admin.ingresos')}}">
-                                            <div class="animate__animated animate__backInLeft card gradient-45deg-amber-amber gradient-shadow min-height-100 black-text"
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 black-text"
                                                 style="--animate-delay: 1s; --animate-duration: 2s; ">
                                                 <div class="padding-4">
                                                     <div class="col s7 m7">
@@ -177,7 +177,7 @@
 
                                     <div class="col s12 m6 l3">
                                         <a href="{{route('backoffice.sueldos.index')}}">
-                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 white-text"
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 black-text"
                                                 style="--animate-delay: 1s; --animate-duration: 2s; ">
                                                 <div class="padding-4">
                                                     <div class="col s7 m7">
@@ -228,8 +228,8 @@
                                                         <p class="white-text">Sueldos por Roles</p>
                                                     </div>
                                                     <div class="col s5 m5 right-align">
-                                                        <h5 id="reservas-count" class="mb-0 white-text">0 cambiar</h5>
-                                                        <p class="no-margin white-text">Total</p>
+                                                        <h5 id="reservas-count" class="mb-0 white-text">{{$cantidadRoles}}</h5>
+                                                        <p class="no-margin white-text">Roles</p>
                                                     </div>
                                                 </div>
                                             </div>
@@ -237,23 +237,45 @@
                                     </div>
 
 
-                                    {{-- <div class="col s12 m6 l3">
-                                        <a href="{{route('backoffice.sueldos.index')}}">
-                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 white-text"
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.usuario-sueldo.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-blue-grey-blue gradient-shadow min-height-100 black-text"
                                                 style="--animate-delay: 1s; --animate-duration: 2s; ">
                                                 <div class="padding-4">
                                                     <div class="col s7 m7">
-                                                        <i class="material-icons background-round mt-5">monetization_on</i>
-                                                        <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
+                                                        <i class="material-icons background-round mt-5 white-text">equalizer</i>
+                                                        <p class="white-text">Sueldos por Usuario</p>
                                                     </div>
                                                     <div class="col s5 m5 right-align">
-                                                        <h5 id="reservas-count" class="mb-0">${{number_format($sueldosMes->sum("total_pagar"),0,"",".")}}</h5>
-                                                        <p class="no-margin">Total</p>
+                                                        <h5 id="reservas-count" class="mb-0 white-text">{{$cantidadFuncionarios}}</h5>
+                                                        <p class="no-margin white-text">Usuarios</p>
                                                     </div>
                                                 </div>
                                             </div>
                                         </a>
-                                    </div> --}}
+                                    </div>
+
+
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.asistencia.index')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-blue-grey-blue gradient-shadow min-height-100 black-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5 white-text">assignment_returned</i>
+                                                        <p class="white-text">Asistencia</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0 white-text">{{$asistentesConteo}}</h5>
+                                                        <p class="no-margin white-text">Asistentes</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+
+
 
                                 </div>
                             </div>

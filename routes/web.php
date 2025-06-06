@@ -259,7 +259,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::delete('/consumo/detalle/{tipo}/{id}', 'ConsumoController@destroyDetalle')->name('consumo.detalle.destroy');
 
     
+    Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
+    Route::resource('asistencia', 'AsistenciaController');
     Route::resource('barman', 'BarmanController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');

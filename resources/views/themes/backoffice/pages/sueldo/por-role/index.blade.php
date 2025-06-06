@@ -3,46 +3,32 @@
 @section('title', 'Sueldos por Rol')
 
 @section('dropdown_settings')
- <li class="collection-item active"><a href="{{ route('backoffice.rango-sueldos.create') }}" class="grey-text text-darken-2">Asignar Rango al rol</a></li>
+ <li><a href="{{ route('backoffice.rango-sueldos.create') }}" class="grey-text text-darken-2">Asignar Rango al rol</a></li>
+ <li><a href="{{ route('backoffice.usuario-sueldo.index') }}" class="grey-text text-darken-2">Sueldos por usuarios</a></li>
 @endsection
 
 @section('content')
 <div class="section">
-    <h5>Rangos de Sueldo por Rol</h5>
+
+    <h5>Rangos de Sueldo por Rol {{$titulo}}</h5>
+    {{-- <div class="right-align mb-3">
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'vigentes']) }}" class="btn teal">Vigentes</a>
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'no-vigentes']) }}" class="btn red">No Vigentes</a>
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'todos']) }}" class="btn blue">Todos</a>
+    </div> --}}
+    <div class="right-align mb-3">
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'vigentes']) }}" class="btn teal filtro-btn" data-filtro="vigentes">Vigentes</a>
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'no-vigentes']) }}" class="btn red filtro-btn" data-filtro="no-vigentes">No Vigentes</a>
+        <a href="{{ route('backoffice.rango-sueldos.index', ['filtro' => 'todos']) }}" class="btn blue filtro-btn" data-filtro="todos">Todos</a>
+    </div>
+
    
-    <table class="striped">
-        <thead>
-            <tr>
-                <th>Rol</th>
-                <th>Salario</th>
-                <th>Desde</th>
-                <th>Hasta</th>
-                <th>Acciones</th>
-            </tr>
-        </thead>
-        <tbody>
-            @foreach($rangos as $rango)
-            <tr>
-                <td>{{ $rango->role->nombre }}</td>
-                <td>${{ number_format($rango->salario_base, 0, ',', '.') }}</td>
-                <td>{{ $rango->vigente_desde }}</td>
-                <td>{{ $rango->vigente_hasta ?? 'Vigente' }}</td>
-                <td>
-                    <a href="{{ route('rango-sueldos.edit', $rango) }}" class="btn-flat">
-                        <i class="material-icons">edit</i>
-                    </a>
-                    <form action="{{ route('rango-sueldos.destroy', $rango) }}" method="POST" style="display:inline">
-                        @csrf
-                        @method('DELETE')
-                        <button type="submit" class="btn-flat red-text">
-                            <i class="material-icons">delete</i>
-                        </button>
-                    </form>
-                </td>
-            </tr>
-            @endforeach
-        </tbody>
-    </table>
+
+    <div id="tabla-rangos">
+        @include('themes.backoffice.pages.sueldo.por-role._tabla', ['rangos' => $rangos])
+    </div>
+
+
 </div>
 @endsection
 
@@ -87,4 +73,31 @@
         
 
 </script>
+
+<script>
+    $(document).ready(function () {
+        $('.filtro-btn').on('click', function (e) {
+            e.preventDefault();
+            const filtro = $(this).data('filtro');
+
+            $.ajax({
+                url: '{{ route("backoffice.rango-sueldos.index") }}',
+                type: 'GET',
+                data: { filtro: filtro },
+                beforeSend: function () {
+                    $('#tabla-rangos').html('<p>Cargando...</p>');
+                },
+                success: function (data) {
+                    // Extraer solo la tabla del contenido renderizado completo
+                    const html = $(data).find('#tabla-rangos').html();
+                    $('#tabla-rangos').html(html);
+                },
+                error: function () {
+                    alert('Hubo un error al cargar los datos.');
+                }
+            });
+        });
+    });
+</script>
+
 @endsection
