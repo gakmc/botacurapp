@@ -21,37 +21,91 @@ class SueldoController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+    // public function indexOld(Request $request)
+    // {
+    //     $mes = $request->input('mes', now()->month);
+    //     $anio = $request->input('anio', now()->year);
+    
+    //     // Obtener usuarios que tengan al menos un sueldo ese mes/año
+    //     $usuarios = User::whereHas('sueldos', function ($query) use ($mes, $anio) {
+    //         $query->whereMonth('dia_trabajado', $mes)
+    //               ->whereYear('dia_trabajado', $anio);
+    //     })
+    //     ->with(['sueldos' => function ($query) use ($mes, $anio) {
+    //         $query->whereMonth('dia_trabajado', $mes)
+    //               ->whereYear('dia_trabajado', $anio)
+    //               ->orderBy('dia_trabajado', 'asc');
+    //     }])
+    //     ->get();
+
+    //     // Obtener todos los meses/años únicos en que el usuario trabajó
+    //     $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
+    //     ->groupBy('mes', 'anio')
+    //     ->orderBy('anio', 'desc')
+    //     ->orderBy('mes', 'desc')
+    //     ->get();
+    
+    //     return view('themes.backoffice.pages.sueldo.index', [
+    //         'usuarios' => $usuarios,
+    //         'mes' => $mes,
+    //         'anio' => $anio,
+    //         'fechasDisponibles' => $fechasDisponibles
+    //     ]);
+    // }
+
+
     public function index(Request $request)
     {
         $mes = $request->input('mes', now()->month);
         $anio = $request->input('anio', now()->year);
-    
-        // Obtener usuarios que tengan al menos un sueldo ese mes/año
+
         $usuarios = User::whereHas('sueldos', function ($query) use ($mes, $anio) {
             $query->whereMonth('dia_trabajado', $mes)
-                  ->whereYear('dia_trabajado', $anio);
+                ->whereYear('dia_trabajado', $anio);
         })
         ->with(['sueldos' => function ($query) use ($mes, $anio) {
             $query->whereMonth('dia_trabajado', $mes)
-                  ->whereYear('dia_trabajado', $anio)
-                  ->orderBy('dia_trabajado', 'asc');
+                ->whereYear('dia_trabajado', $anio)
+                ->orderBy('dia_trabajado', 'asc');
         }])
         ->get();
 
-                // Obtener todos los meses/años únicos en que el usuario trabajó
-                $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
-                ->groupBy('mes', 'anio')
-                ->orderBy('anio', 'desc')
-                ->orderBy('mes', 'desc')
-                ->get();
-    
+        // Agrupar sueldos de cada usuario por semana
+        $usuariosConSueldosSemanales = $usuarios->map(function ($usuario) {
+            $semanas = $usuario->sueldos->groupBy(function ($sueldo) {
+                $fecha = Carbon::parse($sueldo->dia_trabajado);
+                $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
+                $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+                return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+            });
+
+            $totalesSemanales = $semanas->map(function ($grupo) {
+                return [
+                    'dias' => $grupo->count(),
+                    'sueldos' => $grupo->sum('valor_dia'),
+                    'propinas' => $grupo->sum('sub_sueldo') - $grupo->sum('valor_dia'),
+                    'total' => $grupo->sum('total_pagar'),
+                ];
+            });
+
+            $usuario->totales_semanales = $totalesSemanales;
+            return $usuario;
+        });
+
+        $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
+            ->groupBy('mes', 'anio')
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->get();
+
         return view('themes.backoffice.pages.sueldo.index', [
-            'usuarios' => $usuarios,
+            'usuarios' => $usuariosConSueldosSemanales,
             'mes' => $mes,
             'anio' => $anio,
             'fechasDisponibles' => $fechasDisponibles
         ]);
     }
+
 
     public function adminViewSueldos(User $user, $anio, $mes, Request $request)
     {
@@ -81,16 +135,17 @@ class SueldoController extends Controller
 
 
         // // Agrupar los sueldos por semana
-        // $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
-        //     $fecha = Carbon::parse($sueldo->dia_trabajado);
-        //     $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
-        //     $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+        $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
+            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
+            $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
-        //     return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
-        // });
+            return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+        });
 
+        // dd($sueldosAgrupados);
         return view('themes.backoffice.pages.sueldo.admin_view', [
-            'sueldos' => $sueldos,
+            'sueldosAgrupados' => $sueldosAgrupados,
             'mes' => $mes,
             'anio' => $anio,
             'fechasDisponibles' => $fechasDisponibles,
@@ -394,7 +449,7 @@ class SueldoController extends Controller
     public function store_maso(Request $request)
     {
 
-        // dd($request);
+        // dd($request->all());
 
         try {
             $sueldos = $request->input('sueldos');

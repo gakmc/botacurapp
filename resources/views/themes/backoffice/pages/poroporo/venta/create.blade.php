@@ -107,85 +107,85 @@
 </script>
 
 <script>
-document.addEventListener('DOMContentLoaded', function () {
-    if (!window._yaCargueListenerProductos) {
-        window._yaCargueListenerProductos = true;
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window._yaCargueListenerProductos) {
+            window._yaCargueListenerProductos = true;
 
-        const lista = document.getElementById('lista-productos');
-        const tabla = document.getElementById('tabla-detalle');
-        const totalVenta = document.getElementById('total-venta');
-        const formHidden = document.getElementById('productos-form');
-        let productosAgregados = {};
+            const lista = document.getElementById('lista-productos');
+            const tabla = document.getElementById('tabla-detalle');
+            const totalVenta = document.getElementById('total-venta');
+            const formHidden = document.getElementById('productos-form');
+            let productosAgregados = {};
 
-        lista.addEventListener('click', function (e) {
-            const item = e.target.closest('.producto-item');
-            if (!item) return;
+            lista.addEventListener('click', function (e) {
+                const item = e.target.closest('.producto-item');
+                if (!item) return;
 
-            const id = item.dataset.id;
-            if (productosAgregados[id]) {
-                console.log("Producto ya agregado:", id);
-                return;
-            }
-
-            const nombre = item.dataset.nombre;
-            const valor = parseInt(item.dataset.valor);
-
-            productosAgregados[id] = { cantidad: 1, valor };
-
-            // Ocultar de la lista original
-            item.style.display = 'none';
-
-            const row = document.createElement('tr');
-            row.setAttribute('data-id', id);
-            row.innerHTML = `
-                <td>${nombre}</td>
-                <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
-                <td class="subtotal">$${valor.toLocaleString()}</td>
-                <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
-            `;
-            tabla.appendChild(row);
-
-            const inputHidden = document.createElement('input');
-            inputHidden.type = 'hidden';
-            inputHidden.name = `productos[${id}][cantidad]`;
-            inputHidden.value = 1;
-            inputHidden.setAttribute('data-id', id);
-            inputHidden.classList.add('input-cantidad');
-            formHidden.appendChild(inputHidden);
-
-            row.querySelector('.cantidad-input').addEventListener('input', function () {
-                const nuevaCantidad = parseInt(this.value) || 1;
-                productosAgregados[id].cantidad = nuevaCantidad;
-                row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
-                formHidden.querySelector(`input[data-id="${id}"]`).value = nuevaCantidad;
-                actualizarTotal();
-            });
-
-            row.querySelector('.eliminar-producto').addEventListener('click', function () {
-                delete productosAgregados[id];
-                row.remove();
-                formHidden.querySelector(`input[data-id="${id}"]`).remove();
-                actualizarTotal();
-
-                // Volver a mostrar en la lista original
-                const productoOriginal = document.querySelector(`.producto-item[data-id="${id}"]`);
-                if (productoOriginal) {
-                    productoOriginal.style.display = 'block';
+                const id = item.dataset.id;
+                if (productosAgregados[id]) {
+                    console.log("Producto ya agregado:", id);
+                    return;
                 }
+
+                const nombre = item.dataset.nombre;
+                const valor = parseInt(item.dataset.valor);
+
+                productosAgregados[id] = { cantidad: 1, valor };
+
+                // Ocultar de la lista original
+                item.style.display = 'none';
+
+                const row = document.createElement('tr');
+                row.setAttribute('data-id', id);
+                row.innerHTML = `
+                    <td>${nombre}</td>
+                    <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
+                    <td class="subtotal">$${valor.toLocaleString()}</td>
+                    <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
+                `;
+                tabla.appendChild(row);
+
+                const inputHidden = document.createElement('input');
+                inputHidden.type = 'hidden';
+                inputHidden.name = `productos[${id}][cantidad]`;
+                inputHidden.value = 1;
+                inputHidden.setAttribute('data-id', id);
+                inputHidden.classList.add('input-cantidad');
+                formHidden.appendChild(inputHidden);
+
+                row.querySelector('.cantidad-input').addEventListener('input', function () {
+                    const nuevaCantidad = parseInt(this.value) || 1;
+                    productosAgregados[id].cantidad = nuevaCantidad;
+                    row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
+                    formHidden.querySelector(`input[data-id="${id}"]`).value = nuevaCantidad;
+                    actualizarTotal();
+                });
+
+                row.querySelector('.eliminar-producto').addEventListener('click', function () {
+                    delete productosAgregados[id];
+                    row.remove();
+                    formHidden.querySelector(`input[data-id="${id}"]`).remove();
+                    actualizarTotal();
+
+                    // Volver a mostrar en la lista original
+                    const productoOriginal = document.querySelector(`.producto-item[data-id="${id}"]`);
+                    if (productoOriginal) {
+                        productoOriginal.style.display = 'block';
+                    }
+                });
+
+                actualizarTotal();
             });
 
-            actualizarTotal();
-        });
-
-        function actualizarTotal() {
-            let total = 0;
-            for (let id in productosAgregados) {
-                total += productosAgregados[id].cantidad * productosAgregados[id].valor;
+            function actualizarTotal() {
+                let total = 0;
+                for (let id in productosAgregados) {
+                    total += productosAgregados[id].cantidad * productosAgregados[id].valor;
+                }
+                totalVenta.textContent = '$' + total.toLocaleString();
             }
-            totalVenta.textContent = '$' + total.toLocaleString();
         }
-    }
-});
+    });
 </script>
 
 

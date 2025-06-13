@@ -24,68 +24,75 @@ class Programa extends Model
     {
         return $this->hasMany(Reserva::class, 'id_programa');
     }
-    
-//ALMACENAMIENTO
 
-public function store($request)
-{
-
-    $slug = Str::slug($request->nombre_programa, '-');
-
-
-    $programa = self::create([
-        'nombre_programa' => $request->input('nombre_programa'),
-        'valor_programa' => $request->input('valor_programa'),
-        'descuento' => $request->input('descuento'),
-        'slug' => $slug,
-    ]);
-
-    if ($request->has('servicios')) {
-        $programa->servicios()->sync($request->servicios);
+    public function cotizacionItems()
+    {
+        return $this->morphMany(CotizacionItem::class, 'itemable');
     }
 
-    Alert::success('Éxito', 'Programa guardado')->showConfirmButton();
-    return $programa;
-}
+    
+    //ALMACENAMIENTO
+
+    public function store($request)
+    {
+
+        $slug = Str::slug($request->nombre_programa, '-');
 
 
+        $programa = self::create([
+            'nombre_programa' => $request->input('nombre_programa'),
+            'valor_programa' => $request->input('valor_programa'),
+            'descuento' => $request->input('descuento'),
+            'slug' => $slug,
+        ]);
 
-public function my_update($request)
-{
-    $slug = Str::slug($request->nombre_programa, '-');
+        if ($request->has('servicios')) {
+            $programa->servicios()->sync($request->servicios);
+        }
 
-    $this->update($request->except('servicios') + [
-        'slug' => $slug
-    ]);
-
-    if ($request->has('servicios')) {
-        $this->servicios()->sync($request->servicios);
-    } else {
-        $this->servicios()->sync([]);
+        Alert::success('Éxito', 'Programa guardado')->showConfirmButton();
+        return $programa;
     }
-    
 
-    Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
-    return $this;
-    
-}
-//VALIDACION
-public function getIncluyeMasajesAttribute()
-{
-    return $this->servicios->contains(function($servicio){
-        return in_array($servicio->nombre_servicio, ['Masaje', 'masaje', 'Masajes', 'masajes']);
-    });
-}
 
-public function getIncluyeAlmuerzosAttribute()
-{
-    return $this->servicios->contains(function ($servicio) {
-        return in_array(strtolower($servicio->nombre_servicio), ['almuerzo', 'almuerzos']);
-    });
-}
 
-//RECUPERACION DE INFORMACION
+    public function my_update($request)
+    {
+        $slug = Str::slug($request->nombre_programa, '-');
 
-//OTRAS OPERACIONES
+        $this->update($request->except('servicios') + [
+            'slug' => $slug
+        ]);
+
+        if ($request->has('servicios')) {
+            $this->servicios()->sync($request->servicios);
+        } else {
+            $this->servicios()->sync([]);
+        }
+        
+
+        Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
+        return $this;
+        
+    }
+
+    //VALIDACION
+    public function getIncluyeMasajesAttribute()
+    {
+        return $this->servicios->contains(function($servicio){
+            return in_array($servicio->nombre_servicio, ['Masaje', 'masaje', 'Masajes', 'masajes']);
+        });
+    }
+
+    public function getIncluyeAlmuerzosAttribute()
+    {
+        return $this->servicios->contains(function ($servicio) {
+            return in_array(strtolower($servicio->nombre_servicio), ['almuerzo', 'almuerzos']);
+        });
+    }
+
+    //RECUPERACION DE INFORMACION
+
+    //OTRAS OPERACIONES
 
 }

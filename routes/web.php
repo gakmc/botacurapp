@@ -186,6 +186,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/pdf-consumo/{reserva}', 'ReservaController@generarPDFConsumo')->name('consumo.pdf');
 
+    Route::get('cotizacion/{cotizacion}/ver', 'CotizacionController@visualizarPDF')->name('cotizacion.verpdf');
+
+    Route::post('cotizacion/{cotizacion}/enviar', 'CotizacionController@enviarPDF')->name('cotizacion.enviarpdf');
+
     //Fin PDF
 
     Route::get('venta/{ventum}/verconsumo', 'VentaController@verconsumo')->name('reserva.venta.verconsumo');
@@ -265,6 +269,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('barman', 'BarmanController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');
+    Route::resource('cotizacion', 'CotizacionController');
     Route::resource('egreso', 'EgresoController');
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('insumo', 'InsumoController');

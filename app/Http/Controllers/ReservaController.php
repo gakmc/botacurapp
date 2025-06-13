@@ -17,6 +17,7 @@ use App\Reagendamiento;
 use App\Reserva;
 use App\Servicio;
 use App\TipoTransaccion;
+use App\Ubicacion;
 use App\User;
 use App\Venta;
 use Barryvdh\DomPDF\Facade\Pdf;
@@ -150,85 +151,22 @@ class ReservaController extends Controller
             return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
 
-        // ===============================HORAS=SPA==============================================
-        // Horarios disponibles de 10:00 a 18:30 SPA
-        $horaInicio = new \DateTime('10:00');
-        $horaFin    = new \DateTime('18:30');
-        $intervalo  = new \DateInterval('PT30M');
-        $horarios   = [];
-
-        while ($horaInicio <= $horaFin) {
-            $horarios[] = $horaInicio->format('H:i');
-            $horaInicio->add($intervalo);
-        }
-
-        // Obtener horarios ocupados de la tabla 'visitas'
-        $horariosOcupados = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('visitas.horario_sauna')
-            ->filter(function ($hora) {
-                // Filtrar valores nulos o vacíos
-                return ! is_null($hora) && $hora !== '';
-            })
-            ->map(function ($hora) {
-                // Formatear solo los horarios válidos
-                return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-            })
-            ->toArray();
-
-        // Filtrar horarios disponibles
-        $horariosDisponibles = array_diff($horarios, $horariosOcupados);
 
 
-                //=================================HORAS=MASAJES=========================================
 
-        // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
-        $horaInicioMasajes = new \DateTime('10:20');
-        $horaFinMasajes    = new \DateTime('19:00');
-        $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
-        $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
-        $horarios          = [];
 
-        while ($horaInicioMasajes <= $horaFinMasajes) {
-            $horarios[] = $horaInicioMasajes->format('H:i');
-            $horaInicioMasajes->add($duracionMasaje);
-            $horaInicioMasajes->add($intervalos);
-        }
+        //CAMBIAR
 
-        // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
-        $horariosOcupadosMasajes = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('masajes as m', 'm.id_reserva', '=', 'reservas.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->whereNotNull('m.horario_masaje')
-            ->select('m.horario_masaje', 'm.id_lugar_masaje')
-            ->get()
-            ->groupBy('id_lugar_masaje');
+        $horariosDisponibles = $this->calcularHorariosDisponiblesSpa($fechaSeleccionada);
 
-        // Procesar horarios ocupados
-        $ocupadosPorLugar = [
-            1 => [], // Containers
-            2 => [], // Toldos
-        ];
+        $horariosDisponiblesMasajes = $this->calcularHorariosDisponiblesMasajes($fechaSeleccionada);
 
-        foreach ($horariosOcupadosMasajes as $lugar => $visitas) {
-            $ocupadosPorLugar[$lugar] = $visitas->pluck('horario_masaje')
-                ->map(function ($hora) {
-                    return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-                })
-                ->toArray();
-        }
+        $lugaresDisponibles = $this->obtenerUbicacionesDisponibles($fechaSeleccionada);
 
-        // Filtrar horarios disponibles por lugar
-        $horariosDisponiblesMasajes = [
-            1 => array_values(array_diff($horarios, $ocupadosPorLugar[1])), // Containers
-            2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
-        ];
-
+        //FINCAMBIAR
 
     
-        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView', 'horariosDisponibles', 'horariosDisponiblesMasajes'));
+        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView', 'horariosDisponibles', 'horariosDisponiblesMasajes', 'lugaresDisponibles'));
     }
 
 
@@ -884,10 +822,20 @@ class ReservaController extends Controller
         $reservasPorDia = $reservas->groupBy(function ($reserva) {
             return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
         });
+
+        $fechaConsulta = Carbon::parse($fechaFiltro)->format('Y-m-d');
+        $horariosDisponibles = $this->calcularHorariosDisponiblesSpa($fechaConsulta);
+
+        $horariosDisponiblesMasajes = $this->calcularHorariosDisponiblesMasajes($fechaConsulta);
+        $lugaresDisponibles = $this->obtenerUbicacionesDisponibles($fechaConsulta);
     
+
         return view('themes.backoffice.pages.reserva.index_registro', [
             'reservasPaginadas' => $reservasPorDia,
-            'fechaF' => $fechaFiltro
+            'fechaF' => $fechaFiltro,
+            'horariosDisponibles' => $horariosDisponibles,
+            'horariosDisponiblesMasajes' => $horariosDisponiblesMasajes,
+            'lugaresDisponibles' => $lugaresDisponibles,
         ]);
     }
 
@@ -1082,4 +1030,87 @@ class ReservaController extends Controller
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar los menús. '.$e->getMessage());
         }
     }
+
+
+    private function calcularHorariosDisponiblesSpa($fechaSeleccionada)
+    {
+        $horaInicio = new \DateTime('10:00');
+        $horaFin    = new \DateTime('18:30');
+        $intervalo  = new \DateInterval('PT30M');
+        $horarios   = [];
+
+        while ($horaInicio <= $horaFin) {
+            $horarios[] = $horaInicio->format('H:i');
+            $horaInicio->add($intervalo);
+        }
+
+        $horariosOcupados = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->whereDate('reservas.fecha_visita', $fechaSeleccionada)
+            ->pluck('visitas.horario_sauna')
+            ->filter(function ($hora) {
+                return !is_null($hora) && $hora !== '';
+            })
+            ->map(function ($hora) {
+                return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+            })
+            ->toArray();
+
+        return array_values(array_diff($horarios, $horariosOcupados));
+    }
+
+    private function calcularHorariosDisponiblesMasajes($fechaSeleccionada)
+    {
+        $horaInicio = new \DateTime('10:20');
+        $horaFin    = new \DateTime('19:00');
+        $duracion   = new \DateInterval('PT30M');
+        $descanso   = new \DateInterval('PT10M');
+        $horarios   = [];
+
+        while ($horaInicio <= $horaFin) {
+            $horarios[] = $horaInicio->format('H:i');
+            $horaInicio->add($duracion);
+            $horaInicio->add($descanso);
+        }
+
+        $ocupados = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('masajes as m', 'm.id_reserva', '=', 'reservas.id')
+            ->whereDate('reservas.fecha_visita', $fechaSeleccionada)
+            ->whereNotNull('m.horario_masaje')
+            ->select('m.horario_masaje', 'm.id_lugar_masaje')
+            ->get()
+            ->groupBy('id_lugar_masaje');
+
+        $ocupadosPorLugar = [
+            1 => [],
+            2 => [],
+        ];
+
+        foreach ($ocupados as $lugar => $masajes) {
+            $ocupadosPorLugar[$lugar] = $masajes->pluck('horario_masaje')
+                ->map(function ($hora) {
+                    return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+                })
+                ->toArray();
+        }
+
+        return [
+            1 => array_values(array_diff($horarios, isset($ocupadosPorLugar[1]) ? $ocupadosPorLugar[1] : [])),
+            2 => array_values(array_diff($horarios, isset($ocupadosPorLugar[2]) ? $ocupadosPorLugar[2] : [])),
+        ];
+    }
+
+    private function obtenerUbicacionesDisponibles($fecha)
+    {
+        $ocupadas = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->whereDate('reservas.fecha_visita', $fecha)
+            ->whereNotNull('visitas.id_ubicacion')
+            ->pluck('visitas.id_ubicacion')
+            ->toArray();
+
+        return Ubicacion::whereNotIn('id', $ocupadas)->get();
+    }
+
 }

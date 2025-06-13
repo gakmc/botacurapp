@@ -185,8 +185,8 @@
                                                         <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
                                                     </div>
                                                     <div class="col s5 m5 right-align">
-                                                        <h5 id="reservas-count" class="mb-0">${{number_format($sueldosMes->sum("total_pagar"),0,"",".")}}</h5>
-                                                        <p class="no-margin">Total</p>
+                                                        <h5 id="reservas-count" class="mb-0">{{number_format($cantidadFuncionarios,0,"",".")}}</h5>
+                                                        <p class="no-margin">Funcionarios</p>
                                                     </div>
                                                 </div>
                                             </div>

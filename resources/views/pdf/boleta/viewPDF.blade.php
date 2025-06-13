@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <title>Boleta para {{ $nombre }}</title>
     <meta charset="UTF-8">
     <style>
         @page {

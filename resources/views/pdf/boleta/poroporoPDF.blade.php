@@ -1,6 +1,7 @@
 <!DOCTYPE html>
 <html lang="es">
 <head>
+    <title>Boleta Venta Poro-Poro</title>
     <meta charset="UTF-8">
     <style>
         @page {

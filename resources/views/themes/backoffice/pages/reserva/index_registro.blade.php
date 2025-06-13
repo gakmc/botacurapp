@@ -55,6 +55,8 @@
 
                   </div>
                 </div>
+                                <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
+                                <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
             </div>
 
                 <p class="caption"><strong>Reservas: {{ $fecha }}</strong></p>
@@ -86,6 +88,7 @@
                                         $primeraVisita  = $reserva->visitas->first();
                                         $ultimaVisita   = $reserva->visitas->last();
                                         $visitas        = $reserva->visitas;
+                                        $primerMasaje = $reserva->masajes->first();
                                         
                                         $menus = $reserva->menus ?? collect();
                                         $masajes = $reserva->masajes ?? collect();
@@ -143,7 +146,7 @@
                                             $linkMasaje = ($ultimaVisita) ? route('backoffice.reserva.masajes', ['reserva' => $reserva]) : route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id]);
                                         }
 
-                                        if ($totalMasajes > 0 && ($visitasConHorario === $totalVisitas)) {
+                                        if ($totalVisitas > 0 && ($visitasConHorario === $totalVisitas)) {
                                             $iconoVisita = 'done_all';
                                             $colorVisita = 'green';
                                             $linkVisita = '#';
@@ -170,17 +173,18 @@
                                             @endif
                                         </td>
                                                                                     
+
+                                        <td>
+                                            <a href="{{ route('backoffice.reserva.show', $reserva) }}">
+                                                {{$reserva->cliente->nombre_cliente}}
+                                            </a>
+                                        </td>
                                         <td>
                                             @if(is_null($reserva->cliente->whatsapp_cliente)) 
                                                 No Registra
                                             @else
                                                 <a href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}" target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                                             @endif
-                                        </td>
-                                        <td>
-                                            <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                {{$reserva->cliente->nombre_cliente}}
-                                            </a>
                                         </td>
                                         <td>
                                             {{$reserva->cantidad_personas}}
@@ -216,11 +220,17 @@
                                             <a href="{{$linkVisita}}">
                                                 <i class='material-icons {{$colorVisita}}-text'>{{$iconoVisita}}</i>
                                             </a>
+                                            @if (isset($primeraVisita) && $primeraVisita->horario_sauna)
+                                                <span>{{$primeraVisita->horario_sauna}}</span>
+                                            @endif
                                         </td>
                                         <td>
                                             <a href="{{$linkMasaje}}">
                                                 <i class='material-icons {{$colorMasaje}}-text'>{{$iconoMasaje}}</i>
                                             </a>
+                                            @if(isset($primerMasaje) && $primerMasaje->horario_masaje)
+                                                <span>{{ $primerMasaje->horario_masaje }}</span>
+                                            @endif
                                         </td>
                                     </tr>
                                     
@@ -235,10 +245,12 @@
                     @endif
 
 
-            @endforeach
-        </div>
-    
+                    @endforeach
+                </div>
 
+
+                    @include('themes.backoffice.pages.reserva.includes.modal_sauna_disponible')
+                    @include('themes.backoffice.pages.reserva.includes.modal_lugares_disponible')
 
     </div>
 </div>
@@ -266,76 +278,82 @@
     //             }
     //     });
     // }
-   </script>
+</script>
 
-   <script>
-        function recepcionar(reservaId) { 
-            $.ajax({
-                url: '{{route("backoffice.estado_recepcion.store")}}',
-                method: 'POST',
-                data: {
-                    reserva_id: reservaId,
-                    _token: '{{ csrf_token() }}'
-                },
-                success: function (response) {
-
-                    const icono = document.querySelector(`#icono-reserva-${reservaId}`);
-                    if (icono) {
-                        icono.outerHTML = `
-                            <i class="material-icons green-text tooltipped"
-                            style="cursor: pointer"
-                            data-position="top"
-                            data-tooltip="Recepcionado por ${response.user_name}">
-                            person_pin
-                            </i>`;
-                        $('.tooltipped').tooltip(); // reactivar tooltips nuevos
-                    }
-
-                    Swal.fire({
-                        toast: true,
-                        position: 'center', // Esto lo centra en la pantalla
-                        icon: 'success',
-                        title: response.message,
-                        showConfirmButton: false,
-                        timer: 2000,
-                        timerProgressBar: true,
-                        customClass: {
-                            popup: 'swal2-toast' // importante para conservar estilo toast
-                        },
-                        didOpen: (toast) => {
-                            toast.addEventListener('mouseenter', Swal.stopTimer)
-                            toast.addEventListener('mouseleave', Swal.resumeTimer)
-                        }
-                    });
-                },
-                error: function () {
-                    Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
-                }
-            });
-         }
-   </script>
-
-   <script>
+<script>
     $(document).ready(function () {
-        if (typeof window.Echo !== 'undefined') {
-        window.Echo.channel('recepcion-cliente')
-        .listen('.cliente-recepcionado', (e) => {
-            const icono = document.querySelector(`#icono-reserva-${e.reservaId}`);
-            if (icono) {
-                icono.outerHTML = `
-                    <i class="material-icons green-text tooltipped"
-                    style="cursor: pointer"
-                    data-position="top"
-                    data-tooltip="Recepcionado por ${e.userName}">
-                    person_pin
-                    </i>`;
-                $('.tooltipped').tooltip();
+        $('.modal').modal();
+    });
+</script>
+
+<script>
+    function recepcionar(reservaId) { 
+        $.ajax({
+            url: '{{route("backoffice.estado_recepcion.store")}}',
+            method: 'POST',
+            data: {
+                reserva_id: reservaId,
+                _token: '{{ csrf_token() }}'
+            },
+            success: function (response) {
+
+                const icono = document.querySelector(`#icono-reserva-${reservaId}`);
+                if (icono) {
+                    icono.outerHTML = `
+                        <i class="material-icons green-text tooltipped"
+                        style="cursor: pointer"
+                        data-position="top"
+                        data-tooltip="Recepcionado por ${response.user_name}">
+                        person_pin
+                        </i>`;
+                    $('.tooltipped').tooltip(); // reactivar tooltips nuevos
+                }
+
+                Swal.fire({
+                    toast: true,
+                    position: 'center', // Esto lo centra en la pantalla
+                    icon: 'success',
+                    title: response.message,
+                    showConfirmButton: false,
+                    timer: 2000,
+                    timerProgressBar: true,
+                    customClass: {
+                        popup: 'swal2-toast' // importante para conservar estilo toast
+                    },
+                    didOpen: (toast) => {
+                        toast.addEventListener('mouseenter', Swal.stopTimer)
+                        toast.addEventListener('mouseleave', Swal.resumeTimer)
+                    }
+                });
+            },
+            error: function () {
+                Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
             }
         });
-        }else{
-            console.error('Echo no está inicializado.');
+        }
+</script>
+
+<script>
+$(document).ready(function () {
+    if (typeof window.Echo !== 'undefined') {
+    window.Echo.channel('recepcion-cliente')
+    .listen('.cliente-recepcionado', (e) => {
+        const icono = document.querySelector(`#icono-reserva-${e.reservaId}`);
+        if (icono) {
+            icono.outerHTML = `
+                <i class="material-icons green-text tooltipped"
+                style="cursor: pointer"
+                data-position="top"
+                data-tooltip="Recepcionado por ${e.userName}">
+                person_pin
+                </i>`;
+            $('.tooltipped').tooltip();
         }
     });
-   </script>
+    }else{
+        console.error('Echo no está inicializado.');
+    }
+});
+</script>
 
 @endsection

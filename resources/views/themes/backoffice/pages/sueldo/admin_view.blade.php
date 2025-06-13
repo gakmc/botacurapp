@@ -75,7 +75,7 @@
                                         <th>Total a Pagar</th>
                                     </tr>
                                 </thead>
-                                <tbody>
+                                {{-- <tbody>
                                     @if ($sueldos->isNotEmpty())
                                         @foreach($sueldos as $index => $sueldo)
                                         @php
@@ -110,7 +110,46 @@
                                         <td><strong>Dias Trabajados: {{$diasTrabajados}} {{$dias}}</strong></td>
                                         <td><strong>Total del mes: ${{number_format($sueldoMes,0,'','.')}} </strong></td>
                                     </tr>
-                                </tbody>
+                                </tbody> --}}
+                                <tbody>
+@if ($sueldosAgrupados->isNotEmpty())
+    @php
+        $sueldoMes = 0;
+        $diasTrabajados = 0;
+    @endphp
+    @foreach($sueldosAgrupados as $semana => $sueldosSemana)
+        <tr style="background-color: #f2f2f2;">
+            <td colspan="4"><strong>Semana: {{ $semana }}</strong></td>
+        </tr>
+        @foreach($sueldosSemana as $sueldo)
+            @php
+                $fecha = \Carbon\Carbon::parse($sueldo->dia_trabajado);
+                $dia = $fecha->day;
+                $sueldoMes += $sueldo->total_pagar;
+                $diasTrabajados++;
+                $dias = $diasTrabajados > 1 ? 'días' : 'día';
+            @endphp
+            <tr>
+                <td><a href="{{ route('backoffice.sueldo.view.diario', ['user' => $user, $anio, $mes, $dia]) }}">
+                    {{ $fecha->locale('es')->isoFormat('ddd D [de] MMM') }}
+                </a></td>
+                <td>${{ number_format($sueldo->valor_dia, 0, '', '.') }}</td>
+                <td>${{ number_format($sueldo->total_pagar - $sueldo->valor_dia, 0, '', '.') }}</td>
+                <td>${{ number_format($sueldo->total_pagar, 0, '', '.') }}</td>
+            </tr>
+        @endforeach
+    @endforeach
+    <tr>
+        <td colspan="2">  </td>
+        <td><strong>Días Trabajados: {{ $diasTrabajados }} {{ $dias }}</strong></td>
+        <td><strong>Total del mes: ${{ number_format($sueldoMes, 0, '', '.') }} </strong></td>
+    </tr>
+@else
+    <tr>
+        <td colspan="4">No hay registros para este período.</td>
+    </tr>
+@endif
+</tbody>
                             </table>
                         </div>
                     </div>

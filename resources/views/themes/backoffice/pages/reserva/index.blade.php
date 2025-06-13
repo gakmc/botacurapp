@@ -28,6 +28,8 @@
                 @endif</a>
                 
                 <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
+
+                <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
             
             {{-- Vista Alternativa --}}
             @if ($alternativeView)
@@ -91,6 +93,7 @@
 
                 {{-- Modal para mostrar los horarios disponibles --}}
                 @include('themes.backoffice.pages.reserva.includes.modal_sauna_disponible')
+                @include('themes.backoffice.pages.reserva.includes.modal_lugares_disponible')
 
         </div>
     </div>

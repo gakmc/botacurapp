@@ -31,4 +31,10 @@ class Producto extends Model
     {
         return $this->belongsTo(TipoProducto::class , 'id_tipo_producto', 'id');
     }
+
+    public function cotizacionItems()
+    {
+        return $this->morphMany(CotizacionItem::class, 'itemable');
+    }
+
 }

@@ -369,6 +369,17 @@
                         </a>
                     </li>
 
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.cotizacion.index') }}">
+                            <i class="material-icons">
+                                local_atm
+                            </i>
+                            <span class="nav-text">
+                                Cotizaciones
+                            </span>
+                        </a>
+                    </li>
+
                 @endif
 
 

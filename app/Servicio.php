@@ -26,6 +26,12 @@ class Servicio extends Model
         return $this->hasMany(DetalleServiciosExtra::class, 'id_servicio_extra');
     }
 
+    public function cotizacionItems()
+    {
+        return $this->morphMany(CotizacionItem::class, 'itemable');
+    }
+
+
 //ALMACENAMIENTO
 
     // Mutador para convertir los minutos en formato HH:MM:SS
