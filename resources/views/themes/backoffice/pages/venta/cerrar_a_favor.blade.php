@@ -28,9 +28,27 @@
               @if (!empty($reserva->venta->consumo))
                 @php
                     $totalSubtotal = $reserva->venta->consumo->detallesConsumos->sum('subtotal');
-                    $subtotalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal');
+                    // $subtotalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal');
 
-                    $saldoAFavor = abs($venta->total_pagar); // Es negativo al ser saldo  a favor (pasa a positivo)
+                    // $saldoAFavor = abs($venta->total_pagar); // Es negativo al ser saldo  a favor (pasa a positivo)
+
+
+                    // Totales
+                    $totalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal'); // 72000
+                    $totalConsumo = $reserva->venta->consumo->detallesConsumos->sum('subtotal');        // 10000
+                    $saldoAFavor = abs($venta->total_pagar); // Convertimos -72000 a +72000
+
+                    // Primero se cubren los servicios
+                    $restanteServicio = max(0, $totalServicios - $saldoAFavor); // 72000 - 72000 = 0
+                    $excedente = max(0, $saldoAFavor - $totalServicios);        // 72000 - 72000 = 0
+
+                    // Luego se cubre el consumo si hay excedente
+                    $restanteConsumo = max(0, $totalConsumo - $excedente);      // 10000 - 0 = 10000
+
+                    // El total a pagar sería lo que no cubre el saldo a favor
+                    $diferenciaFinal = 0; // Ya no hay "diferencia pendiente"
+                    $totalPagar = $restanteServicio + $restanteConsumo; // 0 + 10000 = 10000
+
                 @endphp
 
               <div class="row">
@@ -51,24 +69,33 @@
                 <div class="row" id="seccionPropina">
                   <div class="input-field col s12 m4">
                     <label for="consumo_bruto">Consumo</label>
-                    <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly>
+                    {{-- <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly> --}}
+
+                    <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" value="${{number_format($restanteConsumo, 0, ',', '.')}}" data-consumo_bruto="{{$restanteConsumo}}" readonly>
                   </div>
 
                   <div class="input-field col s12 m4" id="propinaBruta" hidden>
                     <label for="propinaValue">Ingrese Propina</label>
-                    <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}">
+                    {{-- <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}"> --}}
+                   
+                    <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$restanteConsumo*0.1}}" value="${{number_format($restanteConsumo*0.1,0,'','.')}}">
                   </div>
 
                   <div class="input-field col s12 m4" id="siPropina" hidden>
                     <label for="conPropina">Consumo con Propina</label>
-                    <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly>
+                    {{-- <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly> --}}
+                    
+                    <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$restanteConsumo*1.1}}" value="${{number_format($restanteConsumo*1.1,0,'','.')}}" readonly>
                   </div>
                 </div>
 
                 <div class="row">
                   <div class="input-field col s12 m4">
                     <label for="servicio_bruto">Servicios</label>
-                    <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor),0,'','.')}}" data-servicio_bruto="{{($subtotalServicios + $venta->saldo_a_favor)}}" readonly>
+
+                    {{-- <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor),0,'','.')}}" data-servicio_bruto="{{($subtotalServicios + $venta->saldo_a_favor)}}" readonly> --}}
+                    
+                    <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format($restanteServicio, 0, ',', '.')}}" data-servicio_bruto="{{$restanteServicio}}" readonly>
                   </div>
                 </div>
 
@@ -76,8 +103,10 @@
                 <div class="row">
                
                   <div class="input-field col s12 m4">
+
                     <label for="sinPropina">Servicios + Consumo</label>
-                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal,0,'','.')}}" data-sinpropina="{{($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal }}" readonly>
+                    {{-- <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal,0,'','.')}}" data-sinpropina="{{($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal }}" readonly> --}}
+                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format($totalPagar, 0, ',', '.')}}" data-sinpropina="{{$totalPagar}}" readonly>
                   </div>
                 </div>
 
@@ -88,8 +117,11 @@
 
               <div class="row">
                 <div class="input-field col s12 m4">
+
                   <label for="diferencia">Diferencia por Pagar</label>
-                  <input id="diferencia" type="text" name="diferencia" class="money-format" value="${{number_format(($subtotalServicios <= $saldoAFavor) ? $venta->total_pagar : 0 ,0,'','.')}}" data-total-pagar="{{($subtotalServicios <= $saldoAFavor) ? $venta->total_pagar : 0 }}" readonly>
+                  {{-- <input id="diferencia" type="text" name="diferencia" class="money-format" value="${{number_format(($subtotalServicios <= $saldoAFavor) ? $venta->total_pagar : 0 ,0,'','.')}}" data-total-pagar="{{($subtotalServicios <= $saldoAFavor) ? $venta->total_pagar : 0 }}" readonly> --}}
+
+                  <input id="diferencia" type="text" name="diferencia" class="money-format" value="${{number_format($diferenciaFinal, 0, ',', '.')}}" data-total-pagar="{{$diferenciaFinal}}" readonly>
                 </div>
               </div>
 
@@ -97,7 +129,9 @@
 
                 <div class="input-field col s12 m4">
                   <label for="total_pagar">Total a Pagar</label>
-                  <input id="total_pagar" type="text" name="total_pagar" class="money-format" readonly>
+                  {{-- <input id="total_pagar" type="text" name="total_pagar" class="money-format" readonly> --}}
+
+                  <input id="total_pagar" type="text" name="total_pagar" class="money-format" value="${{number_format($totalPagar, 0, ',', '.')}}" readonly>
                 </div>
 
                 <div class="file-field input-field col s12 m4">
@@ -205,7 +239,7 @@
 
               <div class="row">
                 <div class="input-field col s12">
-                  <button class="btn waves-effect waves-light right" type="submit">Guardar
+                  <button id="btn-guardar" class="btn waves-effect waves-light right" type="submit">Guardar
                     <i class="material-icons right">send</i>
                   </button>
                 </div>
@@ -442,6 +476,16 @@ function sincronizarPagosDivididos(total) {
 
 
 
+</script>
+
+<script>
+  $(document).ready(function () {
+    $('form').on('submit', function (){
+      const $btn = $('#btn-guardar');
+      $btn.prop('disabled', true);
+      $btn.html('<i class="material-icons left">hourglass_empty</i>Guardando...');
+    });
+  });
 </script>
 
 @endsection

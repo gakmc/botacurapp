@@ -49,9 +49,7 @@
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         @foreach($horarios as $horario)
                                         <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
-                                            : '' }}>
-                                            {{ $horario }}
-                                        </option>
+                                            : '' }}>{{ $horario }}</option>
                                         @endforeach
                                     </select>
                                     @error('horario_sauna')
@@ -65,10 +63,7 @@
                                 <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
                                     <select id="horario_masaje" name="horario_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
-
                                         <option value="" selected disabled="">-- Seleccione --</option>
-
-
                                     </select>
                                     <label for="horario_masaje">Horario Masaje</label>
                                     @error('horario_masaje')
@@ -85,13 +80,9 @@
 
                                         <option value="" disabled selected>-- Seleccione --</option>
                                         <option value="Relajante" {{ old('tipo_masaje')=='Relajante' ? 'selected' : ''
-                                            }}>
-                                            Relajante
-                                        </option>
+                                            }}>Relajante</option>
                                         <option value="Descontracturante" {{ old('tipo_masaje')=='Descontracturante'
-                                            ? 'selected' : '' }}>
-                                            Descontracturante
-                                        </option>
+                                            ? 'selected' : '' }}>Descontracturante</option>
 
 
 
@@ -116,9 +107,7 @@
                                         <option value="" selected disabled="">-- Seleccione --</option>
                                         @foreach($horarios as $horario)
                                         <option value="{{ $horario }}" {{ old('horario_sauna')==$horario ? 'selected'
-                                            : '' }}>
-                                            {{ $horario }}
-                                        </option>
+                                            : '' }}>{{ $horario }}</option>
                                         @endforeach
                                     </select>
                                     @error('horario_sauna')
@@ -136,10 +125,7 @@
                                 <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
 
                                 <select id="horario_masaje_{{$i}}" name="masajes[{{$i}}][horario_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
-
                                     <option value="" selected disabled="">-- Seleccione --</option>
-
-
                                 </select>
                                 <label for="horario_masaje_{{$i}}">Horario Masaje</label>
                                 @error('horario_masaje_{{$i}}')
@@ -156,13 +142,9 @@
 
                                     <option value="" disabled selected>-- Seleccione --</option>
                                     <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
-                                        }}>
-                                        Relajante
-                                    </option>
+                                        }}>Relajante</option>
                                     <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
-                                        ? 'selected' : '' }}>
-                                        Descontracturante
-                                    </option>
+                                        ? 'selected' : '' }}>Descontracturante</option>
 
 
 
@@ -205,9 +187,7 @@
                                             <option value="" selected disabled="">-- Seleccione --</option>
                                             @foreach($horarios as $horario)
                                             <option value="{{ $horario }}" {{ old("spas.{$i}.horario_sauna")== $horario ? 'selected'
-                                                : '' }}>
-                                                {{ $horario }}
-                                            </option>
+                                                : '' }}>{{ $horario }}</option>
                                             @endforeach
                                         </select>
 
@@ -258,13 +238,9 @@
 
                                         <option value="" disabled selected>-- Seleccione --</option>
                                         <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
-                                            }}>
-                                            Relajante
-                                        </option>
+                                            }}>Relajante</option>
                                         <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
-                                            ? 'selected' : '' }}>
-                                            Descontracturante
-                                        </option>
+                                            ? 'selected' : '' }}>Descontracturante</option>
 
 
 

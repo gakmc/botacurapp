@@ -6,6 +6,7 @@ use App\Consumo;
 use App\DetalleConsumo;
 use App\DetalleServiciosExtra;
 use App\Events\Consumos\NuevoConsumoAgregado;
+use App\Masaje;
 use App\Producto;
 use App\Servicio;
 use App\TipoProducto;
@@ -41,8 +42,9 @@ class ConsumoController extends Controller
     public function service_store(Request $request, Venta $venta)
     {
 
+        $validarMasaje = ['masajes','masaje'];
 
-        DB::transaction(function () use ($request, &$venta) {
+        DB::transaction(function () use ($request, &$venta, $validarMasaje) {
             // Verificar si ya existe un consumo para esta venta
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
 
@@ -64,6 +66,7 @@ class ConsumoController extends Controller
                 return isset($servicio['cantidad']) && $servicio['cantidad'] > 0;
             });
 
+
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($serviciosValidos as $servicio_id => $servicio) {
                 $tiempoExtra = isset($servicio['tiempo_extra']) ? true : false;
@@ -81,6 +84,25 @@ class ConsumoController extends Controller
                 // Sumar al subtotal del nuevo consumo
                 $nuevoSubtotal += $subtotal;
                 
+                $nombreServicio = Servicio::findOrFail($servicio_id);
+
+                if(in_array(strtolower($nombreServicio->nombre_servicio), $validarMasaje)){
+                    for($i = 1; $i <= $servicio['cantidad']; $i++){
+                        $cantidadPersonas = isset($venta->reserva->cantidad_masajes) 
+                        ? $venta->reserva->cantidad_masajes+$i 
+                        : $venta->reserva->cantidad_personas+$i;
+
+                        Masaje::create([
+                            'id_reserva' => $venta->reserva->id,
+                            'horario_masaje' => null,
+                            'tipo_masaje' => null,
+                            'id_lugar_masaje' => null, 
+                            'persona' => $cantidadPersonas,
+                            'tiempo_extra' => $servicio['tiempo_extra'] ? true : false,
+                            'user_id' => null,
+                        ]);
+                    }
+                }
             }
 
             $consumo->subtotal += $nuevoSubtotal;

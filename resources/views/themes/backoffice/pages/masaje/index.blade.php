@@ -10,7 +10,31 @@
 
 @section('content')
 <div class="section">
-    <p class="caption"><strong>Masajes desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
+<div class="row">
+    <div class="col s12 m4 l3 left">
+        <p class="caption"><strong>Masajes desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
+    </div>
+        @if(isset($contador) && Auth::user()->has_role(config('app.masoterapeuta_role')))
+        
+        <div class="col s12 m4 l3 right">
+            <ul class="collection">
+                <li class="collection-item avatar">
+                    <i class="material-icons circle red">person</i>
+                    <span class="title">Cantidad</span>
+                    <p>Total:</p>
+                    {{-- <a href="#!" class="secondary-content"><i class="material-icons">group_add</i></a> --}}
+                    <span class="secondary-content" style="color: #039B7B">
+                        {{$contador}} {{$contador > 1 ? "Personas" : "Persona"}}
+                    </span>
+                </li>
+            </ul>
+    
+        </div>
+    
+    
+        @endif
+    </div>
+
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -56,7 +80,12 @@
                     }) as $masaje)
 
                     <tr>
+                        @if(Auth::user()->has_role(config('app.masoterapeuta_role')))
+                            <form action="{{ route('backoffice.masaje.asignar_multiples') }}" method="POST">
+                                @csrf
+                        @endif
                         <td>
+                            
                             {{$masaje->horario_masaje}} -
                             @if ($masaje->hora_fin_masaje)
                             {{$masaje->hora_fin_masaje}}
@@ -84,26 +113,39 @@
                             //dd($masajeAsignado->user);
                             @endphp
 
-                            @if ($masajeAsignado && $masajeAsignado->user)
-                            <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
+                            {{-- @if ($masajeAsignado && $masajeAsignado->user)
+                                <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
                             @else
-                            @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
-                            <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
-                            <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <input type="hidden" name="id" value="{{ $masaje->id }}">
-                                <button type="submit" class="btn-floating" {{$fecha==now()->format('d-m-Y') ? '' :
-                                    'disabled'}}>
-                                    <i class="material-icons">pan_tool</i>
-                                </button>
-                            </form>
-                            @elseif (Auth::user()->has_role(config('app.admin_role')))
-                            <strong class="red-text">No asignado</strong>
-                            @endif
-                            @endif
+                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
+                                <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
+                                <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
+                                    @csrf
+                                    @method('PUT')
+                                    <input type="hidden" name="id" value="{{ $masaje->id }}">
+                                    <button type="submit" class="btn-floating" {{$fecha==now()->format('d-m-Y') ? '' :
+                                        'disabled'}}>
+                                        <i class="material-icons">pan_tool</i>
+                                    </button>
+                                </form>
+                                @elseif (Auth::user()->has_role(config('app.admin_role')))
+                                <strong class="red-text">No asignado</strong>
+                                @endif
+                            @endif --}}
 
 
+
+                            @if ($masajeAsignado && $masajeAsignado->user)
+                                <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
+                            @else
+                                @if(Auth::user()->has_role(config('app.masoterapeuta_role')) && $fecha == now()->format('d-m-Y'))
+                                    <label>
+                                        <input type="checkbox" name="masajes_seleccionados[]" class="checkbox-masaje" value="{{ $masaje->id }}">
+                                        <span>Asignar</span>
+                                    </label>
+                                @elseif (Auth::user()->has_role(config('app.admin_role')))
+                                    <strong class="red-text">No asignado</strong>
+                                @endif
+                            @endif
 
 
 
@@ -133,6 +175,15 @@
                     @endforeach
                 </tbody>
             </table>
+            @if(Auth::user()->has_role(config('app.masoterapeuta_role')))
+                <div id="asignacion-masajes" class="right-align" style="margin-top: 15px;">
+                    <span id="contador-masajes">0 Seleccionados</span>
+                    <button type="submit" class="btn waves-effect waves-light">
+                        Asignarme seleccionados <i class="material-icons right">check</i>
+                    </button>
+                </div>
+            </form>
+            @endif
 
 
 
@@ -163,6 +214,21 @@
         toast: true,
         icon: 'success',
         title: '{{ session('success') }}',
+        showConfirmButton: false,
+        timer: 5000,
+        timerProgressBar: true,
+            didOpen: (toast) => {
+            toast.onmouseenter = Swal.stopTimer;
+            toast.onmouseleave = Swal.resumeTimer;
+            }
+    });
+    @endif
+
+    @if(session('info'))
+    Swal.fire({
+        toast: true,
+        icon: 'info',
+        title: '{{ session('info') }}',
         showConfirmButton: false,
         timer: 5000,
         timerProgressBar: true,
@@ -233,4 +299,25 @@
     });
 </script>
 
+<script>
+    $(document).ready(function () {
+        function actualizarUI() {
+            let seleccionados = $('.checkbox-masaje:checked').length;
+
+            if (seleccionados > 0) {
+                $('#asignacion-masajes').show();
+                $('#contador-masajes').text(seleccionados + ' Seleccionados');
+            } else {
+                $('#asignacion-masajes').hide();
+            }
+        }
+
+        // Ejecutar al cargar y cuando se haga clic en un checkbox
+        actualizarUI();
+
+        $(document).on('change', '.checkbox-masaje', function () {
+            actualizarUI();
+        });
+    });
+</script>
 @endsection

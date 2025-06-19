@@ -404,5 +404,5 @@
         }, 1000);
     });
     
-        </script>
+</script>
 @endsection

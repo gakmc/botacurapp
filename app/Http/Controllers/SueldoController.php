@@ -59,37 +59,50 @@ class SueldoController extends Controller
         $mes = $request->input('mes', now()->month);
         $anio = $request->input('anio', now()->year);
 
-        $usuarios = User::whereHas('sueldos', function ($query) use ($mes, $anio) {
-            $query->whereMonth('dia_trabajado', $mes)
-                ->whereYear('dia_trabajado', $anio);
-        })
-        ->with(['sueldos' => function ($query) use ($mes, $anio) {
-            $query->whereMonth('dia_trabajado', $mes)
-                ->whereYear('dia_trabajado', $anio)
-                ->orderBy('dia_trabajado', 'asc');
-        }])
-        ->get();
+        $sueldos = Sueldo::with('user')
+            ->whereMonth('dia_trabajado', $mes)
+            ->whereYear('dia_trabajado', $anio)
+            ->orderBy('dia_trabajado')
+            ->get();
 
-        // Agrupar sueldos de cada usuario por semana
-        $usuariosConSueldosSemanales = $usuarios->map(function ($usuario) {
-            $semanas = $usuario->sueldos->groupBy(function ($sueldo) {
-                $fecha = Carbon::parse($sueldo->dia_trabajado);
-                $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
-                $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
-                return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
-            });
+        $semanas = [];
 
-            $totalesSemanales = $semanas->map(function ($grupo) {
-                return [
-                    'dias' => $grupo->count(),
-                    'sueldos' => $grupo->sum('valor_dia'),
-                    'propinas' => $grupo->sum('sub_sueldo') - $grupo->sum('valor_dia'),
-                    'total' => $grupo->sum('total_pagar'),
+        foreach ($sueldos as $sueldo) {
+            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
+            $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+
+            $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+
+            $userId = $sueldo->user->id;
+            $userName = $sueldo->user->name;
+
+            if (!isset($semanas[$rango])) {
+                $semanas[$rango] = [];
+            }
+
+            if (!isset($semanas[$rango][$userId])) {
+                $semanas[$rango][$userId] = [
+                    'name' => $userName,
+                    'dias' => 0,
+                    'sueldos' => 0,
+                    'propinas' => 0,
+                    'total' => 0,
+                    'user_id' => $userId
                 ];
-            });
+            }
 
-            $usuario->totales_semanales = $totalesSemanales;
-            return $usuario;
+            $semanas[$rango][$userId]['dias'] += 1;
+            $semanas[$rango][$userId]['sueldos'] += $sueldo->valor_dia;
+            $semanas[$rango][$userId]['propinas'] += $sueldo->sub_sueldo - $sueldo->valor_dia;
+            $semanas[$rango][$userId]['total'] += $sueldo->total_pagar;
+        }
+
+        // ordenar las semanas cronológicamente
+        uksort($semanas, function ($a, $b) use ($anio) {
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            return $dateA->timestamp <=> $dateB->timestamp;
         });
 
         $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
@@ -99,7 +112,7 @@ class SueldoController extends Controller
             ->get();
 
         return view('themes.backoffice.pages.sueldo.index', [
-            'usuarios' => $usuariosConSueldosSemanales,
+            'semanas' => $semanas,
             'mes' => $mes,
             'anio' => $anio,
             'fechasDisponibles' => $fechasDisponibles

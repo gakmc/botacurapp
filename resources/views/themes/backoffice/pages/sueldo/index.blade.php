@@ -91,83 +91,68 @@
                             </tr>
                         </thead> --}}
                         <tbody>
-                            @forelse ($usuarios as $usuario)
-                                @php
-                                    $fecha =  \Carbon\Carbon::parse($usuario->dia_trabajado);
-                                    $fecha_anio = $fecha->year;
-                                    $fecha_mes = $fecha->month;
-                                @endphp
-                                {{-- <tr>
-
-                                    <td><a href="{{route('backoffice.sueldo.view.admin', ['user'=>$usuario, $fecha_anio, $fecha_mes])}}">{{$usuario->name}}</a></td>
-                                    <td>{{ $usuario->sueldos->count()}}</td>
-                                    <td>${{ number_format($usuario->sueldos->sum("valor_dia"), 0, '', '.') }}</td>
-                                    <td>${{ number_format($usuario->sueldos->sum("sub_sueldo")-$usuario->sueldos->sum("valor_dia"), 0, '', '.') }}</td>
-                                    <td>${{ number_format($usuario->sueldos->sum("total_pagar"), 0, '', '.') }}</td>
-
-                                    @php
-                                        $sueldoMes += $usuario->sueldos->sum("total_pagar");
-                                    @endphp
-                                </tr> --}}
-
-
-                                <tr>
-                                    <td >
-                                        <strong>
-                                            <a href="{{ route('backoffice.sueldo.view.admin', ['user' => $usuario, $anio, $mes]) }}">
-                                                {{ $usuario->name }}
-                                            </a>
-                                        </strong>
-                                    </td>
-                                </tr>
-                                <tr style="background-color: #f0f0f0;">
-                                    <td><strong>Semana</strong></td>
-                                    <td><strong>Días</strong></td>
-                                    <td><strong>Sueldos</strong></td>
-                                    <td><strong>Propinas</strong></td>
-                                    <td><strong>Total</strong></td>
-                                </tr>
-                                @php
-                                    $sueldoBruto = 0;
-                                    $totalUsuario = 0;
-                                @endphp
-                                @foreach($usuario->totales_semanales as $semana => $datos)
-                                {{-- {{dd($datos)}} --}}
-                                    <tr>
-                                        <td>{{ $semana }}</td>
-                                        <td>{{ $datos['dias'] }}</td>
-                                        <td>${{ number_format($datos['sueldos'], 0, '', '.') }}</td>
-                                        <td>${{ number_format($datos['propinas'], 0, '', '.') }}</td>
-                                        <td>${{ number_format($datos['total'], 0, '', '.') }}</td>
-                                    </tr>
-                                    @php 
-                                        $sueldoBruto += $datos['sueldos'];
-                                        $totalUsuario += $datos['total'];
-                                    @endphp
-                                @endforeach
-                                <tr>
-                                    <td colspan="4" class="right-align"><strong>Total mensual</strong></td>
-                                    <td><strong>${{ number_format($totalUsuario, 0, '', '.') }}</strong></td>
-                                    @php
-                                        $sueldoMes += $totalUsuario;
-                                        $totalSueldoBruto += $sueldoBruto;
-                                    @endphp
-                                </tr>
-                                <tr><td colspan="5"><div class="divider"></div></td></tr>
-
-                            @empty
-                                <tr>
-                                    <td colspan="4">No hay registros para este período.</td>
-                                </tr>
-                            @endforelse
-
-                            <tr>
-                                <td colspan="3">  </td>
-                                <td><strong>Total sueldos: ${{number_format($totalSueldoBruto,0,'','.')}} </strong></td>
-                                <td><strong>Total a pagar: ${{number_format($sueldoMes,0,'','.')}} </strong></td>
-                            </tr>
-                        </tbody>
-                    </table>
+@forelse ($semanas as $rango => $usuariosSemana)
+    <h5><strong>{{ $rango }}</strong></h5>
+    <table class="">
+        <thead>
+            <tr>
+                <th>Funcionario</th>
+                <th>Días</th>
+                <th>Sueldos</th>
+                <th>Propinas</th>
+                <th>Total</th>
+                <th>Pagar</th>
+            </tr>
+        </thead>
+        <tbody>
+            @php $totalSemana = 0; @endphp
+            @foreach ($usuariosSemana as $usuario)
+                <tr>
+                    <td style="width: 264.22px;">
+                        <a href="{{ route('backoffice.sueldo.view.admin', ['user' => $usuario['user_id'], $anio, $mes]) }}">
+                            {{ $usuario['name'] }}
+                        </a>
+                    </td>
+                    <td>{{ $usuario['dias'] }}</td>
+                    <td>${{ number_format($usuario['sueldos'], 0, '', '.') }}</td>
+                    @php
+                        $totalSueldoBruto += $usuario['sueldos'];
+                    @endphp
+                    <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
+                    <td>${{ number_format($usuario['total'], 0, '', '.') }}</td>
+                    @php
+                        $sueldoMes += $usuario['total'];
+                    @endphp
+                    <td></td>
+                </tr>
+                @php 
+                    $totalSemana += $usuario['total'];
+                @endphp
+            @endforeach
+            <tr>
+                <td colspan="4" class="right-align"><strong>Total semana</strong></td>
+                <td><strong>${{ number_format($totalSemana, 0, '', '.') }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+    {{-- <div class="divider"></div> --}}
+    @empty
+    <p>No hay registros para este período.</p>
+    @endforelse
+    
+    <table>
+        <tbody>
+            <tr>
+                <td ></td>
+                <td ></td>
+                <td ></td>
+                <td class="center"><strong>Total sueldos: ${{number_format($totalSueldoBruto,0,'','.')}} </strong></td>
+                <td class="right"><strong>Total a pagar: ${{number_format($sueldoMes,0,'','.')}} </strong></td>
+            </tr>
+        </tbody>
+    </table>
+                        
+                    
 
                 </div>
             </div>

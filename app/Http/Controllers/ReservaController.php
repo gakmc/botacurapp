@@ -599,6 +599,7 @@ class ReservaController extends Controller
                 'almuerzosExtra' => $almuerzosExtra,
             ]);
 
+            
             return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()])->with('success', 'La reserva fue actualizada exitosamente.');
         } catch (\Error $e) {
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. ' . $e);

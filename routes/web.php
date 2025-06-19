@@ -232,6 +232,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('reserva/{reserva}/masajes', 'ReservaController@masaje')->name('reserva.masajes');
     Route::match(['put', 'patch'], 'reserva/{reserva}/masaje_update', 'ReservaController@masaje_update')->name('reserva.masaje_update');
+
+
+    Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
+
     
     Route::post('boleta/reserva/{reserva}', 'BoletaController@databoleta')->name('boleta.reserva');
 

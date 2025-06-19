@@ -74,7 +74,7 @@
 
                     <div class="row">
                         <div class="input-field col s12">
-                            <button class="btn waves-effect waves-light right" type="submit">Guardar
+                            <button id="btn-guardar" class="btn waves-effect waves-light right" type="submit">Guardar
                                 <i class="material-icons right">send</i>
                             </button>
                         </div>
@@ -90,6 +90,16 @@
 @endsection
 
 @section('foot')
+
+<script>
+  $(document).ready(function () {
+    $('form').on('submit', function (){
+      const $btn = $('#btn-guardar');
+      $btn.prop('disabled', true);
+      $btn.html('<i class="material-icons left">hourglass_empty</i>Guardando...');
+    });
+  });
+</script>
 
 <script>
     function eliminarServicio (id) { 

@@ -164,6 +164,18 @@ class MasajeController extends Controller
             2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
         ];
 
+        $user = auth()->user();
+
+
+        $contador = Masaje::where('user_id', $user->id)
+                ->whereHas('reserva', function ($query) use ($fechaActual){
+                    $query->whereDate('fecha_visita', $fechaActual);
+                })
+                ->with('reserva')
+                ->get()
+                ->count();
+
+        // dd($contador);
 
 
         // Retorno de la vista
@@ -172,6 +184,7 @@ class MasajeController extends Controller
             'distribucionHorarios' => $distribucionHorarios,
             'horasDisponibles' => $horariosDisponiblesMasajes,
             'fechasPaginadas' => $todasLasFechas,
+            'contador' => $contador
         ]);
     }
 
@@ -263,5 +276,39 @@ class MasajeController extends Controller
     public function destroy($id)
     {
         //
+    }
+
+    public function asignar_multiples(Request $request)
+    {
+        $user = auth()->user();
+
+        // Verificar que el usuario tenga el rol adecuado
+        if (!$user->has_role(config('app.masoterapeuta_role'))) {
+            return back()->with('error', 'No autorizado.');
+        }
+
+        // Validar que existan masajes seleccionados
+        $masajes = $request->input('masajes_seleccionados', []);
+        if (empty($masajes)) {
+            return back()->with('error', 'No seleccionaste ningún masaje.');
+        }
+
+        $conteo = 0;
+
+        // Idealmente usar whereIn para eficiencia si no necesitas lógica por masaje
+        foreach ($masajes as $masajeId) {
+            $masaje = Masaje::whereNull('user_id') // Solo asignar si no tiene usuario
+                            ->find($masajeId);
+
+            if ($masaje) {
+                $masaje->update([
+                    'user_id' => $user->id,
+                ]);
+                $conteo++;
+            }
+        }
+
+        return back()->with('success', $conteo.' Masajes asignados exitosamente.');
+
     }
 }
