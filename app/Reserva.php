@@ -17,6 +17,7 @@ class Reserva extends Model
         'observacion',
         'id_programa',
         'user_id',
+        'avisado_en_cocina'
     ];
 
     //RELACIONES

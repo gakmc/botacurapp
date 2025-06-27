@@ -156,7 +156,7 @@
                                             @endforeach
                                         </div>
 
-                                        <h6>Productos</h6>
+                                        {{-- <h6>Productos</h6>
                                         <div class="collection lista-productos">
                                             @foreach($productos as $producto)
                                             @php $key = 'producto_'.$producto->id; @endphp
@@ -169,7 +169,7 @@
                                                 '.') }}
                                             </a>
                                             @endforeach
-                                        </div>
+                                        </div> --}}
                                     </div>
 
                                     <div class="col s12 m6">

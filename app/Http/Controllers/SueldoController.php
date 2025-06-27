@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Consumo;
 use App\Propina;
 use App\Sueldo;
+use App\SueldoPagado;
 use App\User;
 use App\VentaDirecta;
 use Exception;
@@ -88,7 +89,9 @@ class SueldoController extends Controller
                     'sueldos' => 0,
                     'propinas' => 0,
                     'total' => 0,
-                    'user_id' => $userId
+                    'user_id' => $userId,
+                    'inicio' => $inicioSemana->format('Y-m-d'),
+                    'fin' => $finSemana->format('Y-m-d')
                 ];
             }
 
@@ -111,11 +114,14 @@ class SueldoController extends Controller
             ->orderBy('mes', 'desc')
             ->get();
 
+        $pagosRealizados = SueldoPagado::select('*')->get();
+
         return view('themes.backoffice.pages.sueldo.index', [
             'semanas' => $semanas,
             'mes' => $mes,
             'anio' => $anio,
-            'fechasDisponibles' => $fechasDisponibles
+            'fechasDisponibles' => $fechasDisponibles,
+            'pagosRealizados' => $pagosRealizados
         ]);
     }
 

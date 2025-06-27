@@ -35,12 +35,12 @@ class Masaje extends Model
     }
     public function getHoraFinMasajeAttribute()
     {
-        return $this->calcularHoraFin($this->horario_masaje);
+        return $this->calcularHoraFin($this->horario_masaje, $this->tiempo_extra);
     }
 
     public function getHoraFinMasajeExtraAttribute()
     {
-        return $this->calcularHoraFinMasajeExtra($this->horario_masaje);
+        return $this->calcularHoraFinMasajeExtra($this->horario_masaje, $this->tiempo_extra);
     }
 
     public function getHoraFinalMasajeAttribute()
@@ -50,26 +50,33 @@ class Masaje extends Model
         $servicio = Servicio::whereIn('nombre_servicio', $nombreServicio)->first();
 
         if ($this->horario_masaje) {
-            return Carbon::parse($this->horario_masaje)->addMinutes($servicio->duracion)->format('H:i');
+            if ($this->tiempo_extra) {
+                return Carbon::parse($this->horario_masaje)->addMinutes($servicio->duracion*2)->format('H:i');
+            }else{
+                return Carbon::parse($this->horario_masaje)->addMinutes($servicio->duracion)->format('H:i');
+            }
         }
         return null;
     }
 
-    private function calcularHoraFin($horarioInicio)
+    private function calcularHoraFin($horarioInicio, $tiempoExtra)
     {
         $nombreServicio = ['Masaje', 'Masajes', 'masaje', 'masajes'];
 
         $servicio = Servicio::whereIn('nombre_servicio', $nombreServicio)->first();
-
         if ($horarioInicio && $servicio) {
             $horaInicio = Carbon::parse($horarioInicio);
-            return $horaInicio->addMinutes($servicio->duracion)->format('H:i');
+            if ($tiempoExtra) {
+                return $horaInicio->addMinutes($servicio->duracion*2)->format('H:i');
+            }else{
+                return $horaInicio->addMinutes($servicio->duracion)->format('H:i');
+            }
         }
 
         return null;
     }
 
-    private function calcularHoraFinMasajeExtra($horarioInicio)
+    private function calcularHoraFinMasajeExtra($horarioInicio, $tiempoExtra)
     {
         $nombreServicio = ['Masaje', 'Masajes'];
 
@@ -77,7 +84,11 @@ class Masaje extends Model
 
         if ($horarioInicio && $servicio) {
             $horaInicio = Carbon::parse($horarioInicio);
-            return $horaInicio->addMinutes($servicio->duracion)->format('H:i');
+            if ($tiempoExtra) {
+                return $horaInicio->addMinutes($servicio->duracion*2)->format('H:i');
+            }else{
+                return $horaInicio->addMinutes($servicio->duracion)->format('H:i');
+            }
         }
 
         return null;

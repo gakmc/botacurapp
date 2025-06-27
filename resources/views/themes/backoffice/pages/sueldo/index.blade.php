@@ -91,53 +91,113 @@
                             </tr>
                         </thead> --}}
                         <tbody>
-@forelse ($semanas as $rango => $usuariosSemana)
-    <h5><strong>{{ $rango }}</strong></h5>
-    <table class="">
-        <thead>
-            <tr>
-                <th>Funcionario</th>
-                <th>Días</th>
-                <th>Sueldos</th>
-                <th>Propinas</th>
-                <th>Total</th>
-                <th>Pagar</th>
-            </tr>
-        </thead>
-        <tbody>
-            @php $totalSemana = 0; @endphp
-            @foreach ($usuariosSemana as $usuario)
+    @forelse ($semanas as $rango => $usuariosSemana)
+    @php
+        $semanaId = Str::slug($rango); // por ejemplo: "09-jun-15-jun"
+    @endphp
+        <h5><strong>{{ $rango }}</strong></h5>
+        <table class="">
+            <thead>
                 <tr>
-                    <td style="width: 264.22px;">
-                        <a href="{{ route('backoffice.sueldo.view.admin', ['user' => $usuario['user_id'], $anio, $mes]) }}">
-                            {{ $usuario['name'] }}
-                        </a>
-                    </td>
-                    <td>{{ $usuario['dias'] }}</td>
-                    <td>${{ number_format($usuario['sueldos'], 0, '', '.') }}</td>
-                    @php
-                        $totalSueldoBruto += $usuario['sueldos'];
-                    @endphp
-                    <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
-                    <td>${{ number_format($usuario['total'], 0, '', '.') }}</td>
-                    @php
-                        $sueldoMes += $usuario['total'];
-                    @endphp
-                    <td></td>
+                    <th>Funcionario</th>
+                    <th>Días</th>
+                    <th>Sueldos</th>
+                    <th>Propinas</th>
+                    <th>Total</th>
+                    <th>Pagar</th>
                 </tr>
-                @php 
-                    $totalSemana += $usuario['total'];
-                @endphp
-            @endforeach
-            <tr>
-                <td colspan="4" class="right-align"><strong>Total semana</strong></td>
-                <td><strong>${{ number_format($totalSemana, 0, '', '.') }}</strong></td>
-            </tr>
-        </tbody>
-    </table>
-    {{-- <div class="divider"></div> --}}
-    @empty
-    <p>No hay registros para este período.</p>
+            </thead>
+            <tbody>
+                @php $totalSemana = 0; @endphp
+                @foreach ($usuariosSemana as $usuario)
+                    <tr>
+                        @if(Auth::user()->has_role(config('app.admin_role')))
+                            <form action="{{ route('backoffice.sueldo-pagado.store') }}" method="POST">
+                                @csrf
+                        @endif
+                        <td style="width: 264.22px;">
+                            <a href="{{ route('backoffice.sueldo.view.admin', ['user' => $usuario['user_id'], $anio, $mes]) }}">
+                                {{ $usuario['name'] }}
+                            </a>
+                        </td>
+                        <td>{{ $usuario['dias'] }}</td>
+                        <td>${{ number_format($usuario['sueldos'], 0, '', '.') }}</td>
+                        @php
+                            $totalSueldoBruto += $usuario['sueldos'];
+                        @endphp
+                        <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
+                        <td>${{ number_format($usuario['total'], 0, '', '.') }}</td>
+                        @php
+                            $sueldoMes += $usuario['total'];
+                        @endphp
+                        <td>
+
+                            {{-- {{dd($rango, $usuario)}} --}}
+                        @php
+                            $yaPagado = $pagosRealizados->contains(function ($pago) use ($usuario) {
+                                return $pago->user_id == $usuario['user_id']
+                                    && $pago->semana_inicio == $usuario['inicio']
+                                    && $pago->semana_fin == $usuario['fin'];
+                            });
+
+                            // dd($pagosRealizados);
+                                // Si ya fue pagado, buscamos la fecha exacta
+                            $pago = $yaPagado
+                                ? $pagosRealizados->first(function ($pago) use ($usuario) {
+                                    return $pago->user_id == $usuario['user_id']
+                                        && $pago->semana_inicio == $usuario['inicio']
+                                        && $pago->semana_fin == $usuario['fin'];
+                                })
+                                : null;
+                        @endphp
+
+                        @if ($yaPagado)
+                            <span class="tooltipped" data-position="bottom" data-delay="50" data-tooltip="Pagado el {{ \Carbon\Carbon::parse($pago->fecha_pago)->locale('es')->isoFormat('D [de] MMMM') }}" style="color: #039B7B;">
+                                <i class="material-icons tiny">
+                                    monetization_on
+                                </i> Pagado</span>
+                        @else
+                        {{-- {{dd($usuario)}} --}}
+                            @if(Auth::user()->has_role(config('app.admin_role')))
+                                <label>
+                                    <input type="checkbox" name="sueldos_seleccionados[]" class="checkbox-sueldo" data-semana="{{$semanaId}}" value="{{ json_encode([
+                                        'user_id' => $usuario['user_id'],
+                                        'total' => $usuario['total'],
+                                        'inicio' => $usuario['inicio'],
+                                        'fin' => $usuario['fin'],
+                                    ]) }}">
+                                    <span>Pagar</span>
+                                </label>
+
+                            @endif
+                        @endif
+
+                        </td>
+                    </tr>
+                    @php 
+                        $totalSemana += $usuario['total'];
+                    @endphp
+                @endforeach
+                <tr>
+                    <td colspan="4" class="right-align"><strong>Total semana</strong></td>
+                    <td><strong>${{ number_format($totalSemana, 0, '', '.') }}</strong></td>
+                </tr>
+            </tbody>
+        </table>
+
+        @if(Auth::user()->has_role(config('app.admin_role')))
+                <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 15px; display:none;">
+                    <span id="contador-{{$semanaId}}">0 Seleccionados</span>
+                    <button type="submit" class="btn waves-effect waves-light">
+                        Pagar seleccionados <i class="material-icons right">monetization_on</i>
+                    </button>
+                </div>
+            </form>
+        @endif
+
+        {{-- <div class="divider"></div> --}}
+        @empty
+        <p>No hay registros para este período.</p>
     @endforelse
     
     <table>
@@ -170,6 +230,42 @@
         });
     </script>
 
+    <script>
+    $(document).ready(function () {
+        @if(session('info'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'info',
+                title: '{{ session('info') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
+
+        @if(session('success'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'success',
+                title: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
+    });
+    </script>
+
 
     <script>
         function cambiarMesAnio(valor) {
@@ -193,5 +289,59 @@
         }
     </script>
     
+{{-- <script>
+    $(document).ready(function () {
+        function actualizarUI() {
+            let seleccionados = $('.checkbox-sueldo:checked').length;
+
+            if (seleccionados > 0) {
+                $('#asignacion-pagados').show();
+                $('#contador-pagados').text(seleccionados + ' Seleccionados');
+            } else {
+                $('#asignacion-pagados').hide();
+            }
+        }
+
+        // Ejecutar al cargar y cuando se haga clic en un checkbox
+        actualizarUI();
+
+        $(document).on('change', '.checkbox-sueldo', function () {
+            actualizarUI();
+        });
+    });
+</script> --}}
+
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        $('.checkbox-sueldo').on('change', function () {
+            const semana = this.dataset.semana;
+            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+            const contador = document.getElementById(`contador-${semana}`);
+            const contenedor = document.getElementById(`acciones-${semana}`);
+
+            if (checkboxes.length > 0) {
+                contador.textContent = `${checkboxes.length} Seleccionados`;
+                contenedor.style.display = 'block';
+            } else {
+                contenedor.style.display = 'none';
+            }
+        });
+
+        // Ejecutar al cargar la vista (útil si se recarga con checks marcados)
+        $('.checkbox-sueldo').each(function () {
+            const semana = this.dataset.semana;
+            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+            const contador = document.getElementById(`contador-${semana}`);
+            const contenedor = document.getElementById(`acciones-${semana}`);
+
+            if (checkboxes.length > 0) {
+                contador.textContent = `${checkboxes.length} Seleccionados`;
+                contenedor.style.display = 'block';
+            }
+        });
+    });
+</script>
 
 @endsection

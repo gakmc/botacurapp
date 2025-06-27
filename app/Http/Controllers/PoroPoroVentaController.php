@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\PoroDetalleVenta;
+use App\PoroPagado;
 use App\PoroPoro;
 use App\PoroPoroVenta;
 use App\TipoTransaccion;
@@ -18,12 +19,68 @@ class PoroPoroVentaController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
-    public function index()
+    public function OLDindex()
     {
         $poroProductos = PoroPoro::all();
         $poroVentas = PoroPoroVenta::all();
 
         return view('themes.backoffice.pages.poroporo.venta.index', compact('poroProductos', 'poroVentas'));
+    }
+
+    public function index(Request $request)
+    {
+        $user = auth()->user();
+        $poroProductos = PoroPoro::all();
+        $ahora = Carbon::now();
+
+        if ($user->has_role(config('app.admin_role'))) {
+            $inicio = null;
+            $fin = null;
+
+            $mes = $request->input('mes', $ahora->month);
+            $anio = $request->input('anio', $ahora->year);
+            
+
+            $ventasRaw = PoroPoroVenta::with('user')
+                ->whereMonth('fecha', $mes)
+                ->whereYear('fecha', $anio)
+                ->get();
+                
+
+            $semanas = $ventasRaw->groupBy(function ($venta) use (&$rangosSemanas) {
+                $inicio = Carbon::parse($venta->fecha)->startOfWeek(Carbon::MONDAY);
+                $fin = Carbon::parse($venta->fecha)->endOfWeek(Carbon::SUNDAY);
+
+                // Usamos el mismo formato para agrupar
+                $key = $inicio->format('d M') . ' - ' . $fin->format('d M');
+
+                // Guardamos los rangos exactos
+                $rangosSemanas[$key] = [
+                    'inicio' => $inicio->format('Y-m-d'),
+                    'fin' => $fin->format('Y-m-d'),
+                ];
+
+                return $key;
+            });
+
+            $fechasDisponibles = PoroPoroVenta::selectRaw('MONTH(fecha) as mes, YEAR(fecha) as anio')->distinct()->get();
+
+            $pagosRealizados = PoroPagado::all();
+
+            return view('themes.backoffice.pages.poroporo.venta.index_admin', compact(
+                'semanas', 'mes', 'anio', 'fechasDisponibles', 'poroProductos', 'rangosSemanas', 'pagosRealizados'
+            ));
+        } else {
+            $inicio = $ahora->startOfWeek()->format('Y-m-d');
+            $fin = $ahora->endOfWeek()->format('Y-m-d');
+
+            $poroVentas = PoroPoroVenta::whereBetween('fecha', [$inicio, $fin])
+                ->get();
+
+            return view('themes.backoffice.pages.poroporo.venta.index', compact(
+                'poroProductos', 'poroVentas', 'inicio', 'fin'
+            ));
+        }
     }
 
     /**

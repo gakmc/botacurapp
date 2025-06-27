@@ -1,16 +1,15 @@
 <?php
 
 use App\CategoriaCompra;
-use App\Cliente;
 use App\Events\EjemploEvento;
 use App\Http\Controllers\EmailPreviewController;
+use App\Reserva;
 use App\Sector;
 use App\TipoDocumento;
 use App\TipoProducto;
 use App\TipoTransaccion;
 use App\Ubicacion;
 use App\UnidadMedida;
-use App\Venta;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 
@@ -27,16 +26,38 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/email', [EmailPreviewController::class, 'preview']);
 
-
-
 Route::get('/emitir', function () {
     broadcast(new EjemploEvento('Hola, WebSocket!'));
     return 'Evento emitido';
 });
 
-
 Route::get('test', function () {
     return view('test');
+});
+
+Route::get('avisos-cocina', function () {
+    $reservasRaw = Reserva::with([
+        'cliente',
+        'programa',
+        'visitas',
+        'menus' => function ($query) {
+            $query->with(['productoEntrada', 'productoFondo', 'productoAcompanamiento']);
+        },
+    ])
+        ->where('avisado_en_cocina', 'avisado')
+        ->whereDate('fecha_visita', today())
+        ->orderBy('fecha_visita', 'desc')
+        ->get();
+
+    $reservas = $reservasRaw->groupBy(function ($reserva) {
+        return \Carbon\Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
+    });
+
+    return view('platos-avisados', compact('reservas'));
+});
+
+Route::get('error', function () {
+    return view('errors.404');
 });
 
 Route::get('/', function () {
@@ -62,14 +83,13 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('consumos/{anio}/{mes}', 'AdminController@consumosMensuales')->name('admin.consumos.detalleMes');
 
     Route::get('servicios/{anio}/{mes}', 'AdminController@serviciosMensuales')->name('admin.servicios.detalleMes');
-    
 
     Route::get('home/ingresos', 'AdminController@ingresos')->name('admin.ingresos');
     Route::get('ingresos/{anio}/{mes}', 'AdminController@detalleMes')->name('admin.ingresos.detalleMes');
     Route::get('ingresos/{anio}/{mes}/{dia}', 'AdminController@ingresosDiarios')->name('admin.ingresos.detalleDia');
 
     Route::get('cierre-caja/{anio}/{mes}/{dia}', 'AdminController@cierreCaja')->name('admin.cierreCaja');
-    
+
     Route::resource('user', 'UserController');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::post('user/{user}/role_assignment', 'UserController@role_assignment')->name('user.role_assignment');
@@ -194,17 +214,16 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('venta/{ventum}/verconsumo', 'VentaController@verconsumo')->name('reserva.venta.verconsumo');
 
-    
     Route::get('venta/cierre_ventas', 'VentaController@index_cierre')->name('reserva.venta.cierre');
 
     Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
-    Route::match(['put', 'patch'],'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
-    
+    Route::match(['put', 'patch'], 'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
+
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
     Route::get('venta/{venta}/consumo/ingresar', 'ConsumoController@service_create')->name('venta.consumo.service_create');
     // Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
-    
+
     // Create - Ingresa al formulario para nueva reserva
     // Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
 
@@ -215,28 +234,22 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     // Store - Guardar la nueva reserva
     Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
-    
+
     Route::get('visita/{visitum}/ubicacion_edit', 'VisitaController@edit_ubicacion')->name('visita.edit_ubicacion');
-    Route::match(['put', 'patch'],'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');
-    
-    
-    
+    Route::match(['put', 'patch'], 'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');
+
     Route::get('reserva/{reserva}/visita/{visita}/register', 'VisitaController@register')->name('reserva.visita.register');
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/register_update', 'VisitaController@register_update')->name('reserva.visita.register_update');
-    
-    
+
     Route::get('reserva/{reserva}/menus', 'ReservaController@menu')->name('reserva.menus');
 
     Route::match(['put', 'patch'], 'reserva/{reserva}/menu_update', 'ReservaController@menu_update')->name('reserva.menu_update');
 
-
     Route::get('reserva/{reserva}/masajes', 'ReservaController@masaje')->name('reserva.masajes');
     Route::match(['put', 'patch'], 'reserva/{reserva}/masaje_update', 'ReservaController@masaje_update')->name('reserva.masaje_update');
 
-
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
 
-    
     Route::post('boleta/reserva/{reserva}', 'BoletaController@databoleta')->name('boleta.reserva');
 
     Route::post('boleta/venta_directa/{venta_directa}', 'BoletaController@databoletaventadirecta')->name('boleta.venta_directa');
@@ -245,28 +258,29 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('reserva/{reserva}/visita/{visita}/spa', 'VisitaController@spa')->name('reserva.visitas.spa');
     Route::match(['put', 'patch'], 'reserva/{reserva}/visita/{visita}/spa_update', 'VisitaController@spa_update')->name('reserva.visitas.spa_update');
 
-
     // Show - Mostrar una reserva específica
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
 
-    Route::get('sueldos/{user}/{anio}/{mes}','SueldoController@adminViewSueldos')->name('sueldo.view.admin');
-    Route::get('sueldos/{user}','SueldoController@view')->name('sueldo.view');
-    Route::get('sueldos/{user}/{anio}/{mes}/{dia}','SueldoController@detalle_diario')->name('sueldo.view.diario');
-    Route::get('sueldo/{user}','SueldoController@view_maso')->name('sueldo.view_maso');
+    Route::get('sueldos/{user}/{anio}/{mes}', 'SueldoController@adminViewSueldos')->name('sueldo.view.admin');
+    Route::get('sueldos/{user}', 'SueldoController@view')->name('sueldo.view');
+    Route::get('sueldos/{user}/{anio}/{mes}/{dia}', 'SueldoController@detalle_diario')->name('sueldo.view.diario');
+    Route::get('sueldo/{user}', 'SueldoController@view_maso')->name('sueldo.view_maso');
 
-    Route::get('/actualizar-sueldo-base','SueldoController@actualizarSueldoBase');
+    Route::get('/actualizar-sueldo-base', 'SueldoController@actualizarSueldoBase');
 
-    Route::post('sueldo/masoterapeuta','SueldoController@store_maso')->name('sueldo.store_maso');
-    
+    Route::post('sueldo/masoterapeuta', 'SueldoController@store_maso')->name('sueldo.store_maso');
+
     Route::post('barman/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
     Route::post('barman/bebidas/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
     Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
 
+    Route::put('/avisar-cocina/{reserva}', 'ReservaController@avisarCocina')->name('reserva.avisar');
+
+    Route::put('/entregar-menu/{reserva}', 'ReservaController@entregarMenu')->name('reserva.entregar');
 
     // Ruta Delete para eliminar detalle de consumo
     Route::delete('/consumo/detalle/{tipo}/{id}', 'ConsumoController@destroyDetalle')->name('consumo.detalle.destroy');
 
-    
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('asistencia', 'AsistenciaController');
@@ -280,6 +294,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('masaje', 'MasajeController');
     Route::resource('menu', 'MenuController');
     Route::resource('permission', 'PermissionController');
+    Route::resource('poro-pagado', 'PoroPagadoController');
     Route::resource('poroporo', 'PoroPoroController');
     Route::resource('producto', 'ProductoController');
     Route::resource('programa', 'ProgramaController');
@@ -290,6 +305,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('role', 'RoleController');
     Route::resource('servicio', 'ServicioController');
     Route::resource('sueldos', 'SueldoController');
+    Route::resource('sueldo-pagado', 'SueldoPagadoController');
     Route::resource('venta.consumo', 'ConsumoController');
     Route::resource('venta_directa', 'VentaDirectaController');
     Route::resource('ventas_poroporo', 'PoroPoroVentaController');

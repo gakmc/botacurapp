@@ -91,15 +91,20 @@ class User extends Authenticatable implements MustVerifyEmail
     {
         return $this->hasMany(EstadoRecepcion::class, 'user_id');
     }
-
+    
     public function anularSueldo()
     {
         return $this->hasOne(AnularSueldoUsuario::class, 'user_id');
     }
-
+    
     public function asistencias()
     {
         return $this->belongsToMany(Asistencia::class);
+    }
+
+    public function sueldosPagados()
+    {
+        return $this->hasMany(sueldoPagado::class, 'user_id');
     }
 
 //ALMACENAMIENTO

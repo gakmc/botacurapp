@@ -138,7 +138,7 @@
                                             @endforelse
                                         </div>
 
-                                        <h6>Productos disponibles</h6>
+                                        {{-- <h6>Productos disponibles</h6>
                                         <div class="collection lista-productos" id="">
                                             @forelse($productos as $producto)
                                             <a href="#!" class="collection-item producto-item"
@@ -150,7 +150,7 @@
                                             @empty
                                             <a class="collection-item">No existen productos registrados</a>
                                             @endforelse
-                                        </div>
+                                        </div> --}}
 
                                     </div>
 

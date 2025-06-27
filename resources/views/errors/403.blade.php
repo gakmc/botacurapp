@@ -11,15 +11,15 @@
 </head>
 
 <body>
-    <div class="container">
+    {{-- <div class="container">
         <div class="copy-container center-xy" id="copy-container">
             <p>
                 403 | Usuario no autorizado para esta acción.
             </p>
             <span class="handle"></span>
-            
+
         </div>
-        <a id="link" href="{{ url()->previous() }}" >Volver Atrás</a>
+        <a id="link" href="{{ url()->previous() }}">Volver Atrás</a>
     </div>
 
 
@@ -37,7 +37,7 @@
 
     <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
     <script src="https://cdnjs.cloudflare.com/ajax/libs/gsap/3.9.1/gsap.min.js"></script>
-    
+
     <script>
         $(document).ready(function() {
             let $copyContainer = $("#copy-container"),
@@ -113,8 +113,25 @@
                 handleTL.restart();
             });
         });
-        </script>
-        
+    </script> --}}
+
+
+    <div class="scene">
+        <div class="overlay"></div>
+        <div class="overlay"></div>
+        <div class="overlay"></div>
+        <div class="overlay"></div>
+        <span class="bg-403">403</span>
+        <div class="text">
+            <span class="hero-text"></span>
+            <span class="msg">No tienes <span>Autorización</span> para ingresar.</span>
+            <span class="support">
+                <span>Inesperado?</span>
+                <a href="mailto:sebastian@botacura.cl">Contacta con el administrador</a>
+            </span>
+        </div>
+        <div class="lock"></div>
+    </div>
 
 </body>
 

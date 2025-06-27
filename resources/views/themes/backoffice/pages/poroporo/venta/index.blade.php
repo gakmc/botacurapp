@@ -28,7 +28,8 @@
                         <thead>
                             <tr>
                                 <th data-field="id_user">Atendido por</th>
-                                <th data-field="valor_venta">Valor Venta</th>
+                                <th data-field="total">Valor Venta</th>
+                                <th data-field="fecha">Fecha Venta</th>
                                 <th data-field="hora">Hora generada</th>
                                 <th data-field="acciones">Acciones</th>
                             </tr>
@@ -38,8 +39,10 @@
                                 @foreach ($poroVentas as $poroVenta)
                                 <tr>
                                     <td>{{ $poroVenta->user->name }}</td>
-                                    <td>${{ number_format($poroVenta->total,0,'','.') }}</td>
-                                    
+                                    <td>${{ number_format($poroVenta->total,0,',','.') }}</td>
+
+                                    <td>{{ \Carbon\Carbon::parse($poroVenta->fecha)->format('d-m-Y') }}</td>
+
                                     <td>{{ $poroVenta->created_at->format('H:i:s') }}</td>
                                     <td>
                                         <a href="#modal{{$poroVenta->id }}" class="btn-floating btn-small waves-effect waves-light blue modal-trigger"><i class="material-icons">visibility</i></a>
@@ -61,7 +64,9 @@
                             @else
                             <tr>
                                 <td colspan="2"></td>
-                                <td><h5><strong>No hay registro de ventas para hoy</strong></h5></td>
+                                <td><h5><strong>No hay ventas en la semana actual ({{ \Carbon\Carbon::parse($inicio)->isoFormat('D MMM') }} al {{ \Carbon\Carbon::parse($fin)->isoFormat('D MMM') }})</strong></h5></td>
+                                
+
                             </tr>
                             @endif
                         </tbody>

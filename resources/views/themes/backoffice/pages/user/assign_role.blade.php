@@ -29,7 +29,7 @@
                                 <p>
                                 <input type="checkbox" id="{{$role->id}}" name="roles[]" value="{{$role->id}}"  @if($user->has_role($role->id)) checked="" @endif />
                                     <label for="{{$role->id}}">
-                                        <span>{{$role->name}}</span>
+                                        <span class="black-text">{{$role->name}}</span>
                                     </label>
                                 </p>
                             @endforeach

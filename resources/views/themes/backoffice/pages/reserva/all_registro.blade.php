@@ -73,10 +73,12 @@
 
             @foreach($eventosAgrupados as $fecha => $data)
                 var formatoFecha = convertirFecha('{{ $fecha }}');
+                var cantidad = "{{count($data['clientes'])}}";
+                
                 eventos.push({
                     title: '{{ addslashes(implode(', ', $data["clientes"])) }}',
-                    start: formatoFecha + ' 10:00',
-                    end: formatoFecha + ' 19:00',
+                    start: formatoFecha + ' '+cantidad+':00',
+                    // end: formatoFecha + ' 19:00',
                     url: '{{ route('backoffice.reservas.registro')}}?fecha={{ $fecha }}',
                     description: '{{ addslashes($data["reserva"]->observacion) }}',
                     color: 'primary'
@@ -91,7 +93,8 @@
                 header: {
                     left: 'prev,next,today',
                     center: 'title',
-                    right: 'listWeek,dayGridMonth,timeGridWeek,timeGridDay'
+                    // right: 'listWeek,dayGridMonth,timeGridWeek,timeGridDay',
+                    right: 'dayGridMonth'
                 },
                 buttonText: {
                     list: 'Lista',

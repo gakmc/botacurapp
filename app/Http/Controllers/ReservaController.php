@@ -5,6 +5,8 @@ use App\Asignacion;
 use App\Cliente;
 use App\Consumo;
 use App\DetalleServiciosExtra;
+use App\Events\Menu\AvisoCocinaEvent;
+use App\Events\Menu\MenuEntregadoEvent;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
 use App\LugarMasaje;
@@ -1112,6 +1114,32 @@ class ReservaController extends Controller
             ->toArray();
 
         return Ubicacion::whereNotIn('id', $ocupadas)->get();
+    }
+
+    public function avisarCocina(Reserva $reserva)
+    {
+        $reserva->update(['avisado_en_cocina' => 'avisado']);
+
+        event(new AvisoCocinaEvent($reserva->id));
+
+        return response()->json([
+            'nombreCliente' => $reserva->cliente->nombre_cliente,
+            'idReserva' => $reserva->id
+        ]);
+
+    }
+
+    public function entregarMenu(Reserva $reserva)
+    {
+        $reserva->update(['avisado_en_cocina' => 'entregado']);
+
+        broadcast(new MenuEntregadoEvent($reserva->id))->toOthers();
+
+        return response()->json([
+            'nombreCliente' => $reserva->cliente->nombre_cliente,
+            'idReserva' => $reserva->id
+        ]);
+
     }
 
 }

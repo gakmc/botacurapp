@@ -2622,6 +2622,23 @@ body.layout-semi-dark .footer-copyright {
   padding-left: 64px;
 }
 
+
+#maint {
+  min-height: calc(100% - 100px);
+  padding-left: 40px;
+  -webkit-transition: .3s ease all;
+  -o-transition: .3s ease all;
+  -moz-transition: .3s ease all;
+  transition: .3s ease all;
+  -webkit-backface-visibility: hidden;
+  -moz-backface-visibility: hidden;
+  backface-visibility: hidden;
+}
+
+#maint.maint-full {
+  padding-left: 64px;
+}
+
 footer {
   padding-left: 240px;
 }

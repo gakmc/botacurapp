@@ -98,7 +98,7 @@ class ConsumoController extends Controller
                             'tipo_masaje' => null,
                             'id_lugar_masaje' => null, 
                             'persona' => $cantidadPersonas,
-                            'tiempo_extra' => $servicio['tiempo_extra'] ? true : false,
+                            'tiempo_extra' => $tiempoExtra,
                             'user_id' => null,
                         ]);
                     }

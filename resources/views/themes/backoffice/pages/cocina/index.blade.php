@@ -145,15 +145,25 @@
 
 
       @foreach($reservas as $reserva)
-      @foreach($reserva->visitas as $visita)
+      {{-- @foreach($reserva->visitas as $visita) --}}
 @if ($reserva->menus->isNotEmpty())
   
 
 
       <div class="card-panel">
         <div class="card-content gradient-45deg-light-blue-cyan">
-          <h5 class="card-title center white-text"><i class='material-icons white-text'>restaurant_menu</i> Menús para
-            {{ $reserva->cliente->nombre_cliente." - ".$reserva->programa->nombre_programa}}</h5>
+          <h5 class="card-title center white-text">
+            
+            <i class='material-icons white-text'>restaurant_menu</i> Menús para
+            {{ $reserva->cliente->nombre_cliente." - ".$reserva->programa->nombre_programa}} 
+            
+
+                <button id="avisar_{{$reserva->id}}" data-id="{{$reserva->id}}" data-url="{{ route('backoffice.reserva.avisar', $reserva->id) }}" class="btn-floating btn-avisar" onclick="darAviso({{$reserva->id}})" @if($reserva->avisado_en_cocina == 'avisado') style="display: none;" @endif>
+                    <i class='material-icons'>notifications_active</i>
+                </button>
+
+          
+          </h5>
         </div>
 
         <div class="card-content  grey lighten-4">
@@ -221,7 +231,7 @@
       </div>
 
       @endif
-      @endforeach
+      {{-- @endforeach --}}
       @endforeach
 
 
@@ -241,4 +251,73 @@
 @endsection
 
 @section('foot')
+
+
+<script>
+  function darAviso(reservaId) { 
+          
+
+    const elegido = $('#avisar_'+reservaId);
+    const url = elegido.data('url');
+    
+    $.ajax({
+      url:  url,
+      method: 'POST',
+      data: {
+        _token: '{{csrf_token()}}',
+        _method: 'PUT',
+        id: reservaId
+      },
+      success: function(response){
+        
+        const Toast = Swal.mixin({
+          toast:false,
+          showConfirmButton: true,
+          title: "Se avisó en cocina respecto al menú de "+response.nombreCliente,
+          icon: "success",
+          showClass: {
+            popup: `
+              animate__animated
+              animate__fadeInUp
+              animate__faster
+            `
+          },
+          hideClass: {
+            popup: `
+              animate__animated
+              animate__fadeOutDown
+              animate__faster
+            `
+          },
+        });
+        
+        Toast.fire();
+
+
+
+
+        elegido.hide();
+      },
+      error: function () {
+          Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
+      }
+    })
+
+   }
+</script>
+
+<script>
+  $(document).ready(function () {
+    if (typeof window.Echo !== 'undefined') {
+        window.Echo.channel('aviso-cocina')
+        .listen('.reservaAvisada', (e) => {
+          const boton = $(`#avisar_${e.reservaId}`);
+          boton.hide();
+
+        });
+    }else{
+        console.error('Echo no está inicializado.');
+    }
+  });
+</script>
 @endsection

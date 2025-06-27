@@ -8,6 +8,7 @@ use App\Cliente;
 use App\Consumo;
 use App\Insumo;
 use App\Masaje;
+use App\PoroPoro;
 use App\PoroPoroVenta;
 use App\Programa;
 use App\Propina;
@@ -74,6 +75,8 @@ class AdminController extends Controller
 
         $masajesAsignados = Masaje::count();
 
+        $poroporo = PoroPoro::count();
+
         $user = auth()->user();
 
         $inicioSemana = Carbon::now()->startOfWeek(); // Por defecto, inicia el lunes
@@ -90,7 +93,7 @@ class AdminController extends Controller
 
         if ($user->has_role(config('app.admin_role'))) {
 
-            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia','cantidadFuncionarios','cantidadRoles', 'asistentesConteo'));
+            return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes','totalAsistentesDia','cantidadFuncionarios','cantidadRoles', 'asistentesConteo', 'poroporo'));
         }
 
         if ($user->has_role(config('app.anfitriona_role')) || $user->has_role(config('app.jefe_local_role'))) {
