@@ -13,11 +13,11 @@ class TipoDocumento extends Model
     ];
 
 
-//RELACIONES
-// public function programa()
-// {
-//     return $this->belongsTo('App\Programa');
-// }
+    //RELACIONES
+    public function egresos()
+    {
+        return $this->belongsTo(Egreso::class,'tipo_documento_id');
+    }
 
 // public function reservaciones()
 // {

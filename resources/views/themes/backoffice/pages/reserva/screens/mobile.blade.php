@@ -341,7 +341,13 @@
     <ul>
             <li class="waves-effect waves-light"><a href="{{ route('backoffice.reserva.index') }}" data-vista="sauna"><i class="material-icons">hot_tub</i></a></li>
             <li class="waves-effect waves-light"><a href="{{ route('backoffice.reserva.index', ['mobileview' => 'masajes']) }}" data-vista="masaje"><i class="material-icons">airline_seat_flat</i></a></li>
-            <li class="waves-effect waves-light"><a href="{{ route('backoffice.reserva.index', ['mobileview' => 'ubicacion']) }}" data-vista="ubicacion"><i class="material-icons">location_on</i></a></li>  
+            <li class="waves-effect waves-light"><a href="{{ route('backoffice.reserva.index', ['mobileview' => 'ubicacion']) }}" data-vista="ubicacion"><i class="material-icons">location_on</i></a></li>
+            <li>
+                <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger"><i class="material-icons">beach_access</i></a>
+            </li>
+            <li>
+                <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger"><i class="material-icons right">access_time</i></a>
+            </li>
     </ul>
 
 </div>

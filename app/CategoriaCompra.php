@@ -14,6 +14,11 @@ class CategoriaCompra extends Model
 
 
     //RELACIONES
+    public function subcategorias()
+    {
+        return $this->hasMany(Subcategoria::class, 'categoria_id');
+    }
+
     public function egresos()
     {
         return $this->hasMany(Egreso::class, 'categoria_id');

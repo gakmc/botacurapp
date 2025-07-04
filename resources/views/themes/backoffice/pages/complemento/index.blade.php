@@ -25,6 +25,8 @@
         Transacción</a></li>
 <li><a href="{{route ('backoffice.categoria_compras.create') }}" class="grey-text text-darken-2">Crear Categoria
         Compra</a></li>
+<li><a href="{{route ('backoffice.subcategoria.create') }}" class="grey-text text-darken-2">Crear Sub-Categoria
+        Compra</a></li>
 @endsection
 
 
@@ -266,60 +268,7 @@
         <div class="row">
 
 
-            {{-- CATEGORIAS COMPRAS --}}
-            <div class="col s12 m6">
-                <div class="card-panel">
-                    <div class="row">
-
-                        {{-- CONTENIDO --}}
-                        <div class="card-panel gradient-45deg-light-blue-cyan white-text center">
-                            <h4>Categoria Compras</h4>
-                        </div>
-                        @if($categorias->isNotEmpty())
-                        <table class="centered responsive-table">
-                            <thead>
-                                <tr>
-                                    <th>Nombre</th>
-                                    <th colspan="2">Acciones</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                @foreach($categorias as $categoria)
-                                <tr>
-                                    <td>
-
-                                        {{ $categoria->nombre }}
-
-                                    </td>
-                                    <td>
-                                        <a href="{{ route('backoffice.categoria_compras.edit', $categoria->id) }}">
-                                            <i class="material-icons">mode_edit</i> Editar
-                                        </a>
-                                    </td>
-
-                                    <td>
-
-                                        <a href="#" style="color: red"
-                                            onclick="enviar_formulario('{{ route('backoffice.complemento.destroy', $categoria->id) }}', 'categoria_compras')">
-                                            <i class="material-icons">delete</i> Eliminar
-                                        </a>
-                                    </td>
-                                </tr>
-                                @endforeach
-                            </tbody>
-                        </table>
-                        @else
-                        <h5 class="center">No existen registros</h5>
-                        @endif
-
-
-
-
-                    </div>
-                </div>
-            </div>
-
-            {{-- UNIDADES DE MEDIDA --}}
+            {{-- Tipos de Productos --}}
             <div class="col s12 m6">
                 <div class="card-panel">
                     <div class="row">
@@ -377,12 +326,7 @@
                 </div>
             </div>
 
-
-        </div>
-
-
-        <div class="row">
-                        {{-- UNIDADES DE MEDIDA --}}
+                                    {{-- UNIDADES DE MEDIDA --}}
                         <div class="col s12 m6">
                             <div class="card-panel">
                                 <div class="row">
@@ -453,6 +397,123 @@
                                 </div>
                             </div>
                         </div>
+
+
+        </div>
+
+
+        <div class="row">
+
+
+            {{-- CATEGORIAS COMPRAS --}}
+            <div class="col s12 m6">
+                <div class="card-panel">
+                    <div class="row">
+
+                        {{-- CONTENIDO --}}
+                        <div class="card-panel gradient-45deg-light-blue-cyan white-text center">
+                            <h4>Categoria Compras</h4>
+                        </div>
+                        @if($categorias->isNotEmpty())
+                        <table class="centered responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th colspan="2">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($categorias as $categoria)
+                                <tr>
+                                    <td>
+
+                                        {{ $categoria->nombre }}
+
+                                    </td>
+                                    <td>
+                                        <a href="{{ route('backoffice.categoria_compras.edit', $categoria->id) }}">
+                                            <i class="material-icons">mode_edit</i> Editar
+                                        </a>
+
+
+                                        <a href="#" style="color: red"
+                                            onclick="enviar_formulario('{{ route('backoffice.complemento.destroy', $categoria->id) }}', 'categoria_compras')">
+                                            <i class="material-icons">delete</i> Eliminar
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        @else
+                        <h5 class="center">No existen registros</h5>
+                        @endif
+
+
+
+
+                    </div>
+                </div>
+            </div>
+
+
+            {{-- SUBCATEGORIAS COMPRAS --}}
+            <div class="col s12 m6">
+                <div class="card-panel">
+                    <div class="row">
+
+                        <div class="card-panel gradient-45deg-light-blue-cyan white-text center">
+                            <h4>Categoria Compras</h4>
+                        </div>
+                        @if($subcategorias->isNotEmpty())
+                        <table class="centered responsive-table">
+                            <thead>
+                                <tr>
+                                    <th>Nombre</th>
+                                    <th>Categoria</th>
+                                    <th colspan="2">Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                @foreach($subcategorias as $subcategoria)
+                                <tr>
+                                    <td>
+
+                                        {{ $subcategoria->nombre }}
+
+                                    </td>
+                                    <td>
+
+                                        {{ $subcategoria->categoria->nombre }}
+
+                                    </td>
+                                    <td>
+                                        <a class="btn-floating btn-small purple" href="{{ route('backoffice.subcategoria.edit', $subcategoria->id) }}">
+                                            <i class="material-icons">mode_edit</i> Editar
+                                        </a>
+
+
+                                        <a class="btn-floating btn-small red" href="#" style="color: red"
+                                            onclick="enviar_formulario('{{ route('backoffice.complemento.destroy', $subcategoria->id) }}', 'subcategoria')">
+                                            <i class="material-icons">delete</i> Eliminar
+                                        </a>
+                                    </td>
+                                </tr>
+                                @endforeach
+                            </tbody>
+                        </table>
+                        @else
+                        <h5 class="center">No existen registros</h5>
+                        @endif
+
+
+
+
+                    </div>
+                </div>
+            </div>
+
+
         </div>
 
     </div>

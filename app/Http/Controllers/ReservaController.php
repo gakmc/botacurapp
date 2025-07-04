@@ -1124,7 +1124,8 @@ class ReservaController extends Controller
 
         return response()->json([
             'nombreCliente' => $reserva->cliente->nombre_cliente,
-            'idReserva' => $reserva->id
+            'idReserva' => $reserva->id,
+            'reserva' => $reserva->with(['cliente', 'programa', 'menus.productoEntrada', 'menus.productoFondo', 'menus.productoAcompanamiento'])->findOrFail($reserva->id),
         ]);
 
     }

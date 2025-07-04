@@ -32,7 +32,10 @@ class ConsumoController extends Controller
     public function service_create($venta)
     {
         $venta = Venta::findOrFail($venta);
+
         $servicios = Servicio::all();
+
+
         return view('themes.backoffice.pages.consumo.create_service', [
             'venta' => $venta,
             'servicios' => $servicios,
@@ -41,10 +44,11 @@ class ConsumoController extends Controller
 
     public function service_store(Request $request, Venta $venta)
     {
-
         $validarMasaje = ['masajes','masaje'];
+        $validarSauna = ['saunas','sauna'];
+        $validarTinaja = ['tinajas','tinaja'];
 
-        DB::transaction(function () use ($request, &$venta, $validarMasaje) {
+        DB::transaction(function () use ($request, &$venta, $validarMasaje, $validarSauna, $validarTinaja) {
             // Verificar si ya existe un consumo para esta venta
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
 
@@ -67,6 +71,9 @@ class ConsumoController extends Controller
             });
 
 
+            $spaCantidadSauna = 0;
+            $spaCantidadTinaja = 0;
+
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($serviciosValidos as $servicio_id => $servicio) {
                 $tiempoExtra = isset($servicio['tiempo_extra']) ? true : false;
@@ -85,6 +92,15 @@ class ConsumoController extends Controller
                 $nuevoSubtotal += $subtotal;
                 
                 $nombreServicio = Servicio::findOrFail($servicio_id);
+
+                if (in_array(strtolower($nombreServicio->nombre_servicio), $validarSauna)) {
+                    $spaCantidadSauna += $servicio['cantidad'];
+                }
+
+                if (in_array(strtolower($nombreServicio->nombre_servicio), $validarTinaja)) {
+                    $spaCantidadTinaja += $servicio['cantidad'];
+                }
+
 
                 if(in_array(strtolower($nombreServicio->nombre_servicio), $validarMasaje)){
                     for($i = 1; $i <= $servicio['cantidad']; $i++){
@@ -105,6 +121,23 @@ class ConsumoController extends Controller
                 }
             }
 
+
+            $spaCombinados = min($spaCantidadSauna, $spaCantidadTinaja);
+
+            if ($spaCombinados > 0) {
+                for ($i=1; $i <= $spaCombinados; $i++) { 
+                    Visita::create([
+                        'horario_sauna' => null,
+                        'horario_tinaja' => null,
+                        'trago_cortesia' => false,
+                        'observacion' => null,
+                        'id_reserva' => $venta->reserva->id,
+                        'id_ubicacion' => $venta->reserva->visitas->first()->id_ubicacion,
+                    ]);
+                }
+            }
+
+
             $consumo->subtotal += $nuevoSubtotal;
             $consumo->total_consumo += $nuevoSubtotal;
 
@@ -124,15 +157,21 @@ class ConsumoController extends Controller
         $tipos = TipoProducto::all();
         $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
+        $productos = Producto::whereHas('tipoProducto', function($query) use ($listado){
+            $query->whereIn('nombre', $listado);
+        })->get();
+
         return view('themes.backoffice.pages.consumo.create', [
             'venta' => $venta,
             'tipos' => $tipos,
-            'listado' => $listado,
+            'productos' => $productos,
+
         ]);
     }
 
     public function store(Request $request, Venta $venta)
     {
+        // dd($request->all());
         $productosAñadidos = array_filter($request->productos, function ($producto) {
             return isset($producto['cantidad']) && $producto['cantidad'] > 0;
         });
@@ -191,7 +230,7 @@ class ConsumoController extends Controller
                     'id_producto' => $producto_id,
                     'cantidad_producto' => $producto['cantidad'],
                     'subtotal' => $producto['valor'] * $producto['cantidad'], // Calcula el subtotal
-                    'genera_propina' => 1,
+                    'genera_propina' => $generaPropina,
                 ]);
 
                 $detallesConsumo[] = $detalle;
@@ -199,9 +238,7 @@ class ConsumoController extends Controller
                 $nuevoSubtotal += $detalle->subtotal;
 
                 // Verificar si alguno de los productos genera propina
-                if (isset($producto['genera_propina']) && $producto['genera_propina']) {
-                    $generaPropina = true;
-                }
+
             }
 
             // Sumar el nuevo subtotal al subtotal actual del consumo

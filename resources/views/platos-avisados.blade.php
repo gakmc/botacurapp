@@ -5,6 +5,9 @@
 @section('content')
 <div class="section">
     <p class="caption"><strong>Reservas Avisadas en Cocina</strong></p>
+    <div class="center-align">
+        <h3 id="hora-actual" class="blue-text text-darken-2"></h3>
+    </div>
     <div class="divider"></div>
 
     <div class="section">
@@ -133,9 +136,38 @@ $(document).ready(function () {
             menu.hide();
 
         });
+
+        // Canal para avisos nuevos desde cocina
+        window.Echo.channel('aviso-cocina')
+        .listen('.reservaAvisada', (e) => {
+            // Reproducir sonido
+            const audio = new Audio('/sounds/notificacionv2.mp3');
+            audio.play();
+
+            audio.onended = () => {
+                location.reload();
+            };
+        });
+
     }else{
         console.error('Echo no está inicializado.');
     }
+  });
+</script>
+
+<script>
+  function actualizarHora() {
+    const ahora = new Date();
+    const horas = String(ahora.getHours()).padStart(2, '0');
+    const minutos = String(ahora.getMinutes()).padStart(2, '0');
+    const segundos = String(ahora.getSeconds()).padStart(2, '0');
+    const horaFormateada = `${horas}:${minutos}:${segundos}`;
+    $('#hora-actual').text(horaFormateada);
+  }
+
+  $(document).ready(function () {
+    actualizarHora(); // actualizar al cargar
+    setInterval(actualizarHora, 1000); // actualizar cada segundo
   });
 </script>
 @endsection

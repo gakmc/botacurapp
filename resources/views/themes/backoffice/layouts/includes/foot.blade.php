@@ -11,26 +11,26 @@
 
 <script>
     $(document).ready(function () {
-                //Give a time for initialization of combos
-                setTimeout(function () {
-                    var kelle = $('.select-wrapper');// $('.select-wrapper');
-                    $.each(kelle, function (i, t) {
-                        t.addEventListener('click', e => e.stopPropagation())
-                    });
-                }, 500)
+        //Give a time for initialization of combos
+        setTimeout(function () {
+            var kelle = $('.select-wrapper');// $('.select-wrapper');
+            $.each(kelle, function (i, t) {
+                t.addEventListener('click', e => e.stopPropagation())
+            });
+        }, 500)
     });
-
-
+    
+    
 </script>
 
 <script>
     $(document).ready(function(){
         $('.tooltipped').tooltip();
-
-
+        
+        
         // $('.side-nav').sidenav();
         
-
+        
         $('.dropdown-settings').dropdown({
             hover: false, // Deshabilita el hover para que funcione en dispositivos móviles
             constrainWidth: false, // Ajusta el ancho al contenido
@@ -46,15 +46,16 @@
             alignment: 'left', // Opcional: Alinea el dropdown a la izquierda
             closeOnClick: true // Cierra el dropdown al hacer clic fuera
         });
-
-
+        
+        
         $("#modal-acciones").modal();              // para los móviles
-
-
+        
+        
     });
     
-
+    
 </script>
+
 
 @include('sweetalert::alert')
 

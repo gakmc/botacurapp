@@ -17,7 +17,7 @@
                 <div class="header-search-wrapper hide-on-med-and-down">
                     <form action="" class="">
                     <i class="material-icons">search</i>
-                    <input class="header-search-input z-depth-2" name="search" placeholder="¿Qué deseas buscar?" type="text"/>
+                    <input class="header-search-input z-depth-2" id="search" name="search" placeholder="¿Qué deseas buscar?" type="text"/>
                     </form>
                 </div>
 

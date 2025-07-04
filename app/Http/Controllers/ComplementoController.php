@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\CategoriaCompra;
 use App\Sector;
+use App\Subcategoria;
 use App\TipoDocumento;
 use App\TipoProducto;
 use App\TipoTransaccion;
@@ -28,6 +29,7 @@ class ComplementoController extends Controller
             'transacciones' => TipoTransaccion::all(),
             'ubicaciones' => Ubicacion::all(),
             'unidades' => UnidadMedida::all(),
+            'subcategorias' => Subcategoria::with('categoria')->get(),
             'tipoProductos' => TipoProducto::with('sector')->get(),
         ]);
     }
@@ -80,6 +82,13 @@ class ComplementoController extends Controller
 
             case 'categoria_compras':
                 CategoriaCompra::create(['nombre' => $request->input('nombre')]);
+                break;
+
+            case 'subcategoria':
+                Subcategoria::create([
+                    'nombre' => $request->input('nombre'), 
+                    'categoria_id' => $request->input('categoria_id')
+                ]);
                 break;
 
             case 'tipos_productos':
@@ -160,6 +169,11 @@ class ComplementoController extends Controller
 
             case 'categoria_compras':
                 $actualizar = CategoriaCompra::findOrFail($id);
+                $actualizar->update($request->all());
+                break;
+
+            case 'subcategoria':
+                $actualizar = Subcategoria::findOrFail($id);
                 $actualizar->update($request->all());
                 break;
 

@@ -63,17 +63,24 @@
                         if (!isset($eventosAgrupados[$fecha])) {
                             $eventosAgrupados[$fecha] = [
                                 'clientes' => [],
+                                'reservas' => [],
                                 'reserva' => $reserva // guardamos una para el link y observación
                             ];
                         }
                         $eventosAgrupados[$fecha]['clientes'][] = $reserva->cliente->nombre_cliente;
+                        $eventosAgrupados[$fecha]['reservas'][] = $reserva;
                     }
                 }
             @endphp
 
             @foreach($eventosAgrupados as $fecha => $data)
+
+
+
                 var formatoFecha = convertirFecha('{{ $fecha }}');
+
                 var cantidad = "{{count($data['clientes'])}}";
+                
                 
                 eventos.push({
                     title: '{{ addslashes(implode(', ', $data["clientes"])) }}',
