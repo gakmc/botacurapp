@@ -44,6 +44,7 @@
       </tr>
     </thead>
     <tbody>
+      @if ($egresos->isNotEmpty())
       @foreach ($egresos as $e)
         <tr>
           <td>{{ $e->tipo_documento->nombre ?? '-' }}</td>
@@ -65,6 +66,13 @@
           </td>
         </tr>
       @endforeach
+
+      @else
+        <tr>
+          <td colspan="2"></td>
+          <td><h5>No se registran egresos</h5></td>
+        </tr>
+      @endif
     </tbody>
   </table>
 

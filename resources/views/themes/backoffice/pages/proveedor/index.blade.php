@@ -27,18 +27,18 @@
                     <div class="row">
 
 
-                        @if ($proveedores->isNotEmpty())
-                            <table class="centered">
-                                <thead>
-                                    <tr>
-                                        <th data-field="nombre">Nombre</th>
-                                        <th data-field="rut">Rut</th>
-                                        <th data-field="telefono">Teléfono</th>
-                                        <th data-field="correo">Correo Electrónico</th>
-                                        <th>Acciones</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
+                        <table class="centered">
+                            <thead>
+                                <tr>
+                                    <th data-field="nombre">Nombre</th>
+                                    <th data-field="rut">Rut</th>
+                                    <th data-field="telefono">Teléfono</th>
+                                    <th data-field="correo">Correo Electrónico</th>
+                                    <th>Acciones</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                    @if ($proveedores->isNotEmpty())
                                     @foreach ($proveedores as $proveedor)
 
                                     <tr>
@@ -60,11 +60,14 @@
                                     </tr>
                                         
                                     @endforeach
+                                    @else
+                                    <tr>
+                                        <td><h5>No se registran proveedores</h5></td>
+                                    </tr>
+                                        
+                                    @endif
                                 </tbody>
                             </table>
-                        @else
-                            <h5>No se registran proveedores</h5>
-                        @endif
                         {{-- CONTENIDO --}}
 
 

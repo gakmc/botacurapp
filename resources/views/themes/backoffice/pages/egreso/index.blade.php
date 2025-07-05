@@ -49,6 +49,7 @@
                   $totalFacturas = 0;
                   $totalAnual = 0;
                 @endphp
+                  @if ($egresos->isNotEmpty())
                   @foreach ($egresos as $egreso)
                       @php
                           $nombreMes = \Carbon\Carbon::createFromDate($egreso->anio, $egreso->mes, 1)
@@ -72,6 +73,13 @@
                           </td> --}}
                       </tr>
                   @endforeach
+
+                  @else
+                  <tr>
+                    <td colspan="2"></td>
+                    <td><h5>No se registran egresos</h5></td>
+                  </tr>
+                  @endif
                 </tbody>
                 <tr>
                   <td colspan="3"></td>
