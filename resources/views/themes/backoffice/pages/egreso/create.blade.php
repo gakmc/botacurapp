@@ -29,8 +29,6 @@
                     <div class="row">
 
 
-
-
   <form action="{{ route('backoffice.egreso.store') }}" method="POST">
     @csrf
 
@@ -135,8 +133,18 @@
 
         <div class="input-field col s12 m4">
           <input type="text" id="iva" name="iva">
-          <label for="iva">IVA (0.19 × neto)</label>
+          <label for="iva">IVA (19%)</label>
           @error('iva')
+            <span class="invalid-feedback" role="alert">
+                <strong style="color:red">{{ $message }}</strong>
+            </span>
+          @enderror
+        </div>
+
+        <div id="divImpuesto" class="input-field col s12 m4" hidden>
+          <input type="text" id="impuesto_adicional" name="impuesto_adicional" disabled>
+          <label id="lblImpuesto" for="impuesto_adicional">Impuesto adicional</label>
+          @error('impuesto_adicional')
             <span class="invalid-feedback" role="alert">
                 <strong style="color:red">{{ $message }}</strong>
             </span>
@@ -181,12 +189,14 @@
 <script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
-<script src="{{ asset('assets/pickadate/lib/translations/es_ES.js') }}"></script>
+{{-- <script src="{{ asset('assets/pickadate/lib/translations/es_ES.js') }}"></script> --}}
 
 <script>
   $(document).ready(function () {
 
     $('#fecha').pickadate({
+      format: 'dd/mm/yyyy',
+      formatSubmit: 'yyyy/mm/dd',
       hiddenName: true
     })
 
@@ -214,7 +224,7 @@ $(document).ready(function () {
             let subSelect = $('#subcategoria_select');
             subSelect.empty().append('<option disabled selected>-- Selecciona subcategoría --</option>');
             data.forEach(function (item) {
-                subSelect.append('<option value="' + item.id + '">' + item.nombre + '</option>');
+                subSelect.append('<option value="' + item.id + '" data-name="' + item.nombre + '">' + item.nombre + '</option>');
             });
             subSelect.material_select();
 
@@ -244,14 +254,36 @@ $(document).ready(function () {
     e.preventDefault();
     var neto = limpiarNumero($('#neto').val());
     var iva = parseInt(neto * 0.19);
-    var total = neto + iva;
+    var seleccion = $('#subcategoria_select option:selected').data('name');
+    var valorImp = 0;
+    var impCarnes = 0.05;
+    var impCerveza = 0.205;
+    var impLicor = 0.315;
+    var total = 0;
+
+    if (seleccion.toLowerCase() == 'carnes') {
+      valorImp = parseInt(neto * impCarnes);
+      total = neto + valorImp + iva;
+
+    }else if(seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria'){
+      valorImp = parseInt(neto * impCerveza);
+      total = neto + valorImp + iva;
+    }else{
+      total = neto + iva;
+    }
 
     $('#neto').val(formatCLP(neto));
     $('#iva').val(formatCLP(iva));
+    if (seleccion.toLowerCase() == 'carnes') {
+      $('#impuesto_adicional').val(formatCLP(valorImp));
+    }else if(seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria'){
+      $('#impuesto_adicional').val(formatCLP(valorImp));
+    }
     $('#total').val(formatCLP(total));
 
     $('label[for="neto"]').addClass('active');
     $('label[for="iva"]').addClass('active');
+    $('#lblImpuesto').addClass('active');
     $('label[for="total"]').addClass('active');
   });
 
@@ -260,5 +292,36 @@ $(document).ready(function () {
     $('#total').val(formatCLP(soloTotal));
   });
 });
+</script>
+
+<script>
+  $(document).ready(function () {
+    $('#subcategoria_select').on('change', function(e){
+      e.stopPropagation();
+      e.preventDefault();
+      var seleccionado = $('#subcategoria_select option:selected').data('name');
+      var impuesto = $('#impuesto_adicional');
+      var lblImpuesto = $('#lblImpuesto');
+      var divImpuesto = $('#divImpuesto');
+      console.log(seleccionado);
+      
+      if (seleccionado.toLowerCase() == 'carnes') {
+        divImpuesto.removeAttr('hidden');
+        impuesto.removeAttr('disabled');
+        lblImpuesto.text('Impuesto Carnes (5%)');
+      }else if(seleccionado.toLowerCase() == 'cervezas' || seleccionado.toLowerCase() == 'botilleria'){
+        divImpuesto.removeAttr('hidden');
+        impuesto.removeAttr('disabled');
+        lblImpuesto.text('Impuesto Alcohol (20,5%)');
+      }else{
+        divImpuesto.attr('hidden', true);
+        impuesto.attr('disabled', true);
+        lblImpuesto.text('Impuesto Adicional');
+      }
+
+      $('#neto').trigger('change');
+
+    })
+  });
 </script>
 @endsection

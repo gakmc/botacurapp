@@ -13,7 +13,8 @@ class Kernel extends ConsoleKernel
      * @var array
      */
     protected $commands = [
-        //
+        \App\Console\Commands\CerrarSueldosSemanal::class,
+        \App\Console\Commands\CerrarSueldosMasoterapeutas::class,
     ];
 
     /**
@@ -24,8 +25,15 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
-        // $schedule->command('inspire')
-        //          ->hourly();
+        $schedule->command('cerrar:sueldos')
+                ->sundays()
+                ->at('21:00')
+                ->timezone('America/Santiago');
+
+        $schedule->command('cerrar:sueldos_masoterapeutas')
+                ->sundays()
+                ->at('21:00')
+                ->timezone('America/Santiago');
     }
 
     /**

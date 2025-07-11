@@ -16,6 +16,7 @@ class Egreso extends Model
         'fecha',
         'neto',
         'iva',
+        'impuesto_incluido',
         'total',
         'folio',
     ];

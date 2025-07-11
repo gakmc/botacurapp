@@ -254,6 +254,23 @@
 
     </div>
 </div>
+
+
+
+<div class="fixed-action-btn toolbar hide-on-large-only" style="bottom: 45px; right: 24px;">
+    <a class="btn-floating btn-large blue">
+      <i class="material-icons large">apps</i>
+    </a>
+    <ul>
+            <li>
+                <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger"><i class="material-icons">beach_access</i></a>
+            </li>
+            <li>
+                <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger"><i class="material-icons right">access_time</i></a>
+            </li>
+    </ul>
+
+</div>
 @endsection
 
 @section('foot')

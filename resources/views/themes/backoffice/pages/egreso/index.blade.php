@@ -29,7 +29,6 @@
 
       <div class="row">
         <div class="col s12 m10 offset-m1">
-
           <h5 class="center">Resumen Egresos - Año {{ $anio }}</h5>
 
           <table class="responsive-table">
@@ -44,11 +43,11 @@
                   </tr>
               </thead>
               <tbody>
-                @php
-                  $totalBoletas = 0;
-                  $totalFacturas = 0;
-                  $totalAnual = 0;
-                @endphp
+                  @php
+                    $totalBoletas = 0;
+                    $totalFacturas = 0;
+                    $totalAnual = 0;
+                  @endphp
                   @if ($egresos->isNotEmpty())
                   @foreach ($egresos as $egreso)
                       @php
@@ -80,14 +79,13 @@
                     <td><h5>No se registran egresos</h5></td>
                   </tr>
                   @endif
-                </tbody>
+              </tbody>
                 <tr>
                   <td colspan="3"></td>
                   <td><strong>Total Anual:</strong></td>
                   <td><strong>${{number_format($totalAnual, 0, ',', '.')}}</strong></td>
                 </tr>
-              </table>
-
+          </table>
         </div>
       </div>
     </div>
@@ -112,6 +110,42 @@
 
     $(document).ready(function () {
         $('select').material_select();
+    });
+</script>
+
+<script>
+      $(document).ready(function () {
+        @if(session('info'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'info',
+                title: '{{ session('info') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
+
+        @if(session('success'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'success',
+                title: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
     });
 </script>
 

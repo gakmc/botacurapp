@@ -77,7 +77,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
 
-        Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
+    Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('asistencia', 'AsistenciaController');
     Route::resource('barman', 'BarmanController');
@@ -299,9 +299,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('reserva/{reserva}', 'ReservaController@show')->name('reserva.show');
     
     Route::get('sueldos/{user}/{anio}/{mes}', 'SueldoController@adminViewSueldos')->name('sueldo.view.admin');
-    Route::get('sueldos/{user}', 'SueldoController@view')->name('sueldo.view');
     Route::get('sueldos/{user}/{anio}/{mes}/{dia}', 'SueldoController@detalle_diario')->name('sueldo.view.diario');
-    Route::get('sueldo/{user}', 'SueldoController@view_maso')->name('sueldo.view_maso');
+    Route::get('sueldo/{user}', 'SueldoController@view')->name('sueldo.view');
+    Route::get('sueldo/masoterapeuta/{user}', 'SueldoController@view_maso')->name('sueldo.view_maso');
     
     Route::get('/actualizar-sueldo-base', 'SueldoController@actualizarSueldoBase');
     
@@ -327,4 +327,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
     Route::get('/egreso/{anio}/{mes}', 'EgresoController@index_mes')->name('egreso.mes');
+
+    Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
+    Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
+
 });

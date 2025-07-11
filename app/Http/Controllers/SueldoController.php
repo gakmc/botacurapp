@@ -75,15 +75,19 @@ class SueldoController extends Controller
 
             $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
 
+            $roles = $sueldo->user->list_roles();
+
             $userId = $sueldo->user->id;
             $userName = $sueldo->user->name;
+            $userRole = $sueldo->user->roles;
 
             if (!isset($semanas[$rango])) {
                 $semanas[$rango] = [];
             }
-
+            
             if (!isset($semanas[$rango][$userId])) {
                 $semanas[$rango][$userId] = [
+                    'role' => $roles,
                     'name' => $userName,
                     'dias' => 0,
                     'sueldos' => 0,
@@ -97,7 +101,11 @@ class SueldoController extends Controller
 
             $semanas[$rango][$userId]['dias'] += 1;
             $semanas[$rango][$userId]['sueldos'] += $sueldo->valor_dia;
-            $semanas[$rango][$userId]['propinas'] += $sueldo->sub_sueldo - $sueldo->valor_dia;
+            if (in_array($roles, ['Masoterapeuta'])) {
+                $semanas[$rango][$userId]['propinas'] = 0;
+            }else{
+                $semanas[$rango][$userId]['propinas'] += $sueldo->sub_sueldo - $sueldo->valor_dia;
+            }
             $semanas[$rango][$userId]['total'] += $sueldo->total_pagar;
         }
 
@@ -350,7 +358,7 @@ class SueldoController extends Controller
             }
         }
 
-        dd($propinas,$asignaciones);
+        // dd($propinas,$asignaciones);
 
         return view('themes.backoffice.pages.sueldo.detalle_diario', [
             'user' => $user,

@@ -101,7 +101,7 @@
                 <tr>
                     <th>Funcionario</th>
                     <th>Días</th>
-                    <th>Sueldos</th>
+                    <th>Sueldo Base</th>
                     <th>Propinas</th>
                     <th>Total</th>
                     <th>Pagar</th>
@@ -160,7 +160,7 @@
                         {{-- {{dd($usuario)}} --}}
                             @if(Auth::user()->has_role(config('app.admin_role')))
                                 <label>
-                                    <input type="checkbox" name="sueldos_seleccionados[]" class="checkbox-sueldo" data-semana="{{$semanaId}}" value="{{ json_encode([
+                                    <input type="checkbox" name="sueldos_seleccionados[]" class="checkbox-sueldo" data-semana="{{$semanaId}}" data-total="{{$usuario['total']}}" value="{{ json_encode([
                                         'user_id' => $usuario['user_id'],
                                         'total' => $usuario['total'],
                                         'inicio' => $usuario['inicio'],
@@ -312,7 +312,7 @@
 </script> --}}
 
 
-
+{{-- 
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         $('.checkbox-sueldo').on('change', function () {
@@ -320,6 +320,11 @@
             const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
             const contador = document.getElementById(`contador-${semana}`);
             const contenedor = document.getElementById(`acciones-${semana}`);
+
+            const total = parseInt($(`.checkbox-sueldo:checked`).data('total'));
+
+            var contar = contar + total;
+            console.warn(parseInt(total));
 
             if (checkboxes.length > 0) {
                 contador.textContent = `${checkboxes.length} Seleccionados`;
@@ -336,12 +341,52 @@
             const contador = document.getElementById(`contador-${semana}`);
             const contenedor = document.getElementById(`acciones-${semana}`);
 
+
             if (checkboxes.length > 0) {
                 contador.textContent = `${checkboxes.length} Seleccionados`;
                 contenedor.style.display = 'block';
             }
         });
     });
+</script> --}}
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', function () {
+        function actualizarTotalesPorSemana(semana) {
+            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+            const contador = document.getElementById(`contador-${semana}`);
+            const contenedor = document.getElementById(`acciones-${semana}`);
+
+            let total = 0;
+            checkboxes.forEach(cb => {
+                total += parseInt(cb.dataset.total) || 0;
+            });
+
+            if (checkboxes.length > 0) {
+                contador.textContent = `${checkboxes.length} seleccionados - $${total.toLocaleString('es-CL')}`;
+                contenedor.style.display = 'block';
+            } else {
+                contador.textContent = `0 seleccionados - $0`;
+                contenedor.style.display = 'none';
+            }
+        }
+
+        // Al cambiar un checkbox
+        document.querySelectorAll('.checkbox-sueldo').forEach(checkbox => {
+            checkbox.addEventListener('change', function () {
+                const semana = this.dataset.semana;
+                actualizarTotalesPorSemana(semana);
+            });
+        });
+
+        // Ejecutar al cargar si hay checks marcados
+        document.querySelectorAll('.checkbox-sueldo:checked').forEach(cb => {
+            const semana = cb.dataset.semana;
+            actualizarTotalesPorSemana(semana);
+        });
+    });
 </script>
+
 
 @endsection
