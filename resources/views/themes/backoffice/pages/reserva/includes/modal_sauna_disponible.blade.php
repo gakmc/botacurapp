@@ -35,7 +35,7 @@
                             <div class="col s12">
                                 <span class="collection-item grey lighten-3 text-darken-2" 
                                       style="display: inline-block; font-weight: bold; margin-bottom: 10px;">
-                                    {{ $lugar == 1 ? 'Container: ' : 'Toldos: ' }}
+                                    {{ $lugar == 1 ? $lugaresMasajes[0]->nombre.': ' : $lugaresMasajes[1]->nombre.': ' }}
                                 </span>
         
                                 <div class="row" style="margin-top: 0; margin-bottom: 15px;">

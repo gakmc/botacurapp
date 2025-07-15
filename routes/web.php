@@ -75,6 +75,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('role', 'RoleController@index')->name('role.index');
     // Route::get('home','AdminController@show')->name('admin.show');
 
+        // Metodos Reservas
+    // Index - Mostrar una lista de reservas
+    Route::get('venta/{venta}/consumo/ingresar_servicio', 'ConsumoController@service_create')->name('venta.consumo.service_create');
+    // Store - Guardar la nueva reserva
+    Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
 
 
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
@@ -256,9 +261,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
     Route::match(['put', 'patch'], 'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
     
-    // Metodos Reservas
-    // Index - Mostrar una lista de reservas
-    Route::get('venta/{venta}/consumo/ingresar', 'ConsumoController@service_create')->name('venta.consumo.service_create');
+
     // Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
     
     // Create - Ingresa al formulario para nueva reserva
@@ -269,8 +272,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Borrar en caso de no utilizar
     // Route::post('/verificar-horarios', 'VisitaController@obtenerHorariosDisponibles')->name('verificar.horarios');
     
-    // Store - Guardar la nueva reserva
-    Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
+
     
     Route::get('visita/{visitum}/ubicacion_edit', 'VisitaController@edit_ubicacion')->name('visita.edit_ubicacion');
     Route::match(['put', 'patch'], 'visita/{visitum}/ubicacion', 'VisitaController@update_ubicacion')->name('visita.update_ubicacion');

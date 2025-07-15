@@ -154,6 +154,7 @@ class ReservaController extends Controller
         })->values();
 
 
+        $lugaresMasajes = LugarMasaje::all();
 
 
 
@@ -168,7 +169,7 @@ class ReservaController extends Controller
         //FINCAMBIAR
 
     
-        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView', 'horariosDisponibles', 'horariosDisponiblesMasajes', 'lugaresDisponibles'));
+        return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView', 'horariosDisponibles', 'horariosDisponiblesMasajes', 'lugaresDisponibles', 'lugaresMasajes'));
     }
 
 
@@ -833,12 +834,15 @@ class ReservaController extends Controller
         $lugaresDisponibles = $this->obtenerUbicacionesDisponibles($fechaConsulta);
     
 
+        $lugaresMasajes = LugarMasaje::all();
+        
         return view('themes.backoffice.pages.reserva.index_registro', [
             'reservasPaginadas' => $reservasPorDia,
             'fechaF' => $fechaFiltro,
             'horariosDisponibles' => $horariosDisponibles,
             'horariosDisponiblesMasajes' => $horariosDisponiblesMasajes,
             'lugaresDisponibles' => $lugaresDisponibles,
+            'lugaresMasajes' => $lugaresMasajes
         ]);
     }
 

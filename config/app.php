@@ -11,7 +11,7 @@ return [
     'cocina_role'=>env('COCINA_ROLE','cocina'),
     'compra_role'=>env('COMPRA_ROLE','comprador'),
     'garzon_role'=>env('GARZON_ROLE','garzon'),
-    'informatica'=>env('INFORMATICA_ROLE','informatica'),
+    'informatica_role'=>env('INFORMATICA_ROLE','informatica'),
     'jefe_local_role' => env('JEFE_LOCAL_ROLE', "jefe-local"),
     'mantencion_role'=>env('MANTENCION_ROLE','mantencion'),
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
