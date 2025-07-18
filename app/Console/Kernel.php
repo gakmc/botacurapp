@@ -32,7 +32,7 @@ class Kernel extends ConsoleKernel
 
         $schedule->command('cerrar:sueldos_masoterapeutas')
                 ->sundays()
-                ->at('21:00')
+                ->at('21:05')
                 ->timezone('America/Santiago');
     }
 

@@ -91,6 +91,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('cotizacion', 'CotizacionController');
     Route::resource('egreso', 'EgresoController');
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
+    Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');
     Route::resource('masaje', 'MasajeController');
     Route::resource('menu', 'MenuController');

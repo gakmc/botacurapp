@@ -164,7 +164,7 @@
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.programa.index') }}">
                             <i class="material-icons">
-                                redeem
+                                style
                             </i>
                             <span class="nav-text">
                                 Programas
@@ -376,6 +376,17 @@
                             </i>
                             <span class="nav-text">
                                 Cotizaciones
+                            </span>
+                        </a>
+                    </li>
+
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.giftcards.index') }}">
+                            <i class="material-icons">
+                                redeem
+                            </i>
+                            <span class="nav-text">
+                                Gift Cards
                             </span>
                         </a>
                     </li>

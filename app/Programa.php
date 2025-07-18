@@ -30,6 +30,12 @@ class Programa extends Model
         return $this->morphMany(CotizacionItem::class, 'itemable');
     }
 
+    public function giftCards()
+    {
+        return $this->hasMany(GiftCard::class, 'id_programa');
+    }
+
+
     
     //ALMACENAMIENTO
 

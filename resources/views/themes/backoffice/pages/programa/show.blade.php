@@ -26,10 +26,10 @@
 
         <ul class="collapsible popuot">
           <li class="active">
-            <div class="collapsible-header" style="flex-direction:column;">
+            <div class="collapsible-header active" style="flex-direction:column;">
               <h4>
                 
-                <i class="material-icons pink-text accent-2" style="font-size: 3rem">redeem</i>
+                <i class="material-icons pink-text accent-2" style="font-size: 3rem">style</i>
                 <strong>{{$programa->nombre_programa}}</strong>
 
                 <a class="btn-floating btn-small waves-effect waves-light purple right" href="{{route('backoffice.programa.edit', $programa)}}"><i class="material-icons">edit</i></a>
@@ -39,7 +39,7 @@
               
               
             </div>
-            <div class="collapsible-body">
+            <div class="collapsible-body ">
               
               
               <h5 class="right"><strong>Valor Final: </strong> ${{number_format($programa->valor_programa,0,'','.')}} </h5>

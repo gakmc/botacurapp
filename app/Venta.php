@@ -33,6 +33,12 @@ class Venta extends Model
         return $this->belongsTo(TipoTransaccion::class, 'id_tipo_transaccion_diferencia');
     }
 
+    public function giftCards()
+    {
+        return $this->hasMany(GiftCard::class, 'id_venta');
+    }
+
+
     // public function consumos()
     // {
     //     return $this->hasMany(Consumo::class, 'id_venta');
