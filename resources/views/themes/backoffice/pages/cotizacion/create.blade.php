@@ -170,17 +170,10 @@
                                             <tfoot>
                                                 <tr>
                                                     <td colspan="2" class="right-align"><strong>Total:</strong></td>
-                                                    <td colspan="2"><strong id="total-venta">$0</strong></td>
+                                                    <td colspan="2"><input id="total-venta" value="$0"></td>
                                                 </tr>
                                             </tfoot>
                                         </table>
-
-                                        <div id="productos-form"></div>
-                                    </div>
-                                </div>
-
-
-
                                 <div class="row">
                                     <div class="input-field col s12">
                                         <button class="btn waves-effect waves-light right" type="submit">Generar
@@ -188,6 +181,13 @@
                                         </button>
                                     </div>
                                 </div>
+                                        <div id="productos-form"></div>
+                                    </div>
+                                </div>
+
+
+
+
                             </form>
 
                         </div>
@@ -312,7 +312,7 @@
             for (let key in productosAgregados) {
                 total += productosAgregados[key].cantidad * productosAgregados[key].valor;
             }
-            totalVenta.textContent = '$' + total.toLocaleString();
+            totalVenta.value = '$' + total.toLocaleString();
         }
     }
 });

@@ -142,9 +142,9 @@
         </div>
 
         <div id="divImpuesto" class="input-field col s12 m4" hidden>
-          <input type="text" id="impuesto_adicional" name="impuesto_adicional" disabled>
-          <label id="lblImpuesto" for="impuesto_adicional">Impuesto adicional</label>
-          @error('impuesto_adicional')
+          <input type="text" id="impuesto_incluido" name="impuesto_incluido" disabled>
+          <label id="lblImpuesto" for="impuesto_incluido">Impuesto adicional</label>
+          @error('impuesto_incluido')
             <span class="invalid-feedback" role="alert">
                 <strong style="color:red">{{ $message }}</strong>
             </span>
@@ -196,7 +196,7 @@
 
     $('#fecha').pickadate({
       format: 'dd/mm/yyyy',
-      formatSubmit: 'yyyy/mm/dd',
+      formatSubmit: 'yyyy-mm-dd',
       hiddenName: true
     })
 
@@ -275,9 +275,9 @@ $(document).ready(function () {
     $('#neto').val(formatCLP(neto));
     $('#iva').val(formatCLP(iva));
     if (seleccion.toLowerCase() == 'carnes') {
-      $('#impuesto_adicional').val(formatCLP(valorImp));
+      $('#impuesto_incluido').val(formatCLP(valorImp));
     }else if(seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria'){
-      $('#impuesto_adicional').val(formatCLP(valorImp));
+      $('#impuesto_incluido').val(formatCLP(valorImp));
     }
     $('#total').val(formatCLP(total));
 
@@ -300,7 +300,7 @@ $(document).ready(function () {
       e.stopPropagation();
       e.preventDefault();
       var seleccionado = $('#subcategoria_select option:selected').data('name');
-      var impuesto = $('#impuesto_adicional');
+      var impuesto = $('#impuesto_incluido');
       var lblImpuesto = $('#lblImpuesto');
       var divImpuesto = $('#divImpuesto');
       console.log(seleccionado);
@@ -316,6 +316,7 @@ $(document).ready(function () {
       }else{
         divImpuesto.attr('hidden', true);
         impuesto.attr('disabled', true);
+        impuesto.val('');
         lblImpuesto.text('Impuesto Adicional');
       }
 

@@ -190,11 +190,11 @@ class EgresoController extends Controller
         $request->merge([
             'neto'    => (int) str_replace(['$', '.', ','], '', $request->neto),
             'iva'    => (int) str_replace(['$', '.', ','], '', $request->iva),
-            'impuesto_incluido'    => (int) str_replace(['$', '.', ','], '', $request->impuesto_incluido),
+            'impuesto_incluido' => (int) str_replace(['$', '.', ','], '', $request->impuesto_incluido ?? 0),
             'total'    => (int) str_replace(['$', '.', ','], '', $request->total),
         ]);
         
-
+        // dd($request->fecha);
         $request->validate([
             'tipo_documento_id' => 'required|exists:tipos_documentos,id',
             'categoria_id' => 'required|exists:categorias_compras,id',
@@ -284,17 +284,17 @@ class EgresoController extends Controller
      */
     public function update(Request $request, $id)
     {
-        // dd($request->all());
-
+        
         $egreso = Egreso::findOrFail($id);
-
+        
         $request->merge([
             'neto'    => (int) str_replace(['$', '.', ','], '', $request->neto),
             'iva'    => (int) str_replace(['$', '.', ','], '', $request->iva),
-            'impuesto_incluido'    => (int) str_replace(['$', '.', ','], '', $request->impuesto_incluido),
+            'impuesto_incluido'    => (int) str_replace(['$', '.', ','], '', $request->impuesto_incluido ?? 0),
             'total'    => (int) str_replace(['$', '.', ','], '', $request->total),
         ]);
-
+        
+        // dd($request->all());
 
         $request->validate([
             'tipo_documento_id' => 'required|exists:tipos_documentos,id',

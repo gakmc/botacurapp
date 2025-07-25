@@ -269,11 +269,17 @@ class ConsumoController extends Controller
             }, $detallesConsumo);
             
             
-            broadcast(new NuevoConsumoAgregado([
+            event(new NuevoConsumoAgregado([
                 'mensaje'=>'Nuevo consumo agregado '.$nombres,
                 'productos' => $productosEvento,
                 'estado' => 'por-procesar'
             ]));
+
+            // broadcast(new NuevoConsumoAgregado([
+            //     'mensaje'=>'Nuevo consumo agregado '.$nombres,
+            //     'productos' => $productosEvento,
+            //     'estado' => 'por-procesar'
+            // ]));
 
         });
         

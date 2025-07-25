@@ -56,6 +56,16 @@
                                         <td>{{ $gc->valido }}</td>
                                         <td>
                                             <a class="btn-small btn-floating blue" href="{{route('backoffice.giftcards.show', $gc)}}"><i class='material-icons'>remove_red_eye</i></a>
+
+                                            <a class="btn-small btn-floating purple" href="{{route('backoffice.giftcards.edit', $gc)}}"><i class='material-icons'>edit</i></a>
+
+
+                                            <a onclick="enviar_formulario({{$gc->id}})" class="btn-small btn-floating red" href="#"><i class='material-icons'>delete</i></a>
+
+                                            <form method="post" action="{{route('backoffice.giftcards.destroy', $gc->id) }} " name="delete_form_{{$gc->id}}">
+                                                {{csrf_field()}}
+                                                {{method_field('DELETE')}}
+                                            </form>
                                         </td>
                                     </tr>
                                     @endforeach
@@ -109,4 +119,30 @@
 
         });
     </script>
+
+<script>
+    function enviar_formulario(id)
+    {
+        Swal.fire({
+            title: "¿Deseas eliminar esta Gift Card?",
+            text: "Esta acción no se puede deshacer",
+            type: "warning",
+            showCancelButton: true,
+            confirmButtonText: "Si, continuar",
+            cancelButtonText: "No, cancelar",
+            closeOnCancel: false,
+            closeOnConfirm: true
+        }).then((result)=> {
+            if(result.value){
+                document.forms['delete_form_'+id].submit();
+            }else{
+                Swal.fire(
+                    'Operación Cancelada',
+                    'La gift card no fue eliminada',
+                    'error'
+                )
+            }
+        });
+    }
+</script>
 @endsection

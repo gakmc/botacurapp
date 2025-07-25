@@ -1138,7 +1138,7 @@ class ReservaController extends Controller
     {
         $reserva->update(['avisado_en_cocina' => 'entregado']);
 
-        broadcast(new MenuEntregadoEvent($reserva->id))->toOthers();
+        event(new MenuEntregadoEvent($reserva->id));
 
         return response()->json([
             'nombreCliente' => $reserva->cliente->nombre_cliente,

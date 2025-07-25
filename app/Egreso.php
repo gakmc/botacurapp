@@ -21,6 +21,10 @@ class Egreso extends Model
         'folio',
     ];
 
+    protected $casts = [
+        'fecha' => 'date',
+    ];
+
     public function tipo_documento()
     {
         return $this->belongsTo(TipoDocumento::class, 'tipo_documento_id');

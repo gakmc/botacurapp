@@ -214,13 +214,6 @@
                                                 </tr>
                                             </tfoot>
                                         </table>
-
-                                        <div id="productos-form"></div>
-                                    </div>
-                                </div>
-
-
-
                                 <div class="row">
                                     <div class="input-field col s12">
                                         <button class="btn waves-effect waves-light right" type="submit">Actualizar
@@ -228,6 +221,14 @@
                                         </button>
                                     </div>
                                 </div>
+
+                                        <div id="productos-form"></div>
+                                    </div>
+                                </div>
+
+
+
+
                             </form>
 
                         </div>
@@ -390,7 +391,7 @@
                 for (let key in productosAgregados) {
                     total += productosAgregados[key].cantidad * productosAgregados[key].valor;
                 }
-                totalVenta.textContent = '$' + total.toLocaleString();
+                totalVenta.value = '$' + total.toLocaleString();
             }
         }
 

@@ -32,7 +32,7 @@ Gift Card solicitada por {{$gc->de}}
 
 
 
-                        <div class="col s12 m10 offset-m1 l8 offset-l2">
+                        <div id="giftcard" class="col s12 m10 offset-m1 l8 offset-l2">
                             <div class="card z-depth-3"
                                 style="overflow: hidden; border-radius: 15px; background: linear-gradient(to right, #fff 50%, #00897b1a 50%);">
                                 <div class="row no-margin" style="display: flex; flex-wrap: wrap;">
@@ -43,8 +43,13 @@ Gift Card solicitada por {{$gc->de}}
                                                 style="font-size: 16px;">Cajón del Maipo</small></h5>
                                         <h6 class="white-text center" style="margin-top: 20px; font-size:25px">{{$programa->nombre_programa}}</h6>
                                         <ul class="white-text" style="padding-left: 0; list-style: none;">
+                                            @php
+                                                $lista = ['masaje','tinaja','sauna'];
+                                            @endphp
                                             @foreach ($programa->servicios as $servicio)
-                                            <li>✔️ {{$servicio->nombre_servicio}}</li>
+                                            <li>✔️ {{$servicio->nombre_servicio}} @if (in_array(strtolower($servicio->nombre_servicio),$lista))
+                                                - ({{$servicio->duracion}} mins)
+                                            @endif</li>
                                                 
                                             @endforeach
 
@@ -59,8 +64,25 @@ Gift Card solicitada por {{$gc->de}}
                                         <p><strong>Válido hasta:</strong>{{$gc->valido}}</p>
                                         <p style="margin-top: 40px;">Programa tu horario al WhatsApp:</p>
                                         <h6><strong>+56 9 8272 0582</strong></h6>
+
+                                        <div class="center">
+
+                                            <h5 style="margin-top: 20px;">Código: {{ $gc->codigo }}</h5>
+    
+                                            <img src="data:image/png;base64,{{ $barcode }}" alt="Código de barras">
+
+                                        </div>
+
                                     </div>
                                 </div>
+                            </div>
+                        </div>
+
+
+                        <div class="col s12 m10 offset-m1 l8 offset-l2">
+                            <div class="center">
+
+                                <a class="btn blue" href="{{route('backoffice.giftcards.enviar',$gc)}}">Enviar<i class='material-icons right'>share</i></a>
                             </div>
                         </div>
 
@@ -76,4 +98,44 @@ Gift Card solicitada por {{$gc->de}}
 @endsection
 
 @section('foot')
+
+    <script>
+        $(document).ready(function () {
+            
+
+            @if(session('info'))
+                Swal.fire({
+                    toast: true,
+                    position: '',
+                    icon: 'info',
+                    title: '{{ session('info') }}',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+            @endif
+
+            @if(session('success'))
+                Swal.fire({
+                    toast: true,
+                    position: '',
+                    icon: 'success',
+                    title: '{{ session('success') }}',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+            @endif
+
+        });
+    </script>
+
 @endsection

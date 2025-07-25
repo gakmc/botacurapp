@@ -84,7 +84,8 @@ class BarmanController extends Controller
             'ubicacion' => $visita->ubicacion->nombre,
         ];
 
-        broadcast(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
+        // broadcast(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
+        event(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
 
         return response()->json(['success' => true, 'estado' => $request->input('estado')]);
     }

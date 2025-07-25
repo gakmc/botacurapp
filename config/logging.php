@@ -99,6 +99,12 @@ return [
         'emergency' => [
             'path' => storage_path('logs/laravel.log'),
         ],
+
+        'masoterapeutas' => [
+            'driver' => 'single',
+            'path' => storage_path('logs/masoterapeutas.log'),
+            'level' => 'info',
+        ],
     ],
 
 ];

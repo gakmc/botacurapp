@@ -158,7 +158,7 @@
             {{ $reserva->cliente->nombre_cliente." - ".$reserva->programa->nombre_programa}} 
             
 
-                <button id="avisar_{{$reserva->id}}" data-id="{{$reserva->id}}" data-url="{{ route('backoffice.reserva.avisar', $reserva->id) }}" class="btn-floating btn-avisar" onclick="darAviso({{$reserva->id}})" @if($reserva->avisado_en_cocina == 'avisado') style="display: none;" @endif>
+                <button id="avisar_{{$reserva->id}}" data-id="{{$reserva->id}}" data-url="{{ route('backoffice.reserva.avisar', $reserva->id) }}" class="btn-floating btn-avisar" onclick="darAviso({{$reserva->id}})" @if(in_array($reserva->avisado_en_cocina, [null,'avisado','entregado'])) style="display: none;" @endif>
                     <i class='material-icons'>notifications_active</i>
                 </button>
 
@@ -254,14 +254,14 @@
 
 
 <script>
-  function darAviso(reservaId) { 
-          
-
+  function darAviso(reservaId) {
+  
+  
     const elegido = $('#avisar_'+reservaId);
     const url = elegido.data('url');
     
     $.ajax({
-      url:  url,
+      url: url,
       method: 'POST',
       data: {
         _token: '{{csrf_token()}}',
@@ -269,7 +269,7 @@
         id: reservaId
       },
       success: function(response){
-        
+      
         const Toast = Swal.mixin({
           toast:false,
           showConfirmButton: true,
@@ -277,33 +277,33 @@
           icon: "success",
           showClass: {
             popup: `
-              animate__animated
-              animate__fadeInUp
-              animate__faster
+            animate__animated
+            animate__fadeInUp
+            animate__faster
             `
           },
           hideClass: {
             popup: `
-              animate__animated
-              animate__fadeOutDown
-              animate__faster
+            animate__animated
+            animate__fadeOutDown
+            animate__faster
             `
           },
         });
         
-        Toast.fire();
-
-
-
-
-        elegido.hide();
+          Toast.fire();
+          
+          
+          
+          
+          elegido.hide();
       },
       error: function () {
-          Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
+        Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
       }
     })
-
-   }
+  
+  }
 </script>
 
 <script>

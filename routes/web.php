@@ -12,7 +12,7 @@ use App\Ubicacion;
 use App\UnidadMedida;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-
+use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -24,10 +24,16 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
+
+Route::get('/prueba-pdf', function () {
+    $pdf = PDF::loadHTML('<h1>Hola desde wkhtmltopdf</h1>');
+    return $pdf->inline('test.pdf'); // o ->download('test.pdf')
+});
+
 Route::get('/email', [EmailPreviewController::class, 'preview']);
 
 Route::get('/emitir', function () {
-    broadcast(new EjemploEvento('Hola, WebSocket!'));
+    event(new EjemploEvento('Hola, WebSocket!'));
     return 'Evento emitido';
 });
 
@@ -333,5 +339,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
+
+
+    Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
+
+
+    Route::get('informes', 'InformeController@index')->name('informes.index');
 
 });

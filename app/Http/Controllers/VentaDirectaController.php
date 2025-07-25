@@ -164,11 +164,17 @@ class VentaDirectaController extends Controller
             }, $detallesVentas);
     
     
-            broadcast(new NuevoConsumoAgregado([
+            event(new NuevoConsumoAgregado([
                 'mensaje'=>'Nuevo consumo agregado '.$nombres,
                 'productos' => $productosEvento,
                 'estado' => 'por-procesar'
             ]));
+
+            // broadcast(new NuevoConsumoAgregado([
+            //     'mensaje'=>'Nuevo consumo agregado '.$nombres,
+            //     'productos' => $productosEvento,
+            //     'estado' => 'por-procesar'
+            // ]));
         });
 
         
@@ -331,11 +337,17 @@ class VentaDirectaController extends Controller
             }, $detallesVentas);
     
     
-            broadcast(new NuevoConsumoAgregado([
+            event(new NuevoConsumoAgregado([
                 'mensaje'=>'Consumo actualizado '.$nombres,
                 'productos' => $productosEvento,
                 'estado' => 'por-procesar'
             ]));
+
+            // broadcast(new NuevoConsumoAgregado([
+            //     'mensaje'=>'Consumo actualizado '.$nombres,
+            //     'productos' => $productosEvento,
+            //     'estado' => 'por-procesar'
+            // ]));
         });
 
 
