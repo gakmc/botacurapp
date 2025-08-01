@@ -295,6 +295,17 @@
                 @if (Auth::user()->has_role(config('app.admin_role')))
 
                     <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.informes.index') }}">
+                            <i class="material-icons">
+                                assessment
+                            </i>
+                            <span class="nav-text">
+                                Informes
+                            </span>
+                        </a>
+                    </li>
+
+                    <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.user.index') }}">
                             <i class="material-icons">
                                 people

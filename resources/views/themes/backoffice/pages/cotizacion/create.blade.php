@@ -229,8 +229,206 @@
 
 
 
-<script>
+{{-- <script>
     document.addEventListener('DOMContentLoaded', function () {
+        if (!window._yaCargueListenerProductos) {
+            window._yaCargueListenerProductos = true;
+
+            const tabla = document.getElementById('tabla-detalle');
+            const totalVenta = document.getElementById('total-venta');
+            const formHidden = document.getElementById('productos-form');
+            let productosAgregados = {};
+
+            document.querySelectorAll('.collection-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    const tipo = this.classList.contains('producto-item') ? 'producto' :
+                                this.classList.contains('programa-item') ? 'programa' :
+                                this.classList.contains('servicio-item') ? 'servicio' : null;
+
+                    if (!tipo) return;
+
+                    const id = this.dataset.id;
+                    if (productosAgregados[`${tipo}_${id}`]) {
+                        console.log(`${tipo} ya agregado:`, id);
+                        return;
+                    }
+
+                    const nombre = this.dataset.nombre;
+                    const valor = parseInt(this.dataset.valor);
+
+                    productosAgregados[`${tipo}_${id}`] = { cantidad: 1, valor };
+
+                    // Ocultar de la lista original
+                    this.classList.add('agregado');
+                    this.style.display = 'none';
+
+
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', `${tipo}_${id}`);
+                    row.innerHTML = `
+                        <td>${nombre}</td>
+                        <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
+                        <td><input type="text" class="subtotal" style="width:60px;" value="$${valor.toLocaleString()}"></td>
+                        <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
+                    `;
+                    tabla.appendChild(row);
+
+                    const inputHidden = document.createElement('input');
+                    inputHidden.type = 'hidden';
+                    inputHidden.name = `${tipo}s[${id}][cantidad]`;
+                    inputHidden.value = 1;
+                    inputHidden.setAttribute('data-id', `${tipo}_${id}`);
+                    inputHidden.classList.add('input-cantidad');
+                    formHidden.appendChild(inputHidden);
+
+                    row.querySelector('.cantidad-input').addEventListener('input', function () {
+                        const nuevaCantidad = parseInt(this.value) || 1;
+                        productosAgregados[`${tipo}_${id}`].cantidad = nuevaCantidad;
+                        row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
+                        formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).value = nuevaCantidad;
+                        actualizarTotal();
+                    });
+
+                    row.querySelector('.eliminar-producto').addEventListener('click', function () {
+                        delete productosAgregados[`${tipo}_${id}`];
+                        row.remove();
+                        formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).remove();
+                        actualizarTotal();
+
+                        // Volver a mostrar en la lista original
+                        const original = document.querySelector(`.${tipo}-item[data-id="${id}"]`);
+                        if (original) {
+                            original.classList.remove('agregado');
+                            original.style.display = 'block';
+                        }
+                    });
+
+                    actualizarTotal();
+                });
+            });
+
+            function actualizarTotal() {
+                let total = 0;
+                for (let key in productosAgregados) {
+                    total += productosAgregados[key].cantidad * productosAgregados[key].valor;
+                }
+                totalVenta.value = '$' + total.toLocaleString();
+            }
+        }
+    });
+</script> --}}
+
+
+{{-- <script>
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window._yaCargueListenerProductos) {
+            window._yaCargueListenerProductos = true;
+
+            const tabla = document.getElementById('tabla-detalle');
+            const totalVenta = document.getElementById('total-venta');
+            const formHidden = document.getElementById('productos-form');
+            let productosAgregados = {};
+
+            document.querySelectorAll('.collection-item').forEach(item => {
+                item.addEventListener('click', function () {
+                    const tipo = this.classList.contains('producto-item') ? 'producto' :
+                                this.classList.contains('programa-item') ? 'programa' :
+                                this.classList.contains('servicio-item') ? 'servicio' : null;
+
+                    if (!tipo) return;
+
+                    const id = this.dataset.id;
+                    if (productosAgregados[`${tipo}_${id}`]) {
+                        console.log(`${tipo} ya agregado:`, id);
+                        return;
+                    }
+
+                    const nombre = this.dataset.nombre;
+                    const valor = parseInt(this.dataset.valor);
+
+                    productosAgregados[`${tipo}_${id}`] = { cantidad: 1, valor };
+
+                    // Ocultar de la lista original
+                    this.classList.add('agregado');
+                    this.style.display = 'none';
+
+                    const row = document.createElement('tr');
+                    row.setAttribute('data-id', `${tipo}_${id}`);
+                    row.innerHTML = `
+                        <td>${nombre}</td>
+                        <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
+                        <td><input type="text" class="subtotal" style="width:60px;" value="$${valor.toLocaleString()}"></td>
+                        <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
+                    `;
+                    tabla.appendChild(row);
+
+                    // Hidden input
+                    const inputHidden = document.createElement('input');
+                    inputHidden.type = 'hidden';
+                    inputHidden.name = `${tipo}s[${id}][cantidad]`;
+                    inputHidden.value = 1;
+                    inputHidden.setAttribute('data-id', `${tipo}_${id}`);
+                    inputHidden.classList.add('input-cantidad');
+                    formHidden.appendChild(inputHidden);
+
+                    // Cambio de cantidad
+                    row.querySelector('.cantidad-input').addEventListener('input', function () {
+                        const nuevaCantidad = parseInt(this.value) || 1;
+                        productosAgregados[`${tipo}_${id}`].cantidad = nuevaCantidad;
+
+                        // Recalcular subtotal automático
+                        const nuevoSubtotal = productosAgregados[`${tipo}_${id}`].valor * nuevaCantidad;
+                        row.querySelector('.subtotal').value = '$' + nuevoSubtotal.toLocaleString();
+
+                        formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).value = nuevaCantidad;
+                        actualizarTotal();
+                    });
+
+                    // Cambio manual del subtotal
+                    row.querySelector('.subtotal').addEventListener('input', function () {
+                        let valorIngresado = parseInt(this.value.replace(/\D/g, '')) || 0;
+
+                        // Actualizar valor unitario en base al nuevo subtotal y cantidad actual
+                        let cantidadActual = productosAgregados[`${tipo}_${id}`].cantidad;
+                        productosAgregados[`${tipo}_${id}`].valor = valorIngresado / cantidadActual;
+
+                        this.value = '$' + valorIngresado.toLocaleString();
+                        actualizarTotal();
+                    });
+
+                    // Eliminar producto
+                    row.querySelector('.eliminar-producto').addEventListener('click', function () {
+                        delete productosAgregados[`${tipo}_${id}`];
+                        row.remove();
+                        formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).remove();
+                        actualizarTotal();
+
+                        // Mostrar en la lista original
+                        const original = document.querySelector(`.${tipo}-item[data-id="${id}"]`);
+                        if (original) {
+                            original.classList.remove('agregado');
+                            original.style.display = 'block';
+                        }
+                    });
+
+                    actualizarTotal();
+                });
+            });
+
+            function actualizarTotal() {
+                let total = 0;
+                for (let key in productosAgregados) {
+                    total += productosAgregados[key].cantidad * productosAgregados[key].valor;
+                }
+                totalVenta.value = '$' + total.toLocaleString();
+            }
+        }
+    });
+</script> --}}
+
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
     if (!window._yaCargueListenerProductos) {
         window._yaCargueListenerProductos = true;
 
@@ -242,13 +440,15 @@
         document.querySelectorAll('.collection-item').forEach(item => {
             item.addEventListener('click', function () {
                 const tipo = this.classList.contains('producto-item') ? 'producto' :
-                             this.classList.contains('programa-item') ? 'programa' :
-                             this.classList.contains('servicio-item') ? 'servicio' : null;
+                            this.classList.contains('programa-item') ? 'programa' :
+                            this.classList.contains('servicio-item') ? 'servicio' : null;
 
                 if (!tipo) return;
 
                 const id = this.dataset.id;
-                if (productosAgregados[`${tipo}_${id}`]) {
+                const key = `${tipo}_${id}`;
+
+                if (productosAgregados[key]) {
                     console.log(`${tipo} ya agregado:`, id);
                     return;
                 }
@@ -256,46 +456,87 @@
                 const nombre = this.dataset.nombre;
                 const valor = parseInt(this.dataset.valor);
 
-                productosAgregados[`${tipo}_${id}`] = { cantidad: 1, valor };
+                productosAgregados[key] = { cantidad: 1, valor };
 
                 // Ocultar de la lista original
                 this.classList.add('agregado');
                 this.style.display = 'none';
 
-
                 const row = document.createElement('tr');
-                row.setAttribute('data-id', `${tipo}_${id}`);
+                row.setAttribute('data-id', key);
                 row.innerHTML = `
                     <td>${nombre}</td>
                     <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
-                    <td class="subtotal">$${valor.toLocaleString()}</td>
+                    <td><input type="text" class="subtotal" style="width:60px;" value="$${valor.toLocaleString()}"></td>
                     <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
                 `;
                 tabla.appendChild(row);
 
-                const inputHidden = document.createElement('input');
-                inputHidden.type = 'hidden';
-                inputHidden.name = `${tipo}s[${id}][cantidad]`;
-                inputHidden.value = 1;
-                inputHidden.setAttribute('data-id', `${tipo}_${id}`);
-                inputHidden.classList.add('input-cantidad');
-                formHidden.appendChild(inputHidden);
+                // Hidden cantidad
+                const inputHiddenCantidad = document.createElement('input');
+                inputHiddenCantidad.type = 'hidden';
+                inputHiddenCantidad.name = `${tipo}s[${id}][cantidad]`;
+                inputHiddenCantidad.value = 1;
+                inputHiddenCantidad.setAttribute('data-id', key);
+                inputHiddenCantidad.classList.add('input-cantidad');
+                formHidden.appendChild(inputHiddenCantidad);
 
+                // Hidden subtotal
+                const inputHiddenSubtotal = document.createElement('input');
+                inputHiddenSubtotal.type = 'hidden';
+                inputHiddenSubtotal.name = `${tipo}s[${id}][subtotal]`;
+                inputHiddenSubtotal.value = valor;
+                inputHiddenSubtotal.setAttribute('data-subtotal-id', key);
+                inputHiddenSubtotal.classList.add('input-subtotal');
+                formHidden.appendChild(inputHiddenSubtotal);
+
+                // Cambio de cantidad
                 row.querySelector('.cantidad-input').addEventListener('input', function () {
                     const nuevaCantidad = parseInt(this.value) || 1;
-                    productosAgregados[`${tipo}_${id}`].cantidad = nuevaCantidad;
-                    row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
-                    formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).value = nuevaCantidad;
+                    productosAgregados[key].cantidad = nuevaCantidad;
+
+                    // Recalcular subtotal automático
+                    const nuevoSubtotal = productosAgregados[key].valor * nuevaCantidad;
+                    row.querySelector('.subtotal').value = '$' + nuevoSubtotal.toLocaleString();
+
+                    // Actualizar hidden
+                    formHidden.querySelector(`input[data-id="${key}"]`).value = nuevaCantidad;
+                    formHidden.querySelector(`input[data-subtotal-id="${key}"]`).value = nuevoSubtotal;
+
                     actualizarTotal();
                 });
 
+                // Cambio manual del subtotal
+                row.querySelector('.subtotal').addEventListener('input', function () {
+                    let valorIngresado = parseInt(this.value.replace(/\D/g, '')) || 0;
+
+                    // Actualizar valor unitario en base al nuevo subtotal y cantidad actual
+                    let cantidadActual = productosAgregados[key].cantidad;
+                    productosAgregados[key].valor = valorIngresado / cantidadActual;
+
+                    this.value = '$' + valorIngresado.toLocaleString();
+
+                    // Actualizar hidden subtotal
+                    formHidden.querySelector(`input[data-subtotal-id="${key}"]`).value = valorIngresado;
+
+                    actualizarTotal();
+                });
+
+                // Eliminar producto
                 row.querySelector('.eliminar-producto').addEventListener('click', function () {
-                    delete productosAgregados[`${tipo}_${id}`];
+                    delete productosAgregados[key];
                     row.remove();
-                    formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).remove();
+
+                    // Eliminar hidden
+                    const hiddenCantidad = formHidden.querySelector(`input[data-id="${key}"]`);
+                    if (hiddenCantidad) hiddenCantidad.remove();
+
+                    const hiddenSubtotal = formHidden.querySelector(`input[data-subtotal-id="${key}"]`);
+                    if (hiddenSubtotal) hiddenSubtotal.remove();
+
                     actualizarTotal();
 
-                    // Volver a mostrar en la lista original
+                    // Mostrar en la lista original
                     const original = document.querySelector(`.${tipo}-item[data-id="${id}"]`);
                     if (original) {
                         original.classList.remove('agregado');
@@ -317,6 +558,8 @@
     }
 });
 </script>
+
+
 
 
 <script>

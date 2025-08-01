@@ -73,4 +73,9 @@ class Venta extends Model
         return 0;
     }
 
+    public function getTieneGcAttribute()
+    {
+        return $this->giftCards()->exists();
+    }
+
 }

@@ -32,7 +32,7 @@
 
                             <div class="row">
                                 <div class="input-field col s12 m6">
-                                  <input id="nombre_cliente" type="text" class="form-control @error('nombre_cliente') is-invalid @enderror" name="nombre_cliente" value="{{ old('nombre_cliente') }}" autocomplete="name" autofocus>
+                                  <input id="nombre_cliente" type="text" class="form-control @error('nombre_cliente') is-invalid @enderror" name="nombre_cliente" value="{{ request('nombre') ?? old('nombre_cliente') }}" autocomplete="name" autofocus>
                                       <label for="nombre_cliente">Nombre del cliente</label>
 
                                   @error('nombre_cliente')

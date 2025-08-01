@@ -24,13 +24,19 @@
     <div class="row">
       <div class="col s12 m8 offset-m2 ">
         <div class="card-panel">
-          <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong></h4>
+          <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong>
+          </h4>
           <div class="row">
             <form class="col s12" method="post" enctype="multipart/form-data"
-              action="{{route('backoffice.reserva.store')}}">
-
-
-              {{csrf_field() }}
+            action="{{route('backoffice.reserva.store')}}">
+            
+            
+            {{csrf_field() }}
+            @if ($gc)
+            <p class="blue-text"><i class='material-icons left'>info_outline</i> Existe una GiftCard asociada a este nombre. <a class="btn-small btn-floating" href="#" id="usarGC" data-programa="{{$gc->id_programa}}" data-cantidad="{{$gc->cantidad_personas}}" data-monto="{{$gc->monto}}" data-codigo="{{$gc->codigo}}"><i class='material-icons tiny'>file_download</i></a></p>
+  
+            <input type="hidden" name="gcard_id" id="gcard_id" value="{{$gc->id}}">
+            @endif
 
 
 
@@ -79,9 +85,6 @@
                 </div>
 
 
-
-
-
               </div>
 
 
@@ -122,9 +125,7 @@
                   <select id="tipo_transaccion" name="tipo_transaccion">
                     <option disabled selected>-- Seleccione --</option>
                     @foreach ($tipos as $tipo)
-                    <option value="{{ $tipo->id }}" @if (old('tipo_transaccion')==$tipo->id) selected @endif>
-                      {{ $tipo->nombre }}
-                    </option>
+                    <option value="{{ $tipo->id }}" @if (old('tipo_transaccion')==$tipo->id) selected @endif>{{ $tipo->nombre }}</option>
                     @endforeach
                   </select>
                   @error('tipo_transaccion')
@@ -159,7 +160,6 @@
                   </span>
                   @enderror
                 </div>
-
 
 
                 <label id="checkbox-masajes-container" class="input-field col s12 m3">
@@ -235,7 +235,7 @@
 
 
 @section('foot')
-
+<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
@@ -432,5 +432,73 @@ function formatCLP(number)
     });
   });
 </script>
+
+{{-- Desde el boton --}}
+<script>
+  $('#usarGC').on('click', function (e) {
+      e.preventDefault();
+
+      let programa = $(this).data('programa');
+      let cantidad = $(this).data('cantidad');
+      let monto = $(this).data('monto');
+      let codigo = $(this).data('codigo');
+
+      // Seleccionar programa y disparar eventos
+      $('#id_programa').val(programa);
+      $('#id_programa').material_select();
+      $('#id_programa').trigger('change');
+
+      // Cantidad de personas
+      $('#cantidad_personas').val(cantidad).trigger('change');
+      $('label[for="cantidad_personas"]').addClass('active');
+
+      // Abono
+      abono = parseInt(monto);
+      $('#abono_programa').val(formatCLP(monto));
+      $('#abono_hidden').val(monto);
+      $('label[for="abono_programa"]').addClass('active');
+
+      // Calcular total
+      calcularValorTotal();
+
+      // Generar código de barras
+      let canvas = document.createElement('canvas');
+      JsBarcode(canvas, codigo, { format: "CODE128" });
+      $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+  });
+</script>
+
+{{-- Desde el ByPass de Gift Card --}}
+<script>
+  document.addEventListener('DOMContentLoaded', function () {
+      @if(request()->has('programa'))
+          // Simula el click pasando los valores del query
+          let programa = "{{ request('programa') }}";
+          let cantidad = "{{ request('cantidad') }}";
+          let monto    = "{{ request('monto') }}";
+          let codigo   = "{{ request('codigo') }}";
+
+          // Reutiliza la misma lógica que tenías en #usarGC
+          $('#id_programa').val(programa);
+          $('#id_programa').material_select();
+          $('#id_programa').trigger('change');
+
+          $('#cantidad_personas').val(cantidad).trigger('change');
+          $('label[for="cantidad_personas"]').addClass('active');
+
+          abono = parseInt(monto);
+          $('#abono_programa').val(formatCLP(monto));
+          $('#abono_hidden').val(monto);
+          $('label[for="abono_programa"]').addClass('active');
+
+          calcularValorTotal();
+
+          let canvas = document.createElement('canvas');
+          JsBarcode(canvas, codigo, { format: "CODE128" });
+          $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+      @endif
+  });
+</script>
+
 
 @endsection

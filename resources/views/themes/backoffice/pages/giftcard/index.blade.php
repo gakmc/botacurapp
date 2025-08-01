@@ -56,16 +56,16 @@
                                         <td>{{ $gc->valido }}</td>
                                         <td>
                                             <a class="btn-small btn-floating blue" href="{{route('backoffice.giftcards.show', $gc)}}"><i class='material-icons'>remove_red_eye</i></a>
+                                            @if(!$mostrarUsadas == 'usadas')
+                                                <a class="btn-small btn-floating purple" href="{{route('backoffice.giftcards.edit', $gc)}}"><i class='material-icons'>edit</i></a>
 
-                                            <a class="btn-small btn-floating purple" href="{{route('backoffice.giftcards.edit', $gc)}}"><i class='material-icons'>edit</i></a>
+                                                <a onclick="enviar_formulario({{$gc->id}})" class="btn-small btn-floating red" href="#"><i class='material-icons'>delete</i></a>
 
-
-                                            <a onclick="enviar_formulario({{$gc->id}})" class="btn-small btn-floating red" href="#"><i class='material-icons'>delete</i></a>
-
-                                            <form method="post" action="{{route('backoffice.giftcards.destroy', $gc->id) }} " name="delete_form_{{$gc->id}}">
-                                                {{csrf_field()}}
-                                                {{method_field('DELETE')}}
-                                            </form>
+                                                <form method="post" action="{{route('backoffice.giftcards.destroy', $gc->id) }} " name="delete_form_{{$gc->id}}">
+                                                    {{csrf_field()}}
+                                                    {{method_field('DELETE')}}
+                                                </form>
+                                            @endif
                                         </td>
                                     </tr>
                                     @endforeach

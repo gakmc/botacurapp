@@ -36,12 +36,16 @@
                                     <th>Pendiente</th>
                                     <th>Consumo</th>
                                     <th>Servicios Extra</th>
+                                    <th>GiftCard</th>
                                     <th>Total pagado</th>
                                     <!-- Agrega más columnas si las necesitas -->
                                 </tr>
                             </thead>
 
                                 <tbody>
+                                    @php
+                                        $totalMes = 0;
+                                    @endphp
                                     @foreach ($ventasAgrupadas as $venta)
                                     @php
                                         $consumoSinPropina = 0;
@@ -90,12 +94,28 @@
                                             <td>
                                                 ${{ number_format($serviciosExtras, 0, ',', '.') }}
                                             </td>
-                                            <td>${{ number_format($venta->abono + $venta->diferencia + $consumoSinPropina + $serviciosExtras, 0, ',', '.') }}</td>
+                                            <td>
+                                                ${{ number_format($venta->monto_giftcards, 0, ',', '.') }}
+                                            </td>
+                                            <td>${{ number_format($venta->abono + $venta->diferencia + $consumoSinPropina + 
+                                            $venta->monto_giftcards
+                                            +$serviciosExtras, 0, ',', '.') }}</td>
+                                            @php
+                                                $totalMes += $venta->abono + $venta->diferencia + $consumoSinPropina + 
+                                            $venta->monto_giftcards
+                                            +$serviciosExtras
+                                            @endphp
                                         </tr>
                                     @endforeach
                                 </tbody>
                                 
-                                
+                                <tfoot>
+                                    <tr>
+                                        <td colspan="6"></td>
+                                        <td><strong>Total mensual:</strong></td>
+                                        <td>${{number_format($totalMes,0,'','.')}}</td>
+                                    </tr>
+                                </tfoot>
                 
                         </table>
                         

@@ -22,7 +22,7 @@ Gift Card solicitada por {{$gc->de}}
 
 @section('content')
 <div class="section">
-    <p class="caption"><strong>Reservaciones</strong></p>
+    <p class="caption"><strong>Gift Card</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -81,8 +81,11 @@ Gift Card solicitada por {{$gc->de}}
 
                         <div class="col s12 m10 offset-m1 l8 offset-l2">
                             <div class="center">
+                                @if ($gc->usada == false)
+                                    <a class="btn blue" href="{{route('backoffice.giftcards.enviar',$gc)}}">Enviar<i class='material-icons right'>share</i></a>
+                                    <a class="btn pink" href="{{route('backoffice.giftcards.reservar',$gc)}}">Reservar<i class='material-icons right'>person_add</i></a>
+                                @endif
 
-                                <a class="btn blue" href="{{route('backoffice.giftcards.enviar',$gc)}}">Enviar<i class='material-icons right'>share</i></a>
                             </div>
                         </div>
 

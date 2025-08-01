@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Cliente;
 use App\GiftCard;
 use App\Programa;
 use Carbon\Carbon;
@@ -153,9 +154,9 @@ class GiftCardController extends Controller
             'telefono' => $numero
         ]);
 
-        dd($id, $request->all());
+        // dd($id, $request->all());
 
-        GiftCard::create([
+        GiftCard::update([
             'codigo' => $request->codigo,
             'monto' => $request->monto,
             'usada' => $gc->usada,
@@ -213,6 +214,26 @@ class GiftCardController extends Controller
             ->send(new GiftCardMailable($gc, $pdfData));
 
         return redirect()->back()->with('success', 'Gift Card enviada correctamente a ' . $gc->correo);
+    }
+
+    public function byPassReserva($id)
+    {
+        $gc = GiftCard::findOrFail($id);
+        $cliente = Cliente::where('nombre_cliente', $gc->para)->first();
+        // dd($gc, $cliente);
+        // dd($cliente->exists());
+        if ($cliente) {
+            return redirect()->route('backoffice.reserva.create',[
+                'cliente'=>$cliente,
+                'programa' => $gc->id_programa,
+                'cantidad' => $gc->cantidad_personas,
+                'monto' => $gc->monto,
+                'codigo' => $gc->codigo,
+
+            ]);
+        }else{
+            return redirect()->route('backoffice.cliente.create', ['nombre' => $gc->para]);
+        }
     }
 
     

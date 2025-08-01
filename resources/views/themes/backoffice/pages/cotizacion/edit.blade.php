@@ -184,28 +184,7 @@
                                                 </tr>
                                             </thead>
                                             <tbody id="tabla-detalle">
-                                                @foreach($cotizacion->items as $item)
-                                                @php
-                                                $tipo = strtolower(class_basename($item->itemable_type));
-                                                $id = $item->itemable->id;
-                                                $nombre = $item->itemable->nombre ?? $item->itemable->nombre_programa ??
-                                                $item->itemable->nombre_servicio;
-                                                $valor = $item->valor_neto;
-                                                $cantidad = $item->cantidad;
-                                                @endphp
-                                                <tr data-id="{{ $tipo }}_{{ $id }}">
-                                                    <td>{{ $nombre }}</td>
-                                                    <td><input type="number" value="{{ $cantidad }}"
-                                                            class="cantidad-input" style="width:60px;"></td>
-                                                    <td class="subtotal">${{ number_format($valor * $cantidad, 0, ',',
-                                                        '.') }}</td>
-                                                    <td><button type="button" class="btn-small red eliminar-producto"><i
-                                                                class="material-icons">delete</i></button></td>
-                                                </tr>
-                                                <input type="hidden" name="{{ $tipo }}s[{{ $id }}][cantidad]"
-                                                    value="{{ $cantidad }}" data-id="{{ $tipo }}_{{ $id }}"
-                                                    class="input-cantidad">
-                                                @endforeach
+
                                             </tbody>
                                             <tfoot>
                                                 <tr>
@@ -268,137 +247,147 @@
     });
 </script>
 
+@php
+$itemsIniciales = $cotizacion->items->map(function ($item) {
+    $nombre = $item->itemable->nombre
+        ?? $item->itemable->nombre_programa
+        ?? $item->itemable->nombre_servicio;
 
+    return [
+        'tipo' => strtolower(class_basename($item->itemable_type)),
+        'id' => $item->itemable->id,
+        'nombre' => $nombre,
+        'cantidad' => $item->cantidad,
+        'subtotal' => $item->valor_neto * $item->cantidad,
+    ];
+});
+@endphp
 
 <script>
-    document.addEventListener('DOMContentLoaded', function () {
-        if (!window._yaCargueListenerProductos) {
-            window._yaCargueListenerProductos = true;
+    // INYECTA LOS DATOS PHP A JS
+    window.itemsIniciales = @json($itemsIniciales);
+</script>
 
-            const tabla = document.getElementById('tabla-detalle');
-            const totalVenta = document.getElementById('total-venta');
-            const formHidden = document.getElementById('productos-form');
-            let productosAgregados = {};
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+    if (window._yaCargueItemsIniciales) return;
+    window._yaCargueItemsIniciales = true;
 
-            document.querySelectorAll('#tabla-detalle tr[data-id]').forEach(row => {
-                const id = row.getAttribute('data-id');
-                const tipo = id.split('_')[0];
-                const input = row.querySelector('.cantidad-input');
-                const valor = parseInt(
-                    document.querySelector(`.${tipo}-item[data-id="${id.split('_')[1]}"]`)?.dataset.valor || 0
-                );
-                const cantidad = parseInt(input.value) || 1;
+    const tabla = document.getElementById('tabla-detalle');
+    const formHidden = document.getElementById('productos-form');
+    const totalVenta = document.getElementById('total-venta');
+    let productosAgregados = {};
 
-                productosAgregados[id] = { cantidad: cantidad, valor: valor };
-
-                // Agregar listeners a los precargados
-                input.addEventListener('input', function () {
-                    const nuevaCantidad = parseInt(this.value) || 1;
-                    productosAgregados[id].cantidad = nuevaCantidad;
-                    row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
-                    formHidden.querySelector(`input[data-id="${id}"]`).value = nuevaCantidad;
-                    actualizarTotal();
-                });
-
-                row.querySelector('.eliminar-producto').addEventListener('click', function () {
-                    delete productosAgregados[id];
-                    row.remove();
-                    const hiddenInput = document.querySelector(`input.input-cantidad[data-id="${id}"]`);
-                    if (hiddenInput) hiddenInput.remove();
-                    actualizarTotal();
-
-                    // Mostrar de nuevo en la lista original
-                    const original = document.querySelector(`.${tipo}-item[data-id="${id.split('_')[1]}"]`);
-                    if (original) {
-                        original.classList.remove('agregado');
-                        original.style.display = 'block';
-                    }
-                });
-            });
-
-
-            document.querySelectorAll('.collection-item').forEach(item => {
-                item.addEventListener('click', function () {
-                    const tipo = this.classList.contains('producto-item') ? 'producto' :
-                                this.classList.contains('programa-item') ? 'programa' :
-                                this.classList.contains('servicio-item') ? 'servicio' : null;
-
-                    if (!tipo) return;
-
-                    const id = this.dataset.id;
-                    if (productosAgregados[`${tipo}_${id}`]) {
-                        console.log(`${tipo} ya agregado:`, id);
-                        return;
-                    }
-
-                    const nombre = this.dataset.nombre;
-                    const valor = parseInt(this.dataset.valor);
-
-                    productosAgregados[`${tipo}_${id}`] = { cantidad: 1, valor };
-
-                    // Ocultar de la lista original
-                    this.classList.add('agregado');
-                    this.style.display = 'none';
-
-
-                    const row = document.createElement('tr');
-                    row.setAttribute('data-id', `${tipo}_${id}`);
-                    row.innerHTML = `
-                        <td>${nombre}</td>
-                        <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
-                        <td class="subtotal">$${valor.toLocaleString()}</td>
-                        <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
-                    `;
-                    tabla.appendChild(row);
-
-                    const inputHidden = document.createElement('input');
-                    inputHidden.type = 'hidden';
-                    inputHidden.name = `${tipo}s[${id}][cantidad]`;
-                    inputHidden.value = 1;
-                    inputHidden.setAttribute('data-id', `${tipo}_${id}`);
-                    inputHidden.classList.add('input-cantidad');
-                    formHidden.appendChild(inputHidden);
-
-                    row.querySelector('.cantidad-input').addEventListener('input', function () {
-                        const nuevaCantidad = parseInt(this.value) || 1;
-                        productosAgregados[`${tipo}_${id}`].cantidad = nuevaCantidad;
-                        row.querySelector('.subtotal').textContent = '$' + (valor * nuevaCantidad).toLocaleString();
-                        formHidden.querySelector(`input[data-id="${tipo}_${id}"]`).value = nuevaCantidad;
-                        actualizarTotal();
-                    });
-
-                    row.querySelector('.eliminar-producto').addEventListener('click', function () {
-                        delete productosAgregados[`${tipo}_${id}`];
-                        row.remove();
-                        const hiddenInput = document.querySelector(`input.input-cantidad[data-id="${id}"]`);
-                        if (hiddenInput) hiddenInput.remove();
-                        actualizarTotal();
-
-                        // Volver a mostrar en la lista original
-                        const original = document.querySelector(`.${tipo}-item[data-id="${id}"]`);
-                        if (original) {
-                            original.classList.remove('agregado');
-                            original.style.display = 'block';
-                        }
-                    });
-
-                    actualizarTotal();
-                });
-            });
-
-            function actualizarTotal() {
-                let total = 0;
-                for (let key in productosAgregados) {
-                    total += productosAgregados[key].cantidad * productosAgregados[key].valor;
-                }
-                totalVenta.value = '$' + total.toLocaleString();
-            }
+    // ---- Funciones que faltaban ----
+    function setHiddenCantidad(id, cantidad) {
+        let hidden = formHidden.querySelector(`input[data-id="${id}"]`);
+        if (!hidden) {
+            hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = `${id.split('_')[0]}s[${id.split('_')[1]}][cantidad]`;
+            hidden.setAttribute('data-id', id);
+            hidden.classList.add('input-cantidad');
+            formHidden.appendChild(hidden);
         }
+        hidden.value = cantidad;
+    }
+
+    function setHiddenSubtotal(id, subtotal) {
+        let hidden = formHidden.querySelector(`input[data-subtotal-id="${id}"]`);
+        if (!hidden) {
+            hidden = document.createElement('input');
+            hidden.type = 'hidden';
+            hidden.name = `${id.split('_')[0]}s[${id.split('_')[1]}][subtotal]`;
+            hidden.setAttribute('data-subtotal-id', id);
+            hidden.classList.add('input-subtotal');
+            formHidden.appendChild(hidden);
+        }
+        hidden.value = subtotal;
+    }
+
+    function actualizarTotal() {
+        let total = 0;
+        for (let key in productosAgregados) {
+            total += productosAgregados[key].cantidad * productosAgregados[key].valor;
+        }
+        totalVenta.textContent = '$' + total.toLocaleString();
+    }
+
+    // ---- Cargar items iniciales ----
+    if (window.itemsIniciales && window.itemsIniciales.length > 0) {
+        window.itemsIniciales.forEach(item => {
+            const key = `${item.tipo}_${item.id}`;
+            productosAgregados[key] = {
+                cantidad: item.cantidad,
+                valor: item.subtotal / item.cantidad
+            };
+
+            // Crear fila en tabla
+            const row = document.createElement('tr');
+            row.setAttribute('data-id', key);
+            row.innerHTML = `
+                <td>${item.nombre}</td>
+                <td><input type="number" min="1" value="${item.cantidad}" class="cantidad-input" style="width:60px;"></td>
+                <td><input type="text" class="subtotal" style="width:100px;" value="$${item.subtotal.toLocaleString()}"></td>
+                <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
+            `;
+            tabla.appendChild(row);
+
+            // Hidden iniciales
+            setHiddenCantidad(key, item.cantidad);
+            setHiddenSubtotal(key, item.subtotal);
+
+            // Listener cantidad
+            row.querySelector('.cantidad-input').addEventListener('input', function () {
+                const nuevaCantidad = parseInt(this.value) || 1;
+                productosAgregados[key].cantidad = nuevaCantidad;
+                const nuevoSubtotal = productosAgregados[key].valor * nuevaCantidad;
+                row.querySelector('.subtotal').value = '$' + nuevoSubtotal.toLocaleString();
+                setHiddenCantidad(key, nuevaCantidad);
+                setHiddenSubtotal(key, nuevoSubtotal);
+                actualizarTotal();
+            });
+
+            // Listener subtotal manual
+            row.querySelector('.subtotal').addEventListener('input', function () {
+                let valorIngresado = parseInt(this.value.replace(/\D/g, '')) || 0;
+                let cantidadActual = productosAgregados[key].cantidad;
+                productosAgregados[key].valor = valorIngresado / cantidadActual;
+                this.value = '$' + valorIngresado.toLocaleString();
+                setHiddenSubtotal(key, valorIngresado);
+                actualizarTotal();
+            });
+
+            // Listener eliminar
+            row.querySelector('.eliminar-producto').addEventListener('click', function () {
+                delete productosAgregados[key];
+                row.remove();
+
+                const hiddenCantidad = formHidden.querySelector(`input[data-id="${key}"]`);
+                if (hiddenCantidad) hiddenCantidad.remove();
+
+                const hiddenSubtotal = formHidden.querySelector(`input[data-subtotal-id="${key}"]`);
+                if (hiddenSubtotal) hiddenSubtotal.remove();
+
+                actualizarTotal();
+
+                const original = document.querySelector(`.${item.tipo}-item[data-id="${item.id}"]`);
+                if (original) {
+                    original.classList.remove('agregado');
+                    original.style.display = 'block';
+                }
+            });
+        });
 
         actualizarTotal();
-
-    });
+    }
+});
 </script>
+
+
+
+
+
 
 
 <script>

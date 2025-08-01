@@ -394,7 +394,7 @@
 
                           @else
 
-                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje - <strong class="pink-text accent-2"> No registra</strong> </div>
+                            <div class="collapsible-header"><i class="material-icons">airline_seat_flat</i>Horarios Masaje - <strong class="pink-text accent-2"> No registra</strong></div>
                             
                           @endif
                         </ul>
@@ -566,7 +566,7 @@
           var diferencia = $(this).data('diferencia') || 0;
 
           var descuento = $(this).data('descuento');
-          var totalPagar = $(this).data('totalpagar');
+          var totalPagar = $(this).data('totalpagar') || 0;
 
           var consumo = $(this).data('consumo');
           // var pagoconsumo = $(this).data('pagoimg') || null;

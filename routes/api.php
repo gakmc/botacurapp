@@ -15,4 +15,16 @@ use Illuminate\Support\Facades\Route;
 |
 */
 
-Route::middleware('auth:api')->get('/user', 'UserController@show')->name('user');
+// Route::middleware('auth:api')->get('/user', 'Api\UserController@show')->name('user');
+
+Route::post('register', 'Api\AuthController@register');
+Route::post('login', 'Api\AuthController@login');
+
+Route::middleware('auth:api')->group(function () {
+    Route::get('me', 'Api\AuthController@me');
+    Route::get('sueldos', 'Api\SueldoController@index');
+    Route::post('logout', 'Api\AuthController@logout');
+    Route::post('refresh', 'Api\AuthController@refresh');
+
+});
+

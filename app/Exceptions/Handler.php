@@ -52,4 +52,10 @@ class Handler extends ExceptionHandler
     {
         return parent::render($request, $exception);
     }
+
+    protected function unauthenticated($request, \Illuminate\Auth\AuthenticationException $exception)
+    {
+        return response()->json(['error' => 'No autenticado.'], 401);
+    }
+
 }

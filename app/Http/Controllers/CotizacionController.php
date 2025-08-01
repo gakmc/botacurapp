@@ -40,6 +40,7 @@ class CotizacionController extends Controller
 
     public function store(Request $request)
     {
+        // dd($request->all());
         $request->validate([
             'cliente' => 'required|string|max:255',
             'solicitante' => 'required|string|max:255',
@@ -95,15 +96,15 @@ class CotizacionController extends Controller
                 if ($request->has($tipo)) {
                     foreach ($request->$tipo as $key => $datos) {
                         $item = $modelo::findOrFail($key);
-                        $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
+                        // $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
 
                         CotizacionItem::create([
                             'cotizacion_id' => $cotizacion->id,
                             'itemable_id' => $key,
                             'itemable_type' => $modelo,
                             'cantidad' => (int)$datos['cantidad'],
-                            'valor_neto' => $valor,
-                            'total' => $valor * (int)$datos['cantidad'],
+                            'valor_neto' => (int)$datos['subtotal'] / (int)$datos['cantidad'],
+                            'total' =>  (int)$datos['subtotal'],
                         ]);
                     }
                 }
@@ -129,7 +130,7 @@ class CotizacionController extends Controller
     {
         $cotizacion = Cotizacion::findOrFail($id);
         $cotizacion->with(['items','items.programas','items.productos']);
-
+        // dd($cotizacion->items);
         $tiposProductos = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
         $programas = Programa::all();
@@ -150,7 +151,7 @@ class CotizacionController extends Controller
      */
     public function update(Request $request, $id)
     {
-
+        // dd($request->all());
         $cotizacion = Cotizacion::findOrFail($id);
 
         $request->validate([
@@ -209,14 +210,14 @@ class CotizacionController extends Controller
                 if ($request->has($tipo)) {
                     foreach ($request->$tipo as $key => $datos) {
                         $item = $modelo::findOrFail($key);
-                        $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
+                        // $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
 
                         $cotizacion->items()->create([
                             'itemable_id' => $key,
                             'itemable_type' => $modelo,
                             'cantidad' => (int)$datos['cantidad'],
-                            'valor_neto' => $valor,
-                            'total' => $valor * (int)$datos['cantidad'],
+                            'valor_neto' => (int)$datos['subtotal']/(int)$datos['cantidad'],
+                            'total' => (int)$datos['subtotal'],
                         ]);
                     }
                 }

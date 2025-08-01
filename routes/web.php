@@ -342,6 +342,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
+    Route::get('giftcards/{gc}/reservar', 'GiftCardController@byPassReserva')->name('giftcards.reservar');
 
 
     Route::get('informes', 'InformeController@index')->name('informes.index');

@@ -7,6 +7,7 @@ use App\Consumo;
 use App\DetalleServiciosExtra;
 use App\Events\Menu\AvisoCocinaEvent;
 use App\Events\Menu\MenuEntregadoEvent;
+use App\GiftCard;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
 use App\LugarMasaje;
@@ -30,6 +31,7 @@ use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
 // use PDF;
 use Illuminate\Support\Facades\Storage;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class ReservaController extends Controller
 {
@@ -180,10 +182,18 @@ class ReservaController extends Controller
         $programas = Programa::with('servicios')->get();
         $tipos     = TipoTransaccion::all();
 
+        $gc = GiftCard::where('para',$cliente->nombre_cliente)
+                ->where('usada', false)
+                ->whereNull('fecha_uso')
+                ->whereNull('id_venta')
+                ->first();
+
+
         return view('themes.backoffice.pages.reserva.create', [
             'cliente'   => $cliente,
             'programas' => $programas,
             'tipos'     => $tipos,
+            'gc'        => $gc
         ]);
     }
 
@@ -220,6 +230,8 @@ class ReservaController extends Controller
             'total_pagar'       => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
         ]);
 
+        // dd($request->all());
+
         $masajesExtra         = null;
         $almuerzosExtra       = null;
         $cantidadMasajesExtra = null;
@@ -239,6 +251,10 @@ class ReservaController extends Controller
                 if ($request->has('cliente_id')) {
                     $cliente = $request->cliente_id;
                     $request->merge(['cliente_id' => $cliente]);
+                }
+
+                if ($request->has('gcard_id')) {
+                    $gc = GiftCard::findOrFail($request->gcard_id);
                 }
 
                 // Asignar el user_id del usuario autenticado
@@ -275,6 +291,27 @@ class ReservaController extends Controller
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
                     'total_pagar'               => $request->total_pagar,
                 ]);
+
+                if ($request->has('gcard_id')) {
+                    $gc->usada = true;
+                    $gc->fecha_uso = Carbon::now()->format('Y-m-d');
+                    $gc->id_venta = $venta->id;
+                    $gc->save();
+
+                    if(!$request->has('imagen_abono')){
+
+                        $codigo = $gc->codigo;
+
+                        $generator = new BarcodeGeneratorPNG();
+                        $barcode   = $generator->getBarcode($codigo, $generator::TYPE_CODE_128);
+
+                        // Guardar imagen generada como archivo PNG
+                        $filename  = time() . '-barcode.png';
+                        $url_abono = 'temp/' . $filename;
+                        Storage::disk('imagen_abono')->put($url_abono, $barcode);
+
+                    }
+                }
 
                 // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
                 if ($filename) {

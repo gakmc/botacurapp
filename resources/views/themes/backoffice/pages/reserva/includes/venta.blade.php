@@ -8,7 +8,7 @@
             {{(!is_null($reserva->venta->pagoConsumo)) ? 'green' : ''}}
         @endif ">
 
-        <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Abono por servicio Extra: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} </h5>
+        <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Abono por servicio Extra: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} {{($reserva->venta->tiene_gc) ? 'Gift Card 🎁' : ''}}</h5>
     </a>
 
     @php
@@ -31,7 +31,7 @@
             Abono: ${{number_format($reserva->venta->abono_programa,0,'','.')}}
         </a>
         <a class="collection-item center-align valign-wrapper left">
-            Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Pago Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
+            Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Cierre Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
         </a>
 
         <a href="#modalVenta{{--$reserva->venta->id--}}"

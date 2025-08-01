@@ -522,138 +522,296 @@ class AdminController extends Controller
     }
 
     
-    public function detalleMes($anio, $mes)
-    {
-        //* Obtener las ventas por el mes y año seleccionados
-        $query = Venta::select(
-                DB::raw('DATE(reservas.fecha_visita) as fecha'),
-                DB::raw('DAY(reservas.fecha_visita) AS dia'),
-                DB::raw('SUM(ventas.abono_programa) as abono'),
-                DB::raw('SUM(ventas.diferencia_programa) as diferencia'),
-                DB::raw('SUM(ventas.total_pagar) as pendiente'),
-                DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
-            )
-            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->join('programas', 'reservas.id_programa', '=', 'programas.id')
-            ->whereMonth('reservas.fecha_visita', $mes)
-            ->whereYear('reservas.fecha_visita', $anio)
-            ->groupBy(DB::raw('DATE(reservas.fecha_visita)'), DB::raw('DAY(reservas.fecha_visita)'))
-            ->orderBy('fecha', 'desc');
+    // public function detalleMes($anio, $mes)
+    // {
+    //     //* Obtener las ventas por el mes y año seleccionados
+    //     $query = Venta::select(
+    //             DB::raw('DATE(reservas.fecha_visita) as fecha'),
+    //             DB::raw('DAY(reservas.fecha_visita) AS dia'),
+    //             DB::raw('SUM(ventas.abono_programa) as abono'),
+    //             DB::raw('SUM(ventas.diferencia_programa) as diferencia'),
+    //             DB::raw('SUM(ventas.total_pagar) as pendiente'),
+    //             DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
+    //         )
+    //         ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+    //         ->join('programas', 'reservas.id_programa', '=', 'programas.id')
+    //         ->whereMonth('reservas.fecha_visita', $mes)
+    //         ->whereYear('reservas.fecha_visita', $anio)
+    //         ->groupBy(DB::raw('DATE(reservas.fecha_visita)'), DB::raw('DAY(reservas.fecha_visita)'))
+    //         ->orderBy('fecha', 'desc');
     
-        $result = $query->get();
+    //     $result = $query->get();
     
-        //? Paginación manual
-        $perPage = 10;
-        $currentPage = LengthAwarePaginator::resolveCurrentPage();
-        $currentItems = $result->slice(($currentPage - 1) * $perPage)->values();
-        $ventasAgrupadas = new LengthAwarePaginator($currentItems, $result->count(), $perPage, $currentPage, [
-            'path' => request()->url(),
-            'query' => request()->query(),
-        ]);
+    //     //? Paginación manual
+    //     $perPage = 10;
+    //     $currentPage = LengthAwarePaginator::resolveCurrentPage();
+    //     $currentItems = $result->slice(($currentPage - 1) * $perPage)->values();
+    //     $ventasAgrupadas = new LengthAwarePaginator($currentItems, $result->count(), $perPage, $currentPage, [
+    //         'path' => request()->url(),
+    //         'query' => request()->query(),
+    //     ]);
 
 
 
-        //* Consumos en las ventas
-        foreach ($ventasAgrupadas as $venta) {
-            $venta->consumo = Venta::whereHas('reserva', function ($query) use ($venta) {
-                $query->whereDate('fecha_visita', $venta->fecha);
-            })
-            ->with('consumo.detallesConsumos', 'consumo.detalleServiciosExtra')
-            ->get()
-            ->pluck('consumo') //* Obtiene solo los consumos
-            ->filter(); //* Elimina nulos si hay ventas sin consumo
-        }
+    //     //* Consumos en las ventas
+    //     foreach ($ventasAgrupadas as $venta) {
+    //         $venta->consumo = Venta::whereHas('reserva', function ($query) use ($venta) {
+    //             $query->whereDate('fecha_visita', $venta->fecha);
+    //         })
+    //         ->with('consumo.detallesConsumos', 'consumo.detalleServiciosExtra')
+    //         ->get()
+    //         ->pluck('consumo') //* Obtiene solo los consumos
+    //         ->filter(); //* Elimina nulos si hay ventas sin consumo
+    //     }
 
 
     
-        $ingresosVentas = $result->sum('abono');
-        $ventasPendientes = $result->sum('pendiente');
+    //     $ingresosVentas = $result->sum('abono');
+    //     $ventasPendientes = $result->sum('pendiente');
     
-        //* Mantener resumen por tipo de transacción
-        // $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
-        //     // Suma de abonos donde el tipo de transacción de abono coincide
-        //     $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-        //                   ->whereHas('reserva', function ($query) use ($mes, $anio ) {
-        //                       $query->whereMonth('fecha_visita', $mes)
-        //                             ->whereYear('fecha_visita', $anio);
-        //                   })
-        //                   ->sum('abono_programa');
+    //     //* Mantener resumen por tipo de transacción
+    //     // $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+    //     //     // Suma de abonos donde el tipo de transacción de abono coincide
+    //     //     $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+    //     //                   ->whereHas('reserva', function ($query) use ($mes, $anio ) {
+    //     //                       $query->whereMonth('fecha_visita', $mes)
+    //     //                             ->whereYear('fecha_visita', $anio);
+    //     //                   })
+    //     //                   ->sum('abono_programa');
         
-        //     // Suma de diferencias donde el tipo de transacción de diferencia coincide
-        //     $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
-        //                        ->whereHas('reserva', function ($query) use ($mes, $anio) {
-        //                            $query->whereMonth('fecha_visita', $mes)
-        //                                  ->whereYear('fecha_visita', $anio);
-        //                        })
-        //                        ->sum('diferencia_programa');
+    //     //     // Suma de diferencias donde el tipo de transacción de diferencia coincide
+    //     //     $diferencia = Venta::where('id_tipo_transaccion_diferencia', $tipo->id)
+    //     //                        ->whereHas('reserva', function ($query) use ($mes, $anio) {
+    //     //                            $query->whereMonth('fecha_visita', $mes)
+    //     //                                  ->whereYear('fecha_visita', $anio);
+    //     //                        })
+    //     //                        ->sum('diferencia_programa');
         
-        //     // Se asigna al objeto TipoTransaccion
-        //     $tipo->total_abonos = $abono;
-        //     $tipo->total_diferencias = $diferencia;
+    //     //     // Se asigna al objeto TipoTransaccion
+    //     //     $tipo->total_abonos = $abono;
+    //     //     $tipo->total_diferencias = $diferencia;
         
-        //     return $tipo;
-        // });
+    //     //     return $tipo;
+    //     // });
 
-        $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
-            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                ->whereHas('reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('fecha_visita', $anio)
-                        ->whereMonth('fecha_visita', $mes);
-                })
-                ->sum('abono_programa');
+    //     $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+    //         $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+    //             ->whereHas('reserva', function ($query) use ($anio, $mes) {
+    //                 $query->whereYear('fecha_visita', $anio)
+    //                     ->whereMonth('fecha_visita', $mes);
+    //             })
+    //             ->sum('abono_programa');
         
-            // Suma de pagos del campo pago1 con tipo 1
-            $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
-                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('fecha_visita', $anio)
-                        ->whereMonth('fecha_visita', $mes);
-                })
-                ->sum('pago1');
+    //         // Suma de pagos del campo pago1 con tipo 1
+    //         $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
+    //             ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+    //                 $query->whereYear('fecha_visita', $anio)
+    //                     ->whereMonth('fecha_visita', $mes);
+    //             })
+    //             ->sum('pago1');
 
-            // Suma de pagos del campo pago2 con tipo 2 (solo si no es null)
-            $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
-                ->whereNotNull('pago2')
-                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('fecha_visita', $anio)
-                        ->whereMonth('fecha_visita', $mes);
-                })
-                ->sum('pago2');
+    //         // Suma de pagos del campo pago2 con tipo 2 (solo si no es null)
+    //         $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
+    //             ->whereNotNull('pago2')
+    //             ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+    //                 $query->whereYear('fecha_visita', $anio)
+    //                     ->whereMonth('fecha_visita', $mes);
+    //             })
+    //             ->sum('pago2');
 
-            $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
-                ->whereYear('fecha', $anio)
-                ->whereMonth('fecha', $mes)
-                ->sum('subtotal');
+    //         $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
+    //             ->whereYear('fecha', $anio)
+    //             ->whereMonth('fecha', $mes)
+    //             ->sum('subtotal');
             
 
                 
-                $tipo->total_abonos = $abono;
-                $tipo->total_diferencias = $total_pago1 + $total_pago2;
-                $tipo->venta_directa = $ventaDirecta;
+    //             $tipo->total_abonos = $abono;
+    //             $tipo->total_diferencias = $total_pago1 + $total_pago2;
+    //             $tipo->venta_directa = $ventaDirecta;
         
-            return $tipo;
-        });
+    //         return $tipo;
+    //     });
 
 
 
-        $programas = Programa::with(['reservas' => function ($query) use ($mes, $anio) {
-            $query->whereMonth('fecha_visita', $mes)
-                ->whereYear('fecha_visita', $anio);
-        }])->get()->map(function ($programa) {
-            $programa->total_programas = $programa->reservas->count();
-            return $programa;
-        });
+    //     $programas = Programa::with(['reservas' => function ($query) use ($mes, $anio) {
+    //         $query->whereMonth('fecha_visita', $mes)
+    //             ->whereYear('fecha_visita', $anio);
+    //     }])->get()->map(function ($programa) {
+    //         $programa->total_programas = $programa->reservas->count();
+    //         return $programa;
+    //     });
 
         
     
-        $nombreMes = Carbon::createFromDate($anio, $mes, 1)
-            ->locale('es')->translatedFormat('F Y');
+    //     $nombreMes = Carbon::createFromDate($anio, $mes, 1)
+    //         ->locale('es')->translatedFormat('F Y');
     
-        return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact(
-            'ventasAgrupadas', 'nombreMes', 'anio', 'mes',
-            'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'
-        ));
+    //     return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact(
+    //         'ventasAgrupadas', 'nombreMes', 'anio', 'mes',
+    //         'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'
+    //     ));
+    // }
+    
+
+public function detalleMes($anio, $mes)
+{
+    //* 1. Ventas (sin GiftCard para evitar doble conteo)
+    $ventas = Venta::select(
+            DB::raw('DATE(reservas.fecha_visita) as fecha'),
+            DB::raw('DAY(reservas.fecha_visita) AS dia'),
+            DB::raw('SUM(ventas.abono_programa) as abono'),
+            DB::raw('SUM(ventas.diferencia_programa) as diferencia'),
+            DB::raw('SUM(ventas.total_pagar) as pendiente'),
+            DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
+        )
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->join('programas', 'reservas.id_programa', '=', 'programas.id')
+        ->whereNotIn('ventas.id', function($sub){
+            $sub->select('id_venta')->from('gift_cards')->whereNotNull('id_venta');
+        })
+        ->whereMonth('reservas.fecha_visita', $mes)
+        ->whereYear('reservas.fecha_visita', $anio)
+        ->groupBy(DB::raw('DATE(reservas.fecha_visita)'), DB::raw('DAY(reservas.fecha_visita)'))
+        ->orderBy('fecha', 'desc')
+        ->get();
+
+    //* 2. GiftCards agrupadas por fecha de creación
+    $giftcards = DB::table('gift_cards')
+        ->select(
+            DB::raw('DATE(created_at) as fecha'),
+            DB::raw('DAY(created_at) as dia'),
+            DB::raw('SUM(monto) as monto_gc')
+        )
+        ->whereYear('created_at', $anio)
+        ->whereMonth('created_at', $mes)
+        ->groupBy(DB::raw('DATE(created_at)'), DB::raw('DAY(created_at)'))
+        ->get();
+
+    //* 3. Combinar ventas y GiftCards por fecha
+    $fechasUnicas = $ventas->pluck('fecha')
+        ->merge($giftcards->pluck('fecha'))
+        ->unique()
+        ->sortByDesc(function($fecha) {
+    return $fecha;
+});
+
+    $merged = collect();
+
+    foreach ($fechasUnicas as $fecha) {
+        $ventaDia = $ventas->firstWhere('fecha', $fecha);
+        $giftDia = $giftcards->firstWhere('fecha', $fecha);
+
+        $merged->push((object)[
+            'fecha' => $fecha,
+            'dia' => \Carbon\Carbon::parse($fecha)->day,
+            'abono' => $ventaDia->abono ?? 0,
+            'diferencia' => $ventaDia->diferencia ?? 0,
+            'pendiente' => $ventaDia->pendiente ?? 0,
+            'total_pagar' => $ventaDia->total_pagar ?? 0,
+            'monto_giftcards' => $giftDia->monto_gc ?? 0,
+        ]);
     }
-    
+
+    //* 4. Paginación
+    $perPage = 10;
+    $currentPage = LengthAwarePaginator::resolveCurrentPage();
+    $currentItems = $merged->slice(($currentPage - 1) * $perPage)->values();
+
+    $ventasAgrupadas = new LengthAwarePaginator(
+        $currentItems,
+        $merged->count(),
+        $perPage,
+        $currentPage,
+        [
+            'path' => request()->url(),
+            'query' => request()->query(),
+        ]
+    );
+
+    //* 5. Consumos y servicios extra para días con ventas
+    foreach ($ventasAgrupadas as $venta) {
+        $venta->consumo = Venta::whereHas('reserva', function ($query) use ($venta) {
+            $query->whereDate('fecha_visita', $venta->fecha);
+        })
+        ->with('consumo.detallesConsumos', 'consumo.detalleServiciosExtra')
+        ->get()
+        ->pluck('consumo')
+        ->filter();
+    }
+
+    //* 6. Sumar totales para resumen
+    $ingresosVentas = $ventas->sum('abono');
+    $ventasPendientes = $ventas->sum('pendiente');
+
+    //* 7. Resumen por tipo de transacción (igual que antes)
+    $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+        $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+            ->whereHas('reserva', function ($query) use ($anio, $mes) {
+                $query->whereYear('fecha_visita', $anio)
+                    ->whereMonth('fecha_visita', $mes);
+            })
+            ->whereNotIn('id', function($sub){
+                $sub->select('id_venta')->from('gift_cards')->whereNotNull('id_venta');
+            })
+            ->sum('abono_programa');
+
+        $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
+            ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+                $query->whereYear('fecha_visita', $anio)
+                    ->whereMonth('fecha_visita', $mes);
+            })
+            ->sum('pago1');
+
+        $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
+            ->whereNotNull('pago2')
+            ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+                $query->whereYear('fecha_visita', $anio)
+                    ->whereMonth('fecha_visita', $mes);
+            })
+            ->sum('pago2');
+
+        $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
+            ->whereYear('fecha', $anio)
+            ->whereMonth('fecha', $mes)
+            ->sum('subtotal');
+        
+        $tipo->total_abonos = $abono;
+        $tipo->total_diferencias = $total_pago1 + $total_pago2;
+        $tipo->venta_directa = $ventaDirecta;
+
+        return $tipo;
+    });
+
+    //* 8. Programas (igual que antes)
+    $programas = Programa::with(['reservas' => function ($query) use ($mes, $anio) {
+        $query->whereMonth('fecha_visita', $mes)
+            ->whereYear('fecha_visita', $anio);
+    }])->get()->map(function ($programa) {
+        $programa->total_programas = $programa->reservas->count();
+        return $programa;
+    });
+
+    //* 9. Nombre del mes
+    $nombreMes = Carbon::createFromDate($anio, $mes, 1)
+        ->locale('es')->translatedFormat('F Y');
+
+    return view('themes.backoffice.pages.admin.finanzas.detalle-mes', compact(
+        'ventasAgrupadas', 'nombreMes', 'anio', 'mes',
+        'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'
+    ));
+}
+
+
+
+
+
+
+
+
+
+
 
     // public function OLDdetalleMes($anio, $mes)
     // {

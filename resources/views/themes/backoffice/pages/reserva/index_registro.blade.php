@@ -176,7 +176,7 @@
 
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                {{$reserva->cliente->nombre_cliente}}
+                                                {{($reserva->venta->tiene_gc) ? '🎁' : ''}} {{$reserva->cliente->nombre_cliente}} 
                                             </a>
                                         </td>
                                         <td>
