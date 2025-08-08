@@ -36,6 +36,10 @@
             <p class="blue-text"><i class='material-icons left'>info_outline</i> Existe una GiftCard asociada a este nombre. <a class="btn-small btn-floating" href="#" id="usarGC" data-programa="{{$gc->id_programa}}" data-cantidad="{{$gc->cantidad_personas}}" data-monto="{{$gc->monto}}" data-codigo="{{$gc->codigo}}"><i class='material-icons tiny'>file_download</i></a></p>
   
             <input type="hidden" name="gcard_id" id="gcard_id" value="{{$gc->id}}">
+
+            @else
+            <label for="gcard_codigo">¿Tiene Giftcard?</label>
+            <input type="text" name="gcard_codigo" id="gcard_codigo" placeholder="Ingrese el código">
             @endif
 
 
@@ -500,5 +504,87 @@ function formatCLP(number)
   });
 </script>
 
+
+<script>
+  $('#gcard_codigo').on('blur', function(){
+    let codigo = $(this).val();
+
+    if(!codigo) return;
+
+    $.ajax({
+      url: '{{route("backoffice.giftcards.verificar")}}',
+      type: 'GET',
+      data: {codigo: codigo},
+      success: function(response){
+        if (response.success) {
+          
+        
+                        // Llenar inputs automáticamente
+                $('#gcard_id').remove(); // Evitar duplicados
+                $('<input>').attr({
+                    type: 'hidden',
+                    id: 'gcard_id',
+                    name: 'gcard_id',
+                    value: response.data.id
+                }).appendTo('form');
+
+                                // Programa
+                $('#id_programa').val(response.data.programa);
+                $('#id_programa').material_select();
+                $('#id_programa').trigger('change');
+
+                // Cantidad personas
+                $('#cantidad_personas').val(response.data.cantidad).trigger('change');
+                $('label[for="cantidad_personas"]').addClass('active');
+
+                // Abono
+                abono = parseInt(response.data.monto);
+                $('#abono_programa').val(formatCLP(response.data.monto));
+                $('#abono_hidden').val(response.data.monto);
+                $('label[for="abono_programa"]').addClass('active');
+
+                // Calcular total
+                calcularValorTotal();
+
+                // Código de barras
+                let canvas = document.createElement('canvas');
+                JsBarcode(canvas, response.data.codigo, { format: "CODE128" });
+                $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+              }else{
+                Swal.fire({
+                  icon: 'error',
+                  title: 'Código no encontrado',
+                  text: 'Este codigo de Gift Card no existe o ya fue utilizado.'
+                });
+              }
+      },
+      error: function () { 
+        Swal.fire({
+          icon: 'error',
+          title: 'Error',
+          text: 'No se pudo verificar la GiftCard.'
+        })
+       }
+    })
+  })
+</script>
+
+<script>
+  $.ajax({
+    url: '{{ route("backoffice.giftcards.lista") }}',
+    type: 'GET',
+    success: function(data) {
+        $('input#gcard_codigo').autocomplete({
+            data: data,
+            limit: 5, // máximo sugerencias
+            onAutocomplete: function(val) {
+                // Cuando seleccionas un código, autocompleta datos
+                verificarGiftCard(val);
+            },
+            minLength: 2 // desde cuántas letras comienza a sugerir
+        });
+    }
+});
+</script>
 
 @endsection

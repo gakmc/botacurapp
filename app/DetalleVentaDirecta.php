@@ -16,7 +16,7 @@ class DetalleVentaDirecta extends Model
         'subtotal',
     ];
 
-    public function venta()
+    public function ventaDirecta()
     {
         return $this->belongsTo(VentaDirecta::class, 'venta_directa_id');
     }

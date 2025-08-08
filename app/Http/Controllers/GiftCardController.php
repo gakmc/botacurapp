@@ -1,18 +1,15 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Cliente;
 use App\GiftCard;
-use App\Programa;
-use Carbon\Carbon;
-use Illuminate\Support\Str;
-use Illuminate\Http\Request;
-use Picqer\Barcode\BarcodeGeneratorPNG;
-use Illuminate\Support\Facades\Mail;
 use App\Mail\GiftCardMailable;
-use Barryvdh\DomPDF\Facade\Pdf;
+use App\Programa;
 use Barryvdh\Snappy\Facades\SnappyPdf as sPDF;
+use Carbon\Carbon;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Mail;
+use Picqer\Barcode\BarcodeGeneratorPNG;
 
 class GiftCardController extends Controller
 {
@@ -40,7 +37,7 @@ class GiftCardController extends Controller
      */
     public function create()
     {
-        $lista = ['botacura full','full day'];
+        $lista = ['botacura full', 'full day'];
 
         $programas = Programa::whereIn(strtolower('nombre_programa'), $lista)->get();
 
@@ -57,39 +54,38 @@ class GiftCardController extends Controller
     {
         $numero = null;
         if ($request->has('telefono')) {
-            $numero = str_replace('+','',$request->telefono);
+            $numero = str_replace('+', '', $request->telefono);
 
-            if (substr($numero,0,2) !== '56') {
-                $numero = '56'.$numero;
+            if (substr($numero, 0, 2) !== '56') {
+                $numero = '56' . $numero;
             }
 
         }
 
         $request->merge([
-            'monto' => (int) str_replace(['$','.',','],"",$request->monto),
-            'telefono' => $numero
+            'monto'    => (int) str_replace(['$', '.', ','], "", $request->monto),
+            'telefono' => $numero,
         ]);
 
         $codigo = GiftCard::generarCodigoUnicoGiftCard();
 
-
         $gc = GiftCard::create([
-            'codigo' => $codigo,
-            'monto' => $request->monto,
-            'usada' => false,
-            'fecha_uso' => null,
-            'id_programa' => $request->id_programa,
-            'id_venta' => null,
-            'validez_hasta' => Carbon::now()->addDays(60)->toDateString(),
-            'de' => $request->de,
-            'para' => $request->para,
-            'correo' => $request->correo,
-            'telefono' => $request->telefono,
+            'codigo'            => $codigo,
+            'monto'             => $request->monto,
+            'usada'             => false,
+            'fecha_uso'         => null,
+            'id_programa'       => $request->id_programa,
+            'id_venta'          => null,
+            'validez_hasta'     => Carbon::now()->addDays(60)->toDateString(),
+            'de'                => $request->de,
+            'para'              => $request->para,
+            'correo'            => $request->correo,
+            'telefono'          => $request->telefono,
             'cantidad_personas' => $request->cantidad_personas,
-            'generada_por' => auth()->user()->id,
+            'generada_por'      => auth()->user()->id,
         ]);
 
-        return redirect()->route('backoffice.giftcards.index')->with('success','Gift Card generada exitosamente.');
+        return redirect()->route('backoffice.giftcards.index')->with('success', 'Gift Card generada exitosamente.');
     }
 
     /**
@@ -102,13 +98,13 @@ class GiftCardController extends Controller
     {
         $gc = GiftCard::findOrFail($id);
 
-        $codigo = $gc->codigo;
+        $codigo    = $gc->codigo;
         $generator = new BarcodeGeneratorPNG();
-        $barcode = base64_encode($generator->getBarcode($codigo, $generator::TYPE_CODE_128));
+        $barcode   = base64_encode($generator->getBarcode($codigo, $generator::TYPE_CODE_128));
 
         $programa = Programa::with('servicios')->findOrFail($gc->id_programa);
 
-        return view('themes.backoffice.pages.giftcard.show', compact('gc','programa', 'barcode'));
+        return view('themes.backoffice.pages.giftcard.show', compact('gc', 'programa', 'barcode'));
     }
 
     /**
@@ -121,11 +117,11 @@ class GiftCardController extends Controller
     {
         $gc = GiftCard::findOrFail($id);
 
-        $lista = ['botacura full','full day'];
+        $lista = ['botacura full', 'full day'];
 
         $programas = Programa::whereIn(strtolower('nombre_programa'), $lista)->get();
 
-        return view('themes.backoffice.pages.giftcard.edit', compact('gc','programas'));
+        return view('themes.backoffice.pages.giftcard.edit', compact('gc', 'programas'));
     }
 
     /**
@@ -141,38 +137,38 @@ class GiftCardController extends Controller
 
         $numero = null;
         if ($request->has('telefono')) {
-            $numero = str_replace('+','',$request->telefono);
+            $numero = str_replace('+', '', $request->telefono);
 
-            if (substr($numero,0,2) !== '56') {
-                $numero = '56'.$numero;
+            if (substr($numero, 0, 2) !== '56') {
+                $numero = '56' . $numero;
             }
 
         }
 
         $request->merge([
-            'monto' => (int) str_replace(['$','.',','],"",$request->monto),
-            'telefono' => $numero
+            'monto'    => (int) str_replace(['$', '.', ','], "", $request->monto),
+            'telefono' => $numero,
         ]);
 
         // dd($id, $request->all());
 
         GiftCard::update([
-            'codigo' => $request->codigo,
-            'monto' => $request->monto,
-            'usada' => $gc->usada,
-            'fecha_uso' => $gc->fecha_uso,
-            'id_programa' => $request->id_programa,
-            'id_venta' => $gc->id_venta,
-            'validez_hasta' => $gc->validez_hasta,
-            'de' => $request->de,
-            'para' => $request->para,
-            'correo' => $request->correo,
-            'telefono' => $request->telefono,
+            'codigo'            => $request->codigo,
+            'monto'             => $request->monto,
+            'usada'             => $gc->usada,
+            'fecha_uso'         => $gc->fecha_uso,
+            'id_programa'       => $request->id_programa,
+            'id_venta'          => $gc->id_venta,
+            'validez_hasta'     => $gc->validez_hasta,
+            'de'                => $request->de,
+            'para'              => $request->para,
+            'correo'            => $request->correo,
+            'telefono'          => $request->telefono,
             'cantidad_personas' => $request->cantidad_personas,
-            'generada_por' => $gc->generada_por,
+            'generada_por'      => $gc->generada_por,
         ]);
 
-        return redirect()->route('backoffice.giftcards.index')->with('success','Gift Card actualizada exitosamente.');
+        return redirect()->route('backoffice.giftcards.index')->with('success', 'Gift Card actualizada exitosamente.');
     }
 
     /**
@@ -187,21 +183,20 @@ class GiftCardController extends Controller
 
         $gc->delete();
 
-        return redirect()->route('backoffice.giftcards.index')->with('success','Gift Card eliminada exitosamente.');
+        return redirect()->route('backoffice.giftcards.index')->with('success', 'Gift Card eliminada exitosamente.');
     }
-
 
     public function enviarpdf($id)
     {
         $gc = GiftCard::with('programa.servicios')->findOrFail($id);
-        
+
         $generator = new BarcodeGeneratorPNG();
-        $barcode = base64_encode($generator->getBarcode($gc->codigo, $generator::TYPE_CODE_128));
-        
+        $barcode   = base64_encode($generator->getBarcode($gc->codigo, $generator::TYPE_CODE_128));
+
         $pdfData = sPDF::loadView('pdf.giftcard.viewPDF', [
-            'gc' => $gc,
+            'gc'       => $gc,
             'programa' => $gc->programa,
-            'barcode' => $barcode
+            'barcode'  => $barcode,
         ])->setOption('enable-local-file-access', true)
             ->setOption('disable-smart-shrinking', true)
             ->setPaper('a4')
@@ -209,7 +204,7 @@ class GiftCardController extends Controller
             ->output();
 
         // return $pdfData->inline('GiftCard-'.$gc->id.'.pdf');
-        
+
         Mail::to($gc->correo)
             ->send(new GiftCardMailable($gc, $pdfData));
 
@@ -218,23 +213,64 @@ class GiftCardController extends Controller
 
     public function byPassReserva($id)
     {
-        $gc = GiftCard::findOrFail($id);
+        $gc      = GiftCard::findOrFail($id);
         $cliente = Cliente::where('nombre_cliente', $gc->para)->first();
         // dd($gc, $cliente);
         // dd($cliente->exists());
         if ($cliente) {
-            return redirect()->route('backoffice.reserva.create',[
-                'cliente'=>$cliente,
+            return redirect()->route('backoffice.reserva.create', [
+                'cliente'  => $cliente,
                 'programa' => $gc->id_programa,
                 'cantidad' => $gc->cantidad_personas,
-                'monto' => $gc->monto,
-                'codigo' => $gc->codigo,
+                'monto'    => $gc->monto,
+                'codigo'   => $gc->codigo,
 
             ]);
-        }else{
+        } else {
             return redirect()->route('backoffice.cliente.create', ['nombre' => $gc->para]);
         }
     }
 
-    
+    public function verificarCodigo(Request $request)
+    {
+        $codigo = $request->codigo;
+
+        $gc = GiftCard::where('codigo', $codigo)
+            ->where('usada', false)
+            ->whereNull('fecha_uso')
+            ->whereNull('id_venta')
+            ->first();
+
+        if ($gc) {
+            return response()->json([
+                'success' => true,
+                'data'    => [
+                    'id'       => $gc->id,
+                    'programa' => $gc->id_programa,
+                    'cantidad' => $gc->cantidad_personas,
+                    'monto'    => $gc->monto,
+                    'codigo'   => $gc->codigo,
+                ],
+            ]);
+        }
+
+        return response()->json(['success' => false]);
+    }
+
+    public function listaCodigos()
+    {
+        $codigos = GiftCard::where('usada', false)
+            ->whereNull('fecha_uso')
+            ->whereNull('id_venta')
+            ->pluck('codigo');
+
+        // Formato para Materialize: {"CODIGO1": null, "CODIGO2": null}
+        $data = [];
+        foreach ($codigos as $codigo) {
+            $data[$codigo] = null;
+        }
+
+        return response()->json($data);
+    }
+
 }

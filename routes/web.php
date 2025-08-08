@@ -87,6 +87,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Store - Guardar la nueva reserva
     Route::post('venta/{venta}/consumo/registrar', 'ConsumoController@service_store')->name('venta.consumo.service_store');
 
+    Route::get('giftcards/verificar', 'GiftCardController@verificarCodigo')->name('giftcards.verificar');
+
+    Route::get('giftcards/lista', 'GiftCardController@listaCodigos')->name('giftcards.lista');
+
+
 
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
@@ -346,5 +351,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
     Route::get('informes', 'InformeController@index')->name('informes.index');
+    Route::get('/graficos/bebestibles-mensuales', 'InformeController@bebestiblesMensuales')->name('informes.bebestibles');
+    Route::get('/graficos/programas-mensuales', 'InformeController@programasMensuales')->name('informes.programas');
+
 
 });

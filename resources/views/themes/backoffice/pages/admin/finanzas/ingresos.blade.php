@@ -28,7 +28,7 @@
 
                             <div class="card-content">
 
-                                <span class="card-title">Movimientos recientes</span>
+                                <span class="card-title">Movimientos recientes !!!</span>
                                 <table class="responsive-table">
                                     <thead>
                                         <tr>
@@ -38,6 +38,7 @@
                                             <th>Montos Pendientes</th>
                                             <th>Consumos</th>
                                             <th>Servicios Extra</th>
+                                            <th>Gift Cards</th>
                                             <th>Saldo final</th>
                                             <th>Acciones</th>
                                         </tr>
@@ -65,7 +66,8 @@
                                                 <td>${{ number_format($resumen->por_pagar, 0, ',', '.') }}</td>
                                                 <td>${{number_format($consumoSinPropina,0,'','.')}}</td>
                                                 <td>${{number_format($serviciosExtras,0,'','.')}}</td>
-                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar + $consumoSinPropina + $serviciosExtras, 0, ',', '.') }}</td>
+                                                <td>${{ number_format($resumen->giftcards, 0, ',', '.') }}</td>
+                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar + $consumoSinPropina + $serviciosExtras + $resumen->giftcards, 0, ',', '.') }}</td>
                                                 <td>
                                                     <a href="{{ route('backoffice.admin.ingresos.detalleMes', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
                                                         Ver detalle

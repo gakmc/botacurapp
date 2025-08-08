@@ -26,6 +26,11 @@ class Producto extends Model
     {
         return $this->hasMany(DetalleConsumo::class, 'id_producto');
     }
+    
+    public function detallesVentasDirectas()
+    {
+        return $this->hasMany(DetalleVentaDirecta::class, 'id_producto');
+    }
 
     public function tipoProducto()
     {
