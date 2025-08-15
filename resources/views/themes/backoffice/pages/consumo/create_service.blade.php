@@ -144,8 +144,12 @@
             var extraHTML = esMasaje ? `
                 <div class="col s12">
                     <label>
+                        <input type="checkbox" name="servicios[${id}][tiempo_extra_actual]" />
+                        <span>¿Agregar tiempo a masaje actual (30 min)?</span>
+                    </label>
+                    <label>
                         <input type="checkbox" name="servicios[${id}][tiempo_extra]" />
-                        <span>¿Agregar tiempo extra (1 hora)?</span>
+                        <span>¿Agregar masaje extra (1 hora)?</span>
                     </label>
                 </div>
             ` : '';

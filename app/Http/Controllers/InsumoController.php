@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Insumo;
@@ -15,7 +14,41 @@ class InsumoController extends Controller
      *
      * @return \Illuminate\Http\Response
      */
+
     public function index(Request $request)
+    {
+        $search   = trim($request->get('search', '')); // texto a buscar
+        $sectorId = $request->get('id_sector');        // id de sector
+        $soloCrit = $request->boolean('criticos');     // checkbox
+
+        $insumos = Insumo::with(['unidadMedida', 'sector'])
+            ->when($search !== '', function ($q) use ($search) {
+                $q->where('nombre', 'LIKE', "%{$search}%");
+            })
+            ->when($sectorId, function ($q) use ($sectorId) {
+                $q->where('id_sector', $sectorId);
+            })
+            ->when($soloCrit, function ($q) {
+                $q->whereColumn('cantidad', '<=', 'stock_critico');
+            })
+            ->orderBy('nombre')
+            ->get();
+
+        $sectores = Sector::orderBy('nombre')->get();
+        $unidades = UnidadMedida::orderBy('abreviatura')->get(); // por si la usas
+
+        return view('themes.backoffice.pages.insumo.index', [
+            'insumos'  => $insumos,
+            'sectores' => $sectores,
+            'unidades' => $unidades,
+            // para persistir valores en la vista
+            'search'   => $search,
+            'sectorId' => $sectorId,
+            'soloCrit' => $soloCrit,
+        ]);
+    }
+
+    public function OLDindex(Request $request)
     {
         if ($request) {
             // Obtener la consulta de búsqueda del input
@@ -39,12 +72,12 @@ class InsumoController extends Controller
 
             return view('themes.backoffice.pages.insumo.index', [
                 'cocinaInsumos' => $cocinaInsumos,
-                'barraInsumos' => $barraInsumos,
-                'banoInsumos' => $banoInsumos,
+                'barraInsumos'  => $barraInsumos,
+                'banoInsumos'   => $banoInsumos,
                 'masajeInsumos' => $masajeInsumos,
-                'sectores' => Sector::all(),
-                'unidades' => UnidadMedida::all(),
-                'search' => $query,
+                'sectores'      => Sector::all(),
+                'unidades'      => UnidadMedida::all(),
+                'search'        => $query,
             ]);
 
         }

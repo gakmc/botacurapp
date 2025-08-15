@@ -226,7 +226,7 @@
               <ul id="issues-collection" class="collection z-depth-1">
                 <li class="collection-item avatar">
                   <i class="material-icons green accent-2 circle">spa</i>
-                  <h6 class="collection-header m-0">Visita <a class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
+                  <h6 class="collection-header m-0">Visita <a id="btn-ubicacion" class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
                   <p>{{$reserva->visitas->first()->ubicacion->nombre ?? 'Ubicacion no registrada'}}</p>
                   @if ($reserva->visitas->isEmpty())
                       <h6>Aún no se registra la visita para esta reserva</h6>
@@ -853,4 +853,26 @@
   @endif
 </script>
 
+<script>
+  @if (!is_null($reserva->venta->pagoConsumo) && !$reserva->venta->pendiente_de_pago)
+
+    $(function () {
+      // si hay tooltip, primero destrúyelo
+      // $('.tooltipped#btn-reagendar').tooltip('remove');
+    
+      // ocultar con clase de Materialize (tiene !important)
+      // $('#btn-reagendar').addClass('hide');
+      
+      // si es FAB, oculta el contenedor también
+      // $('#btn-reagendar').closest('.fixed-action-btn').addClass('hide');
+
+      $('#btn-reagendar').hide();
+      $('#btn-servicio').hide();
+      $('#btn-producto').hide();
+      $('#icono-eliminar').hide();
+      $('#btn-ubicacion').hide();
+
+    });
+  @endif
+</script>
 @endsection

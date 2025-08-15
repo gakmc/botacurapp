@@ -576,34 +576,41 @@
 
 {{-- Alertas --}}
 <script>
+
+    @if(session('info'))
+        Swal.fire({
+            icon: 'info',
+            title: 'Advertencia',
+            text: '{{ session('info') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            // timer: 5000,
+        });
+    @endif
+
     @if(session('success'))
         Swal.fire({
-            title: "Éxito",
-            text: "{{ session('success') }}",
-            icon: "success"
+            icon: 'success',
+            title: 'Éxito',
+            text: '{{ session('success') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            timer: 5000,
         });
     @endif
 
     @if(session('error'))
-        // Swal.fire({
-        //     toast: true,
-        //     icon: 'error',
-        //     title: '{{ session('error') }}',
-        //     showConfirmButton: false,
-        //     timer: 5000,
-        //     timerProgressBar: true,
-        //         didOpen: (toast) => {
-        //         toast.onmouseenter = Swal.stopTimer;
-        //         toast.onmouseleave = Swal.resumeTimer;
-        //         }
-        // });
-
         Swal.fire({
-            title   :   "Falló",
-            text    :   "{{ session('error') }}",
-            icon    :   "error"
+            icon: 'error',
+            title: 'Alerta',
+            text: '{{ session('error') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            // timer: 5000,
         });
     @endif
+
+
 </script>
         
 @endsection

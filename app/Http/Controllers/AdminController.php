@@ -140,36 +140,78 @@ class AdminController extends Controller
         $cantidadMasajesPorSemana = [];
         $cantidadMasajesPorDia    = [];
 
+        // foreach ($masoterapeutas as $masoterapeuta) {
+        //     // Total de masajes de la semana (por fecha de reserva)
+        //     $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
+        //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+        //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+        //         })
+        //         ->count();
 
+        //     // Masajes por día según la fecha de la reserva
+        //     $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
+        //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+        //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+        //         })
+        //         ->with('reserva') // para evitar múltiples consultas al acceder a la fecha
+        //         ->get()
+        //         ->groupBy(function ($masaje) {
+        //             return Carbon::parse($masaje->reserva->fecha_visita)->format('N');
+        //         });
+
+        //     // Inicializa los días de la semana
+        //     $cantidadMasajesPorDia[$masoterapeuta->id] = [];
+        //     foreach ($diasSemana as $indice => $dia) {
+        //         $diaNumero                                       = $indice + 1;
+        //         $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero])
+        //         ? $masajesPorDia[$diaNumero]->count()
+        //         : 0;
+        //     }
+        // }
 
         foreach ($masoterapeutas as $masoterapeuta) {
-            // Total de masajes de la semana (por fecha de reserva)
-            $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
+            // Masajes de la semana con detalles
+            $masajesSemana = Masaje::where('user_id', $masoterapeuta->id)
                 ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
                     $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
                 })
-                ->count();
+                ->with('reserva')
+                ->get();
 
-            // Masajes por día según la fecha de la reserva
-            $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
-                ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
-                    $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
-                })
-                ->with('reserva') // para evitar múltiples consultas al acceder a la fecha
-                ->get()
-                ->groupBy(function ($masaje) {
-                    return Carbon::parse($masaje->reserva->fecha_visita)->format('N');
-                });
+            // Cálculo total semana
+            $cantidadMasajesPorSemana[$masoterapeuta->id] = $masajesSemana->count();
 
-            // Inicializa los días de la semana
+            // Inicializa por día
             $cantidadMasajesPorDia[$masoterapeuta->id] = [];
             foreach ($diasSemana as $indice => $dia) {
-                $diaNumero                                       = $indice + 1;
-                $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero])
-                ? $masajesPorDia[$diaNumero]->count()
-                : 0;
+                $diaNumero = $indice + 1;
+
+                // Filtrar masajes del día
+                $masajesDia = $masajesSemana->filter(function ($masaje) use ($diaNumero) {
+                    return Carbon::parse($masaje->reserva->fecha_visita)->format('N') == $diaNumero;
+                });
+
+                // Separar normales y con tiempo extra
+                $normales = $masajesDia->where('tiempo_extra', false)->count();
+                $extras   = $masajesDia->where('tiempo_extra', true)->count();
+
+                // Calcular sueldo diario (extra vale el doble)
+                $totalDia = ($normales * $masoterapeuta->salario) + ($extras * ($masoterapeuta->salario * 2));
+
+                $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = [
+                    'normales' => $normales,
+                    'extras'   => $extras,
+                    'total'    => $totalDia,
+                ];
             }
+            $totalSemanal = 0;
+            foreach ($diasSemana as $indice => $dia) {
+                $dataDia = $cantidadMasajesPorDia[$masoterapeuta->id][$dia];
+                $totalSemanal += $dataDia['total'];
+            }
+            $totalSemanas[$masoterapeuta->id] = $totalSemanal;
         }
+
 
         return view('themes.backoffice.pages.admin.index', [
             'masoterapeutas'           => $masoterapeutas,
@@ -178,6 +220,7 @@ class AdminController extends Controller
             'diasSemana'               => $diasSemana,
 
             'fechasDiasSemana'         => $fechasDiasSemana,
+            'totalSemanas'             => $totalSemanas
         ]);
     }
 
@@ -239,7 +282,6 @@ class AdminController extends Controller
                     'dia_trabajado'                      => $diaTrabajado];
             }
         }
-
 
         $totalPorUsuario = [];
 
@@ -433,44 +475,41 @@ class AdminController extends Controller
 
     public function ingresos()
     {
-    $estadoMensual = DB::table('ventas')
-        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-        ->selectRaw('
+        $estadoMensual = DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->selectRaw('
             YEAR(reservas.fecha_visita) AS anio,
             MONTH(reservas.fecha_visita) AS mes,
             COUNT(*) AS total_ventas,
             SUM(ventas.abono_programa) AS total_abonos,
             SUM(ventas.total_pagar) AS por_pagar
         ')
-        ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
-        ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
-        ->orderByDesc(DB::raw('MONTH(reservas.fecha_visita)'))
-        ->paginate(12);
+            ->groupBy(DB::raw('YEAR(reservas.fecha_visita)'), DB::raw('MONTH(reservas.fecha_visita)'))
+            ->orderByDesc(DB::raw('YEAR(reservas.fecha_visita)'))
+            ->orderByDesc(DB::raw('MONTH(reservas.fecha_visita)'))
+            ->paginate(12);
 
-    foreach ($estadoMensual as $venta) {
-        // Consumos y servicios extra
-        $venta->consumo = Venta::whereHas('reserva', function ($query) use ($venta) {
-            $query->whereYear('fecha_visita', $venta->anio)
-                  ->whereMonth('fecha_visita', $venta->mes);
-        })->with('consumo.detallesConsumos', 'consumo.detalleServiciosExtra')
-          ->get()
-          ->pluck('consumo')
-          ->filter();
+        foreach ($estadoMensual as $venta) {
+            // Consumos y servicios extra
+            $venta->consumo = Venta::whereHas('reserva', function ($query) use ($venta) {
+                $query->whereYear('fecha_visita', $venta->anio)
+                    ->whereMonth('fecha_visita', $venta->mes);
+            })->with('consumo.detallesConsumos', 'consumo.detalleServiciosExtra')
+                ->get()
+                ->pluck('consumo')
+                ->filter();
 
-        // Total de GiftCards creadas ese mes (todas)
-        $venta->giftcards = DB::table('gift_cards')
-            ->whereYear('created_at', $venta->anio)
-            ->whereMonth('created_at', $venta->mes)
-            ->sum('monto');
-    }
-
+            // Total de GiftCards creadas ese mes (todas)
+            $venta->giftcards = DB::table('gift_cards')
+                ->whereYear('created_at', $venta->anio)
+                ->whereMonth('created_at', $venta->mes)
+                ->sum('monto');
+        }
 
         return view('themes.backoffice.pages.admin.finanzas.ingresos', [
             'estadoMensual' => $estadoMensual,
         ]);
     }
-
-
 
     public function detalleMes($anio, $mes)
     {
@@ -617,8 +656,6 @@ class AdminController extends Controller
             'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas'
         ));
     }
-
-   
 
     public function ingresosDiarios($anio, $mes, $dia)
     {
@@ -800,13 +837,11 @@ class AdminController extends Controller
         $ingresosVentas   = 0;
         $ventasPendientes = 0;
 
-
         $ventas = Venta::whereHas('reserva', function ($query) use ($mes, $anio, $dia) {
             $query->whereMonth('fecha_visita', $mes)
                 ->whereYear('fecha_visita', $anio)
                 ->whereDay('fecha_visita', $dia);
         })->with('consumo.propina.users')->paginate(20);
-
 
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes, $dia) {
             // Suma de pagos del campo pago1 con tipo 1
@@ -865,7 +900,6 @@ class AdminController extends Controller
             $ingresosVentas += $venta->diferencia_programa;
             $ventasPendientes += $venta->total_pagar;
         }
-
 
         $propinas = Propina::whereHasMorph('propinable', [Consumo::class, VentaDirecta::class], function ($query, $type) use ($dia, $mes, $anio) {
             if ($type === Consumo::class) {

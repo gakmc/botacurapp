@@ -7,12 +7,12 @@
 
     @if(is_null($reserva->venta->consumo))
     <a class="collection-item center">Esta cuenta no posee consumos. </a>
-    <a href="{{ route('backoffice.venta.consumo.service_create', $reserva->venta) }}"
+    <a id="btn-servicio" href="{{ route('backoffice.venta.consumo.service_create', $reserva->venta) }}"
         class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right tooltipped"
         data-position="bottom" data-tooltip="Agregar Servicio">
         <i class="material-icons">hot_tub</i>
     </a>
-    <a href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
+    <a id="btn-producto" href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
         class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right mr-5 tooltipped"
         data-position="bottom" data-tooltip="Agregar Producto">
         <i class="material-icons">local_bar</i>
@@ -29,7 +29,7 @@
 
             <div class="valign-wrapper" style="margin: 4px 0;">
                 @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                <a href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'consumo', 'id' => $detalle->id])}}">
+                <a id="icono-eliminar" href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'consumo', 'id' => $detalle->id])}}">
                     <i class="material-icons">close</i>
                 </a>
 
@@ -59,7 +59,7 @@
 
                 @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     
-                <a href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'servicio', 'id' => $detalle->id])}}">
+                <a id="icono-eliminar" href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'servicio', 'id' => $detalle->id])}}">
                     <i class="material-icons">close</i>
                 </a>
 
@@ -77,12 +77,12 @@
         @endforeach
 
 </div>
-    <a href="{{ route('backoffice.venta.consumo.service_create', $reserva->venta) }}"
+    <a id="btn-servicio" href="{{ route('backoffice.venta.consumo.service_create', $reserva->venta) }}"
         class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right tooltipped"
         data-position="bottom" data-tooltip="Agregar Servicio">
         <i class="material-icons">hot_tub</i>
     </a>
-    <a href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
+    <a id="btn-producto" href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}"
         class="btn-floating activator btn-move-up waves-effect waves-light accent-2 z-depth-0 right mr-5 tooltipped"
         data-position="bottom" data-tooltip="Agregar Producto">
         <i class="material-icons">local_bar</i>

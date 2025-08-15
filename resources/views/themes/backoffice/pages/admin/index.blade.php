@@ -51,31 +51,50 @@
                                         @foreach ($masoterapeutas as $masoterapeuta)
                                         <div id="masoterapeuta-{{ $masoterapeuta->id }}">
                                             <p><strong>Total de esta Semana: {{ $cantidadMasajesPorSemana[$masoterapeuta->id] }}</strong></p>
-                                            <p><strong>Total a pagar: ${{number_format($cantidadMasajesPorSemana[$masoterapeuta->id]*$masoterapeuta->salario,0,'','.')}}</strong></p>
+                                            {{-- <p><strong>Total a pagar: ${{number_format($cantidadMasajesPorSemana[$masoterapeuta->id]*$masoterapeuta->salario,0,'','.')}}</strong></p> --}}
+                                            <p><strong>Total a pagar: ${{ number_format($totalSemanas[$masoterapeuta->id], 0, ',', '.') }}</strong></p>
+
 
                                             <h6>Masajes Realizados por Día</h6>
                                             <ul>
-                                                @foreach ($cantidadMasajesPorDia[$masoterapeuta->id] as $dia =>
+                                                {{-- @foreach ($cantidadMasajesPorDia[$masoterapeuta->id] as $dia =>
                                                 $cantidad)
-                                                <li>{{ $dia }}: {{ $cantidad }} masajes - ${{number_format($cantidad*$masoterapeuta->salario,0,',','.')}}</li>
+                                                    <li>{{ $dia }}: {{ $cantidad }} masajes - ${{number_format($cantidad*$masoterapeuta->salario,0,',','.')}}</li>
 
-                                                @if($cantidad * $masoterapeuta->salario > 0)
-                                                <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
-                                                    value="{{ $fechasDiasSemana[$dia] }}">
-                                                <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="{{$masoterapeuta->salario}}">
-                                                <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
-                                                    value="{{$cantidad*$masoterapeuta->salario}}">
-                                                <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
-                                                    value="{{$cantidad*$masoterapeuta->salario}}">
-                                                <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
-                                                    value="{{$masoterapeuta->id}}">
+                                                    @if($cantidad * $masoterapeuta->salario > 0)
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
+                                                        value="{{ $fechasDiasSemana[$dia] }}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="{{$masoterapeuta->salario}}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]"
+                                                        value="{{$cantidad*$masoterapeuta->salario}}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]"
+                                                        value="{{$cantidad*$masoterapeuta->salario}}">
+                                                    <input type="hidden" name="sueldos[{{ $counter }}][id_user]"
+                                                        value="{{$masoterapeuta->id}}">
 
-                                                @php
-                                                $counter++
-                                                @endphp
-                                                @endif
+                                                    @php
+                                                    $counter++
+                                                    @endphp
+                                                    @endif
 
-                                                @endforeach
+                                                @endforeach --}}
+
+                                                @foreach ($cantidadMasajesPorDia[$masoterapeuta->id] as $dia => $data)
+    <li>
+        {{ $dia }}: {{ $data['normales'] }} normales, {{ $data['extras'] }} con tiempo extra 
+        - ${{ number_format($data['total'], 0, ',', '.') }}
+    </li>
+
+    @if($data['total'] > 0)
+        <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
+            value="{{ $fechasDiasSemana[$dia] }}">
+        <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="{{$masoterapeuta->salario}}">
+        <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]" value="{{$data['total']}}">
+        <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]" value="{{$data['total']}}">
+        <input type="hidden" name="sueldos[{{ $counter }}][id_user]" value="{{$masoterapeuta->id}}">
+        @php $counter++ @endphp
+    @endif
+@endforeach
                                             </ul>
                                         </div>
                                         @endforeach

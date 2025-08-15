@@ -11,6 +11,8 @@
         <h5>Venta: {{is_null($reserva->venta->pagoConsumo) ? '' : ($reserva->venta->pendiente_de_pago ? '' : 'Pagado') }} {{$reserva->venta->tiene_saldo_a_favor ? 'Abono por servicio Extra: $'.number_format(abs($reserva->venta->saldo_a_favor),0,'','.') : ''}} {{($reserva->venta->tiene_gc) ? 'Gift Card 🎁' : ''}}</h5>
     </a>
 
+
+
     @php
         $asignar = false;
         foreach ($asignados as $index => $asignado) {

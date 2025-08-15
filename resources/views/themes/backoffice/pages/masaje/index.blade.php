@@ -84,7 +84,7 @@
                             <form action="{{ route('backoffice.masaje.asignar_multiples') }}" method="POST">
                                 @csrf
                         @endif
-                        <td>
+                        <td class="{{$masaje->tiempo_extra ? 'blue-text' : ''}}">
                             
                             {{$masaje->horario_masaje}} -
                             @if ($masaje->hora_fin_masaje)

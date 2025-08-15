@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\Consumo;
@@ -35,28 +34,27 @@ class ConsumoController extends Controller
 
         $servicios = Servicio::all();
 
-
         return view('themes.backoffice.pages.consumo.create_service', [
-            'venta' => $venta,
+            'venta'     => $venta,
             'servicios' => $servicios,
         ]);
     }
 
     public function service_store(Request $request, Venta $venta)
     {
-        $validarMasaje = ['masajes','masaje'];
-        $validarSauna = ['saunas','sauna'];
-        $validarTinaja = ['tinajas','tinaja'];
+        $validarMasaje = ['masajes', 'masaje'];
+        $validarSauna  = ['saunas', 'sauna'];
+        $validarTinaja = ['tinajas', 'tinaja'];
 
         DB::transaction(function () use ($request, &$venta, $validarMasaje, $validarSauna, $validarTinaja) {
             // Verificar si ya existe un consumo para esta venta
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
 
             // Si no existe, creamos el consumo con valores iniciales
-            if (!$consumo) {
+            if (! $consumo) {
                 $consumo = Consumo::create([
-                    'id_venta' => $request->id_venta,
-                    'subtotal' => 0,
+                    'id_venta'      => $request->id_venta,
+                    'subtotal'      => 0,
                     'total_consumo' => 0,
                 ]);
             }
@@ -70,27 +68,26 @@ class ConsumoController extends Controller
                 return isset($servicio['cantidad']) && $servicio['cantidad'] > 0;
             });
 
-
-            $spaCantidadSauna = 0;
+            $spaCantidadSauna  = 0;
             $spaCantidadTinaja = 0;
 
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($serviciosValidos as $servicio_id => $servicio) {
                 $tiempoExtra = isset($servicio['tiempo_extra']) ? true : false;
 
-                $unidad = $tiempoExtra ? ($servicio['precio']*2) : $servicio['precio'];
+                $unidad   = $tiempoExtra ? (($servicio['precio'] - 1000) * 2) : $servicio['precio'];
                 $subtotal = $unidad * $servicio['cantidad'];
 
                 DetalleServiciosExtra::create([
-                    'id_consumo' => $consumo->id,
+                    'id_consumo'        => $consumo->id,
                     'id_servicio_extra' => $servicio_id,
                     'cantidad_servicio' => $servicio['cantidad'],
-                    'subtotal' => $subtotal,
+                    'subtotal'          => $subtotal,
                 ]);
 
                 // Sumar al subtotal del nuevo consumo
                 $nuevoSubtotal += $subtotal;
-                
+
                 $nombreServicio = Servicio::findOrFail($servicio_id);
 
                 if (in_array(strtolower($nombreServicio->nombre_servicio), $validarSauna)) {
@@ -101,42 +98,89 @@ class ConsumoController extends Controller
                     $spaCantidadTinaja += $servicio['cantidad'];
                 }
 
+                if (in_array(strtolower($nombreServicio->nombre_servicio), $validarMasaje)) {
 
-                if(in_array(strtolower($nombreServicio->nombre_servicio), $validarMasaje)){
-                    for($i = 1; $i <= $servicio['cantidad']; $i++){
-                        $cantidadPersonas = isset($venta->reserva->cantidad_masajes) 
-                        ? $venta->reserva->cantidad_masajes+$i 
-                        : $venta->reserva->cantidad_personas+$i;
+                    $tiempoExtraActual = ! empty($servicio['tiempo_extra_actual']); // aumentar tiempo a existentes
+                    $tiempoExtraNuevo  = ! empty($servicio['tiempo_extra']);        // crear nuevos 1 hr
+                    $cantidad          = max(1, (int) ($servicio['cantidad'] ?? 0));
 
+                    // Caso 1: No se selecciona nada -> crear 1 masaje de 30 min
+                    if (! $tiempoExtraActual && ! $tiempoExtraNuevo) {
                         Masaje::create([
-                            'id_reserva' => $venta->reserva->id,
-                            'horario_masaje' => null,
-                            'tipo_masaje' => null,
-                            'id_lugar_masaje' => null, 
-                            'persona' => $cantidadPersonas,
-                            'tiempo_extra' => $tiempoExtra,
-                            'user_id' => null,
+                            'id_reserva'      => $venta->reserva->id,
+                            'horario_masaje'  => null,
+                            'tipo_masaje'     => null,
+                            'id_lugar_masaje' => null,
+                            'persona'         => ($venta->reserva->masajes()->count() + 1),
+                            'tiempo_extra'    => false, // 30 min por defecto (sin extra)
+                            'user_id'         => null,
                         ]);
                     }
+
+                    // Caso 2: Aumentar tiempo a masajes actuales -> SOLO "cantidad" y marcar tiempo_extra=true
+                    if ($tiempoExtraActual) {
+                        $masajesAActualizar = $venta->reserva->masajes()
+                            ->where(function ($q) {
+                                $q->whereNull('tiempo_extra')->orWhere('tiempo_extra', false);
+                            })
+                            ->orderBy('id') // elige los más antiguos primero (ajusta si prefieres otros)
+                            ->limit($cantidad)
+                            ->get();
+
+                        foreach ($masajesAActualizar as $m) {
+                            $m->tiempo_extra = true; // pasa a true
+                            $m->save();
+                        }
+                    }
+
+                    // Caso 3: Crear nuevos de 1 hora -> crear "cantidad" marcando tiempo_extra=true
+                    if ($tiempoExtraNuevo) {
+                        for ($i = 1; $i <= $cantidad; $i++) {
+                            Masaje::create([
+                                'id_reserva'      => $venta->reserva->id,
+                                'horario_masaje'  => null,
+                                'tipo_masaje'     => null,
+                                'id_lugar_masaje' => null,
+                                'persona'         => ($venta->reserva->masajes()->count() + $i),
+                                'tiempo_extra'    => true, // identifica que es el "extra" (1 hr)
+                                'user_id'         => null,
+                            ]);
+                        }
+                    }
+
+                    // for($i = 1; $i <= $servicio['cantidad']; $i++){
+                    //     $cantidadPersonas = isset($venta->reserva->cantidad_masajes) 
+                    //     ? $venta->reserva->cantidad_masajes+$i 
+                    //     : $venta->reserva->cantidad_personas+$i;
+
+                    //     Masaje::create([
+                    //         'id_reserva' => $venta->reserva->id,
+                    //         'horario_masaje' => null,
+                    //         'tipo_masaje' => null,
+                    //         'id_lugar_masaje' => null, 
+                    //         'persona' => $cantidadPersonas,
+                    //         'tiempo_extra' => $tiempoExtra,
+                    //         'user_id' => null,
+                    //     ]);
+                    // }
+
                 }
             }
-
 
             $spaCombinados = min($spaCantidadSauna, $spaCantidadTinaja);
 
             if ($spaCombinados > 0) {
-                for ($i=1; $i <= $spaCombinados; $i++) { 
+                for ($i = 1; $i <= $spaCombinados; $i++) {
                     Visita::create([
-                        'horario_sauna' => null,
+                        'horario_sauna'  => null,
                         'horario_tinaja' => null,
                         'trago_cortesia' => false,
-                        'observacion' => null,
-                        'id_reserva' => $venta->reserva->id,
-                        'id_ubicacion' => $venta->reserva->visitas->first()->id_ubicacion,
+                        'observacion'    => null,
+                        'id_reserva'     => $venta->reserva->id,
+                        'id_ubicacion'   => $venta->reserva->visitas->first()->id_ubicacion,
                     ]);
                 }
             }
-
 
             $consumo->subtotal += $nuevoSubtotal;
             $consumo->total_consumo += $nuevoSubtotal;
@@ -153,17 +197,17 @@ class ConsumoController extends Controller
 
     public function create($venta)
     {
-        $venta = Venta::findOrFail($venta);
-        $tipos = TipoProducto::all();
-        $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
+        $venta   = Venta::findOrFail($venta);
+        $tipos   = TipoProducto::all();
+        $listado = ['Aguas', 'Bebidas', 'Bebidas Calientes', 'Cervezas', 'Cócteles', 'Jugos Naturales', 'Spritz', 'Mocktails', 'Vinos', 'Sandwich y Pasteleria'];
 
-        $productos = Producto::whereHas('tipoProducto', function($query) use ($listado){
+        $productos = Producto::whereHas('tipoProducto', function ($query) use ($listado) {
             $query->whereIn('nombre', $listado);
         })->get();
 
         return view('themes.backoffice.pages.consumo.create', [
-            'venta' => $venta,
-            'tipos' => $tipos,
+            'venta'     => $venta,
+            'tipos'     => $tipos,
             'productos' => $productos,
 
         ]);
@@ -176,19 +220,17 @@ class ConsumoController extends Controller
             return isset($producto['cantidad']) && $producto['cantidad'] > 0;
         });
 
-        $productos=[];
-        $cliente=null;
-        $ubicacion=null;
+        $productos       = [];
+        $cliente         = null;
+        $ubicacion       = null;
         $detallesConsumo = [];
 
-
         foreach ($productosAñadidos as $id => $producto) {
-            $productos[]= $id;
+            $productos[] = $id;
         }
 
-        $nombres=null;
+        $nombres = null;
         $nombres = Producto::whereIn('id', $productos)->pluck('nombre')->implode(', ');
-
 
         // Iniciar una transacción en la base de datos
         DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesConsumo, $nombres) {
@@ -197,23 +239,23 @@ class ConsumoController extends Controller
             $consumo = Consumo::where('id_venta', $request->id_venta)->first();
 
             // Si no existe, creamos el consumo con valores iniciales
-            if (!$consumo) {
+            if (! $consumo) {
                 $consumo = Consumo::create([
-                    'id_venta' => $request->id_venta,
-                    'subtotal' => 0,
+                    'id_venta'      => $request->id_venta,
+                    'subtotal'      => 0,
                     'total_consumo' => 0,
                 ]);
             }
 
-            $cliente = $consumo->venta->reserva->cliente->nombre_cliente;
+            $cliente   = $consumo->venta->reserva->cliente->nombre_cliente;
             $reservaID = $consumo->venta->reserva->id;
-            $visita = Visita::where('id_reserva', $reservaID)->first();
+            $visita    = Visita::where('id_reserva', $reservaID)->first();
             $ubicacion = Ubicacion::where('id', $visita->id_ubicacion)->first()->nombre;
 
             // Inicializar variables
             $totalSubtotal = 0;
             $nuevoSubtotal = 0;
-            
+
             // Siempre se registra con propina activa por defecto.
             // La validación final de si se aplica o no se hace en el cierre de venta.
             $generaPropina = true;
@@ -226,11 +268,11 @@ class ConsumoController extends Controller
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($productosValidos as $producto_id => $producto) {
                 $detalle = DetalleConsumo::create([
-                    'id_consumo' => $consumo->id,
-                    'id_producto' => $producto_id,
+                    'id_consumo'        => $consumo->id,
+                    'id_producto'       => $producto_id,
                     'cantidad_producto' => $producto['cantidad'],
-                    'subtotal' => $producto['valor'] * $producto['cantidad'], // Calcula el subtotal
-                    'genera_propina' => $generaPropina,
+                    'subtotal'          => $producto['valor'] * $producto['cantidad'], // Calcula el subtotal
+                    'genera_propina'    => $generaPropina,
                 ]);
 
                 $detallesConsumo[] = $detalle;
@@ -252,27 +294,25 @@ class ConsumoController extends Controller
 
             // Actualizar el consumo con los nuevos totales
             $consumo->update([
-                'subtotal' => $consumo->subtotal,
+                'subtotal'      => $consumo->subtotal,
                 'total_consumo' => $totalConPropina,
             ]);
-
 
             $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
                 $producto = Producto::find($detalle->id_producto);
                 return [
-                    'id' => $detalle->id,
-                    'nombre' => $producto->nombre,
-                    'cantidad' => $detalle->cantidad_producto,
-                    'cliente' => $cliente ?? 'Cliente Desconocido', // Ajusta según los datos disponibles
+                    'id'        => $detalle->id,
+                    'nombre'    => $producto->nombre,
+                    'cantidad'  => $detalle->cantidad_producto,
+                    'cliente'   => $cliente ?? 'Cliente Desconocido',      // Ajusta según los datos disponibles
                     'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
                 ];
             }, $detallesConsumo);
-            
-            
+
             event(new NuevoConsumoAgregado([
-                'mensaje'=>'Nuevo consumo agregado '.$nombres,
+                'mensaje'   => 'Nuevo consumo agregado ' . $nombres,
                 'productos' => $productosEvento,
-                'estado' => 'por-procesar'
+                'estado'    => 'por-procesar',
             ]));
 
             // broadcast(new NuevoConsumoAgregado([
@@ -282,7 +322,7 @@ class ConsumoController extends Controller
             // ]));
 
         });
-        
+
         $venta = Venta::find($request->id_venta);
 
         // Redirigir con éxito
@@ -335,38 +375,60 @@ class ConsumoController extends Controller
         //
     }
 
-    public function destroyDetalle($tipo, $id){
-        
-        
-        if($tipo === 'consumo'){
+    public function destroyDetalle($tipo, $id)
+    {
+        $servicioMasaje = ['masajes', 'masaje', 'Masajes', 'Masaje'];
+
+
+        if ($tipo === 'consumo') {
             $detalle = DetalleConsumo::with('consumo')->findOrFail($id);
             $consumo = $detalle->consumo;
             $consumo->subtotal -= $detalle->subtotal;
-            $consumo->total_consumo -= $detalle->subtotal*1.1;
+            $consumo->total_consumo -= $detalle->subtotal * 1.1;
 
-            $consumo->subtotal = max($consumo->subtotal, 0);
+            $consumo->subtotal      = max($consumo->subtotal, 0);
             $consumo->total_consumo = max($consumo->total_consumo, 0);
             $consumo->save();
             $detalle->delete();
 
-        }else if($tipo === 'servicio'){
+        } else if ($tipo === 'servicio') {
             $detalle = DetalleServiciosExtra::with('consumo')->findOrFail($id);
             $consumo = $detalle->consumo;
+            $reserva = $consumo->venta->reserva;
+
+            // Verificar si el detalle es de tipo masaje
+            if (
+                $detalle->servicio &&
+                in_array($detalle->servicio->nombre_servicio, $servicioMasaje)
+            ) {
+                $cantidad = $detalle->cantidad_servicio;
+
+                // Obtener masajes con tiempo_extra = true
+                $masajesConExtra = $reserva->masajes()
+                    ->where('tiempo_extra', true)
+                    ->limit($cantidad)
+                    ->get();
+
+                foreach ($masajesConExtra as $masaje) {
+                    $masaje->tiempo_extra = false;
+                    $masaje->save();
+                }
+            }
 
             $consumo->subtotal -= $detalle->subtotal;
             $consumo->total_consumo -= $detalle->subtotal;
 
-            $consumo->subtotal = max($consumo->subtotal, 0);
+            $consumo->subtotal      = max($consumo->subtotal, 0);
             $consumo->total_consumo = max($consumo->total_consumo, 0);
 
             $consumo->save();
             $detalle->delete();
-        }else{
+        } else {
             return back()->with('error', 'Tipo de detalle no válido');
         }
 
         $tipoCapitalizado = ucfirst($tipo);
 
-        return back()->with('success', $tipoCapitalizado.' eliminado correctamente');
+        return back()->with('success', $tipoCapitalizado . ' eliminado correctamente');
     }
 }

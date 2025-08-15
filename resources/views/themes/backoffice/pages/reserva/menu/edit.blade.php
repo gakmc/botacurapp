@@ -46,7 +46,8 @@
                                           : '' }}>{{$entrada->nombre}}</option>
                                           @endforeach
                                       </select>
-                                      @error('id_producto_entrada_{{ $menu->id }}')
+                                      {{-- @error('id_producto_entrada_{{ $menu->id }}') --}}
+                                      @error('menus.'.$menu->id.'.id_producto_entrada')
                                       <span class="invalid-feedback" role="alert">
                                           <strong style="color:red">{{ $message }}</strong>
                                       </span>
@@ -64,7 +65,9 @@
                                           : '' }}>{{$fondo->nombre}}</option>
                                           @endforeach
                                       </select>
-                                      @error('id_producto_fondo_{{$menu->id}}')
+                                      {{-- @error('id_producto_fondo_{{$menu->id}}')
+                                       --}}
+                                       @error('menus.'.$menu->id.'.id_producto_fondo')
                                       <span class="invalid-feedback" role="alert">
                                           <strong style="color:red">{{ $message }}</strong>
                                       </span>
@@ -84,6 +87,7 @@
                                           : '' }}>{{$acompañamiento->nombre}}</option>
                                           @endforeach
                                       </select>
+                                      {{-- @error('menus.'.$menu->id.'.id_producto_acompanamiento') --}}
                                       @error('menus.'.$menu->id.'.id_producto_acompanamiento')
                                       <span class="invalid-feedback" role="alert">
                                           <strong style="color:red">{{ $message }}</strong>
@@ -97,7 +101,8 @@
                                       <input id="alergias_{{$menu->id}}" type="text" name="menus[{{ $menu->id }}][alergias]"
                                           class="" value="{{ $menu->alergias }}">
                                       <label for="alergias_{{$menu->id}}">Alérgias</label>
-                                      @error('alergias_{{$menu->id}}')
+                                      {{-- @error('alergias_{{$menu->id}}') --}}
+                                      @error('menus.'.$menu->id.'.alergias')
                                       <span class="invalid-feedback" role="alert">
                                           <strong style="color:red">{{ $message }}</strong>
                                       </span>
@@ -109,7 +114,8 @@
                                       <input type="text" name="menus[{{ $menu->id }}][observacion]"
                                           id="observacion_{{ $menu->id }}" value="{{ $menu->observacion }}"/>
                                       <label for="observacion_{{$menu->id}}">Observaciones</label>
-                                      @error('observacion_{{ $menu->id }}')
+                                      {{-- @error('observacion_{{ $menu->id }}') --}}
+                                      @error('menus.'.$menu->id.'.observacion')
                                       <span class="invalid-feedback" role="alert">
                                           <strong style="color:red">{{ $message }}</strong>
                                       </span>
@@ -140,33 +146,36 @@
 
 @section('foot')
 <script>
+    @if(session('info'))
+        Swal.fire({
+            icon: 'info',
+            title: 'Advertencia',
+            text: '{{ session('info') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            // timer: 5000,
+        });
+    @endif
+
     @if(session('success'))
         Swal.fire({
-            toast: true,
             icon: 'success',
-            title: '{{ session('success') }}',
-            showConfirmButton: false,
+            title: 'Éxito',
+            text: '{{ session('success') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
             timer: 5000,
-            timerProgressBar: true,
-                didOpen: (toast) => {
-                toast.onmouseenter = Swal.stopTimer;
-                toast.onmouseleave = Swal.resumeTimer;
-                }
         });
     @endif
 
     @if(session('error'))
         Swal.fire({
-            toast: true,
             icon: 'error',
-            title: '{{ session('error') }}',
-            showConfirmButton: false,
-            timer: 5000,
-            timerProgressBar: true,
-                didOpen: (toast) => {
-                toast.onmouseenter = Swal.stopTimer;
-                toast.onmouseleave = Swal.resumeTimer;
-                }
+            title: 'Alerta',
+            text: '{{ session('error') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`,
+            // timer: 5000,
         });
     @endif
 </script>

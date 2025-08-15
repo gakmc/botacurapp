@@ -29,6 +29,7 @@ use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\File;
+use Illuminate\Support\Facades\Log;
 // use PDF;
 use Illuminate\Support\Facades\Storage;
 use Picqer\Barcode\BarcodeGeneratorPNG;
@@ -1051,6 +1052,24 @@ class ReservaController extends Controller
             'menus.*.id_producto_acompanamiento' => 'nullable|integer|exists:productos,id',
             'menus.*.alergias' => 'nullable|string',
             'menus.*.observacion' => 'nullable|string',
+        ],[
+            // Entrada
+            'menus.*.id_producto_entrada.required' => 'Debes seleccionar una entrada.',
+            'menus.*.id_producto_entrada.integer'  => 'La entrada seleccionada no es válida.',
+            'menus.*.id_producto_entrada.exists'   => 'La entrada seleccionada no existe en el sistema.',
+
+            // Fondo
+            'menus.*.id_producto_fondo.required' => 'Debes seleccionar un plato de fondo.',
+            'menus.*.id_producto_fondo.integer'  => 'El plato de fondo seleccionado no es válido.',
+            'menus.*.id_producto_fondo.exists'   => 'El plato de fondo seleccionado no existe en el sistema.',
+
+            // Acompañamiento (opcional)
+            'menus.*.id_producto_acompanamiento.integer' => 'El acompañamiento seleccionado no es válido.',
+            'menus.*.id_producto_acompanamiento.exists'  => 'El acompañamiento seleccionado no existe en el sistema.',
+
+            // Textos
+            'menus.*.alergias.string'     => 'El campo alergias debe ser un texto.',
+            'menus.*.observacion.string'  => 'El campo observaciones debe ser un texto.',
         ]);
 
 
@@ -1071,6 +1090,14 @@ class ReservaController extends Controller
             return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Menús actualizados correctamente.');
 
         } catch (\Exception $e) {
+
+            Log::error('Error al actualizar menús en menu_update(): ' . $e->getMessage(), [
+                'exception'     => $e,
+                'trace'         => $e->getTraceAsString(),
+                'reserva_id'    => $reserva->id ?? null,
+                'request_data'  => $request->all()
+            ]);
+
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar los menús. '.$e->getMessage());
         }
     }
