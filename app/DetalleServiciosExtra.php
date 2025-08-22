@@ -24,4 +24,9 @@ class DetalleServiciosExtra extends Model
     {
         return $this->belongsTo(Servicio::class, 'id_servicio_extra');
     }
+
+    public function precioTipoMasaje()
+    {
+        return $this->belongsTo(\App\PrecioTipoMasaje::class, 'id_precio_tipo_masaje');
+    }
 }

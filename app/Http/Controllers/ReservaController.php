@@ -994,7 +994,7 @@ class ReservaController extends Controller
                 $masaje->update([
                     'horario_masaje' => $datos['horario_masaje'],
                     'tipo_masaje' => $datos['tipo_masaje'],
-                    'id_lugar_masaje' => $datos['id_lugar_masaje'],
+                    'id_lugar_masaje' => $datos['id_lugar_masaje'] ?? 1,
                 ]);
             }
     

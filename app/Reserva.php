@@ -188,4 +188,9 @@ class Reserva extends Model
 
         return null;
     }
+
+    public function getNextPersonaAttribute()
+    {
+        return (int) ($this->masajes()->max('persona') ?? 0) + 1;
+    }
 }
