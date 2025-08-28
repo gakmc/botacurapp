@@ -160,7 +160,7 @@
 
                 @endif
 
-                @if(Auth::user()->has_role(config('app.admin_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.programa.index') }}">
                             <i class="material-icons">
@@ -222,7 +222,7 @@
                     </li>
                 @endif
 
-                @if (Auth::user()->has_role(config('app.barman_role')) || Auth::user()->has_role(config('app.admin_role')))
+                @if (Auth::user()->has_role(config('app.barman_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.index') }}">
                             <i class="material-icons">
@@ -248,7 +248,7 @@
                     </li>
                 @endif
 
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.masoterapeuta_role')))
+                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.masoterapeuta_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.masaje.index') }}">
@@ -293,18 +293,21 @@
                 @endif
 
                 @if (Auth::user()->has_role(config('app.admin_role')))
+                
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.informes.index') }}">
+                        <i class="material-icons">
+                            assessment
+                        </i>
+                        <span class="nav-text">
+                            Informes
+                        </span>
+                    </a>
+                </li>
 
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.informes.index') }}">
-                            <i class="material-icons">
-                                assessment
-                            </i>
-                            <span class="nav-text">
-                                Informes
-                            </span>
-                        </a>
-                    </li>
-
+                @endif
+                
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.user.index') }}">
                             <i class="material-icons">
@@ -356,18 +359,34 @@
                 @endif
 
 
-                @if (Auth::user()->has_role(config('app.admin_role')))
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.index') }}">
-                            <i class="material-icons">
-                                show_chart
-                            </i>
-                            <span class="nav-text">
-                                Egresos
-                            </span>
-                        </a>
-                    </li>
+
+                    @if (Auth::user()->has_role(config('app.jefe_local_role')))
+                        <li class="bold">
+                            <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.create') }}">
+                                <i class="material-icons">
+                                    show_chart
+                                </i>
+                                <span class="nav-text">
+                                    Egresos
+                                </span>
+                            </a>
+                        </li>
+                        
+                    @else
+                        <li class="bold">
+                            <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.index') }}">
+                                <i class="material-icons">
+                                    show_chart
+                                </i>
+                                <span class="nav-text">
+                                    Egresos
+                                </span>
+                            </a>
+                        </li>
+                        
+                    @endif
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">

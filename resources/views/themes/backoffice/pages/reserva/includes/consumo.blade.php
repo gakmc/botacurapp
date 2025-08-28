@@ -68,7 +68,7 @@
                 @endif
 
                 <span class="pink-text" style="font-weight: 500;">
-                    {{$detalle->servicio->nombre_servicio}} - Cantidad: {{$detalle->cantidad_servicio}}
+                    {{$detalle->servicio->nombre_servicio}} {{($detalle->servicio->slug == 'masaje') ? $detalle->precioTipoMasaje->tipo->nombre.' - '.$detalle->precioTipoMasaje->duracion_minutos.' Minutos' : ''}} - Cantidad: {{$detalle->cantidad_servicio}}
                 </span>
             </div>
             

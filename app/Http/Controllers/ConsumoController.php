@@ -38,23 +38,23 @@ class ConsumoController extends Controller
 
         $servicios = Servicio::all();
 
-            $catalogoMasajes = CategoriaMasaje::with([
-        'tipos' => function($q){ $q->where('activo', 1)->orderBy('nombre'); },
-        'tipos.precios' => function($q){ $q->orderBy('duracion_minutos'); }
-    ])->orderBy('nombre')->get();
+        $catalogoMasajes = CategoriaMasaje::with([
+            'tipos'         => function ($q) {$q->where('activo', 1)->orderBy('nombre');},
+            'tipos.precios' => function ($q) {$q->orderBy('duracion_minutos');},
+        ])->orderBy('nombre')->get();
 
         return view('themes.backoffice.pages.consumo.create_service', [
-            'venta'     => $venta,
-            'servicios' => $servicios,
-            'catalogoMasajes'=> $catalogoMasajes
+            'venta'           => $venta,
+            'servicios'       => $servicios,
+            'catalogoMasajes' => $catalogoMasajes,
         ]);
     }
 
-    public function service_store(Request $request, Venta $venta)
+    public function old_service_store(Request $request, Venta $venta)
     {
-        $validarMasaje = ['masajes', 'masaje'];
-        $validarSauna  = ['saunas', 'sauna'];
-        $validarTinaja = ['tinajas', 'tinaja'];
+        $validarMasaje   = ['masajes', 'masaje'];
+        $validarSauna    = ['saunas', 'sauna'];
+        $validarTinaja   = ['tinajas', 'tinaja'];
         $validarAlmuerzo = ['almuerzos', 'almuerzo'];
 
         DB::transaction(function () use ($request, &$venta, $validarMasaje, $validarSauna, $validarTinaja, $validarAlmuerzo) {
@@ -177,11 +177,10 @@ class ConsumoController extends Controller
 
                 // }
 
-
                 if (in_array(strtolower($nombreServicio->nombre_servicio), $validarMasaje)) {
 
-                    $tiempoExtraActual = !empty($servicio['tiempo_extra_actual']); // subir a 1hr existentes
-                    $tiempoExtraNuevo  = !empty($servicio['tiempo_extra']);        // pedir “extras”
+                    $tiempoExtraActual = ! empty($servicio['tiempo_extra_actual']); // subir a 1hr existentes
+                    $tiempoExtraNuevo  = ! empty($servicio['tiempo_extra']);        // pedir “extras”
                     $cantidad          = max(1, (int) ($servicio['cantidad'] ?? 0));
 
                     $reserva   = $venta->reserva;
@@ -189,15 +188,14 @@ class ConsumoController extends Controller
 
                     // Query base
                     $masajesQuery = $reserva->masajes()->orderBy('id');
-                    $baseScope = function() use ($masajesQuery) {
+                    $baseScope    = function () use ($masajesQuery) {
                         $q = clone $masajesQuery;
                         return $q->where(function ($q2) {
                             $q2->whereNull('tiempo_extra')->orWhere('tiempo_extra', false);
                         });
                     };
 
-
-                    $crearBase = function (int $n) use ($reservaId,  $venta) {
+                    $crearBase = function (int $n) use ($reservaId, $venta) {
                         for ($i = 0; $i < $n; $i++) {
                             Masaje::create([
                                 'id_reserva'      => $reservaId,
@@ -211,7 +209,7 @@ class ConsumoController extends Controller
                         }
                     };
 
-                    $crearExtras = function (int $n) use ($reservaId,  $venta) {
+                    $crearExtras = function (int $n) use ($reservaId, $venta) {
                         for ($i = 0; $i < $n; $i++) {
                             Masaje::create([
                                 'id_reserva'      => $reservaId,
@@ -248,34 +246,33 @@ class ConsumoController extends Controller
                         if ($tiempoExtraNuevo) {
                             $crearExtras($restantes);
                         } else {
-                            $crearBase($restantes);   // << aquí se crea el 5º como base
+                            $crearBase($restantes); // << aquí se crea el 5º como base
                         }
                     }
 
                     // 3) Si no marcaron nada y no hay masajes, crea 1 base
-                    if (!$tiempoExtraActual && !$tiempoExtraNuevo && $masajesQuery->count() === 0) {
+                    if (! $tiempoExtraActual && ! $tiempoExtraNuevo && $masajesQuery->count() === 0) {
                         $crearBase(1);
                     }
                 }
 
-
                 if (in_array(strtolower($nombreServicio->nombre_servicio), $validarAlmuerzo)) {
-                    $cantidad          = (int) $servicio['cantidad'];
+                    $cantidad = (int) $servicio['cantidad'];
 
-                    for ($i=1; $i <= $cantidad; $i++) { 
+                    for ($i = 1; $i <= $cantidad; $i++) {
                         Menu::create([
-                            'id_reserva' => $venta->reserva->id,
-                            'id_producto_entrada' => null,
-                            'id_producto_fondo' => null,
+                            'id_reserva'                 => $venta->reserva->id,
+                            'id_producto_entrada'        => null,
+                            'id_producto_fondo'          => null,
                             'id_producto_acompanamiento' => null,
-                            'alergias' => null,
-                            'observacion' => null,
+                            'alergias'                   => null,
+                            'observacion'                => null,
                         ]);
                     }
                 }
 
             }
-            
+
             $spaCombinados = min($spaCantidadSauna, $spaCantidadTinaja);
 
             if ($spaCombinados > 0) {
@@ -306,9 +303,10 @@ class ConsumoController extends Controller
 
     public function working_service_store(Request $request, Venta $venta)
     {
-        $validarMasaje = ['masajes', 'masaje'];
-        $validarSauna  = ['saunas', 'sauna'];
-        $validarTinaja = ['tinajas', 'tinaja'];
+        dd($request->all());
+        $validarMasaje   = ['masajes', 'masaje'];
+        $validarSauna    = ['saunas', 'sauna'];
+        $validarTinaja   = ['tinajas', 'tinaja'];
         $validarAlmuerzo = ['almuerzos', 'almuerzo'];
 
         DB::transaction(function () use ($request, &$venta, $validarMasaje, $validarSauna, $validarTinaja, $validarAlmuerzo) {
@@ -450,7 +448,6 @@ class ConsumoController extends Controller
                 //         });
                 //     };
 
-
                 //     $crearBase = function (int $n) use ($reservaId,  $venta) {
                 //         for ($i = 0; $i < $n; $i++) {
                 //             Masaje::create([
@@ -512,35 +509,34 @@ class ConsumoController extends Controller
                 //     }
                 // }
 
-
-                $servicioBD    = Servicio::findOrFail($servicio_id);
-                $slugServicio  = $servicioBD->slug; // p.ej. "masaje", "tinaja", "sauna"
+                $servicioBD   = Servicio::findOrFail($servicio_id);
+                $slugServicio = $servicioBD->slug; // p.ej. "masaje", "tinaja", "sauna"
 
                 if ($slugServicio === 'masaje') {
                     $slugTipo = isset($servicio['slug_tipo_masaje']) ? strtolower($servicio['slug_tipo_masaje']) : '';
-                    $duracion = isset($servicio['duracion']) ? (int)$servicio['duracion'] : 0;
-                    $cantidad = isset($servicio['cantidad']) ? (int)$servicio['cantidad'] : 0;
+                    $duracion = isset($servicio['duracion']) ? (int) $servicio['duracion'] : 0;
+                    $cantidad = isset($servicio['cantidad']) ? (int) $servicio['cantidad'] : 0;
 
                     $precio = PrecioTipoMasaje::with('tipo')
-                        ->whereHas('tipo', function($q) use ($slugTipo) { $q->where('slug', $slugTipo); })
+                        ->whereHas('tipo', function ($q) use ($slugTipo) {$q->where('slug', $slugTipo);})
                         ->where('duracion_minutos', $duracion)
                         ->first();
 
-                    if (!$precio) {
+                    if (! $precio) {
                         throw ValidationException::withMessages(['servicios' => 'Tipo o duración de masaje inválida.']);
                     }
 
                     // 2x automático solo para Relajación 30/60 y si existe precio_pareja
-                    $esRelajacion2x = ($precio->tipo->slug === 'relajacion') && in_array($duracion, array(30,60), true) && !is_null($precio->precio_pareja);
-                    $pares  = $esRelajacion2x ? intdiv($cantidad, 2) : 0;
-                    $resto  = $cantidad - ($pares * 2);
+                    $esRelajacion2x = ($precio->tipo->slug === 'relajacion') && in_array($duracion, [30, 60], true) && ! is_null($precio->precio_pareja);
+                    $pares          = $esRelajacion2x ? intdiv($cantidad, 2) : 0;
+                    $resto          = $cantidad - ($pares * 2);
 
-                    $subtotal = ($pares * (int)$precio->precio_pareja) + ($resto * (int)$precio->precio_unitario);
+                    $subtotal = ($pares * (int) $precio->precio_pareja) + ($resto * (int) $precio->precio_unitario);
 
                     DetalleServiciosExtra::create([
                         'id_consumo'            => $consumo->id,
-                        'id_servicio_extra'     => $servicio_id,          // apunta a "Masaje"
-                        'id_precio_tipo_masaje' => $precio->id,           // referencia fina tipo+duración
+                        'id_servicio_extra'     => $servicio_id, // apunta a "Masaje"
+                        'id_precio_tipo_masaje' => $precio->id,  // referencia fina tipo+duración
                         'cantidad_servicio'     => $cantidad,
                         'subtotal'              => $subtotal,
                     ]);
@@ -548,36 +544,36 @@ class ConsumoController extends Controller
                     // Crea/actualiza registros en `masajes` según duración:
                     // 30 => tiempo_extra=false; 60 => true; 45 => puedes dejar null/false según tu regla
                 } else {
-                    $cantidad = isset($servicio['cantidad']) ? (int)$servicio['cantidad'] : 0;
-                    $unitario = (int)($servicioBD->valor_servicio ?: 0); // ejemplo: Tinaja 10000, Sauna 7500
+                    $cantidad = isset($servicio['cantidad']) ? (int) $servicio['cantidad'] : 0;
+                    $unitario = (int) ($servicioBD->valor_servicio ?: 0); // ejemplo: Tinaja 10000, Sauna 7500
                     $subtotal = $unitario * $cantidad;
 
                     DetalleServiciosExtra::create([
                         'id_consumo'            => $consumo->id,
                         'id_servicio_extra'     => $servicio_id,
-                        'id_precio_tipo_masaje' => null,                  // otros servicios: NULL
+                        'id_precio_tipo_masaje' => null, // otros servicios: NULL
                         'cantidad_servicio'     => $cantidad,
                         'subtotal'              => $subtotal,
                     ]);
                 }
 
                 if (in_array(strtolower($nombreServicio->nombre_servicio), $validarAlmuerzo)) {
-                    $cantidad          = (int) $servicio['cantidad'];
+                    $cantidad = (int) $servicio['cantidad'];
 
-                    for ($i=1; $i <= $cantidad; $i++) { 
+                    for ($i = 1; $i <= $cantidad; $i++) {
                         Menu::create([
-                            'id_reserva' => $venta->reserva->id,
-                            'id_producto_entrada' => null,
-                            'id_producto_fondo' => null,
+                            'id_reserva'                 => $venta->reserva->id,
+                            'id_producto_entrada'        => null,
+                            'id_producto_fondo'          => null,
                             'id_producto_acompanamiento' => null,
-                            'alergias' => null,
-                            'observacion' => null,
+                            'alergias'                   => null,
+                            'observacion'                => null,
                         ]);
                     }
                 }
 
             }
-            
+
             $spaCombinados = min($spaCantidadSauna, $spaCantidadTinaja);
 
             if ($spaCombinados > 0) {
@@ -601,6 +597,315 @@ class ConsumoController extends Controller
         });
 
         $venta = Venta::where('id', $request->id_venta)->first();
+
+        Alert::success('Éxito', 'Servicio extra ingresado correctamente', 'Confirmar')->showConfirmButton();
+        return redirect()->route('backoffice.reserva.show', $venta->reserva->id);
+    }
+
+    public function service_store(Request $request, Venta $venta)
+    {
+        // Validación mínima genérica
+        $request->validate([
+            'id_venta'  => 'required|exists:ventas,id',
+            'servicios' => 'required|array|min:1',
+        ]);
+
+        DB::transaction(function () use ($request, &$venta) {
+
+            // 1) Consumo (crea si no existe)
+            $consumo = Consumo::firstOrCreate(
+                ['id_venta' => $request->id_venta],
+                ['subtotal' => 0, 'total_consumo' => 0]
+            );
+
+            $nuevoSubtotal = 0;
+            $spaSauna      = 0;
+            $spaTinaja     = 0;
+
+            // 2) Filtrar items con cantidad > 0
+            $serviciosValidos = array_filter($request->servicios, function ($srv) {
+                return isset($srv['cantidad']) && (int) $srv['cantidad'] > 0;
+            });
+
+            // foreach ($serviciosValidos as $servicio_id => $srv) {
+
+            //     $servicioBD   = Servicio::findOrFail($servicio_id);
+            //     $slugServicio = $servicioBD->slug ?: str_slug($servicioBD->nombre_servicio);
+            //     $cantidad     = (int) ($srv['cantidad'] ?? 0);
+
+            //     if ($slugServicio === 'masaje') {
+            //         // ===== MASAJES =====
+            //         $slugTipo = strtolower($srv['slug_tipo_masaje'] ?? '');
+            //         $duracion = (int) ($srv['duracion'] ?? 0);
+
+            //         // Precio por (tipo, duración)
+            //         $precio = PrecioTipoMasaje::with('tipo')
+            //             ->whereHas('tipo', function($q) use ($slugTipo){ $q->where('slug',$slugTipo); })
+            //             ->where('duracion_minutos', $duracion)
+            //             ->first();
+
+            //         if (!$precio) {
+            //             throw ValidationException::withMessages([
+            //                 'servicios' => 'Tipo o duración de masaje inválida.'
+            //             ]);
+            //         }
+
+            //         // 2x automático para Relajación 30/60 si hay precio_pareja
+            //         $isRelaj = ($precio->tipo->slug === 'relajacion') && in_array($duracion, array(30,60), true) && !is_null($precio->precio_pareja);
+            //         $pares   = $isRelaj ? intdiv($cantidad, 2) : 0;
+            //         $resto   = $cantidad - ($pares*2);
+
+            //         $subtotal = $pares * (int)$precio->precio_pareja + $resto * (int)$precio->precio_unitario;
+
+            //         // Detalle con referencia al catálogo
+            //         DetalleServiciosExtra::create([
+            //             'id_consumo'            => $consumo->id,
+            //             'id_servicio_extra'     => $servicio_id,     // fila "Masaje" en servicios
+            //             'id_precio_tipo_masaje' => $precio->id,      // (tipo, duración)
+            //             'cantidad_servicio'     => $cantidad,
+            //             'subtotal'              => $subtotal,
+            //         ]);
+
+            //         $nuevoSubtotal += $subtotal;
+
+            //         // ===== Actualizar tabla masajes según opción =====
+            //         $tiempoExtraActual = !empty($srv['tiempo_extra_actual']); // subir base->extra
+            //         $tiempoExtraNuevo  = !empty($srv['tiempo_extra']);        // crear nuevos 60
+            //         $reserva           = $venta->reserva;
+            //         $reservaId         = $reserva->id;
+
+            //         // Helpers
+            //         $masajesBaseQuery = $reserva->masajes()->where(function($q){
+            //             $q->whereNull('tiempo_extra')->orWhere('tiempo_extra', false);
+            //         })->orderBy('id');
+
+            //         $crearBase = function($n) use ($reservaId, $venta){
+            //             for ($i=0; $i<$n; $i++) {
+            //                 Masaje::create([
+            //                     'id_reserva'      => $reservaId,
+            //                     'horario_masaje'  => null,
+            //                     'tipo_masaje'     => null,
+            //                     'id_lugar_masaje' => 1,
+            //                     'persona'         => ($venta->reserva->next_persona),
+            //                     'tiempo_extra'    => false, // 30 min
+            //                     'user_id'         => null,
+            //                 ]);
+            //             }
+            //         };
+            //         $crearExtras = function($n) use ($reservaId, $venta){
+            //             for ($i=0; $i<$n; $i++) {
+            //                 Masaje::create([
+            //                     'id_reserva'      => $reservaId,
+            //                     'horario_masaje'  => null,
+            //                     'tipo_masaje'     => null,
+            //                     'id_lugar_masaje' => 1,
+            //                     'persona'         => ($venta->reserva->next_persona),
+            //                     'tiempo_extra'    => true,  // 60 min
+            //                     'user_id'         => null,
+            //                 ]);
+            //             }
+            //         };
+            //         $subirAExtra = function($n) use ($masajesBaseQuery){
+            //             $pend = $masajesBaseQuery->limit($n)->get();
+            //             foreach ($pend as $m) {
+            //                 $m->tiempo_extra = true;
+            //                 $m->save();
+            //             }
+            //             return $pend->count();
+            //         };
+
+            //         // a) Subir a 60 los existentes (no crea nuevos)
+            //         if ($tiempoExtraActual) {
+            //             $subirAExtra($cantidad);
+            //         }
+            //         // b) Crear nuevos 60
+            //         else if ($tiempoExtraNuevo) {
+            //             $crearExtras($cantidad);
+            //         }
+            //         // c) Nuevo 30 (default)
+            //         else {
+            //             $crearBase($cantidad);
+            //         }
+
+            //     } else {
+            //         // ===== OTROS SERVICIOS (Tinaja, Sauna, Almuerzo, etc.) =====
+            //         $unitario = (int) ($servicioBD->valor_servicio ?: 0);
+            //         $subtotal = $unitario * $cantidad;
+
+            //         DetalleServiciosExtra::create([
+            //             'id_consumo'            => $consumo->id,
+            //             'id_servicio_extra'     => $servicio_id,
+            //             'id_precio_tipo_masaje' => null,
+            //             'cantidad_servicio'     => $cantidad,
+            //             'subtotal'              => $subtotal,
+            //         ]);
+
+            //         $nuevoSubtotal += $subtotal;
+
+            //         // Contadores para Visita SPA
+            //         if ($slugServicio === 'sauna')  { $spaSauna  += $cantidad; }
+            //         if ($slugServicio === 'tinaja') { $spaTinaja += $cantidad; }
+
+            //         // Almuerzo -> crear menús
+            //         if ($slugServicio === 'almuerzo') {
+            //             for ($i=1; $i <= $cantidad; $i++) {
+            //                 Menu::create([
+            //                     'id_reserva'                 => $venta->reserva->id,
+            //                     'id_producto_entrada'        => null,
+            //                     'id_producto_fondo'          => null,
+            //                     'id_producto_acompanamiento' => null,
+            //                     'alergias'                   => null,
+            //                     'observacion'                => null,
+            //                 ]);
+            //             }
+            //         }
+            //     }
+            // }
+
+            $nuevoSubtotal     = 0;
+            $spaCantidadSauna  = 0;
+            $spaCantidadTinaja = 0;
+
+            foreach ($serviciosValidos as $servicio_id => $srv) {
+
+                $servicioBD   = Servicio::findOrFail($servicio_id);
+                $slugServicio = $servicioBD->slug ?: str_slug($servicioBD->nombre_servicio);
+                $cantidad     = (int) ($srv['cantidad'] ?? 0);
+
+                if ($slugServicio === 'masaje') {
+                    // --- MASAJES ---
+                    $slugTipo = strtolower($srv['slug_tipo_masaje'] ?? '');
+                    $duracion = (int) ($srv['duracion'] ?? 0);
+
+                    $precio = PrecioTipoMasaje::with('tipo')
+                        ->whereHas('tipo', function ($q) use ($slugTipo) {$q->where('slug', $slugTipo);})
+                        ->where('duracion_minutos', $duracion)
+                        ->first();
+
+                    if (! $precio) {
+                        throw ValidationException::withMessages(['servicios' => 'Tipo o duración de masaje inválida.']);
+                    }
+
+                    $isRelaj = ($precio->tipo->slug === 'relajacion') && in_array($duracion, [30, 60], true) && ! is_null($precio->precio_pareja);
+                    $pares   = $isRelaj ? intdiv($cantidad, 2) : 0;
+                    $resto   = $cantidad - ($pares * 2);
+
+                    $subtotal = $pares * (int) $precio->precio_pareja + $resto * (int) $precio->precio_unitario;
+
+                    DetalleServiciosExtra::create([
+                        'id_consumo'            => $consumo->id,
+                        'id_servicio_extra'     => $servicio_id,
+                        'id_precio_tipo_masaje' => $precio->id, // <-- se guarda aquí
+                        'cantidad_servicio'     => $cantidad,
+                        'subtotal'              => $subtotal,
+                    ]);
+
+                    $nuevoSubtotal += $subtotal;
+
+                                                                              // Lógica de creación/actualización de registros en `masajes`
+                    $tiempoExtraActual = ! empty($srv['tiempo_extra_actual']); // subir base->60
+                    $tiempoExtraNuevo  = ! empty($srv['tiempo_extra']);        // crear nuevos 60
+                    $reserva           = $venta->reserva;
+                    $reservaId         = $reserva->id;
+
+                    $masajesBaseQuery = $reserva->masajes()->where(function ($q) {
+                        $q->whereNull('tiempo_extra')->orWhere('tiempo_extra', false);
+                    })->orderBy('id');
+
+                    $crearBase = function ($n) use ($reservaId, $venta) {
+                        for ($i = 0; $i < $n; $i++) {
+                            Masaje::create([
+                                'id_reserva'      => $reservaId,
+                                'horario_masaje'  => null,
+                                'tipo_masaje'     => null,
+                                'id_lugar_masaje' => 1,
+                                'persona'         => ($venta->reserva->next_persona),
+                                'tiempo_extra'    => false,
+                                'user_id'         => null,
+                            ]);
+                        }
+                    };
+                    $crearExtras = function ($n) use ($reservaId, $venta) {
+                        for ($i = 0; $i < $n; $i++) {
+                            Masaje::create([
+                                'id_reserva'      => $reservaId,
+                                'horario_masaje'  => null,
+                                'tipo_masaje'     => null,
+                                'id_lugar_masaje' => 1,
+                                'persona'         => ($venta->reserva->next_persona),
+                                'tiempo_extra'    => true,
+                                'user_id'         => null,
+                            ]);
+                        }
+                    };
+                    $subirAExtra = function ($n) use ($masajesBaseQuery) {
+                        $pend = $masajesBaseQuery->limit($n)->get();
+                        foreach ($pend as $m) {$m->tiempo_extra = true; $m->save();}
+                    };
+
+                    if ($tiempoExtraActual) {
+                        $subirAExtra($cantidad);
+                    } else if ($tiempoExtraNuevo) {
+                        $crearExtras($cantidad);
+                    } else {
+                        $crearBase($cantidad);
+                    }
+
+                } else {
+                    // --- OTROS SERVICIOS ---
+                    $unitario = (int) ($servicioBD->valor_servicio ?: 0);
+                    $subtotal = $unitario * $cantidad;
+
+                    DetalleServiciosExtra::create([
+                        'id_consumo'            => $consumo->id,
+                        'id_servicio_extra'     => $servicio_id,
+                        'id_precio_tipo_masaje' => null, // <-- NULL aquí
+                        'cantidad_servicio'     => $cantidad,
+                        'subtotal'              => $subtotal,
+                    ]);
+
+                    $nuevoSubtotal += $subtotal;
+
+                    if ($slugServicio === 'sauna') {$spaCantidadSauna += $cantidad;}
+                    if ($slugServicio === 'tinaja') {$spaCantidadTinaja += $cantidad;}
+
+                    if ($slugServicio === 'almuerzo') {
+                        for ($i = 1; $i <= $cantidad; $i++) {
+                            Menu::create([
+                                'id_reserva'                 => $venta->reserva->id,
+                                'id_producto_entrada'        => null,
+                                'id_producto_fondo'          => null,
+                                'id_producto_acompanamiento' => null,
+                                'alergias'                   => null,
+                                'observacion'                => null,
+                            ]);
+                        }
+                    }
+                }
+            }
+
+            // 3) Visitas combinadas (Sauna + Tinaja)
+            $spaCombinados = min($spaSauna, $spaTinaja);
+            if ($spaCombinados > 0) {
+                for ($i = 1; $i <= $spaCombinados; $i++) {
+                    Visita::create([
+                        'horario_sauna'  => null,
+                        'horario_tinaja' => null,
+                        'trago_cortesia' => false,
+                        'observacion'    => null,
+                        'id_reserva'     => $venta->reserva->id,
+                        'id_ubicacion'   => $venta->reserva->visitas->first()->id_ubicacion,
+                    ]);
+                }
+            }
+
+            // 4) Totales de consumo
+            $consumo->subtotal      = (int) $consumo->subtotal + $nuevoSubtotal;
+            $consumo->total_consumo = (int) $consumo->total_consumo + $nuevoSubtotal;
+            $consumo->save();
+        });
+
+        $venta = Venta::findOrFail($request->id_venta);
 
         Alert::success('Éxito', 'Servicio extra ingresado correctamente', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.reserva.show', $venta->reserva->id);
@@ -788,9 +1093,8 @@ class ConsumoController extends Controller
 
     public function destroyDetalle($tipo, $id)
     {
-        $servicioMasaje = ['masajes', 'masaje', 'Masajes', 'Masaje'];
+        $servicioMasaje   = ['masajes', 'masaje', 'Masajes', 'Masaje'];
         $servicioAlmuerzo = ['almuerzos', 'almuerzo', 'Almuerzos', 'Almuerzo'];
-
 
         if ($tipo === 'consumo') {
             $detalle = DetalleConsumo::with('consumo')->findOrFail($id);
@@ -836,10 +1140,6 @@ class ConsumoController extends Controller
             // $consumo->save();
             // $detalle->delete();
 
-
-
-
-            
             // if ($detalle->servicio && in_array(strtolower($detalle->servicio->nombre_servicio), array_map('strtolower',$servicioMasaje))) {
             //     $cantidad = (int) $detalle->cantidad_servicio;
             //     $desde    = $detalle->created_at;
@@ -894,11 +1194,10 @@ class ConsumoController extends Controller
             //     }
             // }
 
-
             if ($detalle->servicio && in_array(strtolower($detalle->servicio->nombre_servicio), array_map('strtolower', $servicioAlmuerzo))) {
                 $cantidad = (int) $detalle->cantidad_servicio;
 
-                for ($i=1; $i <= $cantidad; $i++) { 
+                for ($i = 1; $i <= $cantidad; $i++) {
                     $reserva->menus->last()->delete();
                 }
             }
@@ -908,8 +1207,6 @@ class ConsumoController extends Controller
             $consumo->total_consumo = max(0, $consumo->total_consumo - $detalle->subtotal);
             $consumo->save();
             $detalle->delete();
-
-
 
         } else {
             return back()->with('error', 'Tipo de detalle no válido');

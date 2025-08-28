@@ -92,9 +92,14 @@ class AdminController extends Controller
             return view('themes.backoffice.pages.admin.show', compact('totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes', 'totalAsistentesDia', 'cantidadFuncionarios', 'cantidadRoles', 'asistentesConteo', 'poroporo'));
         }
 
-        if ($user->has_role(config('app.anfitriona_role')) || $user->has_role(config('app.jefe_local_role'))) {
+        if ($user->has_role(config('app.jefe_local_role'))) {
             return view('themes.backoffice.pages.admin.show', compact('totalAsistentesDia', 'totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
         }
+
+        if ($user->has_role(config('app.anfitriona_role'))) {
+            return view('themes.backoffice.pages.admin.show', compact('totalAsistentesDia', 'totalClientes', 'totalReservas', 'insumosCriticos', 'masajesAsignados', 'asignacionesSemanaActual', 'totalConsumos', 'sueldosMes'));
+        }
+
 
         if ($user->has_role(config('app.cocina_role')) || $user->has_role(config('app.garzon_role'))) {
             return redirect()->action([MenuController::class, 'index']);

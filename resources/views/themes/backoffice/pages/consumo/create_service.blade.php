@@ -3,6 +3,15 @@
 @section('title', 'Ingresar Consumo')
 
 @section('head')
+<style>
+  /* Solo en este formulario */
+  #basic-form .card,
+  #basic-form .card-content { overflow: visible !important; }
+
+  /* Asegura que el ul del select pase por encima */
+  ul.select-dropdown { z-index: 1005 !important; }
+</style>
+
 @endsection
 
 @section('breadcrumbs')
@@ -132,90 +141,90 @@
     });
      }
 
-    $(document).ready(function() {
-        // Inicializar manualmente los tabs de Materialize
-        $('ul.tabs').tabs();
+    // $(document).ready(function() {
+    //     // Inicializar manualmente los tabs de Materialize
+    //     $('ul.tabs').tabs();
 
 
 
-        // Desasociar cualquier evento anterior y luego asociar el evento click
-        $('.servicio').off('click').on('click', function(event) {
-            event.preventDefault(); // Evitar el comportamiento por defecto de los tabs
+    //     // Desasociar cualquier evento anterior y luego asociar el evento click
+    //     $('.servicio').off('click').on('click', function(event) {
+    //         event.preventDefault(); // Evitar el comportamiento por defecto de los tabs
 
-            // Obtener los datos del servicio seleccionado
-            var id = $(this).data('id');
-            var nombre = $(this).data('nombre');
-            var precio = $(this).data('precio');
+    //         // Obtener los datos del servicio seleccionado
+    //         var id = $(this).data('id');
+    //         var nombre = $(this).data('nombre');
+    //         var precio = $(this).data('precio');
 
-            var esMasaje = nombre.toLowerCase().includes('masaje');
+    //         var esMasaje = nombre.toLowerCase().includes('masaje');
 
-            var extraHTML = esMasaje ? `
-                <div class="col s12">
-                    <label>
-                        <input type="checkbox" name="servicios[${id}][tiempo_extra_actual]" />
-                        <span>¿Agregar tiempo a masaje actual (30 min)?</span>
-                    </label>
-                    <label>
-                        <input type="checkbox" name="servicios[${id}][tiempo_extra]" />
-                        <span>¿Agregar masaje extra (1 hora)?</span>
-                    </label>
-                </div>
-            ` : '';
+    //         var extraHTML = esMasaje ? `
+    //             <div class="col s12">
+    //                 <label>
+    //                     <input type="checkbox" name="servicios[${id}][tiempo_extra_actual]" />
+    //                     <span>¿Agregar tiempo a masaje actual (30 min)?</span>
+    //                 </label>
+    //                 <label>
+    //                     <input type="checkbox" name="servicios[${id}][tiempo_extra]" />
+    //                     <span>¿Agregar masaje extra (1 hora)?</span>
+    //                 </label>
+    //             </div>
+    //         ` : '';
 
 
 
-            // Verificar si el servicio ya fue seleccionado
-            if ($('#servicio_' + id).length === 0) {
-                // Si no ha sido seleccionado, añadirlo a la lista de servicios seleccionados
-                $('#servicios_seleccionados').append(
-                    '<div class="row" id="servicio_' + id + '">' +
-                        '<div class="col s1">' +
-                            '<a href="javascript:void(0);" class="" onclick="eliminarServicio('+ id +')"><i class="material-icons" style="padding-top:25px; color:red;">clear</i></a>'+
-                        '</div>'+
-                        '<div class="col s3">' +
-                            '<blockquote><h5>' + nombre + '</h5></blockquote>' +
-                        '</div>' +
-                        '<div class="col s4">' +
-                            '<h5>$' + precio + '</h5>' +
-                        '</div>' +
-                        '<div class="col s4">' +
-                            '<input type="number" name="servicios[' + id + '][cantidad]" placeholder="Cantidad" min="1">' +
-                            '<input type="hidden" name="servicios[' + id + '][precio]" value="' + precio + '">' +
-                        '</div>' + extraHTML +
-                    '</div>'
-                );
+    //         // Verificar si el servicio ya fue seleccionado
+    //         if ($('#servicio_' + id).length === 0) {
+    //             // Si no ha sido seleccionado, añadirlo a la lista de servicios seleccionados
+    //             $('#servicios_seleccionados').append(
+    //                 '<div class="row" id="servicio_' + id + '">' +
+    //                     '<div class="col s1">' +
+    //                         '<a href="javascript:void(0);" class="" onclick="eliminarServicio('+ id +')"><i class="material-icons" style="padding-top:25px; color:red;">clear</i></a>'+
+    //                     '</div>'+
+    //                     '<div class="col s3">' +
+    //                         '<blockquote><h5>' + nombre + '</h5></blockquote>' +
+    //                     '</div>' +
+    //                     '<div class="col s4">' +
+    //                         '<h5>$' + precio + '</h5>' +
+    //                     '</div>' +
+    //                     '<div class="col s4">' +
+    //                         '<input type="number" name="servicios[' + id + '][cantidad]" placeholder="Cantidad" min="1">' +
+    //                         '<input type="hidden" name="servicios[' + id + '][precio]" value="' + precio + '">' +
+    //                     '</div>' + extraHTML +
+    //                 '</div>'
+    //             );
 
-            } else {
-                // Si ya fue seleccionado, simplemente ignorar o mostrar mensaje
-                // Swal.fire({
-                    //     icon: 'warning',
-                    //     title: 'Servicio ya seleccionado',
-                //     text: 'Este servicio ya ha sido agregado a la lista.',
-                //     confirmButtonText: 'OK'
-                // });
+    //         } else {
+    //             // Si ya fue seleccionado, simplemente ignorar o mostrar mensaje
+    //             // Swal.fire({
+    //                 //     icon: 'warning',
+    //                 //     title: 'Servicio ya seleccionado',
+    //             //     text: 'Este servicio ya ha sido agregado a la lista.',
+    //             //     confirmButtonText: 'OK'
+    //             // });
                 
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: "top",
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    didOpen: (toast) => {
-                        toast.onmouseenter = Swal.stopTimer;
-                        toast.onmouseleave = Swal.resumeTimer;
-                    }
-                });
+    //             const Toast = Swal.mixin({
+    //                 toast: true,
+    //                 position: "top",
+    //                 showConfirmButton: false,
+    //                 timer: 3000,
+    //                 timerProgressBar: true,
+    //                 didOpen: (toast) => {
+    //                     toast.onmouseenter = Swal.stopTimer;
+    //                     toast.onmouseleave = Swal.resumeTimer;
+    //                 }
+    //             });
                 
-                Toast.fire({
-                    icon: "error",
-                    title: "El servicio ya fue incorporado a la lista, agregue la cantidad"
-                });
+    //             Toast.fire({
+    //                 icon: "error",
+    //                 title: "El servicio ya fue incorporado a la lista, agregue la cantidad"
+    //             });
                 
-            }
+    //         }
 
-        });
+    //     });
 
-    });
+    // });
 </script>
 
 
@@ -481,13 +490,48 @@
 </script> --}}
 
 
-{{-- <script>
+<script>
   // ====== Catálogo completo desde el backend (controlador debe pasar $catalogoMasajes) ======
   var CATALOGO = @json($catalogoMasajes);
 
   // ----- Utilidades ES5 -----
   function numberWithDots(n){ return (n||0).toString().replace(/\B(?=(\d{3})+(?!\d))/g,'.'); }
-  function matInit(sel){ try{$(sel).material_select();}catch(e){} }
+  function matInit(sel){ 
+    
+    // try{$(sel).material_select();}catch(e){} 
+  
+    var $sel = $(sel);
+
+  // 1) destruir si ya estaba
+  try { $sel.material_select('destroy'); } catch(e){}
+
+  // 2) reinit
+  $sel.material_select();
+
+  // 3) mover dropdown al body (solo una vez)
+  var $wrap  = $sel.parent('.select-wrapper');
+  var $input = $wrap.children('input.select-dropdown');
+  var $ul    = $wrap.children('ul.select-dropdown');
+
+  if ($ul.length && !$ul.data('movido')) {
+    $ul.appendTo('body');               // saca del card/tabs
+    $ul.data('movido', true);
+
+    // 4) fix “se oculta al primer click”: recalcula posición/tamaño
+    $input.off('click.fix-open').on('click.fix-open', function(){
+      var off = $input.offset();
+      $ul.css({
+        position: 'absolute',
+        top:  off.top + $input.outerHeight(),
+        left: off.left,
+        minWidth: $input.outerWidth()
+      });
+      // pequeño defer para que no se cierre inmediatamente
+      setTimeout(function(){ /* nada: deja que dropdown abra bien */ }, 0);
+    });
+  }
+
+}
 
   function tipoBySlug(slug){
     for(var i=0;i<CATALOGO.length;i++){
@@ -557,9 +601,11 @@
       '<input type="hidden" id="extra_nuevo_'+id+'"  name="servicios['+id+'][tiempo_extra]" value="">'+
 
       // Total estimado
-      '<div class="col s12"><small id="total_estimado_'+id+'" class="grey-text"></small></div>'+
+      '<div class="col s12"><small id="total_estimado_'+id+'" class="black-text"></small></div>'+
     '</div>';
   }
+
+
 
   // ----- Lógica de UI -----
   function poblarTiposPorCategoria(id, slugCat){
@@ -709,7 +755,7 @@
       }
     });
   });
-</script> --}}
+</script>
 
 
 @endsection

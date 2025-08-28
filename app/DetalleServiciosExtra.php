@@ -12,7 +12,8 @@ class DetalleServiciosExtra extends Model
         'cantidad_servicio',
         'subtotal',
         'id_consumo',
-        'id_servicio_extra'
+        'id_servicio_extra',
+        'id_precio_tipo_masaje'
     ];
 
     public function consumo()

@@ -15,7 +15,7 @@
 
 @section('content')
 
-@if (Auth::user()->has_role(config('app.admin_role')))
+@if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
     <div class="section">
         <p class="caption"><strong>Administración</strong></p>
         <div class="divider"></div>
@@ -68,7 +68,10 @@
                                         </a>
                                     </div>
 
+@endif
 
+@if (Auth::user()->has_role(config('app.admin_role')))
+    
 
                                     <!-- Tarjeta para mostrar el número de Masajes Asignados -->
                                     <div class="col s12 m6 l3">
@@ -88,6 +91,11 @@
                                             </div>
                                         </a>
                                     </div>
+
+@endif
+
+@if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
+    
 
 
                                     <!-- Tarjeta para mostrar el número de Equipos de la semana -->
@@ -109,7 +117,11 @@
                                         </a>
                                     </div>
 
+
                                     {{-- Incorporar nuevas tarjetas --}}
+@endif
+
+
 
                                 </div>
                             </div>
@@ -124,6 +136,9 @@
         </div>
     </div>
 
+
+    @if (Auth::user()->has_role(config('app.admin_role')))
+        
 
     <div class="section">
         <p class="caption"><strong>Finanzas</strong></p>
