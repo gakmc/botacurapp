@@ -143,10 +143,10 @@
                             <strong>Menú {{$index + 1}}:</strong>
                           </td>
                           <td>
-                            {{ $menu->productoEntrada->nombre }}
+                            {{ $menu->productoEntrada->nombre ?? 'No Registra' }}
                           </td>
                           <td>
-                            {{ $menu->productoFondo->nombre }}
+                            {{ $menu->productoFondo->nombre ?? 'No Registra' }}
                           </td>
                           <td>
                             @if ($menu->productoAcompanamiento == null)

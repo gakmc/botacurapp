@@ -209,7 +209,7 @@
                 @endif
 
 
-                @if (Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.admin_role')))
+                @if (Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.menu.index') }}">
                             <i class="material-icons">
