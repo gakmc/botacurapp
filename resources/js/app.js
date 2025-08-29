@@ -16,6 +16,7 @@ window.Echo = new Echo({
     /**encrypted: true */
 });
 
+
 require('./bootstrap');
 
 // window.Vue = require('vue');

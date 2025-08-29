@@ -411,7 +411,7 @@ class VisitaController extends Controller
 
                             $masaje = Masaje::create([
                                 'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
-                                'tipo_masaje'     => $horario['tipo_masaje'],
+                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajante',
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
                                 'persona'         => $contadorPersonas,
                                 'id_reserva'       => $reserva->id,
@@ -485,7 +485,7 @@ class VisitaController extends Controller
 
                             $masaje = Masaje::create([
                                 'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
-                                'tipo_masaje'     => $horario['tipo_masaje'],
+                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajante',
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
                                 'persona'         => $contadorPersonas,
                                 'id_reserva'       => $reserva->id,
@@ -542,17 +542,62 @@ class VisitaController extends Controller
 
                 // Menus
                 if (in_array('Almuerzo', $almuerzoIncluido) || $almuerzosExtra) {
+                    $menusExistentes = Menu::where('id_reserva', $reserva->id)->count();
+                    if($menusExistentes === 0){
+                        $menusPayload =  $request->input('menus', []);
 
-                    foreach ($request->menus as $menu) {
-                        Menu::create([
-                            'id_reserva'                 => $reserva->id,
-                            'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
-                            'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
-                            'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
-                            'alergias'                   => $menu['alergias'] ?? null,
-                            'observacion'                => $menu['observacion'] ?? null,
-                        ]);
+                        if (!is_array($menusPayload)) {
+                            $menusPayload = [];
+                        }
+
+                        //Si vienen menus en el Payload crear
+                        foreach ($menusPayload as $menu) {
+                            if (!is_array($menu)) continue;
+
+                            Menu::create([
+                                'id_reserva'                 => $reserva->id,
+                                'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
+                                'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
+                                'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
+                                'alergias'                   => $menu['alergias'] ?? null,
+                                'observacion'                => $menu['observacion'] ?? null,
+                            ]);
+                        }
+
+
+                        //Si no vienen, crear menus vacios
+                        $cantidadNecesaria = (int) $personas;
+                        $creados = max(0, count($menusPayload));
+                        $faltantes = max(0, $cantidadNecesaria - $creados);
+
+                        for ($i=0; $i < $faltantes; $i++) { 
+                            Menu::create([
+                                'id_reserva'                 => $reserva->id,
+                                'id_producto_entrada'        => null,
+                                'id_producto_fondo'          => null,
+                                'id_producto_acompanamiento' => null,
+                                'alergias'                   => null,
+                                'observacion'                => null,
+                            ]);
+                        }
                     }
+
+
+                    // //Anterior controlador de los menus
+                    // foreach ($request->menus as $menu) {
+                    //     Menu::create([
+                    //         'id_reserva'                 => $reserva->id,
+                    //         'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
+                    //         'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
+                    //         'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
+                    //         'alergias'                   => $menu['alergias'] ?? null,
+                    //         'observacion'                => $menu['observacion'] ?? null,
+                    //     ]);
+                    // }
+
+
+
+
                 }
 
             });
@@ -568,6 +613,7 @@ class VisitaController extends Controller
             Log::error('Error al generar visita en store(): ' . $e->getMessage(), [
                 'exception' => $e,
                 'trace' => $e->getTraceAsString(),
+                'mensaje' => 'Fallo la creacion de la visita, revisa el menu o los servicios',
                 'reserva_id' => $reserva->id ?? null,
                 'request_data' => $request->all()
             ]);

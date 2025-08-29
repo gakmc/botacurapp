@@ -38,7 +38,7 @@
                 @endif
 
                 <span class="pink-text" style="font-weight: 500;">
-                    {{$detalle->producto->nombre}} - Cantidad: {{$detalle->cantidad_producto}}
+                    {{$detalle->producto->nombre ?? 'Producto no encontrado'}} - Cantidad: {{$detalle->cantidad_producto}}
                 </span>
             </div>
             
@@ -68,7 +68,11 @@
                 @endif
 
                 <span class="pink-text" style="font-weight: 500;">
-                    {{$detalle->servicio->nombre_servicio}} {{($detalle->servicio->slug == 'masaje') ? $detalle->precioTipoMasaje->tipo->nombre.' - '.$detalle->precioTipoMasaje->duracion_minutos.' Minutos' : ''}} - Cantidad: {{$detalle->cantidad_servicio}}
+                    {{$detalle->servicio->nombre_servicio}}   @if(($detalle->servicio->slug ?? null) === 'masaje'
+      && data_get($detalle, 'precioTipoMasaje'))
+      {{ data_get($detalle, 'precioTipoMasaje.tipo.nombre', '') }}
+      - {{ data_get($detalle, 'precioTipoMasaje.duracion_minutos', '') }} Minutos
+  @endif - Cantidad: {{$detalle->cantidad_servicio}}
                 </span>
             </div>
             

@@ -1072,6 +1072,10 @@ class ReservaController extends Controller
             'menus.*.observacion.string'  => 'El campo observaciones debe ser un texto.',
         ]);
 
+        // dd($request->menus);
+        foreach ($request->menus as $id => $datos) {
+            dd($id);
+        }
 
         try {
             

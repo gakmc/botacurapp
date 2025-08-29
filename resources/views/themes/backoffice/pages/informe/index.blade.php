@@ -69,7 +69,7 @@
                 <ul class="collection">
                     {{-- <li class="collection-item">1. Programa Relax</li> --}}
                     @foreach ($programasMasContratados as $index=>$programa)
-                    <li class="collection-item">{{$index+1}}. {{$programa->programa->nombre_programa}}</li>
+                    <li class="collection-item">{{$index+1}}. {{$programa->programa->nombre_programa}} - Cantidad: {{$programa->total}}</li>
                     @endforeach
                     {{-- <li class="collection-item">2. Programa Familiar</li>
                     <li class="collection-item">3. Programa Premium</li> --}}

@@ -406,24 +406,25 @@
 @section('foot')
 
 
-
-@if($insumosCriticos->isNotEmpty())
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        Swal.fire({
-            title: 'Stock Crítico',
-            icon: 'error',
-            html: `
-                <ul>
-                    @foreach ($insumosCriticos as $insumo)
-                        <li>{{ $insumo->nombre }}: {{ $insumo->cantidad }} unidades (Stock crítico: {{ $insumo->stock_critico }})</li>
-                    @endforeach
-                </ul>
-            `,
-            confirmButtonText: 'Aceptar',
+@if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role'))) 
+    @if($insumosCriticos->isNotEmpty())
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            Swal.fire({
+                title: 'Stock Crítico',
+                icon: 'error',
+                html: `
+                    <ul>
+                        @foreach ($insumosCriticos as $insumo)
+                            <li>{{ $insumo->nombre }}: {{ $insumo->cantidad }} unidades (Stock crítico: {{ $insumo->stock_critico }})</li>
+                        @endforeach
+                    </ul>
+                `,
+                confirmButtonText: 'Aceptar',
+            });
         });
-    });
-</script>
+    </script>
+    @endif
 @endif
 
 <script>
