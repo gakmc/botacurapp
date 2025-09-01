@@ -1073,9 +1073,9 @@ class ReservaController extends Controller
         ]);
 
         // dd($request->menus);
-        foreach ($request->menus as $id => $datos) {
+       /** foreach ($request->menus as $id => $datos) {
             dd($id);
-        }
+        }**/
 
         try {
             
