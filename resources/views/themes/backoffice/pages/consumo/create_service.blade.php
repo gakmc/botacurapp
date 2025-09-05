@@ -561,49 +561,99 @@
   }
 
   // ----- Render de controles en una sola fila -----
+  // function htmlMasajeEnFila(id, nombre){
+  //   var cats = CATALOGO.map(function(c){ return '<option value="'+c.slug+'">'+c.nombre+'</option>'; }).join('');
+  //   return ''+
+  //   '<div class="row valign-wrapper" id="servicio_'+id+'">'+
+  //     '<div class="col s1">'+
+  //       '<a href="javascript:void(0);" onclick="eliminarServicio('+id+')"><i class="material-icons" style="padding-top:25px;color:red;">clear</i></a>'+
+  //     '</div>'+
+  //     '<div class="col s6 l2"><blockquote><h5>'+nombre+'</h5></blockquote></div>'+
+  //     // Precio dinámico a la vista
+  //     '<div class="col s5 l2">'+
+  //       '<h5 id="precio_unit_'+id+'">$0</h5>'+
+  //     '</div>'+
+  //     // Cantidad
+  //     '<div class="col s6 l2">'+
+  //       '<input type="number" min="1" value="1" name="servicios['+id+'][cantidad]" oninput="recalcTotal('+id+')">'+
+  //     '</div>'+
+  //     // Categoría
+  //     '<div class="input-field col s12 l4">'+
+  //       '<select id="categoria_'+id+'"><option value="" disabled selected>Categoría</option>'+cats+'</select>'+
+  //       '<label>Categoría de masaje</label>'+
+  //     '</div>'+
+  //     // Tipo
+  //     '<div class="input-field col s12 l4">'+
+  //       '<select id="tipo_'+id+'" disabled><option value="" disabled selected>Tipo</option></select>'+
+  //       '<label>Tipo de masaje</label>'+
+  //     '</div>'+
+  //     // Opciones (definen duración y flags)
+  //     '<div class="col s2 l2" id="opciones_'+id+'">'+
+  //       '<label style=""><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo30" checked><span>Nuevo 30</span></label>'+
+  //       '<label style=""><input class="with-gap" name="op_'+id+'" type="radio" value="subir30"><span>+30 a existentes</span></label>'+
+  //       '<label><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo60"><span>Nuevo 60</span></label>'+
+  //     '</div>'+
+
+  //     // Hidden para enviar al backend
+  //     '<input type="hidden" id="tipo_hidden_'+id+'" name="servicios['+id+'][slug_tipo_masaje]">'+
+  //     '<input type="hidden" id="dur_hidden_'+id+'"  name="servicios['+id+'][duracion]" value="30">'+
+  //     '<input type="hidden" id="extra_actual_'+id+'" name="servicios['+id+'][tiempo_extra_actual]" value="">'+
+  //     '<input type="hidden" id="extra_nuevo_'+id+'"  name="servicios['+id+'][tiempo_extra]" value="">'+
+
+  //     // Total estimado
+  //     '<div class="col s12"><small id="total_estimado_'+id+'" class="black-text"></small></div>'+
+  //   '</div>';
+  // }
+
+
+
   function htmlMasajeEnFila(id, nombre){
-    var cats = CATALOGO.map(function(c){ return '<option value="'+c.slug+'">'+c.nombre+'</option>'; }).join('');
-    return ''+
-    '<div class="row valign-wrapper" id="servicio_'+id+'">'+
-      '<div class="col s1">'+
-        '<a href="javascript:void(0);" onclick="eliminarServicio('+id+')"><i class="material-icons" style="padding-top:25px;color:red;">clear</i></a>'+
+  var cats = CATALOGO.map(function(c){ return '<option value="'+c.slug+'">'+c.nombre+'</option>'; }).join('');
+  return ''+
+  '<div class="row" id="servicio_'+id+'">'+
+    // fila 1 (todo suma 12 en l)
+    '<div class="col s2 m1 l1">'+
+      '<a href="javascript:void(0);" onclick="eliminarServicio('+id+')"><i class="material-icons red-text">clear</i></a>'+
+    '</div>'+
+    '<h5 class="col s10 m5 l2"><blockquote><h6>'+nombre+'</h6></blockquote></h5>'+
+    '<div class="col s6 m3 l2">'+
+      '<div class="input-field" >'+
+        '<label for="precio_unit_'+id+'">Valor</label>'+
+        '<h6 id="precio_unit_'+id+'">$0</h6></div>'+
       '</div>'+
-      '<div class="col s2"><blockquote><h5>'+nombre+'</h5></blockquote></div>'+
-      // Precio dinámico a la vista
-      '<div class="col s2 right-align">'+
-        '<h5 id="precio_unit_'+id+'">$0</h5>'+
-      '</div>'+
-      // Cantidad
-      '<div class="col s2">'+
+    '<div class="col s6 m3 l2">'+
+      '<div class="input-field" >'+
         '<input type="number" min="1" value="1" name="servicios['+id+'][cantidad]" oninput="recalcTotal('+id+')">'+
+        '<label class="active">Cantidad</label>'+
       '</div>'+
-      // Categoría
-      '<div class="input-field col s4">'+
-        '<select id="categoria_'+id+'"><option value="" disabled selected>Categoría</option>'+cats+'</select>'+
-        '<label>Categoría de masaje</label>'+
-      '</div>'+
-      // Tipo
-      '<div class="input-field col s4">'+
-        '<select id="tipo_'+id+'" disabled><option value="" disabled selected>Tipo</option></select>'+
-        '<label>Tipo de masaje</label>'+
-      '</div>'+
-      // Opciones (definen duración y flags)
-      '<div class="col s2" id="opciones_'+id+'">'+
-        '<label style="margin-right:6px;"><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo30" checked><span>Nuevo 30</span></label>'+
-        '<label style="margin-right:6px;"><input class="with-gap" name="op_'+id+'" type="radio" value="subir30"><span>+30 a existentes</span></label>'+
-        '<label><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo60"><span>Nuevo 60</span></label>'+
-      '</div>'+
+    '</div>'+
+    '<div class="col s12 m6 l3 input-field">'+
+      '<select id="categoria_'+id+'"><option value="" disabled selected>Categoría</option>'+cats+'</select>'+
+      '<label>Categoría de masaje</label>'+
+    '</div>'+
+    '<div class="col s12 m6 l2 input-field">'+
+      '<select id="tipo_'+id+'" disabled><option value="" disabled selected>Tipo</option></select>'+
+      '<label>Tipo</label>'+
+    '</div>'+
 
-      // Hidden para enviar al backend
-      '<input type="hidden" id="tipo_hidden_'+id+'" name="servicios['+id+'][slug_tipo_masaje]">'+
-      '<input type="hidden" id="dur_hidden_'+id+'"  name="servicios['+id+'][duracion]" value="30">'+
-      '<input type="hidden" id="extra_actual_'+id+'" name="servicios['+id+'][tiempo_extra_actual]" value="">'+
-      '<input type="hidden" id="extra_nuevo_'+id+'"  name="servicios['+id+'][tiempo_extra]" value="">'+
+    // fila 2 (opciones + total)
+    '<div class="col s12 m8 l6" id="opciones_'+id+'" style="margin-top:6px">'+
+      '<label class="mr-2"><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo30" checked><span>Nuevo 30</span></label>'+
+      '<label class="mr-2"><input class="with-gap" name="op_'+id+'" type="radio" value="subir30"><span>+30 a existentes</span></label>'+
+      '<label><input class="with-gap" name="op_'+id+'" type="radio" value="nuevo60"><span>Nuevo 60</span></label>'+
+    '</div>'+
+    '<div class="col s12 m4 l6" style="margin-top:6px">'+
+      '<small id="total_estimado_'+id+'" class="black-text right"></small>'+
+    '</div>'+
 
-      // Total estimado
-      '<div class="col s12"><small id="total_estimado_'+id+'" class="black-text"></small></div>'+
-    '</div>';
-  }
+    // hidden para backend
+    '<input type="hidden" id="tipo_hidden_'+id+'" name="servicios['+id+'][slug_tipo_masaje]">'+
+    '<input type="hidden" id="dur_hidden_'+id+'"  name="servicios['+id+'][duracion]" value="30">'+
+    '<input type="hidden" id="extra_actual_'+id+'" name="servicios['+id+'][tiempo_extra_actual]" value="">'+
+    '<input type="hidden" id="extra_nuevo_'+id+'"  name="servicios['+id+'][tiempo_extra]" value="">'+
+  '</div>';
+}
+
 
 
 

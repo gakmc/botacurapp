@@ -666,16 +666,23 @@
           $('#modalServicio').empty();
 
           var tablaServicios = '<table class="highlight responsive-table centered">';
-          tablaServicios += '<thead><tr><th>Servicio</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
+          tablaServicios += '<thead><tr><th>Servicio</th><th>Valor/Tiempo</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
           tablaServicios += '<tbody>';
 
                 // Iterar sobre los consumos y agregar filas a la tabla
                 
           if (Array.isArray(consumo.detalle_servicios_extra) && consumo.detalle_servicios_extra.length > 0) {
               consumo.detalle_servicios_extra.forEach(function(detalle, detalleIndex) {
+                  tiempoValor = 0;
+                  if (detalle.servicio.slug == 'masaje') {
+                    tiempoValor=detalle.precio_tipo_masaje.duracion_minutos
+                  } else {
+                    tiempoValor=detalle.servicio.valor_servicio
+                  }
+
                   tablaServicios += '<tr>';
                   tablaServicios += '<td>' + detalle.servicio.nombre_servicio + '</td>';
-                  tablaServicios += '<td>' + formatCLP(detalle.servicio.valor_servicio) + '</td>';
+                  tablaServicios += '<td>' + (detalle.servicio.slug == 'masaje' ? tiempoValor+' min' : formatCLP(tiempoValor)) +'</td>';
                   tablaServicios += '<td>' +'X'+ detalle.cantidad_servicio + '</td>';
                   tablaServicios += '<td>' + formatCLP(detalle.subtotal) + '</td>';
                   subtotalServicio += detalle.subtotal;

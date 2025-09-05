@@ -52,7 +52,7 @@ class BoletaController extends Controller
     public function databoleta(Request $request ,Reserva $reserva)
     {
 
-        $reserva->load('venta.consumo','venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio');
+        $reserva->load('venta.consumo','venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio', 'venta.consumo.detalleServiciosExtra.precioTipoMasaje');
 
         $total   = 0;
         $consumo        = $reserva->venta->consumo;

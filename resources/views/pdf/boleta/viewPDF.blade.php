@@ -104,7 +104,17 @@
                     @endphp
                     <tr>
                         <td style="text-align: left; padding-right: 5px; word-wrap: break-word; max-width: 70%;">
-                            {{ $servicio->servicio->nombre_servicio}} (${{number_format($servicio->servicio->valor_servicio,0,'','.')}}) X {{ $servicio->cantidad_servicio }}
+                            {{-- {{dd($servicio->servicio->slug)}} --}}
+                            {{ $servicio->servicio->nombre_servicio}} @if(($servicio->servicio->slug ?? null) === 'masaje' && data_get($servicio, 'precioTipoMasaje'))
+                                {{ data_get($servicio, 'precioTipoMasaje.tipo.nombre', '') }} 
+                                @endif
+
+                                @if(($servicio->servicio->slug ?? null) === 'masaje' && data_get($servicio, 'precioTipoMasaje'))
+                                    ({{data_get($servicio, 'precioTipoMasaje.duracion_minutos')}} mins)
+                                @else
+                                (${{number_format($servicio->servicio->valor_servicio,0,'','.')}})
+                                @endif
+                                X {{ $servicio->cantidad_servicio }}
                         </td>
                         <td style="text-align: right; white-space: nowrap;">
                             ${{ number_format($servicio->subtotal, 0, '', '.') }}
@@ -128,7 +138,15 @@
                     <strong>Sub-Total Servicios:</strong>
                 </td>
                 <td style="text-align: right; white-space: nowrap;">
-                        <strong>${{ number_format($servicio->subtotal+$venta->total_pagar, 0, '', '.') }}</strong>
+
+                    {{-- {{dd(isset($servicio))}} --}}
+                    @if (isset($servicio))
+                    <strong>${{ number_format($servicio->subtotal+$venta->total_pagar, 0, '', '.') }}</strong>
+                    
+                    @else
+                    <strong>${{ number_format(0+$venta->total_pagar, 0, '', '.') }}</strong>
+                    
+                    @endif
 
                 </td>
             </tr>

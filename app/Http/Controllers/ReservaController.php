@@ -413,7 +413,7 @@ class ReservaController extends Controller
 
     public function show(Reserva $reserva)
     {
-        $reserva->load('venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio', 'menus', 'menus.productoEntrada', 'menus.productoFondo', 'menus.productoacompanamiento', 'masajes');
+        $reserva->load('venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio', 'menus', 'menus.productoEntrada', 'menus.productoFondo', 'menus.productoacompanamiento', 'masajes', 'venta.consumo.detalleServiciosExtra.precioTipoMasaje');
 
         $asignados = Asignacion::all();
 

@@ -29,28 +29,15 @@ class MasajeController extends Controller
         // Asignación de la fecha actual
         $fechaActual = Carbon::now()->startOfDay();
 
-        // Obtener todas las reservas con visitas cuya fecha de visita es hoy o posterior
-        // $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
-        //     ->join('clientes as c', 'reservas.cliente_id', '=', 'c.id')
-        //     ->join('visitas as v', 'v.id_reserva', '=', 'reservas.id')
-        //     ->join('masajes as m', 'm.id_visita', '=', 'v.id')
-        //     ->join('lugares_masajes as lm', 'lm.id', '=', 'm.id_lugar_masaje')
-        //     ->select('reservas.*', 'v.*', 'v.horario_sauna', 'v.horario_tinaja', 'm.horario_masaje', 'c.nombre_cliente', 'lm.nombre as lugarMasaje')
-        //     ->orderBy('reservas.fecha_visita', 'asc')
-        //     ->orderBy('m.horario_masaje', 'asc')
-        //     ->get();
-
-        // $reservas = Reserva::with(['masajes.lugarMasaje', 'cliente'])
-        //     ->where('fecha_visita', '>=', $fechaActual)
-        //     ->orderBy('fecha_visita', 'asc')
-        //     ->get();
-
 
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
             ->with([
                 'masajes',
                 'masajes.lugarMasaje',
-                'cliente'
+                'cliente',
+                'venta.consumo',
+                'venta.consumo.detalleServiciosExtra',
+                'venta.consumo.detalleServiciosExtra.precioTipoMasaje',
             ])
             ->select('reservas.*')
             ->selectSub(

@@ -786,6 +786,9 @@ class ConsumoController extends Controller
                         throw ValidationException::withMessages(['servicios' => 'Tipo o duración de masaje inválida.']);
                     }
 
+                    $tipoMasaje = $precio->tipo->nombre;
+
+
                     $isRelaj = ($precio->tipo->slug === 'relajacion') && in_array($duracion, [30, 60], true) && ! is_null($precio->precio_pareja);
                     $pares   = $isRelaj ? intdiv($cantidad, 2) : 0;
                     $resto   = $cantidad - ($pares * 2);
@@ -812,12 +815,12 @@ class ConsumoController extends Controller
                         $q->whereNull('tiempo_extra')->orWhere('tiempo_extra', false);
                     })->orderBy('id');
 
-                    $crearBase = function ($n) use ($reservaId, $venta) {
+                    $crearBase = function ($n) use ($reservaId, $venta, $tipoMasaje) {
                         for ($i = 0; $i < $n; $i++) {
                             Masaje::create([
                                 'id_reserva'      => $reservaId,
                                 'horario_masaje'  => null,
-                                'tipo_masaje'     => null,
+                                'tipo_masaje'     => $tipoMasaje,
                                 'id_lugar_masaje' => 1,
                                 'persona'         => ($venta->reserva->next_persona),
                                 'tiempo_extra'    => false,
@@ -825,12 +828,12 @@ class ConsumoController extends Controller
                             ]);
                         }
                     };
-                    $crearExtras = function ($n) use ($reservaId, $venta) {
+                    $crearExtras = function ($n) use ($reservaId, $venta, $tipoMasaje) {
                         for ($i = 0; $i < $n; $i++) {
                             Masaje::create([
                                 'id_reserva'      => $reservaId,
                                 'horario_masaje'  => null,
-                                'tipo_masaje'     => null,
+                                'tipo_masaje'     => $tipoMasaje,
                                 'id_lugar_masaje' => 1,
                                 'persona'         => ($venta->reserva->next_persona),
                                 'tiempo_extra'    => true,
@@ -838,9 +841,13 @@ class ConsumoController extends Controller
                             ]);
                         }
                     };
-                    $subirAExtra = function ($n) use ($masajesBaseQuery) {
+                    $subirAExtra = function ($n) use ($masajesBaseQuery, $tipoMasaje) {
                         $pend = $masajesBaseQuery->limit($n)->get();
-                        foreach ($pend as $m) {$m->tiempo_extra = true; $m->save();}
+                        foreach ($pend as $m) {
+                            $m->tipo_masaje = $tipoMasaje; 
+                            $m->tiempo_extra = true; 
+                            $m->save();
+                        }
                     };
 
                     if ($tiempoExtraActual) {
