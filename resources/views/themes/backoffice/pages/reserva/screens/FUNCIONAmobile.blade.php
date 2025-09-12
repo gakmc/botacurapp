@@ -18,51 +18,60 @@
                                 <th>Estado</th>
                             </tr>
                         </thead>
-<tbody>
-@php
-    $slots = [];
-
-    foreach ($reservas as $r) {
-        $color = ($r->venta->total_pagar <= 0 && is_null($r->venta->diferencia_programa)) ? 'orange'
-               : (($r->venta->total_pagar <= 0 && !is_null($r->venta->diferencia_programa)) ? 'green' : 'blue');
-
-        if ($r->masajes->isEmpty()) continue;
-
-        foreach ($r->masajes as $m) {
-            if (!$m->horario_masaje) continue;
-
-            $keyHora = $m->horario_masaje;
-
-            $fin = (!$r->programa->servicios->contains('nombre_servicio', 'Masaje') && $m->horario_masaje)
-                    ? $m->hora_fin_masaje_extra
-                    : $m->hora_fin_masaje;
-
-            $slots[$keyHora][] = [
-                'inicio'   => $m->horario_masaje,
-                'fin'      => $fin,
-                'cliente'  => $r->cliente->nombre_cliente,
-                'personas' => [$m->persona],
-                'color'    => $color,
-            ];
-        }
-    }
-
-    ksort($slots);
-@endphp
-
-@foreach($slots as $hora => $items)
-    @foreach($items as $row)
-        <tr>
-            <td><p><strong>{{ $row['inicio'] }}</strong></p></td>
-            <td><p><strong>{{ $row['fin'] }}</strong></p></td>
-            <td>{{ count($row['personas']) }}</td>
-            <td>{{ $row['cliente'] }}</td>
-            <td><i class='material-icons right {{ $row['color'] }}-text'>fiber_manual_record</i></td>
-        </tr>
-    @endforeach
-@endforeach
-</tbody>
-
+                        <tbody>
+                            @foreach($reservas as $reserva)
+                            @php
+                            $ubicacion = [];
+                            $horariosMasaje = collect();
+                            $mostrarReserva = false;
+                    
+                            foreach ($reserva->visitas->sortBy('id_ubicacion') as $horario => $visita) {
+                                $ubicacion[] = $visita->ubicacion->nombre ?? 'No registra';
+                                
+                                if (!$reserva->masajes->isEmpty()) {
+                                    $horariosMasaje = $reserva->masajes->pluck('horario_masaje')->filter()->unique();
+                                    $mostrarReserva = true;
+                                }
+                            }
+                    
+                            // Solo se procesan los horarios si hay masajes
+                            if ($mostrarReserva) {
+                                $horariosMasajeFin = $horariosMasaje->map(function ($horario) {
+                                    return \Carbon\Carbon::parse($horario)->addMinutes(30)->format('H:i');
+                                })->implode(', ');
+                    
+                                $horariosMasaje = $horariosMasaje->implode(', ');
+                            }
+                    
+                            if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa)) {
+                                $color = "orange";
+                            } elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa)) {
+                                $color = "green";
+                            } else {
+                                $color = "blue";
+                            }
+                        @endphp
+                                    @if ($mostrarReserva)
+                                    <tr>
+                                        <td>
+                                            <p><strong>{{ $horariosMasaje ?: 'No Registra' }}</strong></p>
+                                        </td>
+                                        <td>
+                                            <p><strong>{{ $horariosMasajeFin ?: 'No Registra' }}</strong></p>
+                                        </td>
+                                        <td>
+                                            {{ $reserva->cantidad_personas }}
+                                        </td>
+                                        <td>
+                                            {{ $reserva->cliente->nombre_cliente }}
+                                        </td>
+                                        <td>
+                                            <i class='material-icons right {{ $color }}-text'>fiber_manual_record</i>
+                                        </td>
+                                    </tr>
+                                @endif
+                            @endforeach
+                        </tbody>
                     </table>
                 </div>
             </div>

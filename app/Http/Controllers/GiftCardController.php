@@ -37,7 +37,7 @@ class GiftCardController extends Controller
      */
     public function create()
     {
-        $lista = ['botacura full', 'full day'];
+        $lista = ['botacura full', 'full day', 'Caviahue 2'];
 
         $programas = Programa::whereIn(strtolower('nombre_programa'), $lista)->get();
 

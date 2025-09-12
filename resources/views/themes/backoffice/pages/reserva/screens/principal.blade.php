@@ -150,141 +150,131 @@
                             <th>Masaje</th>
                         </tr>
                     </thead>
-                    <tbody>
-                        @php
-                            // Crear un array temporal para agrupar masajes por horario y cliente
-                            $horariosAgrupados = [];
 
-                            // Arreglo para almacenar la ultima visita por id_reserva
-                            $ultimaVisitaPorReserva = [];
-                        @endphp
 
-                        @foreach($reservas as $reserva)
-                            @foreach ($reserva->visitas as $visita)
-                                @php
-                                    // Almacenar la última visita de cada reserva
-                                    $ultimaVisitaPorReserva[$visita->id_reserva] = $visita;
-                                @endphp
-                            @endforeach
-                        @endforeach
-                
-                        @foreach($reservas as $reserva)
-                            @if (isset($ultimaVisitaPorReserva[$reserva->id]))
-                                @php
-                                    $ultimaVisita = $ultimaVisitaPorReserva[$reserva->id];
-                                @endphp
+<tbody>
+@php
+    // Agrupar SOLO por horario
+    $slots = [];
 
-{{-- {{dd(isset($reserva->masajes),$reserva->masajes->isEmpty())}} --}}
+    // Última visita por reserva (para ubicación/ico trago)
+    $ultimaVisitaPorReserva = [];
+    foreach ($reservas as $r) {
+        foreach ($r->visitas as $v) {
+            $ultimaVisitaPorReserva[$v->id_reserva] = $v;
+        }
+    }
 
-                                @if ($reserva->masajes->isEmpty())
-                                    <tr>
-                                        @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
-                                            <td class="orange" style="border-radius: 5px">
-                                                <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                    <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                </strong>
-                                            </td>
-                                        @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
-                                            <td class="green" style="border-radius: 5px">
-                                                <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                    <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                </strong>
-                                            </td>
-                                        @else
-                                            <td class="blue" style="border-radius: 5px">
-                                                <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                                    <i class='tiny material-icons center'>do_not_disturb_alt</i>
-                                                </strong>
-                                            </td>
-                                        @endif
-                                    
-                                        <td>
-                                            <a href="#" onclick="activar_alerta(`{{$reserva->cliente->nombre_cliente}}`)">
-                                                <strong>{{$reserva->cliente->nombre_cliente}} - No Registra masajes </strong>
-                                            </a>
-                                        </td>
-                                    </tr>
-                                @else
-                                    @foreach ($reserva->masajes as $masaje)
-                                        @if ($masaje->horario_masaje)
-                                            @php
-                                                // Clave para agrupar: horario y cliente
-                                                $clave = $masaje->horario_masaje . '_' . $reserva->cliente->nombre_cliente;
-                                                
-                                                // Si la clave no existe, crearla
-                                                if (!isset($horariosAgrupados[$clave])) {
-                                                    $horariosAgrupados[$clave] = [
-                                                        'horario_inicio' => $masaje->horario_masaje,
-                                                        'horario_fin' => (!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $masaje->horario_masaje) ? $masaje->hora_fin_masaje_extra : $masaje->hora_fin_masaje,
-                                                        'cliente' => $reserva->cliente->nombre_cliente,
-                                                        'ubicacion' => $ultimaVisita->ubicacion->nombre ?? 'No registra',
-                                                        'trago' => $ultimaVisita->trago_cortesia,
-                                                        'programa' => $reserva->programa->nombre_programa,
-                                                        'personas' => [],
-                                                        'observacion' => $reserva->observacion
-                                                    ];
-                                                }
-                                                
-                                                // Agregar el número de persona
-                                                $horariosAgrupados[$clave]['personas'][] = $masaje->persona;
-                                            @endphp
-                                        @endif
-                                    @endforeach
-                                @endif
-                            @endif
-                        @endforeach
-                
-                        @php
-                            $horariosAgrupados = collect($horariosAgrupados)->sortBy('horario_inicio')->toArray();
-                        @endphp
-                        @foreach($horariosAgrupados as $horario)
-                        <tr>
-                                @if ($reserva->venta->total_pagar <= 0 && is_null($reserva->venta->diferencia_programa))
-                                <td class="orange" style="border-radius: 5px">
-                                    <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                        {{ $horario['horario_inicio'] }}
-                                        <i class='tiny material-icons center'>arrow_downward</i>
-                                        {{ $horario['horario_fin'] }}
-                                    </strong>
-                                </td>
-                                @elseif ($reserva->venta->total_pagar <= 0 && !is_null($reserva->venta->diferencia_programa))
-                                <td class="green" style="border-radius: 5px">
-                                    <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                        {{ $horario['horario_inicio'] }}
-                                        <i class='tiny material-icons center'>arrow_downward</i>
-                                        {{ $horario['horario_fin'] }}
-                                    </strong>
-                                </td>
-                                @else
-                                <td class="blue" style="border-radius: 5px">
-                                    <strong style="color:#F5F5F5; display:flex; justify-content: center; flex-direction:column">
-                                        {{ $horario['horario_inicio'] }}
-                                        <i class='tiny material-icons center'>arrow_downward</i>
-                                        {{ $horario['horario_fin'] }}
-                                    </strong>
-                                </td>
-                                @endif
-                                <td>
-                                    <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                        <strong>{{ $horario['cliente'] }} -</strong>
-                                        {{ $horario['ubicacion'] }} -
-                                        {{ $horario['programa'] }} -
-                                        persona {{ implode(' y ', $horario['personas']) }} -
-                                        @if (is_null($horario['observacion']))
-                                            Sin Observaciones
-                                        @else
-                                            <strong style="color:#FF4081;">{{ $horario['observacion'] }}</strong>
-                                        @endif
-                                    </a>
-                                </td>
-                                @if ($horario['trago'] === "Si")
-                                    <td>
-                                        <i class="material-icons" style="color: #FF4081">local_bar</i>
-                                    </td>
-                                @endif
-                            </tr>
-                        @endforeach
-                    </tbody>
+    foreach ($reservas as $r) {
+        // definir color por reserva
+        if ($r->venta->total_pagar <= 0 && is_null($r->venta->diferencia_programa)) {
+            $color = 'orange';
+        } elseif ($r->venta->total_pagar <= 0 && !is_null($r->venta->diferencia_programa)) {
+            $color = 'green';
+        } else {
+            $color = 'blue';
+        }
+
+        $ultimaVisita = $ultimaVisitaPorReserva[$r->id] ?? null;
+
+        if ($r->masajes->isEmpty()) {
+            // si NO tiene masajes, igual mostramos fila “sin registrar”
+            $slots['–'][] = [
+                'inicio'      => null,
+                'fin'         => null,
+                'cliente'     => $r->cliente->nombre_cliente,
+                'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
+                'programa'    => $r->programa->nombre_programa,
+                'personas'    => [],
+                'observacion' => $r->observacion,
+                'trago'       => optional($ultimaVisita)->trago_cortesia,
+                'color'       => $color,
+                'url'         => route('backoffice.reserva.show', $r),
+            ];
+        } else {
+            foreach ($r->masajes as $m) {
+                if (!$m->horario_masaje) continue;
+
+                // clave = HORA (sin cliente)
+                $keyHora = $m->horario_masaje;
+
+                if (!isset($slots[$keyHora])) $slots[$keyHora] = [];
+
+                // buscar si ya hay un item del mismo cliente en esa hora para agrupar personas
+                $pos = null;
+                foreach ($slots[$keyHora] as $i => $it) {
+                    if ($it['cliente'] === $r->cliente->nombre_cliente) { $pos = $i; break; }
+                }
+
+                $fin = (!$r->programa->servicios->contains('nombre_servicio', 'Masaje') && $m->horario_masaje)
+                        ? $m->hora_fin_masaje_extra
+                        : $m->hora_fin_masaje;
+
+                $itemBase = [
+                    'inicio'      => $m->horario_masaje,
+                    'fin'         => $fin,
+                    'cliente'     => $r->cliente->nombre_cliente,
+                    'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
+                    'programa'    => $r->programa->nombre_programa,
+                    'personas'    => [],
+                    'observacion' => $r->observacion,
+                    'trago'       => optional($ultimaVisita)->trago_cortesia,
+                    'color'       => $color,
+                    'url'         => route('backoffice.reserva.show', $r),
+                ];
+
+                if (is_null($pos)) {
+                    $itemBase['personas'][] = $m->persona;
+                    $slots[$keyHora][] = $itemBase;
+                } else {
+                    $slots[$keyHora][$pos]['personas'][] = $m->persona;
+                }
+            }
+        }
+    }
+
+    // ordenar por hora (las “–” al final)
+    ksort($slots);
+@endphp
+
+@foreach($slots as $hora => $items)
+    @foreach($items as $row)
+        <tr>
+            <td class="{{ $row['color'] }}" style="border-radius:5px">
+                <strong style="color:#F5F5F5; display:flex; justify-content:center; flex-direction:column">
+                    {{ $row['inicio'] ?? '—' }}
+                    <i class='tiny material-icons center'>arrow_downward</i>
+                    {{ $row['fin'] ?? '—' }}
+                </strong>
+            </td>
+            <td>
+                <a href="{{ $row['url'] }}">
+                    <strong>{{ $row['cliente'] }} -</strong>
+                    {{ $row['ubicacion'] }} -
+                    {{ $row['programa'] }} -
+                    @if(count($row['personas'])>0)
+                        persona {{ implode(' y ', $row['personas']) }} -
+                    @else
+                        Sin personas asignadas -
+                    @endif
+                    @if (is_null($row['observacion']))
+                        Sin Observaciones
+                    @else
+                        <strong style="color:#FF4081;">{{ $row['observacion'] }}</strong>
+                    @endif
+                </a>
+            </td>
+            @if ($row['trago'] === "Si")
+                <td><i class="material-icons" style="color:#FF4081">local_bar</i></td>
+            @endif
+        </tr>
+    @endforeach
+@endforeach
+</tbody>
+
+
+
+
                 </table>
 
 

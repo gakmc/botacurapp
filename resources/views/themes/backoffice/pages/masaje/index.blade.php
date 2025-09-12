@@ -58,120 +58,81 @@
                 </thead>
 
                 <tbody>
-                    @foreach ($reservasPaginadas as $fecha=>$reservasPorFecha)
+                    @foreach ($reservasPaginadas as $fecha => $reservasPorFecha)
+                        <h5>
+                            @if (now()->format('d-m-Y') == $fecha) <strong>Hoy</strong> @endif
+                            {{$fecha}}
+                        </h5>
 
-                    <h5>@if (now()->format('d-m-Y') == $fecha)
-                        <strong>Hoy</strong>
-                        @endif
-                        {{$fecha}}
-                    </h5>
+                        @php
+                            // 1) Junta todos los masajes del día
+                            $masajesDelDia = collect();
+                        @endphp
 
-                    @foreach ($reservasPorFecha as $reserva)
-                    @if (isset($distribucionHorarios[$reserva->id]))
-                    @else
-                    <p>No hay horarios disponibles para esta visita.</p>
-                    @endif
-
-
-
-                    
-                    @foreach ($reserva->masajes->sortBy(function($m) {
-                        return $m->horario_masaje . '-' . $m->persona;
-                    }) as $masaje)
-
-                    <tr>
-                        @if(Auth::user()->has_role(config('app.masoterapeuta_role')))
-                            <form action="{{ route('backoffice.masaje.asignar_multiples') }}" method="POST">
-                                @csrf
-                        @endif
-                        <td class="{{$masaje->tiempo_extra ? 'blue-text' : ''}}">
-                            
-                            {{$masaje->horario_masaje}} -
-                            @if ($masaje->hora_fin_masaje)
-                            {{$masaje->hora_fin_masaje}}
-                            @else
-                            {{$masaje->hora_fin_masaje_extra}}
+                        @foreach ($reservasPorFecha as $reserva)
+                            @if (!isset($distribucionHorarios[$reserva->id]))
+                                <p>No hay horarios disponibles para esta visita.</p>
                             @endif
-                        </td>
-                        <td>{{ $reserva->cliente->nombre_cliente }}</td>
-                        <td>Persona {{$masaje->persona}}</td>
-                        <td>{{ $masaje->tipo_masaje }}</td>
-                        <td>{{ $masaje->lugarMasaje->nombre }}</td>
-                        <td>
-                            <span class="estado badge white-text cyan" data-fecha="{{$reserva->fecha_visita}}"
-                                data-inicio="{{ $masaje->horario_masaje }}" @if ($masaje->hora_fin_masaje)
-                                data-fin="{{ $masaje->hora_fin_masaje }}"
-                                @else
-                                data-fin="{{ $masaje->hora_fin_masaje_extra }}"
+                            @php $masajesDelDia = $masajesDelDia->merge($reserva->masajes); @endphp
+                        @endforeach
+
+                        @php
+                            // 2) Orden global por hora y persona (NULL al final)
+                            $masajesDelDia = $masajesDelDia->sortBy(function($m){
+                                $h = $m->horario_masaje ? substr($m->horario_masaje,0,5) : '99:99';
+                                return $h.'-'.str_pad($m->persona,2,'0',STR_PAD_LEFT);
+                            })->values();
+                        @endphp
+
+                        @foreach ($masajesDelDia as $masaje)
+                            <tr>
+                                @if(Auth::user()->has_role(config('app.masoterapeuta_role')))
+                                    {{-- (Sugerencia: abre el <form> una sola vez fuera de la tabla) --}}
                                 @endif
-                                >Pendiente</span>
-                        </td>
-                        <td>
-                            @php
-                            // Buscar el masaje correspondiente a la persona actual ($i)
-                            $masajeAsignado = $masaje->load('user');
-                            //dd($masajeAsignado->user);
-                            @endphp
 
-                            {{-- @if ($masajeAsignado && $masajeAsignado->user)
-                                <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
-                            @else
-                                @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
-                                <!-- Mostrar el botón si el usuario es masoterapeuta y no hay masoterapeuta asignado -->
-                                <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
-                                    @csrf
-                                    @method('PUT')
-                                    <input type="hidden" name="id" value="{{ $masaje->id }}">
-                                    <button type="submit" class="btn-floating" {{$fecha==now()->format('d-m-Y') ? '' :
-                                        'disabled'}}>
-                                        <i class="material-icons">pan_tool</i>
-                                    </button>
-                                </form>
-                                @elseif (Auth::user()->has_role(config('app.admin_role')))
-                                <strong class="red-text">No asignado</strong>
-                                @endif
-                            @endif --}}
+                                <td class="{{ $masaje->tiempo_extra ? 'blue-text' : '' }}">
+                                    {{ substr($masaje->horario_masaje,0,5) }} -
+                                    @if ($masaje->hora_fin_masaje)
+                                        {{ substr($masaje->hora_fin_masaje,0,5) }}
+                                    @else
+                                        {{ substr($masaje->hora_fin_masaje_extra,0,5) }}
+                                    @endif
+                                </td>
 
+                                <td>{{ optional($masaje->reserva->cliente)->nombre_cliente }}</td>
+                                <td>Persona {{ $masaje->persona }}</td>
+                                <td>{{ $masaje->tipo_masaje }}</td>
+                                <td>{{ optional($masaje->lugarMasaje)->nombre }}</td>
 
+                                <td>
+                                    <span class="estado badge white-text cyan"
+                                        data-fecha="{{ $masaje->reserva->fecha_visita }}"
+                                        data-inicio="{{ substr($masaje->horario_masaje,0,5) }}"
+                                        @if ($masaje->hora_fin_masaje)
+                                            data-fin="{{ substr($masaje->hora_fin_masaje,0,5) }}"
+                                        @else
+                                            data-fin="{{ substr($masaje->hora_fin_masaje_extra,0,5) }}"
+                                        @endif
+                                    >Pendiente</span>
+                                </td>
 
-                            @if ($masajeAsignado && $masajeAsignado->user)
-                                <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
-                            @else
-                                @if(Auth::user()->has_role(config('app.masoterapeuta_role')) && $fecha == now()->format('d-m-Y'))
-                                    <label>
-                                        <input type="checkbox" name="masajes_seleccionados[]" class="checkbox-masaje" value="{{ $masaje->id }}">
-                                        <span>Asignar</span>
-                                    </label>
-                                @elseif (Auth::user()->has_role(config('app.admin_role')))
-                                    <strong class="red-text">No asignado</strong>
-                                @endif
-                            @endif
-
-
-
-
-                            {{-- @if (Auth::user()->has_role(config('app.masoterapeuta_role')))
-                            <form action="{{ route('backoffice.masaje.update', $masaje) }}" method="POST">
-                                @csrf
-                                @method('PUT')
-                                <input type="hidden" name="id" value="{{ $masaje->id }}">
-                                <button type="submit" class="btn-floating">
-                                    <i class="material-icons">pan_tool</i>
-                                </button>
-                            </form>
-                            @elseif (Auth::user()->has_role(config('app.admin_role')))
-                            <strong class="red-text">No asignado</strong>
-                            @endif --}}
-
-
-                        </td>
-
-                    </tr>
-                    @endforeach
-
-
-                    @endforeach
-
+                                <td>
+                                    @php $masajeAsignado = $masaje; @endphp
+                                    @if ($masajeAsignado->user)
+                                        <strong style="color:#039B7B;">{{ $masajeAsignado->user->name }}</strong>
+                                    @else
+                                        @if(Auth::user()->has_role(config('app.masoterapeuta_role')) && $fecha == now()->format('d-m-Y'))
+                                            <label>
+                                                <input type="checkbox" name="masajes_seleccionados[]" class="checkbox-masaje" value="{{ $masaje->id }}">
+                                                <span>Asignar</span>
+                                            </label>
+                                        @elseif (Auth::user()->has_role(config('app.admin_role')))
+                                            <strong class="red-text">No asignado</strong>
+                                        @endif
+                                    @endif
+                                </td>
+                            </tr>
+                        @endforeach
                     @endforeach
                 </tbody>
             </table>
