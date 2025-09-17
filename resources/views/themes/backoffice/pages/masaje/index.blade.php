@@ -44,6 +44,12 @@
 
         <div class="card-panel">
 
+            
+    @if(Auth::user()->has_role(config('app.masoterapeuta_role')))
+    <form method="POST" action="{{ route('backoffice.masaje.asignar_multiples') }}">
+        @csrf
+    @endif
+
             <table class="responsive-table">
                 <thead>
                     <tr>
