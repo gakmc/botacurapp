@@ -342,6 +342,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/egreso/{anio}/{mes}', 'EgresoController@index_mes')->name('egreso.mes');
 
+    
+    Route::post('/egreso/pago_fijo', 'EgresoController@pago_fijo')->name('egreso.pago_fijo');
+    
+    Route::post('/egreso/pago_variable', 'EgresoController@pago_variable')->name('egreso.pago_variable');
+
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
 

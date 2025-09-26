@@ -13,17 +13,9 @@ class Egreso extends Model
         'categoria_id',
         'subcategoria_id',
         'proveedor_id',
-        'fecha',
-        'neto',
-        'iva',
-        'impuesto_incluido',
-        'total',
-        'folio',
+        'total'
     ];
 
-    protected $casts = [
-        'fecha' => 'date',
-    ];
 
     public function tipo_documento()
     {
@@ -43,6 +35,11 @@ class Egreso extends Model
     public function proveedor()
     {
         return $this->belongsTo(Proveedor::class, 'proveedor_id');
+    }
+
+    public function pagos()
+    {
+        return $this->hasMany(PagoEgreso::class, 'egreso_id');
     }
 
     public function getFechaAttribute($value)
