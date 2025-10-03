@@ -3,12 +3,15 @@
 @section('title', 'Modificar Egresos')
 
 @section('head')
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.time.css') }}">
 @endsection
 
 @section('breadcrumbs')
 <li><a href="{{route('backoffice.egreso.index')}}">Egresos</a></li>
 <li><a href="{{route('backoffice.egreso.mes',['anio'=>$anio, 'mes'=>$mes])}}">Egresos {{ucfirst(\Carbon\Carbon::create()->month($mes)->year($anio)->locale('es')->isoFormat('MMMM [de] YYYY'))}}</a></li>
-<li>Modificando Egreso</li>
+<li>Modificando Egreso {{ucfirst(\Carbon\Carbon::create()->month($mes)->day($dia)->locale('es')->isoFormat('DD [de] MMMM'))}}</li>
 @endsection
 
 @section('dropdown_settings')
@@ -23,13 +26,11 @@
         <div class="row">
             <div class="col s12 m8 offset-m2 ">
                 <div class="card-panel">
-                    <h4 class="header2">Modificar Egreso</h4>
+                    <h4 class="header2">Modificar Egreso Variable</h4>
                     <div class="row">
 
 
-
-
-                        <form action="{{ route('backoffice.egreso.update', $egreso) }}" method="POST">
+                        <form action="{{ route('backoffice.egreso.update_variable', $egreso) }}" method="POST">
                           @csrf
                           @method('PUT')
 
@@ -111,11 +112,6 @@
                           </div>
 
 
-                          <div class="row">
-
-
-
-                          </div>
 
                           <div class="row">
                             <div class="input-field col s12">
@@ -140,10 +136,19 @@
 @endsection
 
 @section('foot')
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
 
 <script>
 $(document).ready(function () {
 
+    // Inicializar datepicker
+    $('#fecha').pickadate({
+        format: 'dd-mm-yyyy',
+        formatSubmit: 'yyyy-mm-dd',
+        hiddenName: true
+    });
 
     // Inicializar selects
     $('select').material_select();
@@ -214,6 +219,47 @@ $(document).ready(function () {
         return parseInt(valor.replace(/[$.]/g, '')) || 0;
     }
 
+    // Calcular IVA y total
+    $('#neto').change(function (e) {
+        e.preventDefault();
+        var neto = limpiarNumero($('#neto').val());
+        var iva = parseInt(neto * 0.19);
+        var seleccion = $('#subcategoria_select option:selected').data('name') || '';
+        var valorImp = 0;
+        var impCarnes = 0.05;
+        var impCerveza = 0.205;
+        var total = 0;
+
+        if (seleccion.toLowerCase() == 'carnes') {
+            valorImp = parseInt(neto * impCarnes);
+            total = neto + valorImp + iva;
+        } else if (seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria') {
+            valorImp = parseInt(neto * impCerveza);
+            total = neto + valorImp + iva;
+        } else {
+            total = neto + iva;
+        }
+
+        $('#neto').val(formatCLP(neto));
+        $('#iva').val(formatCLP(iva));
+
+        if (valorImp > 0) {
+            $('#impuesto_incluido').val(formatCLP(valorImp));
+            $('#divImpuesto').removeAttr('hidden');
+            $('#impuesto_incluido').removeAttr('disabled');
+        } else {
+            $('#impuesto_incluido').val('');
+            $('#divImpuesto').attr('hidden', true);
+            $('#impuesto_incluido').attr('disabled', true);
+        }
+
+        $('#total').val(formatCLP(total));
+
+        $('label[for="neto"]').addClass('active');
+        $('label[for="iva"]').addClass('active');
+        $('#lblImpuesto').addClass('active');
+        $('label[for="total"]').addClass('active');
+    });
 
     // Formatear total manual
     $('#total').change(function (e) {
@@ -222,39 +268,39 @@ $(document).ready(function () {
     });
 
     // Mostrar/Ocultar impuesto al cambiar subcategoría
-    // $('#subcategoria_select').on('change', function(e){
-    //     e.stopPropagation();
-    //     e.preventDefault();
-    //     var seleccionado = $('#subcategoria_select option:selected').data('name') || '';
-    //     var impuesto = $('#impuesto_incluido');
-    //     var lblImpuesto = $('#lblImpuesto');
-    //     var divImpuesto = $('#divImpuesto');
+    $('#subcategoria_select').on('change', function(e){
+        e.stopPropagation();
+        e.preventDefault();
+        var seleccionado = $('#subcategoria_select option:selected').data('name') || '';
+        var impuesto = $('#impuesto_incluido');
+        var lblImpuesto = $('#lblImpuesto');
+        var divImpuesto = $('#divImpuesto');
         
-    //     if (seleccionado.toLowerCase() == 'carnes') {
-    //         divImpuesto.removeAttr('hidden');
-    //         impuesto.removeAttr('disabled');
-    //         lblImpuesto.text('Impuesto Carnes (5%)');
-    //     } else if (seleccionado.toLowerCase() == 'cervezas' || seleccionado.toLowerCase() == 'botilleria') {
-    //         divImpuesto.removeAttr('hidden');
-    //         impuesto.removeAttr('disabled');
-    //         lblImpuesto.text('Impuesto Alcohol (20,5%)');
-    //     } else {
-    //         divImpuesto.attr('hidden', true);
-    //         impuesto.attr('disabled', true);
-    //         impuesto.val('');
-    //         lblImpuesto.text('Impuesto Adicional');
-    //     }
+        if (seleccionado.toLowerCase() == 'carnes') {
+            divImpuesto.removeAttr('hidden');
+            impuesto.removeAttr('disabled');
+            lblImpuesto.text('Impuesto Carnes (5%)');
+        } else if (seleccionado.toLowerCase() == 'cervezas' || seleccionado.toLowerCase() == 'botilleria') {
+            divImpuesto.removeAttr('hidden');
+            impuesto.removeAttr('disabled');
+            lblImpuesto.text('Impuesto Alcohol (20,5%)');
+        } else {
+            divImpuesto.attr('hidden', true);
+            impuesto.attr('disabled', true);
+            impuesto.val('');
+            lblImpuesto.text('Impuesto Adicional');
+        }
 
-    //     $('#neto').trigger('change');
-    // });
+        $('#neto').trigger('change');
+    });
 
     // Mostrar impuesto si ya tiene valor guardado (>0)
-    // var impuestoVal = $('#impuesto_incluido').val();
-    // if (impuestoVal && limpiarNumero(impuestoVal) > 0) {
-    //     $('#divImpuesto').removeAttr('hidden');
-    //     $('#impuesto_incluido').removeAttr('disabled');
-    //     $('#lblImpuesto').addClass('active');
-    // }
+    var impuestoVal = $('#impuesto_incluido').val();
+    if (impuestoVal && limpiarNumero(impuestoVal) > 0) {
+        $('#divImpuesto').removeAttr('hidden');
+        $('#impuesto_incluido').removeAttr('disabled');
+        $('#lblImpuesto').addClass('active');
+    }
 
 });
 </script>

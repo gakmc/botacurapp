@@ -234,7 +234,7 @@
                                                 style="--animate-delay: 1s; --animate-duration: 2s; ">
                                                 <div class="padding-4">
                                                     <div class="col s7 m7">
-                                                        <i class="material-icons background-round mt-5">equalizer</i>
+                                                        <i class="material-icons background-round mt-5">account_balance</i>
                                                         <p>Egresos e Ingresos</p>
                                                     </div>
                                                     <div class="col s5 m5 right-align">
@@ -245,6 +245,27 @@
                                             </div>
                                         </a>
                                     </div>
+
+
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.finanzas.ingresos_percibidos')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-orange-amber gradient-shadow min-height-100 black-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s; ">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">account_balance_wallet</i>
+                                                        <p>Ingresos percibidos</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="reservas-count" class="mb-0">{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</h5>
+                                                        <p class="no-margin"></p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+
+
 
                                 </div>
                             </div>

@@ -91,7 +91,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('giftcards/lista', 'GiftCardController@listaCodigos')->name('giftcards.lista');
 
-
+    
 
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
@@ -329,7 +329,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('/subcategorias/{categoria_id}', 'SubcategoriaController@getByCategoria')->name('subcategoria.categoria');
     
     
-
+    
     
     
     Route::put('/avisar-cocina/{reserva}', 'ReservaController@avisarCocina')->name('reserva.avisar');
@@ -338,17 +338,24 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Rutas Delete para eliminar detalle de consumo
     Route::delete('/consumo/detalle/{tipo}/{id}', 'ConsumoController@destroyDetalle')->name('consumo.detalle.destroy');
     
-
-
+    
+    
     Route::get('/egreso/{anio}/{mes}', 'EgresoController@index_mes')->name('egreso.mes');
-
+    
     
     Route::post('/egreso/pago_fijo', 'EgresoController@pago_fijo')->name('egreso.pago_fijo');
     
     Route::post('/egreso/pago_variable', 'EgresoController@pago_variable')->name('egreso.pago_variable');
+    
 
+
+    Route::match(['put', 'patch'], '/egreso/{egreso}/update_variable', 'EgresoController@update_variable')->name('egreso.update_variable');
+    
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
+
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
+
+    Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');

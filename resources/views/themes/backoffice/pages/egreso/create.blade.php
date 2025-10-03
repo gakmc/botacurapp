@@ -3,9 +3,6 @@
 @section('title', 'Generar Egresos')
 
 @section('head')
-<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
-<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.time.css') }}">
 @endsection
 
 @section('breadcrumbs')
@@ -81,26 +78,7 @@
 
     <div class="row">
 
-        <div class="input-field col s12 m4">
-          <input type="text" name="folio" placeholder="Ej: 123456">
-          <label for="folio">Folio (si es factura)</label>
-          @error('folio')
-            <span class="invalid-feedback" role="alert">
-                <strong style="color:red">{{ $message }}</strong>
-            </span>
-          @enderror
-        </div>
-
-        <div class="input-field col s12 m4">
-          <input type="date" name="fecha" id="fecha" required>
-          <label class="active">Fecha de emisión</label>
-          @error('fecha')
-            <span class="invalid-feedback" role="alert">
-                <strong style="color:red">{{ $message }}</strong>
-            </span>
-          @enderror
-        </div>
-
+        
         <div class="input-field col s12 m4">
           <select name="proveedor_id">
             <option value="" selected disabled>-- Seleccione proveedor --</option>
@@ -110,41 +88,6 @@
           </select>
           <label>Proveedor</label>
           @error('proveedor_id')
-            <span class="invalid-feedback" role="alert">
-                <strong style="color:red">{{ $message }}</strong>
-            </span>
-          @enderror
-        </div>
-
-    </div>
-
-
-    <div class="row">
-
-        <div class="input-field col s12 m4">
-          <input type="text" id="neto" name="neto">
-          <label for="neto">Monto Neto (solo factura)</label>
-          @error('neto')
-            <span class="invalid-feedback" role="alert">
-                <strong style="color:red">{{ $message }}</strong>
-            </span>
-          @enderror
-        </div>
-
-        <div class="input-field col s12 m4">
-          <input type="text" id="iva" name="iva">
-          <label for="iva">IVA (19%)</label>
-          @error('iva')
-            <span class="invalid-feedback" role="alert">
-                <strong style="color:red">{{ $message }}</strong>
-            </span>
-          @enderror
-        </div>
-
-        <div id="divImpuesto" class="input-field col s12 m4" hidden>
-          <input type="text" id="impuesto_incluido" name="impuesto_incluido" disabled>
-          <label id="lblImpuesto" for="impuesto_incluido">Impuesto adicional</label>
-          @error('impuesto_incluido')
             <span class="invalid-feedback" role="alert">
                 <strong style="color:red">{{ $message }}</strong>
             </span>
@@ -161,7 +104,12 @@
           @enderror
         </div>
 
+
+
     </div>
+
+
+
 
     <div class="row">
       <div class="input-field col s12">
@@ -186,22 +134,7 @@
 @endsection
 
 @section('foot')
-<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
-<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
-<script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
-{{-- <script src="{{ asset('assets/pickadate/lib/translations/es_ES.js') }}"></script> --}}
 
-<script>
-  $(document).ready(function () {
-
-    $('#fecha').pickadate({
-      format: 'dd/mm/yyyy',
-      formatSubmit: 'yyyy-mm-dd',
-      hiddenName: true
-    })
-
-  });
-</script>
 
 <script>
 $(document).ready(function () {
@@ -250,42 +183,6 @@ $(document).ready(function () {
     return parseInt(valor.replace(/[$.]/g, '')) || 0;
   }
 
-  $('#neto').change(function (e) {
-    e.preventDefault();
-    var neto = limpiarNumero($('#neto').val());
-    var iva = parseInt(neto * 0.19);
-    var seleccion = $('#subcategoria_select option:selected').data('name');
-    var valorImp = 0;
-    var impCarnes = 0.05;
-    var impCerveza = 0.205;
-    var impLicor = 0.315;
-    var total = 0;
-
-    if (seleccion.toLowerCase() == 'carnes') {
-      valorImp = parseInt(neto * impCarnes);
-      total = neto + valorImp + iva;
-
-    }else if(seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria'){
-      valorImp = parseInt(neto * impCerveza);
-      total = neto + valorImp + iva;
-    }else{
-      total = neto + iva;
-    }
-
-    $('#neto').val(formatCLP(neto));
-    $('#iva').val(formatCLP(iva));
-    if (seleccion.toLowerCase() == 'carnes') {
-      $('#impuesto_incluido').val(formatCLP(valorImp));
-    }else if(seleccion.toLowerCase() == 'cervezas' || seleccion.toLowerCase() == 'botilleria'){
-      $('#impuesto_incluido').val(formatCLP(valorImp));
-    }
-    $('#total').val(formatCLP(total));
-
-    $('label[for="neto"]').addClass('active');
-    $('label[for="iva"]').addClass('active');
-    $('#lblImpuesto').addClass('active');
-    $('label[for="total"]').addClass('active');
-  });
 
   $('#total').change(function (e) {
     var soloTotal = limpiarNumero($('#total').val());
@@ -294,7 +191,7 @@ $(document).ready(function () {
 });
 </script>
 
-<script>
+{{-- <script>
   $(document).ready(function () {
     $('#subcategoria_select').on('change', function(e){
       e.stopPropagation();
@@ -324,5 +221,5 @@ $(document).ready(function () {
 
     })
   });
-</script>
+</script> --}}
 @endsection

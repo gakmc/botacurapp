@@ -58,79 +58,6 @@
 
 
 
-        {{-- <form action="{{route('backoffice.egreso.pago.store')}}" method="POST">
-
-                      <table class="striped responsive-table">
-                        <thead>
-                          <tr>
-                            <th>Tipo</th>
-                            <th>Categoría</th>
-                            <th>Subcategoría</th>
-                            <th>Proveedor</th>
-                            <th>Neto</th>
-                            <th>IVA</th>
-                            <th>Monto Base</th>
-                            <th>Monto Pagado</th>
-                            <th>Fecha Pago</th>
-                            <th>Acciones</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @if ($fijos->isNotEmpty())
-                          @foreach ($fijos as $e)
-                            <tr>
-                              <td>{{ $e->tipo_documento->nombre ?? '-' }}</td>
-                              <td>{{ $e->categoria->nombre ?? '-' }}</td>
-                              <td>{{ $e->subcategoria->nombre ?? '-' }}</td>
-                              <td>{{ $e->proveedor->nombre ?? '-' }}</td>
-
-                              <td>${{ number_format($e->neto, 0, ',', '.') }}</td>
-                              <td>${{ number_format($e->iva, 0, ',', '.') }}</td>
-                              <td><strong>${{ number_format($e->total, 0, ',', '.') }}</strong></td>
-                              <td><strong>${{ number_format($e->total, 0, ',', '.') }}</strong></td>
-                              <td>    
-                                @php
-                                    $pagosMes = $e->pagos->whereBetween('fecha_pago', [
-                                        now()->startOfMonth(),
-                                        now()->endOfMonth()
-                                    ]);
-                                @endphp
-
-                                @if($pagosMes->isNotEmpty())
-                                    @foreach($pagosMes as $pago)
-                                        <strong>{{ \Carbon\Carbon::parse($pago->fecha_pago)->format('d-m-Y') }}</strong><br>
-                                    @endforeach
-                                @else
-                                    -
-                                @endif
-                              </td>
-                              <td>
-                                
-                                <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
-                                  <i class='material-icons'>edit</i>
-                                </a>
-                                <form id="form-eliminar-{{$e->id}}" action="{{ route('backoffice.egreso.destroy', $e->id) }}" method="POST" style="display:inline;">
-                                  @csrf 
-                                  @method('DELETE')
-                                  <button type="button" class="btn-floating btn-small red" onclick="confirmarEliminacion({{$e->id}})"><i class='material-icons'>delete</i></button>
-                                </form>
-
-                              </td>
-                            </tr>
-                          @endforeach
-
-                          @else
-                            <tr>
-                              <td colspan="2"></td>
-                              <td><h5>No se registran egresos fijos</h5></td>
-                            </tr>
-                          @endif
-                        </tbody>
-                      </table>
-
-        </form> --}}
-
-
         <form action="{{ route('backoffice.egreso.pago_fijo') }}" method="POST" id="form-pagos">
           @csrf
 
@@ -148,10 +75,14 @@
                 <th>Monto Pagado</th>
                 <th>Fecha Pago</th>
                 <th>Acciones</th>
+                @php
+                  // Checkbox “seleccionar todos” solo si hay fijos SIN pago en el período
+                  $hayPendientesPeriodo = $fijos->contains(function($egreso) {
+                      return $egreso->pagos->isEmpty(); // pagos ya vienen filtrados por mes/año desde el controlador
+                  });
+                @endphp
                 <th>Seleccionar
-                  @if($fijos->contains(function($egreso) {
-                          return $egreso->pagos->whereBetween('fecha_pago', [now()->startOfMonth(), now()->endOfMonth()])->isEmpty();
-                        }))
+                  @if($hayPendientesPeriodo)
                     <label style="margin-left:8px;">
                       <input type="checkbox" class="filled-in" id="chk-all"/>
                       <span></span>
@@ -163,7 +94,8 @@
             <tbody>
               @forelse($fijos as $e)
                     @php
-                      $pagosMes = $e->pagos->whereBetween('fecha_pago', [now()->startOfMonth(), now()->endOfMonth()]);
+                      $pagosMes    = $e->pagos;           // YA VIENEN del mes/año
+                      $totalPagado = $pagosMes->sum('monto');
                     @endphp
                 <tr>
                   <td>{{ $e->tipo_documento->nombre ?? '-' }}</td>
@@ -173,14 +105,14 @@
                   <td>${{ number_format($e->neto, 0, ',', '.') }}</td>
                   <td>${{ number_format($e->iva, 0, ',', '.') }}</td>
                   <td><strong>${{ number_format($e->total, 0, ',', '.') }}</strong></td>
-                  <td>
+
+                  {{-- <td>
                     @if ($pagosMes->isNotEmpty())
                       @foreach($pagosMes as $pago)
                         <strong>${{ number_format($pago->monto, 0, ',', '.') }}</strong><br>
                       @endforeach
 
                     @else
-                      {{-- <strong>${{ number_format($e->total, 0, ',', '.') }}</strong> --}}
 
                             <input type="text" name="monto_pagado[{{$e->id}}]" id="monto_pagado[{{$e->id}}]" required value="${{ number_format($e->total, 0, ',', '.') }}">
                       
@@ -195,22 +127,43 @@
                     @else
                       -
                     @endif
+                  </td> --}}
+
+
+                  <td>
+                    @if ($totalPagado > 0)
+                      @foreach($pagosMes as $pago)
+                        <strong>${{ number_format($pago->monto, 0, ',', '.') }}</strong><br>
+                      @endforeach
+                    @else
+                      <input type="text" name="monto_pagado[{{$e->id}}]" id="monto_pagado[{{$e->id}}]"
+                            required value="${{ number_format($e->total, 0, ',', '.') }}">
+                    @endif
                   </td>
+
+                  <td>
+                    @if($pagosMes->isNotEmpty())
+                      @foreach($pagosMes as $pago)
+                        <strong>{{ \Carbon\Carbon::parse($pago->fecha_pago)->format('d-m-Y') }}</strong><br>
+                      @endforeach
+                    @else
+                      -
+                    @endif
+                  </td>
+
                   <td>
                     <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
                       <i class='material-icons'>edit</i>
                     </a>
 
-                    {{-- SUGERENCIA: evita forms anidados dentro de este form principal. 
-                        Mueve este form de eliminar fuera del <form id="form-pagos"> o usa un modal de confirmación. --}}
-                    {{-- <form id="form-eliminar-{{$e->id}}" ...> --}}
+                      <button type="button"
+                              class="btn-floating btn-small red btn-delete-egreso"
+                              data-action="{{ route('backoffice.egreso.destroy', $e->id) }}"
+                              data-label="{{ $e->subcategoria->nombre ?? 'Egreso' }}">
+                        <i class="material-icons">delete_forever</i>
+                      </button>
+  
                   </td>
-                  {{-- <td>
-                    <label>
-                      <input type="checkbox" class="filled-in chk-egreso" name="egresos[]" value="{{ $e->id }}"/>
-                      <span></span>
-                    </label>
-                  </td> --}}
 
                   <td>
                     @if($pagosMes->isEmpty())
@@ -218,6 +171,10 @@
                         <input type="checkbox" class="filled-in chk-egreso" name="egresos[]" value="{{ $e->id }}"/>
                         <span></span>
                       </label>
+                    @else
+                      <span class="chip" style="background:#e8f5e9;color:#2e7d32">
+                        <i class="material-icons tiny" style="vertical-align:middle;margin-right:4px">done</i> Pagado
+                      </span>
                     @endif
                   </td>
 
@@ -259,112 +216,6 @@
 
 
 
-                      {{-- <table class="striped responsive-table">
-                        <thead>
-                          <tr>
-                            <th>Tipo</th>
-                            <th>Categoría</th>
-                            <th>Subcategoría</th>
-                            <th>Proveedor</th>
-                            <th>Folio</th>
-                            <th>Neto</th>
-                            <th>IVA</th>
-                            <th>Total</th>
-                            <th>Acciones</th>
-                            <th>Pagar</th>
-                          </tr>
-                        </thead>
-                        <tbody>
-                          @php $totalTabla = 0; @endphp
-                          @if ($variables->isNotEmpty())
-                          @foreach ($variables as $e)
-                            @php
-                              $esFactura = isset($e->tipo_documento) && strcasecmp($e->tipo_documento->nombre,'Factura')===0;
-                              $pagos = $pagosPorEgreso[$e->id]['pagos'] ?? []; // array de pagos previos
-                              $montoPagado = $pagosPorEgreso[$e->id]['monto_pagado'] ?? 0;
-                              $yaPagadoFijoMes = $bloqueosFijoMes[$e->subcategoria_id] ?? false; // para fijos
-                              $pendiente = max(($e->total - $montoPagado),0);
-                              $totalTabla += $e->total;
-                            @endphp
-                            <tr>
-                              <td>{{ $e->tipo_documento->nombre ?? '-' }}</td>
-                              <td>{{ $e->categoria->nombre ?? '-' }}</td>
-                              <td>{{ $e->subcategoria->nombre ?? '-' }}</td>
-                              <td>{{ $e->proveedor->nombre ?? '-' }}</td>
-                              <td>{{ $e->folio ?? '-' }}</td>
-
-                              <td>${{ number_format($e->neto, 0, ',', '.') }}</td>
-                              <td>${{ number_format($e->iva, 0, ',', '.') }}</td>
-                              <td><strong>${{ number_format($e->total, 0, ',', '.') }}</strong></td>
-                              <td>
-                                
-                                <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
-                                  <i class='material-icons'>edit</i>
-                                </a>
-                                <form id="form-eliminar-{{$e->id}}" action="{{ route('backoffice.egreso.destroy', $e->id) }}" method="POST" style="display:inline;">
-                                  @csrf 
-                                  @method('DELETE')
-                                  <button type="button" class="btn-floating btn-small red" onclick="confirmarEliminacion({{$e->id}})"><i class='material-icons'>delete</i></button>
-                                </form>
-
-                              </td>
-
-
-                              <td>
-                                @if($e->categoria->nombre === 'Gastos Fijos')
-                                  @if($yaPagadoFijoMes)
-                                    <span class="tooltipped" data-position="bottom" data-tooltip="Pagado este mes">
-                                      <i class="material-icons tiny" style="color:#039B7B">monetization_on</i> Pagado
-                                    </span>
-                                  @else
-                                    <div class="row" style="margin-bottom:0">
-                                      <div class="col s7">
-                                        <input type="number" min="0" step="1" name="items[{{ $e->id }}][monto]" value="{{ $e->total }}" class="browser-default" style="height:32px;padding:0 6px;">
-                                      </div>
-                                      <div class="col s5">
-                                        <label>
-                                          <input type="checkbox" class="checkbox-pago" name="items[{{ $e->id }}][check]" data-total="{{ $e->total }}" data-tipo="fijo">
-                                          <span>Pagar</span>
-                                        </label>
-                                      </div>
-                                    </div>
-                                  @endif
-                                @else
-                                  <div class="row" style="margin-bottom:0">
-                                    <div class="col s7">
-                                      <input type="number" min="0" step="1" name="items[{{ $e->id }}][monto]" value="{{ $pendiente }}" class="browser-default" style="height:32px;padding:0 6px;">
-                                      <small>Pagado: ${{ number_format($montoPagado,0,',','.') }} / Pend.: ${{ number_format($pendiente,0,',','.') }}</small>
-                                    </div>
-                                    <div class="col s5">
-                                      <label>
-                                        <input type="checkbox" class="checkbox-pago" name="items[{{ $e->id }}][check]" data-total="{{ $pendiente }}" data-tipo="variable">
-                                        <span>Pagar</span>
-                                      </label>
-                                    </div>
-                                  </div>
-                                @endif
-                              </td>
-                            </tr>
-                          @endforeach
-
-                          @else
-                            <tr>
-                              <td colspan="2"></td>
-                              <td><h5>No se registran egresos Variables</h5></td>
-                            </tr>
-                          @endif
-                        </tbody>
-                      </table>
-
-
-                                <div class="right-align" style="margin-top:10px">
-            <span class="mr-2" id="contador-">0 seleccionados - $0</span>
-            <button type="submit" class="btn waves-effect waves-light">
-              Registrar pagos <i class="material-icons right">monetization_on</i>
-            </button>
-          </div> --}}
-
-
           <form action="{{ route('backoffice.egreso.pago_variable') }}" method="POST" id="form-pagos-variables">
             @csrf
 
@@ -396,7 +247,9 @@
 
                 @forelse ($variables as $e)
                   @php
-                    $pagos = $pagosPorEgreso[$e->id]['pagos'] ?? []; // historial si lo necesitas mostrar
+                    // $pagos = $pagosPorEgreso[$e->id]['pagos'] ?? []; // historial si lo necesitas mostrar
+                    $valor = 0;
+                    $pagos = $e->pagos;
                     $montoPagado = $pagosPorEgreso[$e->id]['monto_pagado'] ?? 0;
                     $pendiente   = max(($e->total - $montoPagado), 0);
                     $totalTabla += $e->total;
@@ -460,16 +313,24 @@
                       <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
                         <i class="material-icons">edit</i>
                       </a>
-                      {{-- <form id="form-eliminar-{{$e->id}}" action="{{ route('backoffice.egreso.destroy', $e->id) }}" method="POST" style="display:inline;">
-                        @csrf @method('DELETE')
-                        <button type="button" class="btn-floating btn-small red" onclick="confirmarEliminacion({{$e->id}})">
-                          <i class="material-icons">delete</i>
+
+                        <button type="button"
+                                class="btn-floating btn-small red btn-delete-egreso"
+                                data-action="{{ route('backoffice.egreso.destroy', $e->id) }}"
+                                data-label="{{ $e->subcategoria->nombre ?? 'Egreso' }}">
+                          <i class="material-icons">delete_forever</i>
                         </button>
-                      </form> --}}
                     </td>
 
                     <td>
                       @if($pendiente > 0)
+                        @php 
+                          if (isset($pagos)) {
+                              foreach ($pagos as $pago) {
+                                  $valor += $pago->monto;
+                              }
+                          }
+                        @endphp
                         <div class="row" style="margin-bottom:0">
                           <div class="col s7">
                             <input type="text"
@@ -478,7 +339,16 @@
                                   class="row-input input-monto"
                                   data-id="{{ $e->id }}"
                                   style="height:32px;padding:0 6px;">
-                            <small>Pagado: ${{ number_format($montoPagado,0,',','.') }} / Pend.: ${{ number_format($pendiente,0,',','.') }}</small>
+                            <small>
+                              Base: ${{ number_format($pendiente,0,',','.') }}
+                              / 
+                              Pagado: @if ($valor > 0)
+                              <a class="waves-effect waves-light modal-trigger" href="#modal-{{$e->id}}">${{ number_format($valor,0,',','.') }} </a>
+
+                              @else
+                                ${{ number_format($valor,0,',','.') }}
+                              @endif
+                            </small>
                           </div>
                           <div class="col s5">
                             <label>
@@ -497,6 +367,30 @@
                       @endif
                     </td>
                   </tr>
+                    <div id="modal-{{$e->id}}" class="modal bottom-sheet">
+                      <div class="modal-content">
+                        <h4>Pagos realizados en el mes</h4>
+                        <ul class="collection">
+                            @foreach ($pagos as $pago)
+                            <li class="collection-item avatar">
+                              <i class="material-icons circle green">monetization_on</i>
+                              <span class="title">{{$e->subcategoria->nombre}}</span>
+                              <p>{{$pago->fecha_pago->format('d-m-Y')}} <br>
+                                Neto: ${{number_format($pago->neto,0,'','.')}} /
+                                IVA (19%): ${{number_format($pago->iva,0,'','.')}} /
+                                Total: ${{number_format($pago->monto,0,'','.')}}
+                              </p>
+                              {{-- <a href="#!" class="secondary-content"><i class="material-icons">grade</i></a> --}}
+                            </li>
+                            @endforeach
+
+
+                        </ul>
+                      </div>
+                      <div class="modal-footer">
+                        <a href="#!" class="modal-action modal-close waves-effect waves-green btn-flat">Aceptar</a>
+                      </div>
+                    </div>
                 @empty
                   <tr>
                     <td colspan="10" class="center-align"><h5>No se registran egresos Variables</h5></td>
@@ -523,6 +417,11 @@
             </div>
         </div>
 </div>
+
+  <form id="form-eliminar-global" method="POST" style="display:inline;">
+    @csrf 
+    @method('DELETE')
+  </form>
 @endsection
 
 
@@ -564,10 +463,10 @@
 </script>
 
 <script>
-    function confirmarEliminacion(id) {
+    function confirmarYEliminar(action, label) {
         Swal.fire({
             title: '¿Eliminar este egreso?',
-            text: "Esta acción no se puede deshacer.",
+            text: "Esta acción no se puede deshacer."+ (label ? ' ('+label+')' : ''),
             icon: 'warning',
             showCancelButton: true,
             confirmButtonColor: '#d33',
@@ -576,10 +475,20 @@
             cancelButtonText: 'Cancelar'
         }).then((result) => {
             if (result.isConfirmed) {
-                document.getElementById('form-eliminar-' + id).submit();
+              var $form = document.getElementById('form-eliminar-global');
+              $form.setAttribute('action', action);
+              $form.submit();
             }
         });
     }
+
+
+      // Delegación para todos los botones de borrar
+      $(document).on('click', '.btn-delete-egreso', function () {
+        const action = $(this).data('action');
+        const label  = $(this).data('label') || '';
+        confirmarYEliminar(action, label);
+      });
 </script>
 
 
@@ -705,7 +614,11 @@
 
 
 
-
+<script>
+  $(document).ready(function(){
+    $('.modal').modal();
+  });
+</script>
 
 
 
