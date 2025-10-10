@@ -104,6 +104,36 @@ class EgresoController extends Controller
     // }
 
 
+    // public function index_mes($anio, $mes)
+    // {
+    //     $desde = Carbon::create($anio, $mes, 1)->startOfMonth();
+    //     $hasta = Carbon::create($anio, $mes, 1)->endOfMonth();
+
+    //     $withPeriodo = [
+    //         'categoria', 'subcategoria', 'proveedor', 'tipo_documento',
+    //         'pagos' => function ($q) use ($desde, $hasta) {
+    //             $q->whereBetween('fecha_pago', [$desde, $hasta]);
+    //         },
+    //     ];
+
+    //     $egresos   = Egreso::with($withPeriodo)->get();
+    //     $fijos     = Egreso::with($withPeriodo)->where('categoria_id', 1)->get();
+    //     $variables = Egreso::with($withPeriodo)->where('categoria_id', 2)->get();
+
+    //     // (Opcional) sumas del periodo para cada egreso
+    //     $pagosPorEgreso = DB::table('pagos_egresos')
+    //         ->selectRaw('egreso_id, SUM(monto) AS monto_pagado')
+    //         ->whereBetween('fecha_pago', [$desde, $hasta])
+    //         ->groupBy('egreso_id')
+    //         ->pluck('monto_pagado', 'egreso_id');
+
+    //     return view(
+    //         'themes.backoffice.pages.egreso.index_mes',
+    //         compact('egresos', 'mes', 'anio', 'fijos', 'variables', 'pagosPorEgreso')
+    //     );
+    // }
+
+
     public function index_mes($anio, $mes)
     {
         $desde = Carbon::create($anio, $mes, 1)->startOfMonth();
@@ -116,23 +146,32 @@ class EgresoController extends Controller
             },
         ];
 
-        $egresos   = Egreso::with($withPeriodo)->get();
-        $fijos     = Egreso::with($withPeriodo)->where('categoria_id', 1)->get();
-        $variables = Egreso::with($withPeriodo)->where('categoria_id', 2)->get();
+        $egresos = Egreso::with($withPeriodo)->get();
 
-        // (Opcional) sumas del periodo para cada egreso
+        $fijos = Egreso::with($withPeriodo)
+            ->where('egresos.categoria_id', 1)
+            ->leftJoin('subcategorias_compras as sc', 'egresos.subcategoria_id', '=', 'sc.id')
+            ->orderBy('sc.nombre', 'asc')
+            ->select('egresos.*')
+            ->get();
+
+        $variables = Egreso::with($withPeriodo)
+            ->where('egresos.categoria_id', 2)
+            ->leftJoin('subcategorias_compras as sc', 'egresos.subcategoria_id', '=', 'sc.id')
+            ->orderBy('sc.nombre', 'asc')
+            ->select('egresos.*')
+            ->get();
+
+
         $pagosPorEgreso = DB::table('pagos_egresos')
             ->selectRaw('egreso_id, SUM(monto) AS monto_pagado')
             ->whereBetween('fecha_pago', [$desde, $hasta])
             ->groupBy('egreso_id')
             ->pluck('monto_pagado', 'egreso_id');
 
-        return view(
-            'themes.backoffice.pages.egreso.index_mes',
-            compact('egresos', 'mes', 'anio', 'fijos', 'variables', 'pagosPorEgreso')
-        );
+        return view('themes.backoffice.pages.egreso.index_mes',
+            compact('egresos', 'mes', 'anio', 'fijos', 'variables', 'pagosPorEgreso'));
     }
-
 
 
 

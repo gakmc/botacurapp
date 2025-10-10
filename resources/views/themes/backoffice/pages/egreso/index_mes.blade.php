@@ -256,7 +256,7 @@
                   @endphp
 
                   <tr>
-                    <td>{{ $e->tipo_documento->nombre ?? '-' }}</td>
+                    <td class="tipo-egreso" data-tipo="{{$e->tipo_documento->nombre}}">{{ $e->tipo_documento->nombre ?? '-' }}</td>
                     <td>{{ $e->subcategoria->nombre ?? '-' }}</td>
                     <td>{{ $e->proveedor->nombre ?? '-' }}</td>
                     <td>
@@ -340,8 +340,6 @@
                                   data-id="{{ $e->id }}"
                                   style="height:32px;padding:0 6px;">
                             <small>
-                              Base: ${{ number_format($pendiente,0,',','.') }}
-                              / 
                               Pagado: @if ($valor > 0)
                               <a class="waves-effect waves-light modal-trigger" href="#modal-{{$e->id}}">${{ number_format($valor,0,',','.') }} </a>
 
@@ -518,7 +516,8 @@
 
 
 
-<script>
+
+{{-- <script>
   $(function () {
     const $btn     = $('#btn-registrar-var');
     const $countEl = $('#contador-var');
@@ -610,7 +609,121 @@
 
     calcResumen();
   });
+</script> --}}
+
+<script>
+  $(function () {
+    const $btn     = $('#btn-registrar-var');
+    const $countEl = $('#contador-var');
+
+    const toInt = s => (s || '').toString().replace(/\D+/g, '') * 1 || 0;
+    const fmtCLP = n => '$' + new Intl.NumberFormat('es-CL').format(n || 0);
+
+    function maskInput($inp){
+      const val = toInt($inp.val());
+      $inp.val(fmtCLP(val));
+      return val;
+    }
+
+    function getRow(id){
+      return $(`.input-monto[data-id="${id}"]`).closest('tr');
+    }
+
+    function getTipoByRow($tr){
+      const $celda = $tr.find('.tipo-egreso,[id="tipoEgreso"]');
+      return ($celda.data('tipo') || '').toString().trim().toLowerCase();
+    }
+
+    // Suma neto + iva + impuesto incluido (si existe)
+    function sumToMonto(id){
+      const $tr = getRow(id);
+      const vNeto = toInt($tr.find(`.input-neto[data-id="${id}"]`).val());
+      const vIva  = toInt($tr.find(`.input-iva[data-id="${id}"]`).val());
+      const vImp  = toInt($tr.find(`.input-imp[data-id="${id}"]`).val());
+      const total = vNeto + vIva + vImp;
+      $tr.find(`.input-monto[data-id="${id}"]`).val(fmtCLP(total));
+    }
+
+    // Si tipo = factura, al editar monto → calcular IVA = 19% y neto = monto - IVA
+    function setFacturaNetoIva(id){
+      const $tr = getRow(id);
+      const tipo = getTipoByRow($tr);
+      if (tipo !== 'factura') return;
+
+      const $monto = $tr.find(`.input-monto[data-id="${id}"]`);
+      const $neto  = $tr.find(`.input-neto[data-id="${id}"]`);
+      const $iva   = $tr.find(`.input-iva[data-id="${id}"]`);
+
+      const monto = toInt($monto.val());
+      const iva = Math.round(monto * 0.19);
+      const neto = monto - iva;
+
+      if ($iva.length)  $iva.val(fmtCLP(iva));
+      if ($neto.length) $neto.val(fmtCLP(neto));
+    }
+
+    function toggleRowInputs(id, enabled){
+      $(`.row-input[data-id="${id}"]`).prop('disabled', !enabled);
+    }
+
+    function calcResumen(){
+      let cant = 0, total = 0;
+      $('.checkbox-pago:checked').each(function(){
+        const id = $(this).data('id');
+        const val = toInt($(`.input-monto[data-id="${id}"]`).val());
+        if (val > 0){ cant++; total += val; }
+      });
+      $btn.prop('disabled', cant === 0 || total <= 0);
+      $countEl.text(`${cant} seleccionados - ${fmtCLP(total)}`);
+    }
+
+    // Eventos principales
+    $(document).on('input', '.input-monto', function(){
+      const id = $(this).data('id');
+      maskInput($(this));
+      setFacturaNetoIva(id);
+      calcResumen();
+    });
+
+    $(document).on('input', '.input-neto, .input-iva, .input-imp', function(){
+      const id = $(this).data('id');
+      maskInput($(this));
+      sumToMonto(id);
+      calcResumen();
+    });
+
+    $('#chk-all-var').on('change', function(){
+      $('.checkbox-pago').prop('checked', this.checked).trigger('change');
+    });
+
+    $(document).on('change', '.checkbox-pago', function(){
+      const id = $(this).data('id');
+      toggleRowInputs(id, this.checked);
+      calcResumen();
+    });
+
+    // Inicialización
+    $('.input-neto, .input-iva, .input-imp, .input-monto').each(function(){ maskInput($(this)); });
+    $('.checkbox-pago').each(function(){ toggleRowInputs($(this).data('id'), this.checked); });
+    calcResumen();
+
+    $('#form-pagos-variables').on('submit', function(){
+      $('.input-neto, .input-iva, .input-imp, .input-monto').each(function(){ maskInput($(this)); });
+    });
+  });
 </script>
+
+
+
+
+
+
+
+
+
+
+
+
 
 
 

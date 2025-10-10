@@ -357,6 +357,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
+    Route::get('finanzas/ingresos/comparar', 'ReporteFinancieroController@comparar')->name('finanzas.comparar');
+
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
     Route::get('giftcards/{gc}/reservar', 'GiftCardController@byPassReserva')->name('giftcards.reservar');

@@ -197,7 +197,7 @@
                                                 <div class="padding-4">
                                                     <div class="col s7 m7">
                                                         <i class="material-icons background-round mt-5">monetization_on</i>
-                                                        <p>Remuneraciones <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
+                                                        <p>Sueldos <strong>{{ucfirst(\Carbon\Carbon::now()->locale('es')->isoFormat('MMMM'))}}</strong></p>
                                                     </div>
                                                     <div class="col s5 m5 right-align">
                                                         <h5 id="reservas-count" class="mb-0">{{number_format($cantidadFuncionarios,0,"",".")}}</h5>

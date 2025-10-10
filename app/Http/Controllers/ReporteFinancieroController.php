@@ -3,10 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\Egreso;
+use App\GiftCard;
 use App\PagoEgreso;
+use App\PoroPoroVenta;
+use App\Programa;
+use App\Reserva;
+use App\TipoTransaccion;
+use App\Venta;
+use App\VentaDirecta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 
 class ReporteFinancieroController extends Controller
 {
@@ -199,11 +207,11 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
-    public function ingresosPercibidos()
+    public function ingresosPercibidos(Request $request)
     {
 
-        $anio = now()->year;
-        $mes = now()->month;
+        $anio = $request->input('anio',now()->year);
+        $mes = $request->input('mes',now()->month);
 
         // dd($anio, $mes);
         // ABONOS
@@ -268,12 +276,196 @@ class ReporteFinancieroController extends Controller
         setlocale(LC_TIME, 'es_ES.UTF-8');
         $mesNombre = Carbon::createFromDate($anio, $mes, 1)->translatedFormat('F');
 
+
+
+
+
+
+        $ingresosVentas   = 0;
+        $ventasPendientes = 0;
+        $totalGc          = 0;
+
+        $gcs = GiftCard::whereYear('created_at', $anio)
+            ->whereMonth('created_at', $mes)
+            ->get();
+
+        foreach ($gcs as $gc) {
+            $totalGc += $gc->monto;
+        }
+
+        $cantidadGc = COUNT($gcs) ?? 0;
+
+        $ventas = Venta::whereHas('reserva', function ($query) use ($mes, $anio) {
+            $query->whereMonth('created_at', $mes)
+                ->whereYear('created_at', $anio);
+
+        })->with('reserva.cliente', 'reserva.programa', 'consumo.detallesConsumos', 'consumo.detalleServiciosExtra')->paginate(20);
+
+        // Marcar si cada venta fue pagada con GiftCard
+        foreach ($ventas as $venta) {
+            $venta->pagado_con_giftcard = GiftCard::where('id_venta', $venta->id)->exists();
+            // Evitar sumar abono/diferencia si es con giftcard
+            if (! $venta->pagado_con_giftcard) {
+                $ingresosVentas += $venta->abono_programa;
+                $ingresosVentas += $venta->diferencia_programa;
+                $ventasPendientes += $venta->total_pagar;
+            }
+        }
+
+        $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
+            $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
+                ->whereHas('reserva', function ($query) use ($anio, $mes) {
+                    $query->whereYear('created_at', $anio)
+                        ->whereMonth('created_at', $mes);
+                })
+                ->sum('abono_programa');
+
+            $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+                    $query->whereYear('created_at', $anio)
+                        ->whereMonth('created_at', $mes);
+                })
+                ->sum('pago1');
+
+            $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
+                ->whereNotNull('pago2')
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+                    $query->whereYear('created_at', $anio)
+                        ->whereMonth('created_at', $mes);
+                })
+                ->sum('pago2');
+
+            $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
+                ->whereYear('created_at', $anio)
+                ->whereMonth('created_at', $mes)
+                ->sum('subtotal');
+
+            $poroPoro = PoroPoroVenta::where('id_tipo_transaccion', $tipo->id)
+                ->whereYear('created_at', $anio)
+                ->whereMonth('created_at', $mes)
+                ->sum('total');
+
+            $tipo->total_abonos      = $abono;
+            $tipo->total_diferencias = $total_pago1 + $total_pago2;
+            $tipo->venta_directa     = $ventaDirecta;
+            $tipo->poro              = $poroPoro;
+
+            return $tipo;
+        });
+
+        $programas = Programa::all()->map(function ($programa) use ($mes, $anio) {
+            $cuenta = Reserva::where('id_programa', $programa->id)
+                ->whereMonth('created_at', $mes)
+                ->whereYear('created_at', $anio)
+                ->count();
+
+            $programa->total_programas = $cuenta;
+            return $programa;
+        });
+
+
+
+        $fechasDisponibles = Reserva::selectRaw('MONTH(created_at) as mes, YEAR(created_at) as anio')
+            ->groupBy('mes', 'anio')
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->get();
+
+
+
         // dd($impuestos);
         return view('themes.backoffice.pages.reporte.ingreso.percibido', compact(
             'anio', 'mes', 'mesNombre',
             'abonos', 'diferencias', 'consumos', 'servicios'
-            , 'ventasDirectas'
+            , 'ventasDirectas', 'programas', 'tiposTransacciones', 'ventas', 'fechasDisponibles'
         ));
+    }
+
+
+public function comparar(Request $request)
+    {
+try {
+            $raw = $request->input('meses', []); // puede venir como meses[] en query
+            $meses = collect(is_array($raw) ? $raw : [$raw])
+                ->filter()
+                ->map(function($s){ return trim((string)$s); })
+                ->unique()
+                ->values()
+                ->take(4);
+
+            if ($meses->isEmpty()) {
+                return response('Faltan meses', 422);
+            }
+
+            $rows = $meses->map(function($mmYYYY){
+                $parts = explode('-', $mmYYYY);
+                if (count($parts) !== 2) {
+                    return null;
+                }
+                $mm = (int)$parts[0];
+                $yy = (int)$parts[1];
+                if ($mm < 1 || $mm > 12 || $yy < 2000) {
+                    return null;
+                }
+
+                $desde = Carbon::create($yy, $mm, 1)->startOfMonth();
+                $hasta = Carbon::create($yy, $mm, 1)->endOfMonth();
+
+                $total = $this->totalIngresosPeriodo($desde, $hasta);
+
+                return [
+                    'label' => ucfirst(Carbon::create()->month($mm)->locale('es')->isoFormat('MMMM')).' '.$yy,
+                    'mes'   => $mm,
+                    'anio'  => $yy,
+                    'total' => (int)$total,
+                ];
+            })->filter()->values();
+
+            // Incluso con totales = 0, renderizamos la tabla
+            $viewPath = 'themes.backoffice.pages.reporte.ingreso.partials._comparativa_ingresos';
+            if (!view()->exists($viewPath)) {
+                Log::error('Vista parcial no existe', ['view' => $viewPath]);
+                return response('Parcial no encontrado: '.$viewPath, 500);
+            }
+
+            $html = view($viewPath, compact('rows'))->render();
+            return response($html, 200)->header('Content-Type', 'text/html');
+
+        } catch (\Throwable $e) {
+            Log::error('FinanzasCompararError', [
+                'msg' => $e->getMessage(),
+                'file'=> $e->getFile(),
+                'line'=> $e->getLine(),
+            ]);
+            return response('Error interno', 500);
+        }
+    }
+
+    protected function totalIngresosPeriodo(Carbon $desde, Carbon $hasta): int
+    {
+    // Ventas (abono + diferencia)
+    $ingresosVentas = DB::table('ventas')
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
+        ->sum(DB::raw('COALESCE(ventas.abono_programa,0) + COALESCE(ventas.diferencia_programa,0)'));
+
+    // Consumos: detalles_consumos -> consumos -> ventas -> reservas
+    $consumos = DB::table('detalles_consumos')
+        ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
+        ->sum(DB::raw('COALESCE(detalles_consumos.subtotal,0)'));
+
+    // Servicios extra: detalles_servicios_extra -> consumos -> ventas -> reservas
+    $serviciosExtra = DB::table('detalles_servicios_extra')
+        ->join('consumos', 'detalles_servicios_extra.id_consumo', '=', 'consumos.id')
+        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
+        ->sum(DB::raw('COALESCE(detalles_servicios_extra.subtotal,0)'));
+
+    return (int) ($ingresosVentas + $consumos + $serviciosExtra);
     }
     
 }
