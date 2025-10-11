@@ -166,7 +166,7 @@
                                     <tr>
                                         <th class="white-text" style="background-color: #039B7B;">Medio de Pago</th>
                                         <th class="white-text" style="background-color: #039B7B">Total Dia</th>
-                                        {{-- <th class="white-text" style="background-color: #039B7B">Venta Directa</th>
+                                        <th class="white-text" style="background-color: #039B7B">Propina Venta Directa</th>{{--
                                         <th class="white-text" style="background-color: #039B7B">Poro Poro</th> --}}
                                     </tr>
                                 </thead>
@@ -181,7 +181,7 @@
                                         <td>${{
                                             number_format($transaccion->total_diferencias+$transaccion->venta_directa+$transaccion->poro_poro,0,'','.')
                                             }}</td>
-                                        {{-- <td>${{ number_format($transaccion->venta_directa,0,'','.') }}</td>
+                                        <td>${{ number_format($transaccion->propinaDirecta,0,'','.') }}</td>{{-- 
                                         <td>${{ number_format($transaccion->poro_poro,0,'','.') }}</td> --}}
                                     </tr>
                                     @endforeach
@@ -197,9 +197,10 @@
                                             }}</strong></td>
                                 </tr> --}}
                                 <tr>
+                                    <td></td>
                                     <td style=" text-align: center;"><strong>Total:</strong></td>
                                     <td><strong>${{
-                                            number_format($tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa")+$tiposTransacciones->sum("poro_poro"),0,'','.')
+                                            number_format($tiposTransacciones->sum("total_diferencias")+$tiposTransacciones->sum("venta_directa")+$tiposTransacciones->sum("propinaDirecta")+$tiposTransacciones->sum("poro_poro"),0,'','.')
                                             }}</strong></td>
                                 </tr>
                             </table>

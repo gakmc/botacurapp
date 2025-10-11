@@ -874,6 +874,12 @@ class AdminController extends Controller
                 ->whereDay('fecha', $dia)
                 ->sum('subtotal');
 
+            $propinaVentaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
+                ->whereYear('fecha', $anio)
+                ->whereMonth('fecha', $mes)
+                ->whereDay('fecha', $dia)
+                ->sum('valor_propina');
+
             $poroporo = PoroPoroVenta::where('id_tipo_transaccion', $tipo->id)
                 ->whereYear('fecha', $anio)
                 ->whereMonth('fecha', $mes)
@@ -882,6 +888,7 @@ class AdminController extends Controller
 
             $tipo->total_diferencias = $total_pago1 + $total_pago2;
             $tipo->venta_directa     = $ventaDirecta;
+            $tipo->propinaDirecta     = $propinaVentaDirecta;
             $tipo->poro_poro         = $poroporo;
             return $tipo;
         });

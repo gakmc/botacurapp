@@ -365,11 +365,55 @@ class ReporteFinancieroController extends Controller
 
 
 
-        $fechasDisponibles = Reserva::selectRaw('MONTH(created_at) as mes, YEAR(created_at) as anio')
-            ->groupBy('mes', 'anio')
-            ->orderBy('anio', 'desc')
-            ->orderBy('mes', 'desc')
-            ->get();
+        // $fechasDisponibles = Reserva::selectRaw('MONTH(created_at) as mes, YEAR(created_at) as anio')
+        //     ->groupBy('mes', 'anio')
+        //     ->orderBy('anio', 'desc')
+        //     ->orderBy('mes', 'desc')
+        //     ->get();
+
+
+
+
+        
+        $fuentes = collect([]);
+
+        // Reservas (ingresos vía ventas/consumos/servicios)
+        $fuentes = $fuentes->merge(
+            DB::table('reservas')
+                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
+                ->groupBy('anio','mes')
+                ->get()
+        );
+
+        // Ventas directas
+        $fuentes = $fuentes->merge(
+            DB::table('ventas_directas')
+                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
+                ->groupBy('anio','mes')
+                ->get()
+        );
+
+        // GiftCards (si quieres mostrarlas como mes seleccionable)
+        $fuentes = $fuentes->merge(
+            DB::table('gift_cards')
+                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
+                ->groupBy('anio','mes')
+                ->get()
+        );
+
+        // Poro Poro (si corresponde)
+        $fuentes = $fuentes->merge(
+            DB::table('poro_poro_ventas')
+                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
+                ->groupBy('anio','mes')
+                ->get()
+        );
+
+        // Unificar, quitar duplicados y ordenar desc por año-mes
+        $fechasDisponibles = $fuentes
+            ->unique(function($r){ return sprintf('%04d-%02d', $r->anio, $r->mes); })
+            ->sortByDesc(function($r){ return $r->anio * 100 + $r->mes; })
+            ->values();
 
 
 
@@ -382,9 +426,9 @@ class ReporteFinancieroController extends Controller
     }
 
 
-public function comparar(Request $request)
+    public function comparar(Request $request)
     {
-try {
+        try {
             $raw = $request->input('meses', []); // puede venir como meses[] en query
             $meses = collect(is_array($raw) ? $raw : [$raw])
                 ->filter()
@@ -441,31 +485,36 @@ try {
         }
     }
 
-    protected function totalIngresosPeriodo(Carbon $desde, Carbon $hasta): int
+    protected function totalIngresosPeriodo(Carbon $desde, Carbon $hasta)
     {
-    // Ventas (abono + diferencia)
-    $ingresosVentas = DB::table('ventas')
-        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
-        ->sum(DB::raw('COALESCE(ventas.abono_programa,0) + COALESCE(ventas.diferencia_programa,0)'));
+        // Ventas (abono + diferencia)
+        $ingresosVentas = DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereBetween('reservas.created_at', [$desde, $hasta])
+            ->sum(DB::raw('COALESCE(ventas.abono_programa,0) + COALESCE(ventas.diferencia_programa,0)'));
 
-    // Consumos: detalles_consumos -> consumos -> ventas -> reservas
-    $consumos = DB::table('detalles_consumos')
-        ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
-        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
-        ->sum(DB::raw('COALESCE(detalles_consumos.subtotal,0)'));
+        // Consumos: detalles_consumos -> consumos -> ventas -> reservas
+        $consumos = DB::table('detalles_consumos')
+            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereBetween('reservas.created_at', [$desde, $hasta])
+            ->sum(DB::raw('COALESCE(detalles_consumos.subtotal,0)'));
 
-    // Servicios extra: detalles_servicios_extra -> consumos -> ventas -> reservas
-    $serviciosExtra = DB::table('detalles_servicios_extra')
-        ->join('consumos', 'detalles_servicios_extra.id_consumo', '=', 'consumos.id')
-        ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-        ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-        ->whereBetween('reservas.fecha_visita', [$desde, $hasta])
-        ->sum(DB::raw('COALESCE(detalles_servicios_extra.subtotal,0)'));
+        // Servicios extra: detalles_servicios_extra -> consumos -> ventas -> reservas
+        $serviciosExtra = DB::table('detalle_servicios_extra')
+            ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereBetween('reservas.created_at', [$desde, $hasta])
+            ->sum(DB::raw('COALESCE(detalle_servicios_extra.subtotal,0)'));
 
-    return (int) ($ingresosVentas + $consumos + $serviciosExtra);
+            
+        $ventaDirecta = DB::table('ventas_directas')
+            ->whereBetween('ventas_directas.created_at', [$desde, $hasta])
+            ->sum(DB::raw('COALESCE(ventas_directas.subtotal,0)'));
+
+        return (int) ($ingresosVentas + $consumos + $serviciosExtra + $ventaDirecta);
     }
     
 }
