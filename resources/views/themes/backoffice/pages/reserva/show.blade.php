@@ -858,6 +858,15 @@
             timer: 5000,
         });
   @endif
+  @if(session('error'))
+        Swal.fire({
+            icon: 'error',
+            title: 'Atención',
+            text: '{{ session('error') }}',
+            showConfirmButton: true,
+            confirmButtonText: `Confirmar`
+        });
+  @endif
 </script>
 
 <script>

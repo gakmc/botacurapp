@@ -465,6 +465,10 @@ class ReporteFinancieroController extends Controller
                 ];
             })->filter()->values();
 
+            $rows = $rows->sortBy(function($r){
+                return ($r['anio'] * 100) + $r['mes'];
+            })->values();
+
             // Incluso con totales = 0, renderizamos la tabla
             $viewPath = 'themes.backoffice.pages.reporte.ingreso.partials._comparativa_ingresos';
             if (!view()->exists($viewPath)) {

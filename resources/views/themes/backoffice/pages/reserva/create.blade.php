@@ -27,7 +27,7 @@
           <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong>
           </h4>
           <div class="row">
-            <form class="col s12" method="post" enctype="multipart/form-data"
+            <form class="col s12" method="post"
             action="{{route('backoffice.reserva.store')}}">
             
             
@@ -94,7 +94,7 @@
 
               <div class="row">
 
-                <div class="input-field col s12 m3">
+                <div class="input-field col s12 m4">
 
                   <label for="abono_programa" class="black-text">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class=""
@@ -109,19 +109,19 @@
 
                 </div>
 
-                <div class="file-field input-field col s12 m5">
-                  <div class="btn">
-                    <span>Imagen Abono</span>
-                    <input type="file" id="imagen_abono" name="imagen_abono">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
-                  @error('imagen_abono')
+
+
+                <div class="input-field col s12 m4">
+
+                  <label for="folio_abono" class="black-text">Folio Abono</label>
+                  <input id="folio_abono" type="text" name="folio_abono" class="" value="{{ old('folio_abono') }}">
+                    
+                  @error('folio_abono')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
+
                 </div>
 
 
@@ -146,7 +146,7 @@
 
               <div class="row">
                 <div class="input-field col s12 m3">
-                  <input id="fecha_visita" type="date" name="fecha_visita" class="" value="{{ old('fecha_visita') }}">
+                  <input id="fecha_visita" type="text" name="fecha_visita" class="" value="{{ old('fecha_visita') }}">
                   <label for="fecha_visita" class="black-text">Fecha Visita</label>
                   @error('fecha_visita')
                   <span class="invalid-feedback" role="alert">
@@ -205,11 +205,7 @@
 
                 </div>
 
-                <div class="input-field col s12 m6">
-                  <label for="imagenSeleccionadaAbono">Imagen Abono:</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono" src="https://placehold.co/200x300?text=No+Image" alt=""
-                    style="max-height: 200px">
-                </div>
+
               </div>
 
 
@@ -239,7 +235,7 @@
 
 
 @section('foot')
-<script src="https://cdn.jsdelivr.net/npm/jsbarcode@3.11.6/dist/JsBarcode.all.min.js"></script>
+
 <script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
@@ -256,23 +252,12 @@
   });
 </script>
 
-{{-- <script>
-  $(document).ready(function () {
-    $('select').formSelect();
-  });
-</script> --}}
-
 <script>
-  $(document).ready(function (e) {   
-    $('#imagen_abono').change(function(){            
-        let reader = new FileReader();
-        reader.onload = (e) => { 
-            $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
-        }
-        reader.readAsDataURL(this.files[0]);
-    });
+  $(document).ready(function () {
+    $('select').material_select();
   });
 </script>
+
 
 <script>
   var valorPrograma = 0;
@@ -316,7 +301,7 @@ function calcularValorTotal(){
 
 function formatCLP(number) 
 {
-      return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+  return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
 }
 </script>
 
@@ -324,7 +309,7 @@ function formatCLP(number)
 <script>
   $(document).ready(function(e){
     const selectPrograma = $('#id_programa');
-    const cantidadMasajesInput = $('#cantidad_masajes').closest('div');
+    const cantidadMasajesInput = $('#input-cantidad-masajes-container').closest('div');
     const checkboxMasajesContainer = $('#checkbox-masajes-container');
     const inputCantidadMasajesContainer = $('#input-cantidad-masajes-container');
     const agregarMasajesCheckbox = $('#agregar_masajes');
@@ -336,7 +321,7 @@ function formatCLP(number)
     function toggleMasajesField() {
       const selectedOption = selectPrograma.find('option:selected');
       const incluyeMasajes = selectedOption.data('incluye-masajes');
-      const inputMasajes = $('#cantidad_masajes');
+      const inputMasajes = $('#cantidad_masajes_extra');
       
       if (incluyeMasajes === 1) {
         // Si el programa incluye masajes, mostramos el input normal de cantidad de masajes
@@ -465,10 +450,10 @@ function formatCLP(number)
       // Calcular total
       calcularValorTotal();
 
-      // Generar código de barras
-      let canvas = document.createElement('canvas');
-      JsBarcode(canvas, codigo, { format: "CODE128" });
-      $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+      $('#folio_abono').val(codigo);
+      $('label[for="folio_abono"]').addClass('active');
+
+
   });
 </script>
 
@@ -497,9 +482,9 @@ function formatCLP(number)
 
           calcularValorTotal();
 
-          let canvas = document.createElement('canvas');
-          JsBarcode(canvas, codigo, { format: "CODE128" });
-          $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+          $('#folio_abono').val(codigo);
+          $('label[for="folio_abono"]').addClass('active');
+
       @endif
   });
 </script>
@@ -519,7 +504,7 @@ function formatCLP(number)
         if (response.success) {
           
         
-                        // Llenar inputs automáticamente
+                // Llenar inputs automáticamente
                 $('#gcard_id').remove(); // Evitar duplicados
                 $('<input>').attr({
                     type: 'hidden',
@@ -546,10 +531,11 @@ function formatCLP(number)
                 // Calcular total
                 calcularValorTotal();
 
-                // Código de barras
-                let canvas = document.createElement('canvas');
-                JsBarcode(canvas, response.data.codigo, { format: "CODE128" });
-                $('#imagenSeleccionadaAbono').attr('src', canvas.toDataURL("image/png"));
+
+                $('#folio_abono').val(response.data.codigo);
+                $('label[for="folio_abono"]').addClass('active');
+
+
               }else{
                 Swal.fire({
                   icon: 'error',
@@ -570,21 +556,18 @@ function formatCLP(number)
 </script>
 
 <script>
-  $.ajax({
-    url: '{{ route("backoffice.giftcards.lista") }}',
-    type: 'GET',
-    success: function(data) {
-        $('input#gcard_codigo').autocomplete({
-            data: data,
-            limit: 5, // máximo sugerencias
-            onAutocomplete: function(val) {
-                // Cuando seleccionas un código, autocompleta datos
-                verificarGiftCard(val);
-            },
-            minLength: 2 // desde cuántas letras comienza a sugerir
-        });
+
+$.get('{{ route("backoffice.giftcards.lista") }}', function(data){
+  $('#gcard_codigo').autocomplete({
+    data: data,
+    limit: 5,
+    minLength: 2,
+    onAutocomplete: function(val){
+      $('#gcard_codigo').val(val).trigger('blur'); // reutiliza tu verificación
     }
+  });
 });
+
 </script>
 
 @endsection

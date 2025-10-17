@@ -408,20 +408,20 @@ class ReservaController extends Controller
 
     public function store(StoreRequest $request, Reserva $reserva)
     {
+
         $request->merge([
             'abono_programa'    => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
             'cantidad_personas' => (int) str_replace(['$', '.', ','], '', $request->cantidad_personas),
             'total_pagar'       => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
         ]);
 
-        // dd($request->all());
 
         $masajesExtra         = null;
         $almuerzosExtra       = null;
         $cantidadMasajesExtra = null;
 
         // Verificar si el programa seleccionado incluye un masaje
-        $programa = Programa::find($request->id_programa);
+        $programa = Programa::findOrFail($request->id_programa);
 
         // Buscar si el programa tiene un servicio de masaje
         $incluyeMasaje = $programa->incluye_masajes;
@@ -456,22 +456,12 @@ class ReservaController extends Controller
                     $reserva->update(['cantidad_masajes' => null]);
                 }
 
-                // Generar url para almacenar imagen
-                $url_abono = null;
-                $filename  = null;
-
-                if ($request->hasFile('imagen_abono')) {
-                    $abono     = $request->file('imagen_abono');
-                    $filename  = time() . '-' . $abono->getClientOriginalName();
-                    $url_abono = 'temp/' . $filename; // Almacenamiento temporal
-                    Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
-                }
 
                 // Crear la venta relacionada con la reserva
                 $venta = Venta::create([
                     'id_reserva'                => $reserva->id,
                     'abono_programa'            => $request->abono_programa,
-                    'imagen_abono'              => $url_abono,
+                    'folio_abono'              => $request->folio_abono,
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
                     'total_pagar'               => $request->total_pagar,
                 ]);
@@ -481,28 +471,8 @@ class ReservaController extends Controller
                     $gc->fecha_uso = Carbon::now()->format('Y-m-d');
                     $gc->id_venta = $venta->id;
                     $gc->save();
-
-                    if(!$request->has('imagen_abono')){
-
-                        $codigo = $gc->codigo;
-
-                        $generator = new BarcodeGeneratorPNG();
-                        $barcode   = $generator->getBarcode($codigo, $generator::TYPE_CODE_128);
-
-                        // Guardar imagen generada como archivo PNG
-                        $filename  = time() . '-barcode.png';
-                        $url_abono = 'temp/' . $filename;
-                        Storage::disk('imagen_abono')->put($url_abono, $barcode);
-
-                    }
                 }
 
-                // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
-                if ($filename) {
-                    $finalPath = '/' . $filename;
-                    Storage::disk('imagen_abono')->move('temp/' . $filename, $finalPath);
-                    $venta->update(['imagen_abono' => $finalPath]);
-                }
 
                 $consumo = null;
 
@@ -587,9 +557,10 @@ class ReservaController extends Controller
             // Redirigir fuera de la transacción
             return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success', 'Reserva realizada con éxito');
 
-        } catch (\Error $e) {
+        } catch (\Throwable $e) {
             // Alert::error('Falló', 'Error: ' . $e, 'Confirmar')->showConfirmButton();
-            return redirect()->back()->with('error', 'Error: ' . $e)->withInput();
+            // return redirect()->back()->with('error', 'Error: ' . $e)->withInput();
+            return back()->with('error', 'Error: '.$e->getMessage())->withInput();
         }
 
     }
@@ -643,36 +614,6 @@ class ReservaController extends Controller
         return abort(404, 'Imagen de abono no encontrada');
     }
 
-    public function showAbonoImage($id)
-    {
-        $reserva = Reserva::findOrFail($id);
-
-        // Verificar si el archivo de abono existe
-        if (Storage::disk('imagen_abono')->exists($reserva->venta->imagen_abono)) {
-            $file     = Storage::disk('imagen_abono')->get($reserva->venta->imagen_abono);
-            $mimeType = Storage::disk('imagen_abono')->mimeType($reserva->venta->imagen_abono);
-
-            return response($file, 200)->header('Content-Type', $mimeType);
-        }
-
-        return abort(404, 'Imagen de abono no encontrada');
-    }
-
-    public function showDiferenciaImage($id)
-    {
-        $reserva = Reserva::findOrFail($id);
-
-        // Verificar si el archivo de diferencia existe
-        if (Storage::disk('imagen_diferencia')->exists($reserva->venta->imagen_diferencia)) {
-            $file     = Storage::disk('imagen_diferencia')->get($reserva->venta->imagen_diferencia);
-            $mimeType = Storage::disk('imagen_diferencia')->mimeType($reserva->venta->imagen_diferencia);
-
-            return response($file, 200)->header('Content-Type', $mimeType);
-        }
-
-        // return abort(404, 'Imagen de diferencia no encontrada');
-        return redirect('https://placehold.co/200x300');
-    }
 
     public function edit(Reserva $reserva)
     {
@@ -780,31 +721,14 @@ class ReservaController extends Controller
                 // Actualizar la venta relacionada con la reserva
                 $venta = $reserva->venta ?? new Venta();
 
-                // Manejo de la imagen de abono
-                $url_abono = null;
-                if ($request->hasFile('imagen_abono_boton')) {
-                    if (! empty($venta->imagen_abono) && Storage::disk('imagen_abono')->exists($venta->imagen_abono)) {
-                        Storage::disk('imagen_abono')->delete($venta->imagen_abono);
-                    }
-                    $abono     = $request->file('imagen_abono_boton');
-                    $filename  = time() . '-' . $abono->getClientOriginalName();
-                    $url_abono = 'temp/' . $filename;
-                    Storage::disk('imagen_abono')->put($url_abono, File::get($abono));
-                }
 
                 $venta->fill([
                     'abono_programa'            => $request->abono_programa,
-                    'imagen_abono'              => $url_abono ?? $venta->imagen_abono,
+                    'folio_abono'              => $folio_abono ?? $venta->folio_abono,
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
                     'total_pagar'               => $request->total_pagar,
                 ])->save();
 
-                // Mover la imagen a su ubicación final, si es necesario
-                if ($url_abono) {
-                    $finalPath = '/' . $filename;
-                    Storage::disk('imagen_abono')->move('temp/' . $filename, $finalPath);
-                    $venta->update(['imagen_abono' => $finalPath]);
-                }
 
                 // Manejar los servicios extra
                 if ($request->filled('cantidad_masajes_extra')) {

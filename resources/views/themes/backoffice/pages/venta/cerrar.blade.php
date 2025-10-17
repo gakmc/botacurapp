@@ -171,14 +171,17 @@
                   <input id="total_pagar" type="text" name="total_pagar" class="money-format" readonly>
                 </div>
 
-                <div class="file-field input-field col s12 m4">
-                  <div class="btn">
-                    <span>Imagen Diferencia</span>
-                    <input type="file" name="imagen_diferencia">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
+                <div class="input-field col s12 m4">
+
+                  <label for="folio_diferencia" class="black-text">Folio diferencia</label>
+                  <input id="folio_diferencia" type="text" name="folio_diferencia" class="" value="{{ old('folio_diferencia') }}">
+                    
+                  @error('folio_diferencia')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
                 </div>
 
                 <div class="input-field col s12 m4">
@@ -270,10 +273,6 @@
 
 
 
-
-
-
-
               <div class="row">
                 <div class="input-field col s12">
                   <button id="btn-guardar" class="btn waves-effect waves-light right" type="submit">Guardar
@@ -294,30 +293,6 @@
 
 @section('foot')
 
-
-{{-- <script>
-
-
-    $(document).ready(function (e) {   
-    $('#imagen_abono').change(function(){            
-        let reader = new FileReader();
-        reader.onload = (e) => { 
-            $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
-        }
-        reader.readAsDataURL(this.files[0]);
-    });
-  });
-
-    $(document).ready(function (e) {   
-    $('#imagen_diferencia').change(function(){            
-        let reader = new FileReader();
-        reader.onload = (e) => { 
-            $('#imagenSeleccionadaDiferencia').attr('src', e.target.result); 
-        }
-        reader.readAsDataURL(this.files[0]);
-    });
-  });
-</script> --}}
 
 @if(session('error'))
     <script>
@@ -388,67 +363,67 @@
   }
 
   function actualizarValores() {
-    const propinaActiva = $('#propina').is(':checked');
-    const consumoBruto = obtenerValorData('#consumo_bruto', 'consumo_bruto');
-    const propinaInput = parseCurrency($('#propinaValue').val());
-    const servicios = obtenerValorData('#servicio_bruto', 'servicio_bruto');
+      const propinaActiva = $('#propina').is(':checked');
+      const consumoBruto = obtenerValorData('#consumo_bruto', 'consumo_bruto');
+      const propinaInput = parseCurrency($('#propinaValue').val());
+      const servicios = obtenerValorData('#servicio_bruto', 'servicio_bruto');
 
-    let consumoConPropina = consumoBruto + (propinaActiva ? propinaInput : 0);
-    // let totalServiciosConsumo = servicios + consumoConPropina;
+      let consumoConPropina = consumoBruto + (propinaActiva ? propinaInput : 0);
+      // let totalServiciosConsumo = servicios + consumoConPropina;
 
-    let consumoFinal = propinaActiva ? consumoConPropina : consumoBruto;
-    let totalServiciosConsumo = servicios + consumoFinal;
+      let consumoFinal = propinaActiva ? consumoConPropina : consumoBruto;
+      let totalServiciosConsumo = servicios + consumoFinal;
 
-    // Actualizar los campos visibles
-    $('#conPropina').val(formatCLP(consumoConPropina));
-    // $('#sinPropina').val(formatCLP(totalServiciosConsumo));
-    $('#sinPropina').val(formatCLP(totalServiciosConsumo));
+      // Actualizar los campos visibles
+      $('#conPropina').val(formatCLP(consumoConPropina));
+      // $('#sinPropina').val(formatCLP(totalServiciosConsumo));
+      $('#sinPropina').val(formatCLP(totalServiciosConsumo));
 
-    
-    // Mostrar u ocultar propina según el estado del checkbox
-    if (propinaActiva) {
-        $('#propinaBruta').removeAttr('hidden');
-        $('#siPropina').removeAttr('hidden');
-        $('#conPropina').removeAttr('disabled');
-        $('#propinaValue').removeAttr('disabled');
-    } else {
-        $('#propinaBruta').attr('hidden', true);
-        $('#siPropina').attr('hidden', true);
-        $('#conPropina').attr('disabled', true);
-        $('#propinaValue').attr('disabled', true);
-    }
+      
+      // Mostrar u ocultar propina según el estado del checkbox
+      if (propinaActiva) {
+          $('#propinaBruta').removeAttr('hidden');
+          $('#siPropina').removeAttr('hidden');
+          $('#conPropina').removeAttr('disabled');
+          $('#propinaValue').removeAttr('disabled');
+      } else {
+          $('#propinaBruta').attr('hidden', true);
+          $('#siPropina').attr('hidden', true);
+          $('#conPropina').attr('disabled', true);
+          $('#propinaValue').attr('disabled', true);
+      }
 
-    // También actualizar el total a pagar (servicios + consumo con o sin propina + diferencia)
-    const diferencia = obtenerValorData('#diferencia', 'total-pagar');
-    const totalPagar = totalServiciosConsumo + diferencia;
-    const totalConsumoYServicios = totalServiciosConsumo;
-    $('#total_pagar').val(formatCLP(totalPagar));
+      // También actualizar el total a pagar (servicios + consumo con o sin propina + diferencia)
+      const diferencia = obtenerValorData('#diferencia', 'total-pagar');
+      const totalPagar = totalServiciosConsumo + diferencia;
+      const totalConsumoYServicios = totalServiciosConsumo;
+      $('#total_pagar').val(formatCLP(totalPagar));
 
-    // Actualizar valor consumo si está activo el checkbox "separar"
-    // if ($('#separar').is(':checked')) {
-    //     $('#valor_consumo').val(formatCLP(totalConsumoYServicios));
-    //     if ($('#dividir_pago').is(':checked')) {
-    //         // let mitad = Math.round(totalServiciosConsumo / 2);
-    //         let mitad = Math.round(totalConsumoYServicios / 2);
-    //         $('#valor_consumo1').val(formatCLP(mitad));
-    //         $('#valor_consumo2').val(formatCLP(mitad));
-    //     }
-    // }
+      // Actualizar valor consumo si está activo el checkbox "separar"
+      // if ($('#separar').is(':checked')) {
+      //     $('#valor_consumo').val(formatCLP(totalConsumoYServicios));
+      //     if ($('#dividir_pago').is(':checked')) {
+      //         // let mitad = Math.round(totalServiciosConsumo / 2);
+      //         let mitad = Math.round(totalConsumoYServicios / 2);
+      //         $('#valor_consumo1').val(formatCLP(mitad));
+      //         $('#valor_consumo2').val(formatCLP(mitad));
+      //     }
+      // }
 
       if ($('#dividir_pago').is(':checked')) {
-      $('#duplicar_pago').removeAttr('hidden');
+        $('#duplicar_pago').removeAttr('hidden');
 
-      const diferencia = parseCurrency($('#diferencia').val());
-      const consumoMasServicio = consumoFinal + servicios;
-      const totalFinal = consumoMasServicio + diferencia;
+        const diferencia = parseCurrency($('#diferencia').val());
+        const consumoMasServicio = consumoFinal + servicios;
+        const totalFinal = consumoMasServicio + diferencia;
 
-      $('#valor_consumo1').val(formatCLP(diferencia));
-      $('#valor_consumo2').val(formatCLP(consumoMasServicio));
+        $('#valor_consumo1').val(formatCLP(diferencia));
+        $('#valor_consumo2').val(formatCLP(consumoMasServicio));
 
-      sincronizarPagosDivididos(totalFinal);
-    }
+        sincronizarPagosDivididos(totalFinal);
+      }
 
-}
+  }
 
 
   $(document).ready(function () {
@@ -503,7 +478,7 @@
   }
 
 
-/* Primero en funcionar
+  /* Primero en funcionar
   $('#dividir_pago').on('change', function () {
     if ($(this).is(':checked')) {
       $('#duplicar_pago').removeAttr('hidden');
@@ -525,11 +500,11 @@
     }
   });
 
-function inicializarValoresDivididos(total) {
-  const mitad = Math.round(total / 2);
-  $('#valor_consumo1').val(formatCLP(mitad));
-  $('#valor_consumo2').val(formatCLP(total - mitad));
-}
+  function inicializarValoresDivididos(total) {
+    const mitad = Math.round(total / 2);
+    $('#valor_consumo1').val(formatCLP(mitad));
+    $('#valor_consumo2').val(formatCLP(total - mitad));
+  }
 
   function sincronizarPagosDivididos() {
     $('#valor_consumo1').off('input').on('input', function () {
@@ -560,126 +535,126 @@ function inicializarValoresDivididos(total) {
     });
   }
 
-*/
+  */
 
-// Funcionando sin ocultar
-// $('#dividir_pago').on('change', function () {
-//   if ($(this).is(':checked')) {
-//     $('#duplicar_pago').removeAttr('hidden');
+  // Funcionando sin ocultar
+  // $('#dividir_pago').on('change', function () {
+  //   if ($(this).is(':checked')) {
+  //     $('#duplicar_pago').removeAttr('hidden');
 
-//     const total = parseCurrency($('#total_pagar').val());
-//     const diferencia = parseCurrency($('#diferencia').val());
-//     const consumoServicio = total - diferencia;
+  //     const total = parseCurrency($('#total_pagar').val());
+  //     const diferencia = parseCurrency($('#diferencia').val());
+  //     const consumoServicio = total - diferencia;
 
-//     $('#valor_consumo1').val(formatCLP(diferencia));
-//     $('#valor_consumo2').val(formatCLP(consumoServicio));
+  //     $('#valor_consumo1').val(formatCLP(diferencia));
+  //     $('#valor_consumo2').val(formatCLP(consumoServicio));
 
-//     sincronizarPagosDivididos(total);
-//   } else {
-//     $('#duplicar_pago').attr('hidden', true);
-//     $('#valor_consumo1, #valor_consumo2').val('');
-//   }
-// });
+  //     sincronizarPagosDivididos(total);
+  //   } else {
+  //     $('#duplicar_pago').attr('hidden', true);
+  //     $('#valor_consumo1, #valor_consumo2').val('');
+  //   }
+  // });
 
 
 
-$('#dividir_pago').on('change', function () {
-  if ($(this).is(':checked')) {
-    $('#duplicar_pago').removeAttr('hidden');
+  $('#dividir_pago').on('change', function () {
+    if ($(this).is(':checked')) {
+      $('#duplicar_pago').removeAttr('hidden');
 
-    // Oculta y desactiva los campos originales
-    $('input[name="imagen_diferencia"]').closest('.file-field').hide();
-    $('#id_tipo_transaccion_diferencia').closest('.input-field').hide();
-    $('input[name="imagen_diferencia"]').prop('disabled', true);
-    $('#id_tipo_transaccion_diferencia').prop('disabled', true);
+      // Oculta y desactiva los campos originales
+      $('input[name="folio_diferencia"]').closest('.input-field').hide();
+      $('#id_tipo_transaccion_diferencia').closest('.input-field').hide();
+      $('input[name="folio_diferencia"]').prop('disabled', true);
+      $('#id_tipo_transaccion_diferencia').prop('disabled', true);
 
-    // Activa los campos de pago dividido
-    $('input[name="imagen_diferencia_dividida"]').closest('.file-field').show();
-    $('#id_tipo_transaccion_diferencia_dividida').closest('.input-field').show();
-    $('input[name="imagen_diferencia_dividida"]').prop('disabled', false);
-    $('#id_tipo_transaccion_diferencia_dividida').prop('disabled', false);
+      // Activa los campos de pago dividido
+      $('input[name="imagen_diferencia_dividida"]').closest('.file-field').show();
+      $('#id_tipo_transaccion_diferencia_dividida').closest('.input-field').show();
+      $('input[name="imagen_diferencia_dividida"]').prop('disabled', false);
+      $('#id_tipo_transaccion_diferencia_dividida').prop('disabled', false);
 
-    // Actualiza los valores divididos
-    const total = parseCurrency($('#total_pagar').val());
-    const diferencia = parseCurrency($('#diferencia').val());
-    const consumoServicio = total - diferencia;
-    $('#valor_consumo1').val(formatCLP(diferencia));
-    $('#valor_consumo2').val(formatCLP(consumoServicio));
-    sincronizarPagosDivididos(total);
-  } else {
-    $('#duplicar_pago').attr('hidden', true);
-    $('#valor_consumo1, #valor_consumo2').val('');
+      // Actualiza los valores divididos
+      const total = parseCurrency($('#total_pagar').val());
+      const diferencia = parseCurrency($('#diferencia').val());
+      const consumoServicio = total - diferencia;
+      $('#valor_consumo1').val(formatCLP(diferencia));
+      $('#valor_consumo2').val(formatCLP(consumoServicio));
+      sincronizarPagosDivididos(total);
+    } else {
+      $('#duplicar_pago').attr('hidden', true);
+      $('#valor_consumo1, #valor_consumo2').val('');
 
-    // Muestra y activa los campos originales
-    $('input[name="imagen_diferencia"]').closest('.file-field').show();
-    $('#id_tipo_transaccion_diferencia').closest('.input-field').show();
-    $('input[name="imagen_diferencia"]').prop('disabled', false);
-    $('#id_tipo_transaccion_diferencia').prop('disabled', false);
+      // Muestra y activa los campos originales
+      $('input[name="folio_diferencia"]').closest('.input-field').show();
+      $('#id_tipo_transaccion_diferencia').closest('.input-field').show();
+      $('input[name="folio_diferencia"]').prop('disabled', false);
+      $('#id_tipo_transaccion_diferencia').prop('disabled', false);
 
-    // Oculta y desactiva los campos de pago dividido
-    $('input[name="imagen_diferencia_dividida"]').closest('.file-field').hide();
-    $('#id_tipo_transaccion_diferencia_dividida').closest('.input-field').hide();
-    $('input[name="imagen_diferencia_dividida"]').prop('disabled', true);
-    $('#id_tipo_transaccion_diferencia_dividida').prop('disabled', true);
+      // Oculta y desactiva los campos de pago dividido
+      $('input[name="imagen_diferencia_dividida"]').closest('.file-field').hide();
+      $('#id_tipo_transaccion_diferencia_dividida').closest('.input-field').hide();
+      $('input[name="imagen_diferencia_dividida"]').prop('disabled', true);
+      $('#id_tipo_transaccion_diferencia_dividida').prop('disabled', true);
+    }
+  });
+
+
+
+
+
+  function sincronizarPagosDivididos(total) {
+    $('#valor_consumo1').off('input').on('input', function () {
+      const val1 = parseCurrency($(this).val());
+      const val2 = total - val1;
+      $('#valor_consumo2').val(formatCLP(val2));
+    });
+
+    $('#valor_consumo2').off('input').on('input', function () {
+      const val2 = parseCurrency($(this).val());
+      const val1 = total - val2;
+      $('#valor_consumo1').val(formatCLP(val1));
+    });
   }
-});
-
-
-
-
-
-function sincronizarPagosDivididos(total) {
-  $('#valor_consumo1').off('input').on('input', function () {
-    const val1 = parseCurrency($(this).val());
-    const val2 = total - val1;
-    $('#valor_consumo2').val(formatCLP(val2));
-  });
-
-  $('#valor_consumo2').off('input').on('input', function () {
-    const val2 = parseCurrency($(this).val());
-    const val1 = total - val2;
-    $('#valor_consumo1').val(formatCLP(val1));
-  });
-}
 
 
 
 
 
 
-//   $('#dividir_pago').on('change', function () {
-//     if ($(this).is(':checked')) {
-//         $('#duplicar_pago').removeAttr('hidden');
+  //   $('#dividir_pago').on('change', function () {
+  //     if ($(this).is(':checked')) {
+  //         $('#duplicar_pago').removeAttr('hidden');
 
-//         const totalConsumo = parseCurrency($('#valor_consumo').val());
-//         const mitad = Math.round(totalConsumo / 2);
+  //         const totalConsumo = parseCurrency($('#valor_consumo').val());
+  //         const mitad = Math.round(totalConsumo / 2);
 
-//         $('#valor_consumo1').val(formatCLP(mitad));
-//         $('#valor_consumo2').val(formatCLP(mitad));
+  //         $('#valor_consumo1').val(formatCLP(mitad));
+  //         $('#valor_consumo2').val(formatCLP(mitad));
 
-//         // Activar sincronización
-//         sincronizarPagosDivididos();
-//     } else {
-//         $('#duplicar_pago').attr('hidden', true);
-//         $('#valor_consumo1, #valor_consumo2').val('');
-//     }
-// });
+  //         // Activar sincronización
+  //         sincronizarPagosDivididos();
+  //     } else {
+  //         $('#duplicar_pago').attr('hidden', true);
+  //         $('#valor_consumo1, #valor_consumo2').val('');
+  //     }
+  // });
 
-// function sincronizarPagosDivididos() {
-//     $('#valor_consumo1').on('input', function () {
-//         let val1 = parseCurrency($(this).val());
-//         const total = parseCurrency($('#valor_consumo').val());
-//         let val2 = total - val1;
-//         $('#valor_consumo2').val(formatCLP(val2));
-//     });
+  // function sincronizarPagosDivididos() {
+  //     $('#valor_consumo1').on('input', function () {
+  //         let val1 = parseCurrency($(this).val());
+  //         const total = parseCurrency($('#valor_consumo').val());
+  //         let val2 = total - val1;
+  //         $('#valor_consumo2').val(formatCLP(val2));
+  //     });
 
-//     $('#valor_consumo2').on('input', function () {
-//         let val2 = parseCurrency($(this).val());
-//         const total = parseCurrency($('#valor_consumo').val());
-//         let val1 = total - val2;
-//         $('#valor_consumo1').val(formatCLP(val1));
-//     });
-// }
+  //     $('#valor_consumo2').on('input', function () {
+  //         let val2 = parseCurrency($(this).val());
+  //         const total = parseCurrency($('#valor_consumo').val());
+  //         let val1 = total - val2;
+  //         $('#valor_consumo1').val(formatCLP(val1));
+  //     });
+  // }
 
 </script>
 

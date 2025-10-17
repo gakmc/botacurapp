@@ -23,6 +23,7 @@ use Illuminate\Support\Facades\Log;
 // use Barryvdh\Snappy\Facades\SnappyPdf;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
+use Symfony\Component\Console\Input\Input;
 
 class VentaController extends Controller
 {
@@ -62,37 +63,6 @@ class VentaController extends Controller
     {
         // dd($request);
 
-        // $url_abono = null;
-        // $url_diferencia = null;
-
-        // if($request->hasfile('imagen_abono')){
-        //     $abono = $request->file('imagen_abono');
-        //     $filename = time().'-'.$abono->getClientOriginalName();
-        //     Storage::disk('imagen_abono')->put($filename, File::get($abono));
-        //     $url_abono = $filename;
-        // }
-
-        // if($request->hasfile('imagen_diferencia')){
-        //     $diferencia = $request->file('imagen_diferencia');
-        //     $filename = time().'-'.$diferencia->getClientOriginalName();
-        //     Storage::disk('imagen_diferencia')->put($filename, File::get($diferencia));
-        //     $url_diferencia = $filename;
-        // }
-
-        // $venta = Venta::create([
-        //     'abono_programa' => $request->input('abono_programa'),
-        //     'imagen_abono' => $url_abono,
-        //     'diferencia_programa' => $request->input('diferencia_programa'),
-        //     'imagen_diferencia' => $url_diferencia,
-        //     'descuento' => $request->input('descuento'),
-        //     'total_pagar' => $request->input('total_pagar'),
-        //     'id_reserva' => $request->input('id_reserva'),
-        //     'id_tipo_transaccion_abono' => $request->input('id_tipo_transaccion_abono'),
-        //     'id_tipo_transaccion_diferencia' => $request->input('id_tipo_transaccion_diferencia'),
-        // ]);
-
-        // Alert::success('Éxito', 'Se ha generado la venta')->showConfirmButton('Confirmar');
-        // return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva]);
     }
 
     /**
@@ -175,8 +145,7 @@ class VentaController extends Controller
             'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id',
             'id_tipo_transaccion2' => 'nullable|exists:tipos_transacciones,id',
         ]);
-
-        // dd($request->all());
+   
         
         $venta       = $ventum;
         $consumo     = $venta->consumo;
@@ -213,7 +182,7 @@ class VentaController extends Controller
 
                         //* Se cambio el almacenamiento por un metodo mas limpio
                         $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_diferencia_dividida'));
-                        $venta->imagen_diferencia = $ruta;
+                        $venta->folio_diferencia = $request->input('folio_diferencia') ?? null;
                         $pagoConsumo->imagen_pago1 = $ruta;
         
                     }
@@ -226,7 +195,6 @@ class VentaController extends Controller
 
                     }
         
-
         
                     if ($request->has('id_tipo_transaccion2')) {
                         $pagoConsumo->id_tipo_transaccion2 = $request->input('id_tipo_transaccion2');
@@ -237,12 +205,10 @@ class VentaController extends Controller
 
                 }else {
 
-                    if ($request->hasFile('imagen_diferencia')) {
+                    if ($request->has('folio_diferencia')) {
 
-
-                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_diferencia'));
-                        $venta->imagen_diferencia = $ruta;
-                        $pagoConsumo->imagen_pago1 = $ruta;
+                        $venta->folio_diferencia = $request->input('folio_diferencia');
+                        $pagoConsumo->imagen_pago1 = null;
         
                     }
 
@@ -251,34 +217,6 @@ class VentaController extends Controller
 
                 }
 
-
-
-
-                //? Manejo anterior de imagenes
-                // if ($request->hasFile('imagen_diferencia')) {
-
-                //     $diferencia     = $request->file('imagen_diferencia');
-                //     $filename       = time() . '-' . $diferencia->getClientOriginalName();
-                //     $url_diferencia = 'temp/' . $filename; // Almacenamiento temporal
-                //     Storage::disk('imagen_diferencia')->put($url_diferencia, File::get($diferencia));
-
-                // }
-
-                // // Si la imagen fue almacenada temporalmente, moverla a su ubicación final
-                // if ($filename) {
-                //     $finalPath = '/' . $filename;
-                //     Storage::disk('imagen_diferencia')->move('temp/' . $filename, $finalPath);
-                //     $venta->imagen_diferencia = $finalPath;
-                // }
-
-                //? Manejo anterior de transaccion
-                // if ($request->has('id_tipo_transaccion_diferencia')) {
-                //     $venta->id_tipo_transaccion_diferencia = $request->input('id_tipo_transaccion_diferencia');
-                // }
-
-                // if ($request->has('descuento')) {
-                //     $venta->descuento = $request->input('descuento');
-                // }
 
 
                 //* Guarda los cambios
@@ -303,29 +241,8 @@ class VentaController extends Controller
                 }
 
 
-
-                //! Codigo anterior que separaba el consumo de la venta (Solo si tenia consumo)
-                // if (!$request->has('separar')) {
-
-                // } else {
-
-                //     $pagoConsumo = PagoConsumo::create([
-                //         'valor_consumo'       => $request->valor_consumo,
-                //         'imagen_transaccion'  => null,
-                //         'id_consumo'          => $consumo->id,
-                //         'id_tipo_transaccion' => $request->id_tipo_transaccion,
-                //     ]);
-
-                //     // Manejo de la imagen
-                //     if ($request->hasFile('imagen_consumo')) {
-                //         $imagen                          = $request->file('imagen_consumo');
-                //         $filename                        = time() . '-' . $imagen->getClientOriginalName();
-                //         $path                            = $imagen->storeAs('/', $filename, 'imagen_consumo');
-                //         $pagoConsumo->imagen_transaccion = $path;
-                //         $pagoConsumo->save();
-                //     }
-                // }
             });
+
 
             $total   = 0;
             $propina = 'No Aplica';
@@ -333,31 +250,7 @@ class VentaController extends Controller
             $idConsumo = null;
             $diferencia = $request->diferencia;
 
-            //! Codigo registraba propina sin solicitarla
-            // if (is_null($consumo)) {
-            //     $propina = 'No Aplica';
-            // } else {
 
-            //         $idConsumo = $consumo->id;
-            //         foreach ($consumo->detallesConsumos as $detalles) {
-
-            //             if ($detalles->genera_propina) {
-            //                 $total   = $consumo->total_consumo;
-            //                 $propina = 'Si';
-            //             } else {
-            //                 $total   = $consumo->subtotal;
-            //                 $propina = 'No';
-            //             }
-            //         }
-
-
-            //     $cantidadPropina = Propina::where('propinable_id', $idConsumo)
-            //         ->where('propinable_type', Consumo::class)
-            //         ->first();
-
-            //     $cantidadPropina = $cantidadPropina ? $cantidadPropina->cantidad : null;
-
-            // }
 
             if (is_null($consumo)) {
                 $propina = 'No Aplica';
@@ -451,18 +344,6 @@ class VentaController extends Controller
                 }
 
 
-                // try {
-                //     $this->generarYEnviarPDF(
-                //         'pdf.consumo_separado.viewPDF',
-                //         $dataConsumo,
-                //         'Detalle_Consumo',
-                //         $reserva->cliente->nombre_cliente,
-                //         $reserva->fecha_visita,
-                //         ConsumoMailable::class
-                //     );
-                // } catch (\Exception $e) {
-                //     return back()->withInput()->with('error', 'Error al enviar correo de consumo: ' . $e->getMessage());
-                // }
             }
 
             Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')->showConfirmButton();

@@ -8,9 +8,9 @@ class Venta extends Model
 {
     protected $fillable = [
         'abono_programa',
-        'imagen_abono',
+        'folio_abono',
         'diferencia_programa',
-        'imagen_diferencia',
+        'folio_diferencia',
         'descuento',
         'total_pagar',
         'id_reserva',

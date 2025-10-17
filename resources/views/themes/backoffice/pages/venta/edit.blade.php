@@ -55,19 +55,17 @@
 
                 </div>
 
-                <div class="file-field input-field col s12 m5">
-                  <div class="btn">
-                    <span>Imagen Abono</span>
-                    <input type="file" id="imagen_abono" name="imagen_abono">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
-                  @error('imagen_abono')
+                <div class="input-field col s12 m5">
+
+                  <label for="folio_abono" class="">Folio Abono</label>
+                  <input id="folio_abono" type="text" name="folio_abono" class="" value="{{ old('folio_abono') }}">
+                    
+                  @error('folio_abono')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
+
                 </div>
 
 
@@ -102,19 +100,17 @@
 
                 </div>
 
-                <div class="file-field input-field col s12 m5">
-                  <div class="btn">
-                    <span>Imagen Diferencia</span>
-                    <input type="file" id="imagen_diferencia" name="imagen_diferencia">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
-                  @error('imagen_diferencia')
+                <div class="input-field col s12 m5">
+
+                  <label for="folio_diferencia" class="">Folio Diferencia</label>
+                  <input id="folio_diferencia" type="text" name="folio_diferencia" class="" value="{{ old('folio_diferencia') }}">
+                    
+                  @error('folio_diferencia')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
                   </span>
                   @enderror
+
                 </div>
 
 
@@ -170,7 +166,7 @@
               <div class="row">
                 <div class="input-field col s12 m6">
                   <label for="imagenSeleccionadaAbono">Imagen Abono</label>
-                  <img class="center-text" id="imagenSeleccionadaAbono" src="{{$reserva->venta->imagen_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" alt=""
+                  <img class="center-text" id="imagenSeleccionadaAbono" src="{{$reserva->venta->folio_abono ? route('backoffice.reserva.abono.imagen', $reserva->id) : '/images/gallary/no-image.png'}}" alt=""
                     style="max-height: 200px">
                 </div>
 
@@ -203,7 +199,7 @@
 @section('foot')
 <script>
   $(document).ready(function (e) {   
-  $('#imagen_abono').change(function(){            
+  $('#folio_abono').change(function(){            
       let reader = new FileReader();
       reader.onload = (e) => { 
           $('#imagenSeleccionadaAbono').attr('src', e.target.result); 
@@ -213,7 +209,7 @@
 });
 
   $(document).ready(function (e) {   
-  $('#imagen_diferencia').change(function(){            
+  $('#folio_diferencia').change(function(){            
       let reader = new FileReader();
       reader.onload = (e) => { 
           $('#imagenSeleccionadaDiferencia').attr('src', e.target.result); 

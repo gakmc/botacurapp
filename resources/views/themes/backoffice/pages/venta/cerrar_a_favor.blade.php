@@ -51,69 +51,91 @@
 
                 @endphp
 
-              <div class="row">
-                <div class="col s12">
-                  <p>
-                    <label>
-                      <input type="checkbox" id="propina" name="propina" />
-                      <span class="black-text">¿Incluir propina?</span>
-                    </label>
-                  </p>
-                </div>
-              </div>
-
-              <div class="row">
-                <br>
-              </div>
-
-                <div class="row" id="seccionPropina">
-                  <div class="input-field col s12 m4">
-                    <label for="consumo_bruto">Consumo</label>
-                    {{-- <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly> --}}
-
-                    <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" value="${{number_format($restanteConsumo, 0, ',', '.')}}" data-consumo_bruto="{{$restanteConsumo}}" readonly>
+                  <div class="row">
+                    <div class="col s12">
+                      <p>
+                        <label>
+                          <input type="checkbox" id="propina" name="propina" />
+                          <span class="black-text">¿Incluir propina?</span>
+                        </label>
+                      </p>
+                    </div>
                   </div>
 
-                  <div class="input-field col s12 m4" id="propinaBruta" hidden>
-                    <label for="propinaValue">Ingrese Propina</label>
-                    {{-- <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}"> --}}
-                   
-                    <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$restanteConsumo*0.1}}" value="${{number_format($restanteConsumo*0.1,0,'','.')}}">
+                  <div class="row">
+                    <br>
                   </div>
 
-                  <div class="input-field col s12 m4" id="siPropina" hidden>
-                    <label for="conPropina">Consumo con Propina</label>
-                    {{-- <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly> --}}
-                    
-                    <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$restanteConsumo*1.1}}" value="${{number_format($restanteConsumo*1.1,0,'','.')}}" readonly>
-                  </div>
-                </div>
+                    <div class="row" id="seccionPropina">
+                      <div class="input-field col s12 m4">
+                        <label for="consumo_bruto">Consumo</label>
+                        {{-- <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly> --}}
 
-                <div class="row">
-                  <div class="input-field col s12 m4">
-                    <label for="servicio_bruto">Servicios</label>
+                        <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" value="${{number_format($restanteConsumo, 0, ',', '.')}}" data-consumo_bruto="{{$restanteConsumo}}" readonly>
+                      </div>
 
-                    {{-- <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor),0,'','.')}}" data-servicio_bruto="{{($subtotalServicios + $venta->saldo_a_favor)}}" readonly> --}}
-                    
-                    <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format($restanteServicio, 0, ',', '.')}}" data-servicio_bruto="{{$restanteServicio}}" readonly>
-                  </div>
-                </div>
+                      <div class="input-field col s12 m4" id="propinaBruta" hidden>
+                        <label for="propinaValue">Ingrese Propina</label>
+                        {{-- <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}"> --}}
+                      
+                        <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$restanteConsumo*0.1}}" value="${{number_format($restanteConsumo*0.1,0,'','.')}}">
+                      </div>
+
+                      <div class="input-field col s12 m4" id="siPropina" hidden>
+                        <label for="conPropina">Consumo con Propina</label>
+                        {{-- <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly> --}}
+                        
+                        <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$restanteConsumo*1.1}}" value="${{number_format($restanteConsumo*1.1,0,'','.')}}" readonly>
+                      </div>
+                    </div>
+
+                    <div class="row">
+                      <div class="input-field col s12 m4">
+                        <label for="servicio_bruto">Servicios</label>
+
+                        {{-- <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor),0,'','.')}}" data-servicio_bruto="{{($subtotalServicios + $venta->saldo_a_favor)}}" readonly> --}}
+                        
+                        <input id="servicio_bruto" type="text" name="servicio_bruto" class="money-format" value="${{number_format($restanteServicio, 0, ',', '.')}}" data-servicio_bruto="{{$restanteServicio}}" readonly>
+                      </div>
+                    </div>
 
 
-                <div class="row">
-               
-                  <div class="input-field col s12 m4">
+                    <div class="row">
+                  
+                      <div class="input-field col s12 m4">
 
-                    <label for="sinPropina">Servicios + Consumo</label>
-                    {{-- <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal,0,'','.')}}" data-sinpropina="{{($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal }}" readonly> --}}
-                    <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format($totalPagar, 0, ',', '.')}}" data-sinpropina="{{$totalPagar}}" readonly>
-                  </div>
-                </div>
+                        <label for="sinPropina">Servicios + Consumo</label>
+                        {{-- <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format(($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal,0,'','.')}}" data-sinpropina="{{($subtotalServicios + $venta->saldo_a_favor) + $totalSubtotal }}" readonly> --}}
+                        <input id="sinPropina" type="text" name="sinPropina" class="money-format" value="${{number_format($totalPagar, 0, ',', '.')}}" data-sinpropina="{{$totalPagar}}" readonly>
+                      </div>
+                    </div>
 
+                    {{dd('Esta aqui')}}
 
+              @else
+
+                    @php
+                      $diferenciaFinal = $venta->total_pagar;
+                      $totalPagar = $venta->diferencia_programa;
+                      
+                    @endphp
 
 
               @endif
+
+
+            {{-- @if ($diferenciaFinal < 0)
+              @php
+                back()->with('error','Antes, debe solucionar el valor a favor');
+              @endphp
+              <script>
+                    // Genera la URL con la función route de Laravel, que se ejecutará en el servidor.
+                    window.location.href = "{{ route('backoffice.reserva.show', ['reserva' => $reserva]) }}";
+               </script>
+
+            @else --}}
+              
+            
 
               <div class="row">
                 <div class="input-field col s12 m4">
@@ -134,14 +156,17 @@
                   <input id="total_pagar" type="text" name="total_pagar" class="money-format" value="${{number_format($totalPagar, 0, ',', '.')}}" readonly>
                 </div>
 
-                <div class="file-field input-field col s12 m4">
-                  <div class="btn">
-                    <span>Imagen Diferencia</span>
-                    <input type="file" name="imagen_diferencia">
-                  </div>
-                  <div class="file-path-wrapper">
-                    <input class="file-path validate" type="text" placeholder="Seleccione su archivo">
-                  </div>
+                <div class="input-field col s12 m4">
+
+                  <label for="folio_diferencia" class="black-text">Folio diferencia</label>
+                  <input id="folio_diferencia" type="text" name="folio_diferencia" class="" value="{{ old('folio_diferencia') }}">
+                    
+                  @error('folio_diferencia')
+                  <span class="invalid-feedback" role="alert">
+                    <strong style="color:red">{{ $message }}</strong>
+                  </span>
+                  @enderror
+
                 </div>
 
                 <div class="input-field col s12 m4">
@@ -244,7 +269,7 @@
                   </button>
                 </div>
               </div>
-
+{{-- @endif --}}
             </form>
           </div>
         </div>
@@ -420,9 +445,9 @@ $('#dividir_pago').on('change', function () {
     $('#duplicar_pago').removeAttr('hidden');
 
     // Oculta y desactiva los campos originales
-    $('input[name="imagen_diferencia"]').closest('.file-field').hide();
+    $('input[name="folio_diferencia"]').closest('.input-field').hide();
     $('#id_tipo_transaccion_diferencia').closest('.input-field').hide();
-    $('input[name="imagen_diferencia"]').prop('disabled', true);
+    $('input[name="folio_diferencia"]').prop('disabled', true);
     $('#id_tipo_transaccion_diferencia').prop('disabled', true);
 
     // Activa los campos de pago dividido
@@ -443,9 +468,9 @@ $('#dividir_pago').on('change', function () {
     $('#valor_consumo1, #valor_consumo2').val('');
 
     // Muestra y activa los campos originales
-    $('input[name="imagen_diferencia"]').closest('.file-field').show();
+    $('input[name="folio_diferencia"]').closest('.input-field').show();
     $('#id_tipo_transaccion_diferencia').closest('.input-field').show();
-    $('input[name="imagen_diferencia"]').prop('disabled', false);
+    $('input[name="folio_diferencia"]').prop('disabled', false);
     $('#id_tipo_transaccion_diferencia').prop('disabled', false);
 
     // Oculta y desactiva los campos de pago dividido
