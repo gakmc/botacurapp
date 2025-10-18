@@ -110,7 +110,6 @@
                       </div>
                     </div>
 
-                    {{dd('Esta aqui')}}
 
               @else
 
@@ -124,7 +123,7 @@
               @endif
 
 
-            {{-- @if ($diferenciaFinal < 0)
+            @if ($diferenciaFinal < 0)
               @php
                 back()->with('error','Antes, debe solucionar el valor a favor');
               @endphp
@@ -133,7 +132,7 @@
                     window.location.href = "{{ route('backoffice.reserva.show', ['reserva' => $reserva]) }}";
                </script>
 
-            @else --}}
+            @else
               
             
 
@@ -269,7 +268,7 @@
                   </button>
                 </div>
               </div>
-{{-- @endif --}}
+@endif
             </form>
           </div>
         </div>
