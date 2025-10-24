@@ -100,7 +100,7 @@
             <thead>
                 <tr>
                     <th>Funcionario</th>
-                    <th>Días</th>
+                    <th>Días / Masajes</th>
                     <th>Sueldo Base</th>
                     <th>Propinas</th>
                     <th>Total</th>

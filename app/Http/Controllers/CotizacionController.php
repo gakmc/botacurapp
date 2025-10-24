@@ -30,7 +30,7 @@ class CotizacionController extends Controller
         $tiposProductos = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
         $programas = Programa::all();
-        $productos = Producto::whereHas('tipoProducto', function($query) use ($tiposProductos){
+        $productos = Producto::activos()->whereHas('tipoProducto', function($query) use ($tiposProductos){
             $query->whereIn('nombre', $tiposProductos);
         })->get();
         $servicios = Servicio::all();
@@ -134,7 +134,7 @@ class CotizacionController extends Controller
         $tiposProductos = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
         $programas = Programa::all();
-        $productos = Producto::whereHas('tipoProducto', function($query) use ($tiposProductos){
+        $productos = Producto::activos()->whereHas('tipoProducto', function($query) use ($tiposProductos){
             $query->whereIn('nombre', $tiposProductos);
         })->get();
         $servicios = Servicio::all();

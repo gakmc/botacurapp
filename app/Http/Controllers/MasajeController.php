@@ -4,7 +4,9 @@ namespace App\Http\Controllers;
 
 use App\LugarMasaje;
 use App\Masaje;
+use App\PrecioTipoMasaje;
 use App\Reserva;
+use App\TipoMasaje;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -457,6 +459,44 @@ class MasajeController extends Controller
         }
 
         return back()->with('success', $conteo.' Masajes asignados exitosamente.');
+
+    }
+
+    public function index_valor()
+    {
+        // $masajes = TipoMasaje::with(['categoria', 'precios'])->get();
+
+    //         $masajes = TipoMasaje::with([
+    //     'categoria',
+    //     'precios' => function ($q) {
+    //         $q->orderBy('duracion_minutos'); // 30, 45, 60...
+    //     }
+    // ])->whereHas('precios')
+    //   ->get();
+
+    //     return view('themes.backoffice.pages.masaje.admin.index_valor', compact('masajes'));
+
+        $masajes = TipoMasaje::activos()
+        ->with(['categoria','precios'=>function($q){return $q->orderBy('duracion_minutos');}])
+        ->whereHas('precios')->get();
+
+    return view('themes.backoffice.pages.masaje.admin.index_valor', compact('masajes'));
+    }
+
+    public function index_valor_inactivos()
+    {
+        $masajes = TipoMasaje::inactivos()
+            ->with(['categoria','precios'=>function($q){return $q->orderBy('duracion_minutos');}])->get();
+
+        return view('themes.backoffice.pages.masaje.admin.index_valor_inactivos', compact('masajes'));
+    }
+
+    public function cambiarEstado(Request $request, TipoMasaje $tipoMasaje)
+    {
+        $request->validate(['activo' => 'required|boolean']);
+        $tipoMasaje->update(['activo' => (int)$request->activo]);
+        // return back()->with('status','Estado actualizado');
+        return back()->with('status', $request->activo ? 'Masaje activado' : 'Masaje desactivado');
 
     }
 }

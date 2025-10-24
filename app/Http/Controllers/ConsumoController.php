@@ -924,9 +924,9 @@ class ConsumoController extends Controller
         $tipos   = TipoProducto::all();
         $listado = ['Aguas', 'Bebidas', 'Bebidas Calientes', 'Cervezas', 'Cócteles', 'Jugos Naturales', 'Spritz', 'Mocktails', 'Vinos', 'Sandwich y Pasteleria'];
 
-        $productos = Producto::whereHas('tipoProducto', function ($query) use ($listado) {
+        $productos = Producto::activos()->whereHas('tipoProducto', function ($query) use ($listado) {
             $query->whereIn('nombre', $listado);
-        })->get();
+        })->orderBy('nombre')->get();
 
         return view('themes.backoffice.pages.consumo.create', [
             'venta'     => $venta,
@@ -953,7 +953,7 @@ class ConsumoController extends Controller
         }
 
         $nombres = null;
-        $nombres = Producto::whereIn('id', $productos)->pluck('nombre')->implode(', ');
+        $nombres = Producto::activos()->whereIn('id', $productos)->pluck('nombre')->implode(', ');
 
         // Iniciar una transacción en la base de datos
         DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesConsumo, $nombres) {

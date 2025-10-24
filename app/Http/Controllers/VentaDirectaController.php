@@ -38,12 +38,21 @@ class VentaDirectaController extends Controller
     public function create()
     {
         $tiposTransacciones = TipoTransaccion::all();
-        $productos = Producto::all();
-        $tipos = TipoProducto::all();
+        // $productos = Producto::activos()->get();
+        // $tipos = TipoProducto::all();
+
+
         $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
+        $tipos = TipoProducto::whereIn('nombre', $listado)
+        ->with(['productos' => function($q)
+        {
+            $q->activos()->orderBy('nombre');
+        }])
+        ->orderBy('nombre')
+        ->get();
 
-        return view('themes.backoffice.pages.venta_directa.create', compact('tiposTransacciones', 'productos', 'tipos', 'listado'));
+        return view('themes.backoffice.pages.venta_directa.create', compact('tiposTransacciones', 'tipos', 'listado'));
     }
 
     /**
@@ -98,7 +107,7 @@ class VentaDirectaController extends Controller
         }
 
         $nombres=null;
-        $nombres = Producto::whereIn('id', $productos)->pluck('nombre')->implode(', ');
+        $nombres = Producto::activos()->whereIn('id', $productos)->pluck('nombre')->implode(', ');
 
         // dd([
         //     'tiene_propina' => $request->input('tiene_propina', 0),
@@ -206,7 +215,7 @@ class VentaDirectaController extends Controller
         $ventaDirecta = VentaDirecta::with('detalles')->findOrFail($id);
         // dd($ventaDirecta);
         $tiposTransacciones = TipoTransaccion::all();
-        $productos = Producto::all();
+        $productos = Producto::activos()->get();
         $tipos = TipoProducto::all();
         $listado = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
@@ -265,7 +274,7 @@ class VentaDirectaController extends Controller
         }
 
         $nombres = null;
-        $nombres = Producto::whereIn('id', $productos)->pluck('nombre')->implode(', ');
+        $nombres = Producto::activos()->whereIn('id', $productos)->pluck('nombre')->implode(', ');
 
 
         DB::transaction(function () use ($request, $ventaDirecta, &$productos, &$detallesVentas, $poseePropina, $nombres) {

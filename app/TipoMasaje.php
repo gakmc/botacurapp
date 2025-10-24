@@ -18,4 +18,7 @@ class TipoMasaje extends Model
     {
         return $this->hasMany(PrecioTipoMasaje::class, 'id_tipo_masaje');
     }
+
+    public function scopeActivos($q){ return $q->where('activo', 1); }
+    public function scopeInactivos($q){ return $q->where('activo', 0); }
 }

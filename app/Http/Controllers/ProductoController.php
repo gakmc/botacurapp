@@ -18,7 +18,7 @@ class ProductoController extends Controller
      */
     public function index()
     {
-        $productos = Producto::with('tipoProducto')->get();
+        $productos = Producto::activos()->with('tipoProducto')->get();
         return view('themes.backoffice.pages.producto.index', compact('productos'));
     }
 
@@ -164,5 +164,27 @@ class ProductoController extends Controller
     public function destroy(Producto $producto)
     {
         //
+    }
+
+    public function index_inactivos()
+    {
+        $productos = Producto::inactivos()->with('tipoProducto')->get();
+        return view('themes.backoffice.pages.producto.index_inactivos', compact('productos'));
+    }
+
+    public function cambiarEstado(Request $request, Producto $producto)
+    {
+        $data = $request->validate([
+            'estado' => 'nullable|in:activo,inactivo'
+        ]);
+
+        $producto->update(['estado' => $data['estado']]);
+
+        return response()->json([
+            'ok'     => true,
+            'estado' => $producto->estado,
+            'msg'    => $producto->estado === 'activo' ? 'Producto activado' : 'Producto desactivado',
+        ]);
+
     }
 }

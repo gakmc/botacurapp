@@ -124,6 +124,7 @@ class SueldoController extends Controller
             'rango'            => ['inicio' => $inicioMes->toDateString(), 'fin' => $finMes->toDateString()],
         ];
 
+
         return response()->json([
             'filtros'            => ['mes' => $mes, 'anio' => $anio],
             'fechas_disponibles' => $fechasDisponibles, // [{anio,mes}]

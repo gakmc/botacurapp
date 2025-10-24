@@ -91,6 +91,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('giftcards/lista', 'GiftCardController@listaCodigos')->name('giftcards.lista');
 
+
+    Route::get('/producto/inactivos', 'ProductoController@index_inactivos')->name('producto.inactivos');
+    Route::patch('/producto/{producto}/estado', 'ProductoController@cambiarEstado')->name('producto.estado');
     
 
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
@@ -301,6 +304,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
     
+    Route::get('masajes/valores', 'MasajeController@index_valor')->name('masajes.valores');
+    Route::get('/masajes/valores/inactivos', 'MasajeController@index_valor_inactivos')->name('masajes.valores.inactivos');
+    Route::patch('/masajes/{tipoMasaje}/estado', 'MasajeController@cambiarEstado')->name('masajes.estado');
+    
     Route::post('boleta/reserva/{reserva}', 'BoletaController@databoleta')->name('boleta.reserva');
     
     Route::post('boleta/venta_directa/{venta_directa}', 'BoletaController@databoletaventadirecta')->name('boleta.venta_directa');
@@ -367,6 +374,11 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('informes', 'InformeController@index')->name('informes.index');
     Route::get('/graficos/bebestibles-mensuales', 'InformeController@bebestiblesMensuales')->name('informes.bebestibles');
     Route::get('/graficos/programas-mensuales', 'InformeController@programasMensuales')->name('informes.programas');
+
+
+
+
+
 
 
 });

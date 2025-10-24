@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Consumo;
+use App\Masaje;
 use App\Propina;
 use App\Sueldo;
 use App\SueldoPagado;
@@ -55,7 +56,7 @@ class SueldoController extends Controller
     // }
 
 
-    public function index(Request $request)
+    public function OLDindex(Request $request)
     {
         $mes = $request->input('mes', now()->month);
         $anio = $request->input('anio', now()->year);
@@ -124,6 +125,7 @@ class SueldoController extends Controller
 
         $pagosRealizados = SueldoPagado::select('*')->get();
 
+
         return view('themes.backoffice.pages.sueldo.index', [
             'semanas' => $semanas,
             'mes' => $mes,
@@ -132,6 +134,99 @@ class SueldoController extends Controller
             'pagosRealizados' => $pagosRealizados
         ]);
     }
+
+
+
+
+    public function index(Request $request)
+    {
+        $mes  = $request->input('mes', now()->month);
+        $anio = $request->input('anio', now()->year);
+
+        $sueldos = Sueldo::with('user')
+            ->whereMonth('dia_trabajado', $mes)
+            ->whereYear('dia_trabajado', $anio)
+            ->orderBy('dia_trabajado')
+            ->get();
+
+        $semanas = [];
+
+        foreach ($sueldos as $sueldo) {
+            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
+            $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+
+            $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+            $roles  = $sueldo->user->list_roles();
+            $esMaso = is_array($roles) ? in_array('Masoterapeuta', $roles)
+                                    : (stripos((string)$roles, 'Masoterapeuta') !== false);
+
+            $userId   = $sueldo->user->id;
+            $userName = $sueldo->user->name;
+
+            if (!isset($semanas[$rango])) {
+                $semanas[$rango] = [];
+            }
+
+            if (!isset($semanas[$rango][$userId])) {
+                $semanas[$rango][$userId] = [
+                    'role'    => $roles,
+                    'name'    => $userName,
+                    'dias'    => 0,   // aquí guardaremos "días" o "masajes" según rol
+                    'sueldos' => 0,
+                    'propinas'=> 0,
+                    'total'   => 0,
+                    'user_id' => $userId,
+                    'inicio'  => $inicioSemana->format('Y-m-d'),
+                    'fin'     => $finSemana->format('Y-m-d'),
+                ];
+
+                // Si es masoterapeuta, calculamos una sola vez los MASAJES de la semana
+                if ($esMaso) {
+                    $ini = $inicioSemana->toDateString();
+                    $fin = $finSemana->toDateString();
+
+                    // contamos los masajes según proporción total_pagar / valor_dia
+                    $cantMasajes = DB::table('sueldos')
+                        ->whereBetween('dia_trabajado', [$ini, $fin])
+                        ->where('id_user', $userId)
+                        ->selectRaw('SUM(total_pagar / valor_dia) as cantidad')
+                        ->value('cantidad');
+
+                    $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
+                }
+            }
+
+            if (!$esMaso) {
+                $semanas[$rango][$userId]['dias'] += 1;
+            }
+
+            $semanas[$rango][$userId]['sueldos']  += $sueldo->valor_dia;
+            $semanas[$rango][$userId]['propinas'] += $esMaso ? 0 : ($sueldo->sub_sueldo - $sueldo->valor_dia);
+            $semanas[$rango][$userId]['total']    += $sueldo->total_pagar;
+        }
+
+        // Orden cronológico de semanas
+        uksort($semanas, function ($a, $b) use ($anio) {
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            return $dateA->timestamp <=> $dateB->timestamp;
+        });
+
+        $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
+            ->groupBy('mes', 'anio')
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->get();
+
+        $pagosRealizados = SueldoPagado::select('*')->get();
+
+        return view('themes.backoffice.pages.sueldo.index', compact(
+            'semanas','mes','anio','fechasDisponibles','pagosRealizados'
+        ));
+    }
+
+
 
 
     public function adminViewSueldos(User $user, $anio, $mes, Request $request)

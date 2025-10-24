@@ -1126,17 +1126,17 @@ class ReservaController extends Controller
         }
 
                 // Obtener productos de tipo "entrada"
-                $entradas = Producto::whereHas('tipoProducto', function ($query) {
+                $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'entrada');
                 })->get();
         
                 // Obtener productos de tipo "fondo"
-                $fondos = Producto::whereHas('tipoProducto', function ($query) {
+                $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'fondo');
                 })->get();
         
                 // Obtener productos de tipo "acompañamiento"
-                $acompañamientos = Producto::whereHas('tipoProducto', function ($query) {
+                $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'acompañamiento');
                 })->get();
 

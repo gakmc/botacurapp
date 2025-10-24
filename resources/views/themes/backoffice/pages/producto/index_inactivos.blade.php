@@ -50,11 +50,12 @@
                                     <th>Nombre</th>
                                     <th>Valor</th>
                                     <th>Tipo de Producto</th>
+                                    
                                     <th colspan="2">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($productos->sortBy('nombre')->sortBy('id_tipo_producto') as $i => $producto )
+                                @foreach($productos->sortBy('nombre')->sortBy('id_tipo_producto') as $producto )
                                 <tr>
                                     <td><a
                                             href="{{route('backoffice.producto.show' ,$producto )}}">{{$producto->nombre}}</a>
@@ -62,30 +63,26 @@
                                     <td>{{'$'.number_format($producto->valor, 0, '', '.')}}</td>
                                     <td>{{$producto->tipoProducto->nombre}}</td>
 
-
                                     <td>
-                                        @if($producto->estado === 'activo' || $producto->estado === null)
-                                        <button class="btn-small waves-effect cambiar-estado tooltipped" data-position="top" data-delay="50" data-tooltip="Desactivar"
+                                        @if($producto->estado === 'inactivo' || $producto->estado === null)
+                                        <button class="btn-small waves-effect cambiar-estado tooltipped" data-position="top" data-delay="50" data-tooltip="Activar"
                                                 data-id="{{ $producto->id }}"
-                                                data-estado="inactivo"
+                                                data-estado="activo"
                                                 data-action="{{ route('backoffice.producto.estado', $producto) }}">
-                                        <i class="material-icons">block</i>
+                                        <i class="material-icons">done_all</i>
                                         </button>
 
                                         @endif
                                     </td>
 
-
-                                    <td>
-                                        <a href="{{ route('backoffice.producto.edit', $producto )}}" class="btn-small cyan"><i class="material-icons">mode_edit</i></a>
-                                    </td>
+                                    <td><a class="btn-small cyan" href="{{ route('backoffice.producto.edit', $producto )}}"><i class="material-icons">mode_edit</i></a></td>
                                 </tr>
                                 @endforeach
                             </tbody>
                         </table>
 
                         @else
-                            <h5>No se registran productos</h5>
+                            <h5>No se registran productos inactivos</h5>
                         @endif
 
                     </div>
@@ -123,13 +120,13 @@ $(document).on('click', '.cambiar-estado', function(e){
       // Toast (elige uno: Materialize o SweetAlert)
       if (window.M) M.toast({ html: res.msg ?? 'Estado actualizado', classes: 'green' });
       if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'success',
-        title: res.msg ?? 'Estado actualizado', showConfirmButton:false, timer:2500 });
+        title: res.msg ?? 'Estado actualizado', showConfirmButton:false, timer:4000 });
     },
     error: function(xhr){
       const msg = xhr?.responseJSON?.message || 'Error al cambiar estado';
       if (window.M) M.toast({ html: msg, classes:'red' });
       if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'error',
-        title: msg, showConfirmButton:false, timer:2500 });
+        title: msg, showConfirmButton:false, timer:4000 });
     }
   });
 });
@@ -152,4 +149,9 @@ $(document).on('click', '.cambiar-estado', function(e){
         @endif
 </script>
 
+<script>
+    $(document).ready(function(){
+        $('.tooltipped').tooltip({delay: 50});
+    });
+</script>
 @endsection

@@ -42,4 +42,8 @@ class Producto extends Model
         return $this->morphMany(CotizacionItem::class, 'itemable');
     }
 
+    public function scopeActivos($q){ return $q->where('estado', 'activo')->orWhereNull('estado'); }
+    public function scopeInactivos($q){ return $q->where('estado', 'inactivo'); }
+
+
 }

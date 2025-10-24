@@ -37,8 +37,8 @@
 
                                     <div class="card-tabs">
                                         <ul class="tabs tabs-fixed-width">
-                                            @foreach($tipos->sortBy('nombre') as $tipo)
-                                            @if(in_array($tipo->nombre, $listado))
+                                            @foreach($tipos as $tipo)
+                                            @if($tipo->productos->isNotEmpty())
                                             <li class="tab"><a href="#tipo_{{$tipo->id}}"
                                                     id="seleccion">{{$tipo->nombre}}</a></li>
                                             @endif
@@ -47,8 +47,8 @@
                                     </div>
 
                                     <div class="card-content grey lighten-4">
-                                        @foreach($tipos->sortBy('nombre') as $tipo)
-                                        @if(in_array($tipo->nombre, $listado))
+                                        @foreach($tipos as $tipo)
+                                        @if($tipo->productos->isNotEmpty())
                                         <div id="tipo_{{$tipo->id}}" class="tipo-section">
                                             <div class="row">
                                                 @foreach($tipo->productos->sortBy('nombre') as $producto)
