@@ -19,6 +19,7 @@ use App\Propina;
 use App\Reagendamiento;
 use App\Reserva;
 use App\Servicio;
+use App\TipoMasaje;
 use App\TipoTransaccion;
 use App\Ubicacion;
 use App\User;
@@ -1072,6 +1073,9 @@ class ReservaController extends Controller
             2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
         ];
 
+
+
+                $tiposMasajes = TipoMasaje::all();
         return view('themes.backoffice.pages.reserva.masaje.edit',[
             'masajes'       => $masajes,
             'reserva'       => $reserva,
@@ -1079,6 +1083,7 @@ class ReservaController extends Controller
             'horasMasaje'   => $horariosDisponiblesMasajes,
             'servicios'     => $serviciosDisponibles,
             'masajesExtra'  => $masajesExtra,
+                        'tiposMasajes'          => $tiposMasajes,
         ]);
 
     }
@@ -1088,7 +1093,7 @@ class ReservaController extends Controller
 
         $request->validate([
             'masajes.*.horario_masaje' => 'required|string',
-            'masajes.*.tipo_masaje' => 'required|string|in:Relajante,Descontracturante',
+            'masajes.*.tipo_masaje' => 'required|string|exists:tipos_masajes,nombre',
             'masajes.*.id_lugar_masaje' => 'required|exists:lugares_masajes,id',
         ]);
     

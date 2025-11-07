@@ -114,120 +114,268 @@ class AdminController extends Controller
         }
     }
 
-    public function index()
-    {
-        Carbon::setLocale('es');
-        $masajes = Masaje::with('users', 'reservas');
+    // public function index()
+    // {
+    //     Carbon::setLocale('es');
+    //     $masajes = Masaje::with('users', 'reservas');
 
-        // Obtener usuarios con el rol de masoterapeuta
-        $masoterapeutas = User::whereHas('roles', function ($query) {
-            $query->where('name', 'masoterapeuta');
-        })->get();
+    //     // Obtener usuarios con el rol de masoterapeuta
+    //     $masoterapeutas = User::whereHas('roles', function ($query) {
+    //         $query->where('name', 'masoterapeuta');
+    //     })->get();
 
-        // // Configurar la semana para que comience el lunes
-        // Carbon::setWeekStartsAt(Carbon::MONDAY);
-        // Carbon::setWeekEndsAt(Carbon::SUNDAY);
+    //     // // Configurar la semana para que comience el lunes
+    //     // Carbon::setWeekStartsAt(Carbon::MONDAY);
+    //     // Carbon::setWeekEndsAt(Carbon::SUNDAY);
 
-        // Obtener la cantidad de masajes realizados por cada masoterapeuta en la semana en curso
-        $inicioSemana = Carbon::now()->startOfWeek();
-        $finSemana    = Carbon::now()->endOfWeek();
+    //     // Obtener la cantidad de masajes realizados por cada masoterapeuta en la semana en curso
+    //     $inicioSemana = Carbon::now()->startOfWeek();
+    //     $finSemana    = Carbon::now()->endOfWeek();
 
-        // Definir los días de la semana en español
-        $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
+    //     // Definir los días de la semana en español
+    //     $diasSemana = ['Lunes', 'Martes', 'Miércoles', 'Jueves', 'Viernes', 'Sábado', 'Domingo'];
 
-        // Calcular las fechas de cada día de la semana
-        $fechasDiasSemana = [];
-        foreach ($diasSemana as $indice => $dia) {
-            $fechasDiasSemana[$dia] = $inicioSemana->copy()->addDays($indice)->toDateString();
-        }
+    //     // Calcular las fechas de cada día de la semana
+    //     $fechasDiasSemana = [];
+    //     foreach ($diasSemana as $indice => $dia) {
+    //         $fechasDiasSemana[$dia] = $inicioSemana->copy()->addDays($indice)->toDateString();
+    //     }
 
-        // Crear un array para almacenar la cantidad de masajes por semana y por día por masoterapeuta
-        $cantidadMasajesPorSemana = [];
-        $cantidadMasajesPorDia    = [];
+    //     // Crear un array para almacenar la cantidad de masajes por semana y por día por masoterapeuta
+    //     $cantidadMasajesPorSemana = [];
+    //     $cantidadMasajesPorDia    = [];
 
-        // foreach ($masoterapeutas as $masoterapeuta) {
-        //     // Total de masajes de la semana (por fecha de reserva)
-        //     $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
-        //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
-        //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
-        //         })
-        //         ->count();
+    //     // foreach ($masoterapeutas as $masoterapeuta) {
+    //     //     // Total de masajes de la semana (por fecha de reserva)
+    //     //     $cantidadMasajesPorSemana[$masoterapeuta->id] = Masaje::where('user_id', $masoterapeuta->id)
+    //     //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+    //     //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+    //     //         })
+    //     //         ->count();
 
-        //     // Masajes por día según la fecha de la reserva
-        //     $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
-        //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
-        //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
-        //         })
-        //         ->with('reserva') // para evitar múltiples consultas al acceder a la fecha
-        //         ->get()
-        //         ->groupBy(function ($masaje) {
-        //             return Carbon::parse($masaje->reserva->fecha_visita)->format('N');
-        //         });
+    //     //     // Masajes por día según la fecha de la reserva
+    //     //     $masajesPorDia = Masaje::where('user_id', $masoterapeuta->id)
+    //     //         ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+    //     //             $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+    //     //         })
+    //     //         ->with('reserva') // para evitar múltiples consultas al acceder a la fecha
+    //     //         ->get()
+    //     //         ->groupBy(function ($masaje) {
+    //     //             return Carbon::parse($masaje->reserva->fecha_visita)->format('N');
+    //     //         });
 
-        //     // Inicializa los días de la semana
-        //     $cantidadMasajesPorDia[$masoterapeuta->id] = [];
-        //     foreach ($diasSemana as $indice => $dia) {
-        //         $diaNumero                                       = $indice + 1;
-        //         $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero])
-        //         ? $masajesPorDia[$diaNumero]->count()
-        //         : 0;
-        //     }
-        // }
+    //     //     // Inicializa los días de la semana
+    //     //     $cantidadMasajesPorDia[$masoterapeuta->id] = [];
+    //     //     foreach ($diasSemana as $indice => $dia) {
+    //     //         $diaNumero                                       = $indice + 1;
+    //     //         $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = isset($masajesPorDia[$diaNumero])
+    //     //         ? $masajesPorDia[$diaNumero]->count()
+    //     //         : 0;
+    //     //     }
+    //     // }
 
-        foreach ($masoterapeutas as $masoterapeuta) {
-            // Masajes de la semana con detalles
-            $masajesSemana = Masaje::where('user_id', $masoterapeuta->id)
-                ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
-                    $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
-                })
-                ->with('reserva')
-                ->get();
+    //     foreach ($masoterapeutas as $masoterapeuta) {
+    //         // Masajes de la semana con detalles
+    //         $masajesSemana = Masaje::where('user_id', $masoterapeuta->id)
+    //             ->whereHas('reserva', function ($query) use ($inicioSemana, $finSemana) {
+    //                 $query->whereBetween('fecha_visita', [$inicioSemana->format('Y-m-d'), $finSemana->format('Y-m-d')]);
+    //             })
+    //             ->with('reserva')
+    //             ->get();
 
-            // Cálculo total semana
-            $cantidadMasajesPorSemana[$masoterapeuta->id] = $masajesSemana->count();
+    //         // Cálculo total semana
+    //         $cantidadMasajesPorSemana[$masoterapeuta->id] = $masajesSemana->count();
 
-            // Inicializa por día
-            $cantidadMasajesPorDia[$masoterapeuta->id] = [];
-            foreach ($diasSemana as $indice => $dia) {
-                $diaNumero = $indice + 1;
+    //         // Inicializa por día
+    //         $cantidadMasajesPorDia[$masoterapeuta->id] = [];
+    //         foreach ($diasSemana as $indice => $dia) {
+    //             $diaNumero = $indice + 1;
 
-                // Filtrar masajes del día
-                $masajesDia = $masajesSemana->filter(function ($masaje) use ($diaNumero) {
-                    return Carbon::parse($masaje->reserva->fecha_visita)->format('N') == $diaNumero;
-                });
+    //             // Filtrar masajes del día
+    //             $masajesDia = $masajesSemana->filter(function ($masaje) use ($diaNumero) {
+    //                 return Carbon::parse($masaje->reserva->fecha_visita)->format('N') == $diaNumero;
+    //             });
 
-                // Separar normales y con tiempo extra
-                $normales = $masajesDia->where('tiempo_extra', false)->count();
-                $extras   = $masajesDia->where('tiempo_extra', true)->count();
+    //             // Separar normales y con tiempo extra
+    //             $normales = $masajesDia->where('tiempo_extra', false)->count();
+    //             $extras   = $masajesDia->where('tiempo_extra', true)->count();
 
-                // Calcular sueldo diario (extra vale el doble)
-                $totalDia = ($normales * $masoterapeuta->salario) + ($extras * ($masoterapeuta->salario * 2));
+    //             // Calcular sueldo diario (extra vale el doble)
+    //             $totalDia = ($normales * $masoterapeuta->salario) + ($extras * ($masoterapeuta->salario * 2));
 
-                $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = [
-                    'normales' => $normales,
-                    'extras'   => $extras,
-                    'total'    => $totalDia,
-                ];
-            }
-            $totalSemanal = 0;
-            foreach ($diasSemana as $indice => $dia) {
-                $dataDia = $cantidadMasajesPorDia[$masoterapeuta->id][$dia];
-                $totalSemanal += $dataDia['total'];
-            }
-            $totalSemanas[$masoterapeuta->id] = $totalSemanal;
-        }
+    //             $cantidadMasajesPorDia[$masoterapeuta->id][$dia] = [
+    //                 'normales' => $normales,
+    //                 'extras'   => $extras,
+    //                 'total'    => $totalDia,
+    //             ];
+    //         }
+    //         $totalSemanal = 0;
+    //         foreach ($diasSemana as $indice => $dia) {
+    //             $dataDia = $cantidadMasajesPorDia[$masoterapeuta->id][$dia];
+    //             $totalSemanal += $dataDia['total'];
+    //         }
+    //         $totalSemanas[$masoterapeuta->id] = $totalSemanal;
+    //     }
 
 
-        return view('themes.backoffice.pages.admin.index', [
-            'masoterapeutas'           => $masoterapeutas,
-            'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
-            'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
-            'diasSemana'               => $diasSemana,
+    //     return view('themes.backoffice.pages.admin.index', [
+    //         'masoterapeutas'           => $masoterapeutas,
+    //         'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
+    //         'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
+    //         'diasSemana'               => $diasSemana,
 
-            'fechasDiasSemana'         => $fechasDiasSemana,
-            'totalSemanas'             => $totalSemanas
-        ]);
+    //         'fechasDiasSemana'         => $fechasDiasSemana,
+    //         'totalSemanas'             => $totalSemanas
+    //     ]);
+    // }
+
+
+
+
+
+
+    
+public function index()
+{
+    Carbon::setLocale('es');
+
+    // Semana actual (Lun-Dom)
+    $inicioSemana = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+    $finSemana    = now()->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+    $diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    $fechasDiasSemana = [];
+    foreach ($diasSemana as $i => $d) {
+        $fechasDiasSemana[$d] = Carbon::parse($inicioSemana)->addDays($i)->toDateString();
     }
+
+    // Masoterapeutas (rol)
+    $masoterapeutas = User::whereHas('roles', function($q){return $q->where('name','masoterapeuta');})
+        ->orderBy('name')->get(['id','name']);
+
+    // Base por usuario (override > rango 8 > 8000)
+    $bases = $this->mapBaseRates($masoterapeutas->pluck('id')->all());
+
+    // Fallback: último precio por tipo
+    $ptmAny = DB::table('precios_tipos_masajes as p1')
+        ->select('p1.id_tipo_masaje','p1.pago_masoterapeuta','p1.updated_at')
+        ->whereRaw('NOT EXISTS (
+            SELECT 1 FROM precios_tipos_masajes p2
+            WHERE p2.id_tipo_masaje=p1.id_tipo_masaje AND p2.updated_at>p1.updated_at
+        )');
+
+    // Traer agregados por user y día de la semana
+    $rows = DB::table('masajes as m')
+        ->join('reservas as r','r.id','=','m.id_reserva')
+        ->join('tipos_masajes as tm','tm.nombre','=','m.tipo_masaje')
+        ->leftJoin('precios_tipos_masajes as ptm_des', function($j){
+            $j->on('ptm_des.id_tipo_masaje','=','tm.id')
+              ->whereRaw('ptm_des.duracion_minutos = CASE WHEN m.tiempo_extra=1 THEN 60 ELSE 30 END');
+        })
+        ->leftJoinSub($ptmAny,'ptm_any', function($j){
+            $j->on('ptm_any.id_tipo_masaje','=','tm.id');
+        })
+        ->whereBetween('r.fecha_visita', [$inicioSemana, $finSemana])
+        ->whereIn('m.user_id', $masoterapeutas->pluck('id'))
+        ->whereNotNull('m.user_id')
+        ->groupBy('m.user_id', DB::raw('DATE(r.fecha_visita)'))
+        ->get([
+            'm.user_id',
+            DB::raw('DATE(r.fecha_visita) as dia'),
+            // conteos
+            DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 1 ELSE 0 END) as extras'),
+            DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 0 ELSE 1 END) as normales'),
+            // suma de pagos ptm (solo cuando existe)
+            DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
+                            THEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) 
+                            ELSE 0 END) as suma_ptm'),
+            // cuántos quedaron sin precio (para multiplicar por base)
+            DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
+                            THEN 0 ELSE 1 END) as faltantes')
+        ]);
+
+    // Armar estructuras que usa la Blade
+    $cantidadMasajesPorSemana = [];
+    $cantidadMasajesPorDia    = [];
+    $totalSemanas             = [];
+
+    foreach ($masoterapeutas as $m) {
+        $cantidadMasajesPorSemana[$m->id] = 0;
+        $totalSemanas[$m->id] = 0;
+        // inicializar días
+        foreach ($diasSemana as $diaTxt) {
+            $cantidadMasajesPorDia[$m->id][$diaTxt] = ['normales'=>0,'extras'=>0,'total'=>0];
+        }
+    }
+
+    foreach ($rows as $r) {
+        $uid = (int)$r->user_id;
+        $base = $bases[$uid] ?? 8000;
+
+        // mapear fecha -> texto día (Lunes..Domingo)
+        $dow = Carbon::parse($r->dia)->locale('es')->dayOfWeekIso; // 1..7
+        $diaTxt = $diasSemana[$dow-1];
+
+        $normales = (int)$r->normales;
+        $extras   = (int)$r->extras;
+        $sumaPtm  = (int)$r->suma_ptm;
+        $faltantes= (int)$r->faltantes;
+
+        $totalDia = $sumaPtm + ($faltantes * $base);
+
+        $cantidadMasajesPorDia[$uid][$diaTxt]['normales'] += $normales;
+        $cantidadMasajesPorDia[$uid][$diaTxt]['extras']   += $extras;
+        $cantidadMasajesPorDia[$uid][$diaTxt]['total']    += $totalDia;
+
+        $cantidadMasajesPorSemana[$uid] += ($normales + $extras);
+        $totalSemanas[$uid]             += $totalDia;
+    }
+
+    return view('themes.backoffice.pages.admin.index', [
+        'masoterapeutas'           => $masoterapeutas,
+        'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
+        'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
+        'diasSemana'               => $diasSemana,
+        'fechasDiasSemana'         => $fechasDiasSemana,
+        'totalSemanas'             => $totalSemanas
+    ]);
+}
+
+/** override > rango rol(8) vigente > 8000 */
+private function mapBaseRates(array $userIds): array
+{
+    $hoy = now()->toDateString();
+
+    $overrides = DB::table('anular_sueldo_usuarios')
+        ->whereIn('user_id', $userIds)
+        ->select('user_id','salario','created_at')
+        ->orderByDesc('created_at')->get()
+        ->groupBy('user_id')->map(function($g){return (int)$g->first()->salario;});
+
+    $rango = (int) DB::table('rango_sueldo_roles')
+        ->where('role_id',8)
+        ->whereDate('vigente_desde','<=',$hoy)
+        ->where(function($q) use ($hoy){
+            $q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta','>=',$hoy);
+        })
+        ->orderByDesc('vigente_desde')->value('sueldo_base');
+
+    $bases=[];
+    foreach ($userIds as $id) $bases[$id] = $overrides[$id] ?? ($rango>0?$rango:8000);
+    return $bases;
+}
+
+
+
+
+
+
+
+
+
+
+
+
 
     public function team()
     {

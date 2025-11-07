@@ -100,6 +100,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('asistencia', 'AsistenciaController');
     Route::resource('barman', 'BarmanController');
+    Route::resource('categoria-masaje', 'CategoriaMasajeController');
     Route::resource('cliente', 'ClienteController');
     Route::resource('complemento', 'ComplementoController');
     Route::resource('cotizacion', 'CotizacionController');
@@ -124,6 +125,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('subcategoria', 'SubcategoriaController');
     Route::resource('sueldos', 'SueldoController');
     Route::resource('sueldo-pagado', 'SueldoPagadoController');
+    Route::resource('tipo-masaje', 'TipoMasajeController');
+    Route::resource('tipo-masaje', 'TipoMasajeController');
     Route::resource('user', 'UserController');
     Route::resource('venta.consumo', 'ConsumoController');
     Route::resource('venta_directa', 'VentaDirectaController');
@@ -305,6 +308,12 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
     
     Route::get('masajes/valores', 'MasajeController@index_valor')->name('masajes.valores');
+    Route::get('masajes/valores/create', 'MasajeController@valor_masaje_create')->name('masajes.valores.create');
+    Route::post('masajes/valores/store', 'MasajeController@valor_masaje_store')->name('masajes.valores.store');
+
+    Route::get('masajes/valores/{valor}/edit', 'MasajeController@valor_masaje_edit')->name('masajes.valores.edit');
+    Route::match(['put', 'patch'], 'masajes/valores/{precio}/update', 'MasajeController@valor_masaje_update')->name('masajes.valores.update');
+
     Route::get('/masajes/valores/inactivos', 'MasajeController@index_valor_inactivos')->name('masajes.valores.inactivos');
     Route::patch('/masajes/{tipoMasaje}/estado', 'MasajeController@cambiarEstado')->name('masajes.estado');
     

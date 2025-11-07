@@ -6,7 +6,7 @@ use Illuminate\Database\Eloquent\Model;
 
 class CategoriaMasaje extends Model
 {
-        protected $table = 'categorias_masajes';
+    protected $table = 'categorias_masajes';
     protected $fillable = ['nombre','slug'];
 
     public function tipos()

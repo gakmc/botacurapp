@@ -20,6 +20,7 @@ use Illuminate\Support\Facades\Storage;
 // use PDF;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 // use Barryvdh\Snappy\Facades\SnappyPdf;
 use RealRashid\SweetAlert\Facades\Alert;
 use Illuminate\Support\Str;
@@ -123,7 +124,7 @@ class VentaController extends Controller
 
     public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
     {
-
+        
         $request->merge([
             'consumo_bruto'         => (int) str_replace(['$', '.', ','], '', $request->consumo_bruto),
             'propinaValue'        => (int) str_replace(['$', '.', ','], '', $request->propinaValue),
@@ -137,16 +138,77 @@ class VentaController extends Controller
             'total_pagar'         => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
         ]);
 
-        $request->validate([
+        // $request->validate([
+        //     'propinaValue' => 'nullable|integer|min:0',
+        //     'pago1'        => 'required_if:dividir_pago,on|integer|min:0',
+        //     'pago2'        => 'required_if:dividir_pago,on|integer|min:0',
+        //     // 'id_tipo_transaccion_diferencia' => 'nullable|exists:tipos_transacciones,id',
+        //     // 'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id',
+        //     // 'id_tipo_transaccion2' => 'nullable|exists:tipos_transacciones,id',
+
+        //     // Al menos uno entre diferencia o dividida
+        //     'id_tipo_transaccion_diferencia' => 'nullable|exists:tipos_transacciones,id|required_without:id_tipo_transaccion_diferencia_dividida',
+        //     'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id|required_without:id_tipo_transaccion_diferencia',
+
+        //     // Opcional solo en el caso dividido
+        //     'id_tipo_transaccion2' => 'nullable|exists:tipos_transacciones,id',
+
+        // ], [
+        //     'id_tipo_transaccion_diferencia.required_without' => 'Debe indicar un tipo transacción diferencia.',
+        //     'id_tipo_transaccion_diferencia_dividida.required_without' => 'Debe indicar un tipo de transacción dividida.',
+        //     'pago1.required_if' => 'Cuando divide el pago, debe ingresar el primer monto.',
+        //     'pago2.required_if' => 'Cuando divide el pago, debe ingresar el segundo monto.',
+        // ]);
+
+        $validator = Validator::make($request->all(), [
             'propinaValue' => 'nullable|integer|min:0',
             'pago1'        => 'required_if:dividir_pago,on|integer|min:0',
             'pago2'        => 'required_if:dividir_pago,on|integer|min:0',
-            'id_tipo_transaccion_diferencia' => 'nullable|exists:tipos_transacciones,id',
+
+            // Base: validaciones de existencia
+            'id_tipo_transaccion_diferencia'          => 'nullable|exists:tipos_transacciones,id',
             'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id',
-            'id_tipo_transaccion2' => 'nullable|exists:tipos_transacciones,id',
+            'id_tipo_transaccion2'                    => 'nullable|exists:tipos_transacciones,id',
+
+        ], [
+            'pago1.required_if' => 'Cuando divide el pago, debe ingresar el primer monto.',
+            'pago2.required_if' => 'Cuando divide el pago, debe ingresar el segundo monto.',
         ]);
+
+        $validator->after(function ($v) use ($request) {
+            $hasDif = $request->filled('id_tipo_transaccion_diferencia');
+            $hasDiv = $request->filled('id_tipo_transaccion_diferencia_dividida');
+            $hasT2  = $request->filled('id_tipo_transaccion2');
+
+            // Caso válido A: solo diferencia
+            $isOnlyDif = $hasDif && !$hasDiv && !$hasT2;
+
+            // Caso válido B: ambos (dividida y t2)
+            $isBothDiv = !$hasDif && $hasDiv && $hasT2;
+
+            if (!($isOnlyDif || $isBothDiv)) {
+                // Armar mensajes específicos según el error
+                if ($hasDif && ($hasDiv || $hasT2)) {
+                    $v->errors()->add('id_tipo_transaccion_diferencia',
+                        'Si informa la transacción de diferencia, no debe informar las de pago dividido.');
+                } elseif ($hasDiv && !$hasT2) {
+                    $v->errors()->add('id_tipo_transaccion2',
+                        'Cuando informa transacción dividida, también debe informar la segunda transacción.');
+                } elseif ($hasT2 && !$hasDiv) {
+                    $v->errors()->add('id_tipo_transaccion_diferencia_dividida',
+                        'No puede informar la segunda transacción sin informar la transacción dividida.');
+                } else {
+                    // Ninguno vino: exigir uno de los dos casos válidos
+                    $v->errors()->add('id_tipo_transaccion_diferencia',
+                        'Debe informar la transacción de diferencia o bien ambas del pago dividido.');
+                    $v->errors()->add('id_tipo_transaccion_diferencia_dividida',
+                        'Debe informar la transacción de diferencia o bien ambas del pago dividido.');
+                }
+            }
+        });
+
+        $validator->validate();
    
-        
         $venta       = $ventum;
         $consumo     = $venta->consumo;
         $cliente     = $reserva->cliente->nombre_cliente;

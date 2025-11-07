@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\CategoriaMasaje;
 use App\LugarMasaje;
 use App\Masaje;
 use App\PrecioTipoMasaje;
@@ -499,4 +500,80 @@ class MasajeController extends Controller
         return back()->with('status', $request->activo ? 'Masaje activado' : 'Masaje desactivado');
 
     }
+
+    public function valor_masaje_create(Request $request)
+    {
+        $tipos = TipoMasaje::all();
+
+        return view('themes.backoffice.pages.masaje.valor.create', compact('tipos'));
+    }
+
+    public function valor_masaje_store(Request $request)
+    {
+        $tipo = TipoMasaje::findOrFail($request->id_tipo_masaje);
+        $request->merge([
+
+            'precio_unitario'    => (int) str_replace(['$', '.', ','], "", $request->precio_unitario),
+            'precio_pareja'    => (int) str_replace(['$', '.', ','], "", $request->precio_pareja),
+            'pago_masoterapeuta'    => (int) str_replace(['$', '.', ','], "", $request->pago_masoterapeuta),
+
+        ]);
+
+        $precio_pareja = $request->precio_pareja > 0 ? $request->precio_pareja : null;
+
+        // dd($request->all(), $precio_pareja, $tipo->nombre);
+
+        PrecioTipoMasaje::create([
+            'id_tipo_masaje' => $request->id_tipo_masaje,
+            'duracion_minutos' => $request->duracion_minutos,
+            'precio_unitario' => $request->precio_unitario,
+            'precio_pareja' => $precio_pareja,
+            'pago_masoterapeuta' => $request->pago_masoterapeuta
+        ]);
+
+        return redirect()->route('backoffice.masajes.valores')->with('success','Se asigno el valor al tipo '.$tipo->nombre);
+    }
+
+
+    public function valor_masaje_edit(Request $request, $id)
+    {
+        $precio = PrecioTipoMasaje::findOrFail($id);
+        $tipos = TipoMasaje::all();
+
+        return view('themes.backoffice.pages.masaje.valor.edit', compact('tipos', 'precio'));
+    }
+
+    public function valor_masaje_update(Request $request, PrecioTipoMasaje $precio)
+    {
+        $tipo = TipoMasaje::findOrFail($request->id_tipo_masaje);
+        $request->merge([
+
+            'precio_unitario'    => (int) str_replace(['$', '.', ','], "", $request->precio_unitario),
+            'precio_pareja'    => (int) str_replace(['$', '.', ','], "", $request->precio_pareja),
+            'pago_masoterapeuta'    => (int) str_replace(['$', '.', ','], "", $request->pago_masoterapeuta),
+
+        ]);
+
+        $precio_pareja = $request->precio_pareja > 0 ? $request->precio_pareja : null;
+
+        // dd([
+        //     'id_tipo_masaje' => $request->id_tipo_masaje,
+        //     'duracion_minutos' => $request->duracion_minutos,
+        //     'precio_unitario' => $request->precio_unitario,
+        //     'precio_pareja' => $precio_pareja,
+        //     'pago_masoterapeuta' => $request->pago_masoterapeuta
+        // ], $precio);
+
+        $precio->update([
+            'id_tipo_masaje' => $request->id_tipo_masaje,
+            'duracion_minutos' => $request->duracion_minutos,
+            'precio_unitario' => $request->precio_unitario,
+            'precio_pareja' => $precio_pareja,
+            'pago_masoterapeuta' => $request->pago_masoterapeuta
+        ]);
+
+        return redirect()->route('backoffice.masajes.valores')->with('success','Se actualizó el valor al tipo '.$tipo->nombre);
+    }
+
+
 }

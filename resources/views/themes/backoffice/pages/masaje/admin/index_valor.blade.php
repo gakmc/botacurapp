@@ -12,25 +12,27 @@
 @endsection
 
 @section('dropdown_settings')
-{{-- <li><a href="{{ route('backoffice.reserva.create',$cliente->id) }}" class="grey-text text-darken-2">Crear Reserva</a></li> --}}
+<li><a href="{{ route('backoffice.categoria-masaje.create') }}" class="grey-text text-darken-2 tooltipped" data-position="left" data-delay="50" data-tooltip="Masajes corporales, faciales, etc.">Crear Categorias Masajes</a></li>
+<li><a href="{{ route('backoffice.tipo-masaje.create') }}" class="grey-text text-darken-2 tooltipped" data-position="left" data-delay="50" data-tooltip="Relajacion, Descontracturante, etc.">Crear Tipos Masajes</a></li>
+<li><a href="{{ route('backoffice.masajes.valores.create') }}" class="grey-text text-darken-2">Asignar valores a masajes</a></li>
 @endsection
 
 
 @section('content')
 <div class="section">
+    <div class="row right">
+      <div class="col s12">
+        <a href="{{ route('backoffice.masajes.valores') }}"
+           class="btn {{ request()->routeIs('backoffice.masajes.valores') ? 'pink-text text-darken-2' : '' }}" style="background-color: #039B7B">
+           Activos
+        </a>
+        <a href="{{ route('backoffice.masajes.valores.inactivos') }}"
+           class="btn {{ request()->routeIs('backoffice.masajes.valores.inactivos') ? 'pink-text text-darken-2' : '' }}" style="background-color: #039B7B">
+           Inactivos
+        </a>
+      </div>
+    </div>
     <p class="caption"><strong>Masajes</strong></p>
-<div class="row right">
-  <div class="col s12">
-    <a href="{{ route('backoffice.masajes.valores') }}"
-       class="btn {{ request()->routeIs('backoffice.masajes.valores') ? 'pink-text text-darken-2' : '' }}" style="background-color: #039B7B">
-       Activos
-    </a>
-    <a href="{{ route('backoffice.masajes.valores.inactivos') }}"
-       class="btn {{ request()->routeIs('backoffice.masajes.valores.inactivos') ? 'pink-text text-darken-2' : '' }}" style="background-color: #039B7B">
-       Inactivos
-    </a>
-  </div>
-</div>
     
     <div class="divider"></div>
     <div id="basic-form" class="section">
@@ -64,12 +66,12 @@
                                     @forelse ($masaje->precios as $i => $precio)
                                     <tr>
                                         @if ($i === 0)
-                                        <td rowspan="{{ $rowspan }}">{{ $masaje->categoria->nombre }}</td>
-                                        <td rowspan="{{ $rowspan }}">{{ $masaje->nombre }}</td>
+                                        <td rowspan="{{ $rowspan }}"><a href="{{route("backoffice.categoria-masaje.edit",$masaje->categoria->id)}}" class="tooltipped" data-tooltip="Editar categoria" data-position="top" data-delay="50">{{ $masaje->categoria->nombre }}</a></td>
+                                        <td rowspan="{{ $rowspan }}"><a href="{{route("backoffice.tipo-masaje.edit",$masaje->id)}}" class="tooltipped" data-tooltip="Editar tipo" data-position="top" data-delay="50">{{ $masaje->nombre }}</a></td>
                                         @endif
                                         
                                         <td>{{ $precio->duracion_minutos }} min</td>
-                                        <td>${{ number_format((int)$precio->precio_unitario, 0, ',', '.') }}</td>
+                                        <td><a href="{{route("backoffice.masajes.valores.edit", $precio)}}" class="tooltipped" data-position="top" data-delay="50" data-tooltip="Editar valores">${{ number_format((int)$precio->precio_unitario, 0, ',', '.') }}</a></td>
                                         <td>
                                             @if(!is_null($precio->precio_pareja) && $precio->precio_pareja > 0)
                                             ${{ number_format((int)$precio->precio_pareja, 0, ',', '.') }}
@@ -137,7 +139,42 @@
                 toast.onmouseleave = Swal.resumeTimer;
             }
         });
-        @endif
+    @endif
+    @if(session('success'))
+        Swal.fire({
+            toast: true,
+            position: '',
+            icon: 'success',
+            title: '{{ session('success') }}',
+            showConfirmButton: false,
+            timer: 3000,
+            timerProgressBar: true,
+            didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+            }
+        });
+    @endif
+</script>
+
+
+<script>
+@if(session('masaje_creado'))
+document.addEventListener('DOMContentLoaded', function() {
+    Swal.fire({
+        title: '¿Deseas ingresar el precio para este masaje?',
+        text: "Puedes agregar precios y duraciones en el siguiente paso.",
+        icon: 'question',
+        showCancelButton: true,
+        confirmButtonText: 'Sí, agregar precios',
+        cancelButtonText: 'No, más tarde',
+    }).then((result) => {
+        if (result.isConfirmed) {
+            window.location.href = "{{ route('backoffice.masajes.valores.create', ['id_tipo_masaje' => session('masaje_creado')]) }}";
+        }
+    });
+});
+@endif
 </script>
 
 @endsection

@@ -52,9 +52,11 @@
       
                                     <select id="tipo_masaje_{{$masaje->id}}" name="masajes[{{$masaje->id}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
       
-      
-                                        <option value="Relajante" {{ $masaje->tipo_masaje ==='Relajante' ? 'selected' : ''}}>Relajante</option>
-                                        <option value="Descontracturante" {{ $masaje->tipo_masaje ==='Descontracturante' ? 'selected' : '' }}>Descontracturante</option>
+                                        @foreach ($tiposMasajes as $tm)
+                                            <option value="{{$tm->nombre}}" {{ $masaje->tipo_masaje === $tm->nombre ? 'selected' : ''}}>{{$tm->nombre}}</option>
+                                        @endforeach
+                                        {{-- <option value="Relajante" {{ $masaje->tipo_masaje ==='Relajante' ? 'selected' : ''}}>Relajante</option>
+                                        <option value="Descontracturante" {{ $masaje->tipo_masaje ==='Descontracturante' ? 'selected' : '' }}>Descontracturante</option> --}}
       
       
       

@@ -192,6 +192,11 @@
                     @endforeach
                   </select>
                   <label for="id_tipo_transaccion_diferencia">Tipo Transacción Diferencia</label>
+                  @error('id_tipo_transaccion_diferencia')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                  @enderror
                 </div>
               </div>
 
@@ -237,6 +242,11 @@
                     @endforeach
                   </select>
                   <label for="id_tipo_transaccion_diferencia_dividida">Tipo Transacción Diferencia</label>
+                  @error('id_tipo_transaccion_diferencia_dividida')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                  @enderror
                 </div>
 
 
@@ -266,6 +276,11 @@
                     @endforeach
                   </select>
                   <label for="id_tipo_transaccion2">Tipo Transacción 2</label>
+                  @error('id_tipo_transaccion2')
+                    <span class="invalid-feedback" role="alert">
+                      <strong style="color:red">{{ $message }}</strong>
+                    </span>
+                  @enderror
                 </div>
 
 

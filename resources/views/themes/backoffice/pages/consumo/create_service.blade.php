@@ -722,7 +722,7 @@
     $('#extra_nuevo_'+id).val(  op==='nuevo60' ? 1 : '' );
   }
 
-  function actualizarPrecioYTotal(id){
+/*  function actualizarPrecioYTotal(id){
     var slugTipo = $('#tipo_hidden_'+id).val();
     var dur      = parseInt($('#dur_hidden_'+id).val()||'0',10);
     if(!slugTipo || !dur){ $('#precio_unit_'+id).text('$0'); $('#total_estimado_'+id).text(''); return; }
@@ -733,6 +733,52 @@
 
     recalcTotal(id);
   }
+*/
+
+
+
+function actualizarPrecioYTotal(id){
+  var slugTipo = $('#tipo_hidden_'+id).val();
+  var dur      = parseInt($('#dur_hidden_'+id).val()||'0',10);
+  if(!slugTipo || !dur){ $('#precio_unit_'+id).text('$0'); $('#total_estimado_'+id).text(''); return; }
+
+  var p = precioDe(slugTipo, dur);
+  if(p.unit===null){ $('#precio_unit_'+id).text('$0'); return; }
+  $('#precio_unit_'+id).text('$'+numberWithDots(p.unit));
+
+  // (opcional) muestra que hay precio pareja si aplica
+  var $info = $('#total_estimado_'+id);
+  if(p.pair){
+    $info.attr('data-tiene-pareja','1');
+  }else{
+    $info.removeAttr('data-tiene-pareja');
+  }
+
+  recalcTotal(id);
+}
+
+
+  // function recalcTotal(id){
+  //   var slugTipo = $('#tipo_hidden_'+id).val();
+  //   var dur      = parseInt($('#dur_hidden_'+id).val()||'0',10);
+  //   var cant     = parseInt($('input[name="servicios['+id+'][cantidad]"]').val()||'0',10);
+  //   if(!slugTipo || !dur || !cant){ $('#total_estimado_'+id).text(''); return; }
+
+  //   var p = precioDe(slugTipo, dur);
+  //   var total=0;
+
+  //   // 2x automático para Relajación 30/60 si hay precio_pareja
+  //   if(slugTipo==='relajacion' && (dur===30 || dur===60) && p.pair){
+  //     var pares = Math.floor(cant/2);
+  //     var resto = cant - pares*2;
+  //     total = pares * p.pair + resto * p.unit;
+  //   }else{
+  //     total = cant * p.unit;
+  //   }
+  //   $('#total_estimado_'+id).text('Total estimado: $'+numberWithDots(total));
+  // }
+    
+
 
   function recalcTotal(id){
     var slugTipo = $('#tipo_hidden_'+id).val();
@@ -741,20 +787,22 @@
     if(!slugTipo || !dur || !cant){ $('#total_estimado_'+id).text(''); return; }
 
     var p = precioDe(slugTipo, dur);
-    var total=0;
+    var total = 0;
 
-    // 2x automático para Relajación 30/60 si hay precio_pareja
-    if(slugTipo==='relajacion' && (dur===30 || dur===60) && p.pair){
+    if(p.pair){
       var pares = Math.floor(cant/2);
       var resto = cant - pares*2;
       total = pares * p.pair + resto * p.unit;
-    }else{
+    } else {
       total = cant * p.unit;
     }
+
     $('#total_estimado_'+id).text('Total estimado: $'+numberWithDots(total));
   }
 
-  // ==== Hook en tu flujo existente (click en pestaña de servicio) ====
+
+
+  
   $(document).ready(function(){
     $('ul.tabs').tabs();
 

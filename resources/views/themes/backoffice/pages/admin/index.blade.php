@@ -86,8 +86,7 @@
     </li>
 
     @if($data['total'] > 0)
-        <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]"
-            value="{{ $fechasDiasSemana[$dia] }}">
+        <input type="hidden" name="sueldos[{{ $counter }}][dia_trabajado]" value="{{ $fechasDiasSemana[$dia] }}">
         <input type="hidden" name="sueldos[{{ $counter }}][valor_dia]" value="{{$masoterapeuta->salario}}">
         <input type="hidden" name="sueldos[{{ $counter }}][sub_sueldo]" value="{{$data['total']}}">
         <input type="hidden" name="sueldos[{{ $counter }}][total_pagar]" value="{{$data['total']}}">

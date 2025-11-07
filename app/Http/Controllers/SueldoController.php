@@ -2,9 +2,11 @@
 
 namespace App\Http\Controllers;
 
+use App\AnularSueldoUsuario;
 use App\Consumo;
 use App\Masaje;
 use App\Propina;
+use App\RangoSueldoRole;
 use App\Sueldo;
 use App\SueldoPagado;
 use App\User;
@@ -15,6 +17,7 @@ use Illuminate\Support\Facades\Cache;
 use RealRashid\SweetAlert\Facades\Alert;
 use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Str;
 
 class SueldoController extends Controller
 {
@@ -183,15 +186,27 @@ class SueldoController extends Controller
 
                 // Si es masoterapeuta, calculamos una sola vez los MASAJES de la semana
                 if ($esMaso) {
+                    // $ini = $inicioSemana->toDateString();
+                    // $fin = $finSemana->toDateString();
+
+                    // // contamos los masajes según proporción total_pagar / valor_dia
+                    // $cantMasajes = DB::table('sueldos')
+                    //     ->whereBetween('dia_trabajado', [$ini, $fin])
+                    //     ->where('id_user', $userId)
+                    //     ->selectRaw('SUM(total_pagar / valor_dia) as cantidad')
+                    //     ->value('cantidad');
+
+                    // $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
+
+
                     $ini = $inicioSemana->toDateString();
                     $fin = $finSemana->toDateString();
 
-                    // contamos los masajes según proporción total_pagar / valor_dia
-                    $cantMasajes = DB::table('sueldos')
-                        ->whereBetween('dia_trabajado', [$ini, $fin])
-                        ->where('id_user', $userId)
-                        ->selectRaw('SUM(total_pagar / valor_dia) as cantidad')
-                        ->value('cantidad');
+                    $cantMasajes = DB::table('masajes as m')
+                        ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
+                        ->whereBetween('r.fecha_visita', [$ini, $fin])
+                        ->where('m.user_id', $userId)       // masoterapeuta
+                        ->count();                           // cada fila = 1 masaje (incluye pareja como 2)
 
                     $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
                 }
@@ -646,4 +661,10 @@ class SueldoController extends Controller
     {
         //
     }
+
+
+
+
+
+
 }
