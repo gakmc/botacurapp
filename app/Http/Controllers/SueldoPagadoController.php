@@ -10,6 +10,17 @@ class SueldoPagadoController extends Controller
 {
     public function store(Request $request)
     {
+        $request->validate([
+            'sueldos_seleccionados' => 'required|array|min:1',
+            'motivo' => 'nullable|string|max:255',
+            'bono'   => 'nullable|string',
+        ]);
+
+        $bono = (int) str_replace(['$', '.', ','],'', $request->bono ?? 0);
+
+        // dd($request->all());
+
+
         foreach ($request->sueldos_seleccionados as $item){
             $data = json_decode($item, true);
             SueldoPagado::create([
@@ -18,6 +29,8 @@ class SueldoPagadoController extends Controller
                 'semana_fin' => $data['fin'],
                 'fecha_pago' => Carbon::now()->format('Y-m-d'),
                 'monto' => $data['total'],
+                'bono' => $bono,
+                'motivo' => $request->motivo ?? null,
             ]);
         }
 

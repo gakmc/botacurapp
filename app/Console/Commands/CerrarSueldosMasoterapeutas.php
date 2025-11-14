@@ -148,78 +148,118 @@ class CerrarSueldosMasoterapeutas extends Command
         $inicio = now()->startOfWeek(Carbon::MONDAY)->toDateString();
         $fin    = now()->endOfWeek(Carbon::SUNDAY)->toDateString();
 
-        $masoterapeutas = User::whereHas('roles', function($q){return $q->where('name','masoterapeuta');})
-            ->get(['id','name']);
+        $masoterapeutas = User::whereHas('roles', function ($q) {
+            $q->where('name', 'masoterapeuta');
+         })->get();
 
-        // Base por usuario (override > rango rol(8) vigente > 8000)
-        $bases = $this->mapBaseRates($masoterapeutas->pluck('id')->all());
+        
+        $userIds = $masoterapeutas->pluck('id')->all();
+
+        // 3) Base por usuario (override > rango rol(8) > 10000)
+        $bases = $this->mapBaseRates($userIds);
 
         Log::channel('masoterapeutas')->info('CERRAR MASO - INICIO', [
-            'inicio' => $inicio, 'fin' => $fin, 'count' => $masoterapeutas->count()
+            'inicio' => $inicio,
+            'fin'    => $fin,
+            'users'  => $userIds,
         ]);
 
-        // Fallback: último precio por tipo (por si el tipo no tiene 30/60 o no tiene pago)
+        // 4) Subconsulta: último precio por tipo de masaje
         $ptmAny = DB::table('precios_tipos_masajes as p1')
-            ->select('p1.id_tipo_masaje','p1.pago_masoterapeuta','p1.updated_at')
-            ->whereRaw('NOT EXISTS (
-                SELECT 1 FROM precios_tipos_masajes p2
-                WHERE p2.id_tipo_masaje=p1.id_tipo_masaje AND p2.updated_at>p1.updated_at
-            )');
+            ->select('p1.id_tipo_masaje', 'p1.pago_masoterapeuta', 'p1.updated_at')
+            ->whereRaw(
+                'NOT EXISTS (
+                    SELECT 1 FROM precios_tipos_masajes p2
+                    WHERE p2.id_tipo_masaje = p1.id_tipo_masaje
+                      AND p2.updated_at > p1.updated_at
+                )'
+            );
 
-        // Traer agregado por usuario y día
+        // 5) Agregados por user + día dentro de la semana (MISMA QUERY QUE EN EL CONTROLADOR)
         $rows = DB::table('masajes as m')
-            ->join('reservas as r','r.id','=','m.id_reserva')
-            ->join('tipos_masajes as tm','tm.nombre','=','m.tipo_masaje')
-            // precio según duración deseada: 30 (tiempo_extra=0) / 60 (tiempo_extra=1)
-            ->leftJoin('precios_tipos_masajes as ptm_des', function($j){
-                $j->on('ptm_des.id_tipo_masaje','=','tm.id')
-                ->whereRaw('ptm_des.duracion_minutos = CASE WHEN m.tiempo_extra=1 THEN 60 ELSE 30 END');
+            ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
+            ->join('tipos_masajes as tm', 'tm.nombre', '=', 'm.tipo_masaje')
+            // precio según duración (30 normal, 60 tiempo extra)
+            ->leftJoin('precios_tipos_masajes as ptm_des', function ($join) {
+                $join->on('ptm_des.id_tipo_masaje', '=', 'tm.id')
+                     ->whereRaw('ptm_des.duracion_minutos = CASE 
+                                                               WHEN m.tiempo_extra = 1 THEN 60 
+                                                               ELSE 30 
+                                                             END');
             })
-            // fallback: último precio del tipo
-            ->leftJoinSub($ptmAny,'ptm_any', function($j){
-                $j->on('ptm_any.id_tipo_masaje','=','tm.id');
+            // fallback: último registro de precio por tipo
+            ->leftJoinSub($ptmAny, 'ptm_any', function ($join) {
+                $join->on('ptm_any.id_tipo_masaje', '=', 'tm.id');
             })
             ->whereBetween('r.fecha_visita', [$inicio, $fin])
-            ->whereIn('m.user_id', $masoterapeutas->pluck('id'))
             ->whereNotNull('m.user_id')
+            ->whereIn('m.user_id', $userIds)
             ->groupBy('m.user_id', DB::raw('DATE(r.fecha_visita)'))
             ->get([
                 'm.user_id',
                 DB::raw('DATE(r.fecha_visita) as dia'),
-                DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 1 ELSE 0 END) as extras'),
-                DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 0 ELSE 1 END) as normales'),
-                DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0
-                            THEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta)
-                            ELSE 0 END) as suma_ptm'),
-                DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0
-                            THEN 0 ELSE 1 END) as faltantes')
+
+                // conteo de normales / extras (solo informativo)
+                DB::raw('SUM(CASE WHEN m.tiempo_extra = 1 THEN 1 ELSE 0 END) as extras'),
+                DB::raw('SUM(CASE WHEN m.tiempo_extra = 1 THEN 0 ELSE 1 END) as normales'),
+
+                // suma de pagos definidos (>0) desde precios_tipos_masajes
+                DB::raw('
+                    SUM(
+                        CASE 
+                            WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) IS NULL
+                                 OR COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) = 0
+                            THEN 0
+                            ELSE COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta)
+                        END
+                    ) as suma_ptm
+                '),
+
+                // cuántos masajes NO tienen pago definido (NULL o 0) → usar salario base del user
+                DB::raw('
+                    SUM(
+                        CASE 
+                            WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) IS NULL
+                                 OR COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) = 0
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as faltantes
+                '),
             ]);
 
-        // Preparar filas para persistir
+        // 6) Preparar filas para persistir en sueldos
         $sueldosAGuardar = [];
-        foreach ($rows as $r) {
-            $uid   = (int)$r->user_id;
-            $base  = $bases[$uid] ?? 8000;
-            $total = (int)$r->suma_ptm + ((int)$r->faltantes * $base);
 
-            if ($total > 0) {
-                $sueldosAGuardar[] = [
-                    'dia_trabajado' => $r->dia,
-                    'id_user'       => $uid,
-                    'valor_dia'     => $base,
-                    'sub_sueldo'    => $total,
-                    'total_pagar'   => $total,
-                    'created_at'    => now(),
-                    'updated_at'    => now(),
-                ];
+        foreach ($rows as $row) {
+            $uid   = (int) $row->user_id;
+            $base  = $bases[$uid] ?? 10000; // override user > rango rol > 10000
+            $total = (int) $row->suma_ptm + ((int) $row->faltantes * $base);
+
+            // Si no hay nada que pagar, no generamos sueldo
+            if ($total <= 0) {
+                continue;
             }
+
+            $sueldosAGuardar[] = [
+                'dia_trabajado' => $row->dia,
+                'id_user'       => $uid,
+                'valor_dia'     => $base,
+                'sub_sueldo'    => $total,
+                'total_pagar'   => $total,
+                'created_at'    => now(),
+                'updated_at'    => now(),
+            ];
         }
 
-        // Guardar de forma idempotente
+        // 7) Guardar de forma idempotente (igual que tu store_maso)
         DB::transaction(function () use ($sueldosAGuardar) {
             foreach ($sueldosAGuardar as $s) {
                 Sueldo::updateOrCreate(
-                    ['dia_trabajado' => $s['dia_trabajado'], 'id_user' => $s['id_user']],
+                    [
+                        'dia_trabajado' => $s['dia_trabajado'],
+                        'id_user'       => $s['id_user'],
+                    ],
                     [
                         'valor_dia'   => $s['valor_dia'],
                         'sub_sueldo'  => $s['sub_sueldo'],
@@ -232,32 +272,55 @@ class CerrarSueldosMasoterapeutas extends Command
 
         Log::channel('masoterapeutas')->info('CERRAR MASO - FIN', [
             'registros' => count($sueldosAGuardar),
+            'detalle'   => $sueldosAGuardar,
         ]);
 
         $this->info('Sueldos de masoterapeutas cerrados correctamente.');
     }
 
-    /** ==== Helpers dentro del Command ==== */
+    /**
+     * Calcula salario base por usuario:
+     *  - Primero override en anular_sueldo_usuarios
+     *  - Luego rango_sueldo_roles para role_id = 8
+     *  - Si nada, usa 10000
+     */
     private function mapBaseRates(array $userIds): array
     {
-        $hoy = now()->toDateString();
+        if (empty($userIds)) {
+            return [];
+        }
 
+        $hoy = Carbon::now()->toDateString();
+
+        // Overrides individuales (anular_sueldo_usuarios)
         $overrides = DB::table('anular_sueldo_usuarios')
             ->whereIn('user_id', $userIds)
-            ->select('user_id','salario','created_at')
-            ->orderByDesc('created_at')->get()
-            ->groupBy('user_id')->map(function($g){return (int)$g->first()->salario;});
-
-        $rango = (int) DB::table('rango_sueldo_roles')
-            ->where('role_id',8)
-            ->whereDate('vigente_desde','<=',$hoy)
-            ->where(function($q) use ($hoy){
-                $q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta','>=',$hoy);
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function ($group) {
+                return (int) $group->first()->salario;
             })
-            ->orderByDesc('vigente_desde')->value('sueldo_base');
+            ->toArray(); // clave: user_id
 
-        $bases=[];
-        foreach ($userIds as $id) $bases[$id] = $overrides[$id] ?? ($rango>0?$rango:8000);
+        // Rango base para el rol masoterapeuta (role_id = 8)
+        $rango = (int) DB::table('rango_sueldo_roles')
+            ->where('role_id', 8)
+            ->whereDate('vigente_desde', '<=', $hoy)
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('vigente_hasta')
+                  ->orWhereDate('vigente_hasta', '>=', $hoy);
+            })
+            ->orderByDesc('vigente_desde')
+            ->value('sueldo_base');
+
+        $default = $rango > 0 ? $rango : 10000;
+
+        $bases = [];
+        foreach ($userIds as $id) {
+            $bases[$id] = $overrides[$id] ?? $default;
+        }
+
         return $bases;
     }
 }

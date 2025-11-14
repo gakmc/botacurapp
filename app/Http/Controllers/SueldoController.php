@@ -143,6 +143,7 @@ class SueldoController extends Controller
 
     public function index(Request $request)
     {
+
         $mes  = $request->input('mes', now()->month);
         $anio = $request->input('anio', now()->year);
 
@@ -178,6 +179,8 @@ class SueldoController extends Controller
                     'dias'    => 0,   // aquí guardaremos "días" o "masajes" según rol
                     'sueldos' => 0,
                     'propinas'=> 0,
+                    'bono'=> 0,
+                    'motivo' => '',
                     'total'   => 0,
                     'user_id' => $userId,
                     'inicio'  => $inicioSemana->format('Y-m-d'),
@@ -234,7 +237,26 @@ class SueldoController extends Controller
             ->orderBy('mes', 'desc')
             ->get();
 
-        $pagosRealizados = SueldoPagado::select('*')->get();
+        // $pagosRealizados = SueldoPagado::select('*')->get();
+
+        $pagosRealizados = SueldoPagado::all();
+
+        foreach ($pagosRealizados as $pago) {
+
+            $inicioSemana = Carbon::parse($pago->semana_inicio);
+            $finSemana    = Carbon::parse($pago->semana_fin);
+
+            $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+            $userId = $pago->user_id;
+
+            if (isset($semanas[$rango]) && isset($semanas[$rango][$userId])) {
+                $semanas[$rango][$userId]['bono']   = (int) $pago->bono;
+                $semanas[$rango][$userId]['motivo'] = $pago->motivo;
+
+                // Si el bono debe sumarse al total de la semana:
+                $semanas[$rango][$userId]['total'] += (int) $pago->bono;
+            }
+        }
 
         return view('themes.backoffice.pages.sueldo.index', compact(
             'semanas','mes','anio','fechasDisponibles','pagosRealizados'
@@ -280,7 +302,7 @@ class SueldoController extends Controller
             return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
         });
 
-        // dd($sueldosAgrupados);
+
         return view('themes.backoffice.pages.sueldo.admin_view', [
             'sueldosAgrupados' => $sueldosAgrupados,
             'mes' => $mes,
@@ -468,7 +490,6 @@ class SueldoController extends Controller
             }
         }
 
-        // dd($propinas,$asignaciones);
 
         return view('themes.backoffice.pages.sueldo.detalle_diario', [
             'user' => $user,
@@ -585,8 +606,6 @@ class SueldoController extends Controller
 
     public function store_maso(Request $request)
     {
-
-        // dd($request->all());
 
         try {
             $sueldos = $request->input('sueldos');

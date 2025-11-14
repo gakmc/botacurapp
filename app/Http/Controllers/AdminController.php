@@ -235,143 +235,334 @@ class AdminController extends Controller
 
 
     
-public function index()
-{
-    Carbon::setLocale('es');
+    // public function index()
+    // {
+    //     Carbon::setLocale('es');
 
-    // Semana actual (Lun-Dom)
-    $inicioSemana = now()->startOfWeek(Carbon::MONDAY)->toDateString();
-    $finSemana    = now()->endOfWeek(Carbon::SUNDAY)->toDateString();
+    //     // Semana actual (Lun-Dom)
+    //     $inicioSemana = now()->startOfWeek(Carbon::MONDAY)->toDateString();
+    //     $finSemana    = now()->endOfWeek(Carbon::SUNDAY)->toDateString();
 
-    $diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
-    $fechasDiasSemana = [];
-    foreach ($diasSemana as $i => $d) {
-        $fechasDiasSemana[$d] = Carbon::parse($inicioSemana)->addDays($i)->toDateString();
-    }
+    //     $diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+    //     $fechasDiasSemana = [];
+    //     foreach ($diasSemana as $i => $d) {
+    //         $fechasDiasSemana[$d] = Carbon::parse($inicioSemana)->addDays($i)->toDateString();
+    //     }
 
-    // Masoterapeutas (rol)
-    $masoterapeutas = User::whereHas('roles', function($q){return $q->where('name','masoterapeuta');})
-        ->orderBy('name')->get(['id','name']);
+    //     // Masoterapeutas (rol)
+    //     $masoterapeutas = User::whereHas('roles', function($q){return $q->where('name','masoterapeuta');})
+    //         ->orderBy('name')->get(['id','name']);
 
-    // Base por usuario (override > rango 8 > 8000)
-    $bases = $this->mapBaseRates($masoterapeutas->pluck('id')->all());
+    //     // Base por usuario (override > rango 8 > 8000)
+    //     $bases = $this->mapBaseRates($masoterapeutas->pluck('id')->all());
 
-    // Fallback: último precio por tipo
-    $ptmAny = DB::table('precios_tipos_masajes as p1')
-        ->select('p1.id_tipo_masaje','p1.pago_masoterapeuta','p1.updated_at')
-        ->whereRaw('NOT EXISTS (
-            SELECT 1 FROM precios_tipos_masajes p2
-            WHERE p2.id_tipo_masaje=p1.id_tipo_masaje AND p2.updated_at>p1.updated_at
-        )');
+    //     // Fallback: último precio por tipo
+    //     $ptmAny = DB::table('precios_tipos_masajes as p1')
+    //         ->select('p1.id_tipo_masaje','p1.pago_masoterapeuta','p1.updated_at')
+    //         ->whereRaw('NOT EXISTS (
+    //             SELECT 1 FROM precios_tipos_masajes p2
+    //             WHERE p2.id_tipo_masaje=p1.id_tipo_masaje AND p2.updated_at>p1.updated_at
+    //         )');
 
-    // Traer agregados por user y día de la semana
-    $rows = DB::table('masajes as m')
-        ->join('reservas as r','r.id','=','m.id_reserva')
-        ->join('tipos_masajes as tm','tm.nombre','=','m.tipo_masaje')
-        ->leftJoin('precios_tipos_masajes as ptm_des', function($j){
-            $j->on('ptm_des.id_tipo_masaje','=','tm.id')
-              ->whereRaw('ptm_des.duracion_minutos = CASE WHEN m.tiempo_extra=1 THEN 60 ELSE 30 END');
-        })
-        ->leftJoinSub($ptmAny,'ptm_any', function($j){
-            $j->on('ptm_any.id_tipo_masaje','=','tm.id');
-        })
-        ->whereBetween('r.fecha_visita', [$inicioSemana, $finSemana])
-        ->whereIn('m.user_id', $masoterapeutas->pluck('id'))
-        ->whereNotNull('m.user_id')
-        ->groupBy('m.user_id', DB::raw('DATE(r.fecha_visita)'))
-        ->get([
-            'm.user_id',
-            DB::raw('DATE(r.fecha_visita) as dia'),
-            // conteos
-            DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 1 ELSE 0 END) as extras'),
-            DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 0 ELSE 1 END) as normales'),
-            // suma de pagos ptm (solo cuando existe)
-            DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
-                            THEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) 
-                            ELSE 0 END) as suma_ptm'),
-            // cuántos quedaron sin precio (para multiplicar por base)
-            DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
-                            THEN 0 ELSE 1 END) as faltantes')
-        ]);
+    //     // Traer agregados por user y día de la semana
+    //     $rows = DB::table('masajes as m')
+    //         ->join('reservas as r','r.id','=','m.id_reserva')
+    //         ->join('tipos_masajes as tm','tm.nombre','=','m.tipo_masaje')
+    //         ->leftJoin('precios_tipos_masajes as ptm_des', function($j){
+    //             $j->on('ptm_des.id_tipo_masaje','=','tm.id')
+    //             ->whereRaw('ptm_des.duracion_minutos = CASE WHEN m.tiempo_extra=1 THEN 60 ELSE 30 END');
+    //         })
+    //         ->leftJoinSub($ptmAny,'ptm_any', function($j){
+    //             $j->on('ptm_any.id_tipo_masaje','=','tm.id');
+    //         })
+    //         ->whereBetween('r.fecha_visita', [$inicioSemana, $finSemana])
+    //         ->whereIn('m.user_id', $masoterapeutas->pluck('id'))
+    //         ->whereNotNull('m.user_id')
+    //         ->groupBy('m.user_id', DB::raw('DATE(r.fecha_visita)'))
+    //         ->get([
+    //             'm.user_id',
+    //             DB::raw('DATE(r.fecha_visita) as dia'),
+    //             // conteos
+    //             DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 1 ELSE 0 END) as extras'),
+    //             DB::raw('SUM(CASE WHEN m.tiempo_extra=1 THEN 0 ELSE 1 END) as normales'),
+    //             // suma de pagos ptm (solo cuando existe)
+    //             DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
+    //                             THEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) 
+    //                             ELSE 0 END) as suma_ptm'),
+    //             // cuántos quedaron sin precio (para multiplicar por base)
+    //             DB::raw('SUM(CASE WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) > 0 
+    //                             THEN 0 ELSE 1 END) as faltantes')
+    //         ]);
 
-    // Armar estructuras que usa la Blade
-    $cantidadMasajesPorSemana = [];
-    $cantidadMasajesPorDia    = [];
-    $totalSemanas             = [];
+    //     // Armar estructuras que usa la Blade
+    //     $cantidadMasajesPorSemana = [];
+    //     $cantidadMasajesPorDia    = [];
+    //     $totalSemanas             = [];
 
-    foreach ($masoterapeutas as $m) {
-        $cantidadMasajesPorSemana[$m->id] = 0;
-        $totalSemanas[$m->id] = 0;
-        // inicializar días
-        foreach ($diasSemana as $diaTxt) {
-            $cantidadMasajesPorDia[$m->id][$diaTxt] = ['normales'=>0,'extras'=>0,'total'=>0];
+    //     foreach ($masoterapeutas as $m) {
+    //         $cantidadMasajesPorSemana[$m->id] = 0;
+    //         $totalSemanas[$m->id] = 0;
+    //         // inicializar días
+    //         foreach ($diasSemana as $diaTxt) {
+    //             $cantidadMasajesPorDia[$m->id][$diaTxt] = ['normales'=>0,'extras'=>0,'total'=>0];
+    //         }
+    //     }
+
+    //     foreach ($rows as $r) {
+    //         $uid = (int)$r->user_id;
+    //         $base = $bases[$uid] ?? 10000;
+
+    //         // mapear fecha -> texto día (Lunes..Domingo)
+    //         $dow = Carbon::parse($r->dia)->locale('es')->dayOfWeekIso; // 1..7
+    //         $diaTxt = $diasSemana[$dow-1];
+
+    //         $normales = (int)$r->normales;
+    //         $extras   = (int)$r->extras;
+    //         $sumaPtm  = (int)$r->suma_ptm;
+    //         $faltantes= (int)$r->faltantes;
+
+    //         $totalDia = $sumaPtm + ($faltantes * $base);
+
+    //         $cantidadMasajesPorDia[$uid][$diaTxt]['normales'] += $normales;
+    //         $cantidadMasajesPorDia[$uid][$diaTxt]['extras']   += $extras;
+    //         $cantidadMasajesPorDia[$uid][$diaTxt]['total']    += $totalDia;
+
+    //         $cantidadMasajesPorSemana[$uid] += ($normales + $extras);
+    //         $totalSemanas[$uid]             += $totalDia;
+    //     }
+
+    //     return view('themes.backoffice.pages.admin.index', [
+    //         'masoterapeutas'           => $masoterapeutas,
+    //         'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
+    //         'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
+    //         'diasSemana'               => $diasSemana,
+    //         'fechasDiasSemana'         => $fechasDiasSemana,
+    //         'totalSemanas'             => $totalSemanas
+    //     ]);
+    // }
+
+    // /** override > rango rol(8) vigente > 8000 */
+    // private function mapBaseRates(array $userIds): array
+    // {
+    //     $hoy = now()->toDateString();
+
+    //     $overrides = DB::table('anular_sueldo_usuarios')
+    //         ->whereIn('user_id', $userIds)
+    //         ->select('user_id','salario','created_at')
+    //         ->orderByDesc('created_at')->get()
+    //         ->groupBy('user_id')->map(function($g){return (int)$g->first()->salario;});
+
+    //     $rango = (int) DB::table('rango_sueldo_roles')
+    //         ->where('role_id',8)
+    //         ->whereDate('vigente_desde','<=',$hoy)
+    //         ->where(function($q) use ($hoy){
+    //             $q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta','>=',$hoy);
+    //         })
+    //         ->orderByDesc('vigente_desde')->value('sueldo_base');
+
+    //     $bases=[];
+    //     foreach ($userIds as $id) $bases[$id] = $overrides[$id] ?? ($rango>0?$rango:10000);
+    //     return $bases;
+    // }
+
+
+
+
+    public function index()
+    {
+        Carbon::setLocale('es');
+
+        // 1) Semana actual (Lunes–Domingo)
+        $inicioSemana = Carbon::now()->startOfWeek(Carbon::MONDAY)->toDateString();
+        $finSemana    = Carbon::now()->endOfWeek(Carbon::SUNDAY)->toDateString();
+
+        // 2) Nombres de días y mapa DíaTexto -> Fecha
+        $diasSemana = ['Lunes','Martes','Miércoles','Jueves','Viernes','Sábado','Domingo'];
+
+        $fechasDiasSemana = [];
+        foreach ($diasSemana as $i => $nombreDia) {
+            $fechasDiasSemana[$nombreDia] = Carbon::parse($inicioSemana)
+                ->addDays($i)
+                ->toDateString();
         }
+
+        // 3) Masoterapeutas (usuarios con rol masoterapeuta)
+        $masoterapeutas = User::whereHas('roles', function ($q) {
+                $q->where('name', 'masoterapeuta');
+            })
+            ->orderBy('name')
+            ->get(['id', 'name']);
+
+        $userIds = $masoterapeutas->pluck('id')->all();
+
+        // 4) Base por usuario (override > rango rol(8) > 8000)
+        $bases = $this->mapBaseRates($userIds);
+
+        // 5) Subconsulta: último precio por tipo de masaje (por si no hay exacto por duración)
+        $ptmAny = DB::table('precios_tipos_masajes as p1')
+            ->select('p1.id_tipo_masaje', 'p1.pago_masoterapeuta', 'p1.updated_at')
+            ->whereRaw(
+                'NOT EXISTS (
+                    SELECT 1 FROM precios_tipos_masajes p2
+                    WHERE p2.id_tipo_masaje = p1.id_tipo_masaje
+                      AND p2.updated_at > p1.updated_at
+                )'
+            );
+
+        // 6) Agregados por user + día dentro de la semana
+        $rows = DB::table('masajes as m')
+            ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
+            ->join('tipos_masajes as tm', 'tm.nombre', '=', 'm.tipo_masaje')
+            // precio según duración (30 normal, 60 tiempo extra)
+            ->leftJoin('precios_tipos_masajes as ptm_des', function ($join) {
+                $join->on('ptm_des.id_tipo_masaje', '=', 'tm.id')
+                     ->whereRaw('ptm_des.duracion_minutos = CASE 
+                                                               WHEN m.tiempo_extra = 1 THEN 60 
+                                                               ELSE 30 
+                                                             END');
+            })
+            // fallback: último registro de precio por tipo
+            ->leftJoinSub($ptmAny, 'ptm_any', function ($join) {
+                $join->on('ptm_any.id_tipo_masaje', '=', 'tm.id');
+            })
+            ->whereBetween('r.fecha_visita', [$inicioSemana, $finSemana])
+            ->whereNotNull('m.user_id')
+            ->whereIn('m.user_id', $userIds)
+            ->groupBy('m.user_id', DB::raw('DATE(r.fecha_visita)'))
+            ->get([
+                'm.user_id',
+                DB::raw('DATE(r.fecha_visita) as dia'),
+
+                // conteo de normales / extras solo para mostrar
+                DB::raw('SUM(CASE WHEN m.tiempo_extra = 1 THEN 1 ELSE 0 END) as extras'),
+                DB::raw('SUM(CASE WHEN m.tiempo_extra = 1 THEN 0 ELSE 1 END) as normales'),
+
+                // suma de pagos definidos (>0) desde precios_tipos_masajes
+                DB::raw('
+                    SUM(
+                        CASE 
+                            WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) IS NULL
+                                 OR COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) = 0
+                            THEN 0
+                            ELSE COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta)
+                        END
+                    ) as suma_ptm
+                '),
+
+                // cuántos masajes NO tienen pago definido (NULL o 0) → usar salario base del user
+                DB::raw('
+                    SUM(
+                        CASE 
+                            WHEN COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) IS NULL
+                                 OR COALESCE(ptm_des.pago_masoterapeuta, ptm_any.pago_masoterapeuta) = 0
+                            THEN 1
+                            ELSE 0
+                        END
+                    ) as faltantes
+                '),
+            ]);
+
+        // 7) Inicializar estructuras para TODOS los masoterapeutas
+        $cantidadMasajesPorSemana = [];
+        $cantidadMasajesPorDia    = [];
+        $totalSemanas             = [];
+
+        foreach ($masoterapeutas as $maso) {
+            $cantidadMasajesPorSemana[$maso->id] = 0;
+            $totalSemanas[$maso->id]            = 0;
+
+            foreach ($diasSemana as $diaTxt) {
+                $cantidadMasajesPorDia[$maso->id][$diaTxt] = [
+                    'normales' => 0,
+                    'extras'   => 0,
+                    'total'    => 0,
+                ];
+            }
+        }
+
+        // 8) Rellenar con los datos agregados
+        foreach ($rows as $row) {
+            $uid  = (int) $row->user_id;
+            $base = $bases[$uid] ?? 10000; // override user > rango rol > 10000
+
+            // día de la semana en texto (Lunes..Domingo)
+            $dow    = Carbon::parse($row->dia)->dayOfWeekIso; // 1..7
+            $diaTxt = $diasSemana[$dow - 1];
+
+            $normales  = (int) $row->normales;
+            $extras    = (int) $row->extras;
+            $sumaPtm   = (int) $row->suma_ptm;
+            $faltantes = (int) $row->faltantes;
+
+            // total del día:
+            //   - masajes con precio definido → suma_ptm
+            //   - masajes sin precio (NULL/0) → faltantes * base del usuario
+            $totalDia = $sumaPtm + ($faltantes * $base);
+
+            $cantidadMasajesPorDia[$uid][$diaTxt]['normales'] += $normales;
+            $cantidadMasajesPorDia[$uid][$diaTxt]['extras']   += $extras;
+            $cantidadMasajesPorDia[$uid][$diaTxt]['total']    += $totalDia;
+
+            $cantidadMasajesPorSemana[$uid] += ($normales + $extras);
+            $totalSemanas[$uid]             += $totalDia;
+        }
+
+        // 9) Enviar todo a la vista
+        return view('themes.backoffice.pages.admin.index', [
+            'masoterapeutas'           => $masoterapeutas,
+            'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
+            'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
+            'diasSemana'               => $diasSemana,
+            'fechasDiasSemana'         => $fechasDiasSemana,
+            'totalSemanas'             => $totalSemanas,
+        ]);
     }
 
-    foreach ($rows as $r) {
-        $uid = (int)$r->user_id;
-        $base = $bases[$uid] ?? 8000;
+    /**
+     * Calcula salario base por usuario:
+     *  - Primero override en anular_sueldo_usuarios
+     *  - Luego rango_sueldo_roles para role_id = 8
+     *  - Si nada, usa 10000
+     */
+    private function mapBaseRates(array $userIds): array
+    {
+        if (empty($userIds)) {
+            return [];
+        }
 
-        // mapear fecha -> texto día (Lunes..Domingo)
-        $dow = Carbon::parse($r->dia)->locale('es')->dayOfWeekIso; // 1..7
-        $diaTxt = $diasSemana[$dow-1];
+        $hoy = Carbon::now()->toDateString();
 
-        $normales = (int)$r->normales;
-        $extras   = (int)$r->extras;
-        $sumaPtm  = (int)$r->suma_ptm;
-        $faltantes= (int)$r->faltantes;
+        // Overrides individuales (anular_sueldo_usuarios)
+        $overrides = DB::table('anular_sueldo_usuarios')
+            ->whereIn('user_id', $userIds)
+            ->orderByDesc('created_at')
+            ->get()
+            ->groupBy('user_id')
+            ->map(function ($group) {
+                return (int) $group->first()->salario;
+            })
+            ->toArray(); // clave: user_id
 
-        $totalDia = $sumaPtm + ($faltantes * $base);
+        // Rango base para el rol masoterapeuta (role_id = 8)
+        $rango = (int) DB::table('rango_sueldo_roles')
+            ->where('role_id', 8)
+            ->whereDate('vigente_desde', '<=', $hoy)
+            ->where(function ($q) use ($hoy) {
+                $q->whereNull('vigente_hasta')
+                  ->orWhereDate('vigente_hasta', '>=', $hoy);
+            })
+            ->orderByDesc('vigente_desde')
+            ->value('sueldo_base');
 
-        $cantidadMasajesPorDia[$uid][$diaTxt]['normales'] += $normales;
-        $cantidadMasajesPorDia[$uid][$diaTxt]['extras']   += $extras;
-        $cantidadMasajesPorDia[$uid][$diaTxt]['total']    += $totalDia;
+        $default = $rango > 0 ? $rango : 10000;
 
-        $cantidadMasajesPorSemana[$uid] += ($normales + $extras);
-        $totalSemanas[$uid]             += $totalDia;
+        $bases = [];
+        foreach ($userIds as $id) {
+            $bases[$id] = $overrides[$id] ?? $default;
+        }
+
+        return $bases;
     }
-
-    return view('themes.backoffice.pages.admin.index', [
-        'masoterapeutas'           => $masoterapeutas,
-        'cantidadMasajesPorSemana' => $cantidadMasajesPorSemana,
-        'cantidadMasajesPorDia'    => $cantidadMasajesPorDia,
-        'diasSemana'               => $diasSemana,
-        'fechasDiasSemana'         => $fechasDiasSemana,
-        'totalSemanas'             => $totalSemanas
-    ]);
-}
-
-/** override > rango rol(8) vigente > 8000 */
-private function mapBaseRates(array $userIds): array
-{
-    $hoy = now()->toDateString();
-
-    $overrides = DB::table('anular_sueldo_usuarios')
-        ->whereIn('user_id', $userIds)
-        ->select('user_id','salario','created_at')
-        ->orderByDesc('created_at')->get()
-        ->groupBy('user_id')->map(function($g){return (int)$g->first()->salario;});
-
-    $rango = (int) DB::table('rango_sueldo_roles')
-        ->where('role_id',8)
-        ->whereDate('vigente_desde','<=',$hoy)
-        ->where(function($q) use ($hoy){
-            $q->whereNull('vigente_hasta')->orWhereDate('vigente_hasta','>=',$hoy);
-        })
-        ->orderByDesc('vigente_desde')->value('sueldo_base');
-
-    $bases=[];
-    foreach ($userIds as $id) $bases[$id] = $overrides[$id] ?? ($rango>0?$rango:8000);
-    return $bases;
-}
-
-
-
-
-
-
-
-
 
 
 

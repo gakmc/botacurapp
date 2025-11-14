@@ -14,7 +14,9 @@ class SueldoPagado extends Model
         'semana_inicio',
         'semana_fin',
         'fecha_pago',
-        'monto'
+        'monto',
+        'bono',
+        'motivo'
     ];
 
     public function user()
