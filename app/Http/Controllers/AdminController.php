@@ -1274,24 +1274,37 @@ class AdminController extends Controller
             ->whereYear('fecha', $anio)
             ->get();
 
-        $totalPropina = $propinas->sum('cantidad');
+            $totalPropina = $propinas->sum('cantidad');
+            
+            // $usuariosUnicos = collect();
+            
+        $colaboradores = DB::table('asignaciones')
+            ->join('asignacion_user', 'asignaciones.id', '=', 'asignacion_user.asignacion_id')
+            ->whereDay('asignaciones.fecha', $dia)
+            ->whereMonth('asignaciones.fecha', $mes)
+            ->whereYear('asignaciones.fecha', $anio)
+            ->count('asignacion_user.user_id');
 
-        $usuariosUnicos = collect();
+        // Si no hay nadie asignado → devolver 0
+        // $colaboradores = $colaboradores ?? 0;
 
-        foreach ($propinas as $propina) {
-            foreach ($propina->users as $user) {
-                $usuariosUnicos->put($user->id, $user);
-            }
-        }
-
-        $cantidadUsuarios  = $usuariosUnicos->count();
+        // dd($colaboradores);
+            
+            // foreach ($propinas as $propina) {
+            //     foreach ($propina->users as $user) {
+            //         $usuariosUnicos->put($user->id, $user);
+            //     }
+            // }
+            
+        // $cantidadUsuarios  = $usuariosUnicos->count();
+        $cantidadUsuarios  = $colaboradores ?? 0;
         $propinaPorUsuario = $cantidadUsuarios > 0 ? ($totalPropina / $cantidadUsuarios) : 0;
 
         $nombreMes = Carbon::createFromDate($anio, $mes, $dia)
             ->locale('es')
             ->translatedFormat('d \d\e F \d\e Y');
 
-        return view('themes.backoffice.pages.admin.anfitriona.cierre_caja', compact('ventas', 'nombreMes', 'anio', 'mes', 'dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'totalPropina', 'cantidadUsuarios', 'propinaPorUsuario', 'usuariosUnicos', 'propinasVentaDirecta', 'propinas'));
+        return view('themes.backoffice.pages.admin.anfitriona.cierre_caja', compact('ventas', 'nombreMes', 'anio', 'mes', 'dia', 'ingresosVentas', 'ventasPendientes', 'tiposTransacciones', 'programas', 'totalPropina', 'cantidadUsuarios', 'propinaPorUsuario', 'propinasVentaDirecta', 'propinas'));
 
     }
 

@@ -89,9 +89,9 @@
                                     <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" disabled selected>-- Seleccione --</option>
-                                        <option value="Relajante" {{ old('tipo_masaje')=='Relajante' ? 'selected' : ''
+                                        <option value="Relajación" {{ old('tipo_masaje')=='Relajación' ? 'selected' : ''
                                             }}>
-                                            Relajante
+                                            Relajación
                                         </option>
                                         <option value="Descontracturante" {{ old('tipo_masaje')=='Descontracturante'
                                             ? 'selected' : '' }}>
@@ -160,9 +160,9 @@
                                 <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                     <option value="" disabled selected>-- Seleccione --</option>
-                                    <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
+                                    <option value="Relajación" {{ old("masajes.{$i}.tipo_masaje")=='Relajación' ? 'selected' : ''
                                         }}>
-                                        Relajante
+                                        Relajación
                                     </option>
                                     <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
                                         ? 'selected' : '' }}>
@@ -262,9 +262,9 @@
                                     <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                         <option value="" disabled selected>-- Seleccione --</option>
-                                        <option value="Relajante" {{ old("masajes.{$i}.tipo_masaje")=='Relajante' ? 'selected' : ''
+                                        <option value="Relajación" {{ old("masajes.{$i}.tipo_masaje")=='Relajación' ? 'selected' : ''
                                             }}>
-                                            Relajante
+                                            Relajación
                                         </option>
                                         <option value="Descontracturante" {{ old("masajes.{$i}.tipo_masaje")=='Descontracturante'
                                             ? 'selected' : '' }}>

@@ -47,7 +47,7 @@
                     </form>
 
                     {{-- Tabla de sueldos --}}
-                    @php
+                    {{-- @php
                     $sueldoMes = 0;
                     @endphp
                     <table class="centered">
@@ -83,7 +83,107 @@
                                 <td><strong>Total del mes: ${{number_format($sueldoMes,0,'','.')}} </strong></td>
                             </tr>
                         </tbody>
-                    </table>
+                    </table> --}}
+
+@php
+    $totalPagina = 0;
+@endphp
+
+<table class="centered">
+    <thead>
+        <tr>
+            <th>Fecha</th>
+            <th>Cant. Masajes</th>
+            <th>Total Masajes ($)</th>
+            <th>Total día ($)</th>
+        </tr>
+    </thead>
+    <tbody>
+@forelse ($sueldos as $sueldo)
+            @php
+                $diaClave = \Carbon\Carbon::parse($sueldo->dia_trabajado)->toDateString();
+
+                 $cantidadMasajes = $masajesPorDia[$diaClave] ?? 0;
+                
+                $totalDia = (int) $sueldo->sub_sueldo; // solo masajes
+                $totalPagina += $totalDia;
+            @endphp
+            <tr>
+                <td>{{ \Carbon\Carbon::parse($sueldo->dia_trabajado)->locale('es')->isoFormat('D [de] MMM') }}</td>
+                <td>{{ $cantidadMasajes }}</td>
+                <td>${{ number_format($sueldo->sub_sueldo, 0, ',', '.') }}</td>
+                <td>${{ number_format($totalDia, 0, ',', '.') }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="4">No hay registros para este período.</td>
+            </tr>
+        @endforelse
+
+        <tr>
+            <td colspan="3" class="right-align"><strong>Total mostrado en esta página:</strong></td>
+            <td><strong>${{ number_format($totalPagina, 0, ',', '.') }}</strong></td>
+        </tr>
+    </tbody>
+</table>
+
+
+
+
+<br>
+<h5>Bonos del mes</h5>
+<table class="centered">
+    <thead>
+        <tr>
+            <th>Semana</th>
+            <th>Fecha Pago</th>
+
+            <th>Bono ($)</th>
+            <th>Motivo</th>
+            <th>Total semana ($)</th>
+        </tr>
+    </thead>
+    <tbody>
+        @forelse ($bonos as $pago)
+            @php
+                $totalSemana = (int) $pago->monto + (int) $pago->bono;
+            @endphp
+            <tr>
+                <td>
+                    {{ \Carbon\Carbon::parse($pago->semana_inicio)->format('d/m') }}
+                    -
+                    {{ \Carbon\Carbon::parse($pago->semana_fin)->format('d/m') }}
+                </td>
+                <td>{{ \Carbon\Carbon::parse($pago->fecha_pago)->format('d/m/Y') }}</td>
+
+                <td>${{ number_format($pago->bono, 0, ',', '.') }}</td>
+                <td>{{ $pago->motivo ?: '-' }}</td>
+                <td>${{ number_format($totalSemana, 0, ',', '.') }}</td>
+            </tr>
+        @empty
+            <tr>
+                <td colspan="6">No hay bonos registrados para este mes.</td>
+            </tr>
+        @endforelse
+    </tbody>
+</table>
+
+
+
+<br>
+<div class="right-align">
+    <p><strong>Total masajes del mes:</strong> ${{ number_format($totalMasajesMes, 0, ',', '.') }}</p>
+    <p><strong>Total bonos del mes:</strong> ${{ number_format($totalBonosMes, 0, ',', '.') }}</p>
+    <p><strong>Total a pagar (masajes + bonos):</strong> ${{ number_format($totalMesGlobal, 0, ',', '.') }}</p>
+</div>
+
+
+
+<div class="center-align">
+    {{ $sueldos->appends(['mes' => $mes, 'anio' => $anio])->links('vendor.pagination.materialize') }}
+</div>
+
+
 
                     {{-- Paginación --}}
                     <div class="center-align">

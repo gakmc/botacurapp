@@ -269,7 +269,7 @@ class SueldoController extends Controller
     public function adminViewSueldos(User $user, $anio, $mes, Request $request)
     {
         $userId = $user->id;
-
+        
         // Obtener todos los meses/años únicos en que el usuario trabajó
         $fechasDisponibles = Sueldo::where('id_user', $userId)
             ->selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
@@ -292,6 +292,18 @@ class SueldoController extends Controller
             ->orderBy('dia_trabajado', 'asc')
             ->get();
 
+        $masajesPorDia = [];
+        foreach ($sueldos as $sueldo) {
+            $fecha = Carbon::parse($sueldo->dia_trabajado)->toDateString();
+
+
+            $masajesPorDia[$fecha] = DB::table('masajes as m')
+                ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
+                ->where('m.user_id', $userId)
+                ->whereDate('r.fecha_visita', $fecha)
+                ->count();
+        }
+
 
         // // Agrupar los sueldos por semana
         $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
@@ -303,13 +315,30 @@ class SueldoController extends Controller
         });
 
 
-        return view('themes.backoffice.pages.sueldo.admin_view', [
-            'sueldosAgrupados' => $sueldosAgrupados,
-            'mes' => $mes,
-            'anio' => $anio,
-            'fechasDisponibles' => $fechasDisponibles,
-            'user' => $user,
-        ]);
+        if ($user->has_role('masoterapeuta')) {
+
+            return view('themes.backoffice.pages.sueldo.admin_view_maso', [
+                'sueldosAgrupados' => $sueldosAgrupados,
+                'mes' => $mes,
+                'anio' => $anio,
+                'fechasDisponibles' => $fechasDisponibles,
+                'user' => $user,
+                'masajesPorDia' => $masajesPorDia
+            ]);
+
+        }else{
+            
+            return view('themes.backoffice.pages.sueldo.admin_view', [
+                'sueldosAgrupados' => $sueldosAgrupados,
+                'mes' => $mes,
+                'anio' => $anio,
+                'fechasDisponibles' => $fechasDisponibles,
+                'user' => $user,
+            ]);
+
+        }
+
+
     }
 
 
@@ -501,35 +530,109 @@ class SueldoController extends Controller
     }
 
 
+    // public function view_maso(User $user, Request $request)
+    // {
+    //     $userId = $user->id;
+
+    //     // Obtener mes y año del request o usar el mes y año actuales como predeterminado
+    //     $currentMonth = $request->input('mes', now()->month);
+    //     $currentYear = $request->input('anio', now()->year);
+
+    //     // Filtrar registros por el mes seleccionado
+    //     $sueldos = Sueldo::where('id_user', $userId)
+    //         ->whereMonth('dia_trabajado', $currentMonth)
+    //         ->whereYear('dia_trabajado', $currentYear)
+    //         ->orderBy('dia_trabajado', 'asc')
+    //         ->paginate(15); // Paginación con 10 registros por página
+
+    //     // Verificar la autorización para al menos un sueldo
+    //     if ($sueldos->isNotEmpty()) {
+    //         $this->authorize('view', $sueldos->first());
+    //     } else {
+    //         abort(403);
+    //     }
+
+    //     return view('themes.backoffice.pages.sueldo.view_maso', [
+    //         'sueldos' => $sueldos,
+    //         'mes' => $currentMonth,
+    //         'anio' => $currentYear,
+    //         'user' => $user,
+    //     ]);
+    // }
+
+
+
+
+
     public function view_maso(User $user, Request $request)
     {
         $userId = $user->id;
 
-        // Obtener mes y año del request o usar el mes y año actuales como predeterminado
         $currentMonth = $request->input('mes', now()->month);
-        $currentYear = $request->input('anio', now()->year);
+        $currentYear  = $request->input('anio', now()->year);
 
-        // Filtrar registros por el mes seleccionado
-        $sueldos = Sueldo::where('id_user', $userId)
+        // Query base de sueldos del usuario
+        $baseQuery = Sueldo::where('id_user', $userId)
             ->whereMonth('dia_trabajado', $currentMonth)
-            ->whereYear('dia_trabajado', $currentYear)
-            ->orderBy('dia_trabajado', 'asc')
-            ->paginate(15); // Paginación con 10 registros por página
+            ->whereYear('dia_trabajado', $currentYear);
 
-        // Verificar la autorización para al menos un sueldo
+        // Paginación por día
+        $sueldos = (clone $baseQuery)
+            ->orderBy('dia_trabajado', 'asc')
+            ->paginate(15);
+
         if ($sueldos->isNotEmpty()) {
             $this->authorize('view', $sueldos->first());
         } else {
             abort(403);
         }
 
+        // 🔹 Cantidad de masajes por cada día de sueldo (usando MASAJES.created_at)
+        $masajesPorDia = [];
+        foreach ($sueldos as $sueldo) {
+            $fecha = Carbon::parse($sueldo->dia_trabajado)->toDateString();
+
+
+            $masajesPorDia[$fecha] = DB::table('masajes as m')
+                ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
+                ->where('m.user_id', $userId)
+                ->whereDate('r.fecha_visita', $fecha)
+                ->count();
+        }
+
+        // Total masajes del mes en plata
+        $totalMasajesMes = (clone $baseQuery)->sum('sub_sueldo');
+
+        // Bonos del mes desde sueldos_pagados
+        $bonos = DB::table('sueldos_pagados')
+            ->where('user_id', $userId)
+            ->whereMonth('fecha_pago', $currentMonth)
+            ->whereYear('fecha_pago', $currentYear)
+            ->orderBy('fecha_pago')
+            ->get();
+
+        $totalBonosMes  = $bonos->sum('bono');
+        $totalMesGlobal = $totalMasajesMes + $totalBonosMes;
+
         return view('themes.backoffice.pages.sueldo.view_maso', [
-            'sueldos' => $sueldos,
-            'mes' => $currentMonth,
-            'anio' => $currentYear,
-            'user' => $user,
+            'sueldos'         => $sueldos,
+            'mes'             => $currentMonth,
+            'anio'            => $currentYear,
+            'user'            => $user,
+            'masajesPorDia'   => $masajesPorDia, // ['2025-05-13' => 2, ...]
+            'bonos'           => $bonos,
+            'totalMasajesMes' => $totalMasajesMes,
+            'totalBonosMes'   => $totalBonosMes,
+            'totalMesGlobal'  => $totalMesGlobal,
         ]);
     }
+
+
+
+
+
+
+
 
     /**
      * Show the form for creating a new resource.

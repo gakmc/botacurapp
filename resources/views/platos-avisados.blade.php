@@ -81,6 +81,7 @@
         const url = entregado.data('url');
         const menu = $('#menuSelect_'+id);
 
+        
         $.ajax({
             url: url,
             method: 'POST',
@@ -128,26 +129,28 @@
 <script>
 $(document).ready(function () {
     if (typeof window.Echo !== 'undefined') {
-        window.Echo.channel('entregar-menu')
-        .listen('.menuEntregado', (e) => {
-            const entregado = $(`#entregar_${e.idReserva}`);
-            const menu = $(`#menuSelect_${e.idReserva}`);
-
-            menu.hide();
-
-        });
-
         // Canal para avisos nuevos desde cocina
         window.Echo.channel('aviso-cocina')
-        .listen('.reservaAvisada', (e) => {
-            // Reproducir sonido
-            const audio = new Audio('/sounds/notificacionv2.mp3');
-            audio.play();
+            .listen('.reservaAvisada', (e) => {
+                // Reproducir sonido
+                const audio = new Audio('/sounds/notificacionv2.mp3');
+                audio.play();
 
-            audio.onended = () => {
-                location.reload();
-            };
-        });
+                audio.onended = () => {
+                    location.reload();
+                };
+            });
+
+
+
+        window.Echo.channel('entregar-menu')
+            .listen('.menuEntregado', (e) => {
+                const entregado = $(`#entregar_${e.idReserva}`);
+                const menu = $(`#menuSelect_${e.idReserva}`);
+
+                menu.hide();
+
+            });
 
     }else{
         console.error('Echo no está inicializado.');

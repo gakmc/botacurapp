@@ -995,21 +995,56 @@ class ReservaController extends Controller
     public function indexallRegistros()
     {
         Carbon::setLocale('es');
-        
-        $currentMonth = Carbon::now()->month;
-        $currentYear  = Carbon::now()->year;
 
-        
-        $reservasPorMes = Reserva::with(['cliente', 'visitas', 'programa.servicios', 'venta', 'menus', 'masajes', 'venta.consumo'])
+        $inicioDebug = microtime(true);
+                
+        $reservasPorMes = Reserva::with(['cliente'])
             ->orderBy('fecha_visita')
             ->get()
             ->groupBy(function ($date) {
                 return Carbon::parse($date->fecha_visita)->format('Y-m');
             });
 
+        
+        $finDebug = microtime(true);
+        Log::info("Tiempo controlador Registro de reservas (/reservas/registros): ".round($finDebug - $inicioDebug, 3)." s");
+
         return view('themes.backoffice.pages.reserva.all_registro', [
             'reservasPorMes' => $reservasPorMes,
         ]);
+    }
+
+
+    public function eventosCalendar(Request $request)
+    {
+        $start = Carbon::parse($request->start)->startOfDay();
+        $end   = Carbon::parse($request->end)->endOfDay();
+
+        // Traemos SOLO lo que se ve en el calendario
+        $reservas = Reserva::with('cliente')
+            ->whereBetween('fecha_visita', [$start, $end])
+            ->orderBy('fecha_visita')
+            ->get()
+            ->groupBy('fecha_visita');
+
+        $eventos = [];
+
+        foreach ($reservas as $fecha => $lista) {
+            $clientes = $lista->pluck('cliente.nombre_cliente')->toArray();
+            $reservaEjemplo = $lista->first();
+
+            $eventos[] = [
+                'title' => implode(', ', $clientes),
+                'start' => $fecha, // FullCalendar entiende 'YYYY-MM-DD'
+                'url'   => route('backoffice.reservas.registro', ['fecha' => $fecha]),
+                'extendedProps' => [
+                    'observacion' => $reservaEjemplo->observacion,
+                    'cantidad'    => count($clientes),
+                ],
+            ];
+        }
+
+        return response()->json($eventos);
     }
 
 

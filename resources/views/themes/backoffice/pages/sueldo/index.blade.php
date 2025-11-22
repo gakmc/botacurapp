@@ -227,7 +227,20 @@
 
         <h5><strong>{{ $rango }}</strong></h5>
 
-        <div class="row">
+        {{-- <div class="row">
+            <div class="input-field col s12 m2 right">
+                <label for="motivo-{{ $semanaId }}">Motivo</label>
+                <input id="motivo-{{ $semanaId }}" placeholder="Navidad, Fiestas Patrias, etc."
+                    type="text" name="motivo" class="">
+            </div>
+            <div class="input-field col s12 m2 right">
+                <label for="bono-{{ $semanaId }}">Bono</label>
+                <input id="bono-{{ $semanaId }}" placeholder="" type="text"
+                    name="bono" class="money-format">
+            </div>
+        </div> --}}
+
+        <div class="row fila-bono-motivo" data-semana="{{ $semanaId }}">
             <div class="input-field col s12 m2 right">
                 <label for="motivo-{{ $semanaId }}">Motivo</label>
                 <input id="motivo-{{ $semanaId }}" placeholder="Navidad, Fiestas Patrias, etc."
@@ -239,6 +252,7 @@
                     name="bono" class="money-format">
             </div>
         </div>
+
 
         <table class="">
             <thead>
@@ -283,7 +297,7 @@
                             }
                         @endphp
                         
-                        <td>${{ $esMaso ? ($usuario['total'] - $bono) : number_format($usuario['sueldos'], 0, '', '.') }}</td>
+                        <td>${{ $esMaso ? number_format($usuario['total'] - $bono, 0, '', '.') : number_format($usuario['sueldos'], 0, '', '.') }}</td>
 
                         <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
 
@@ -395,39 +409,39 @@
     </script>
 
     <script>
-    $(document).ready(function () {
-        @if(session('info'))
-            Swal.fire({
-                toast: true,
-                position: '',
-                icon: 'info',
-                title: '{{ session('info') }}',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                  didOpen: (toast) => {
-                    toast.onmouseenter = Swal.stopTimer;
-                    toast.onmouseleave = Swal.resumeTimer;
-                  }
-            });
-        @endif
+        $(document).ready(function () {
+            @if(session('info'))
+                Swal.fire({
+                    toast: true,
+                    position: '',
+                    icon: 'info',
+                    title: '{{ session('info') }}',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+            @endif
 
-        @if(session('success'))
-            Swal.fire({
-                toast: true,
-                position: '',
-                icon: 'success',
-                title: '{{ session('success') }}',
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                  didOpen: (toast) => {
-                    toast.onmouseenter = Swal.stopTimer;
-                    toast.onmouseleave = Swal.resumeTimer;
-                  }
-            });
-        @endif
-    });
+            @if(session('success'))
+                Swal.fire({
+                    toast: true,
+                    position: '',
+                    icon: 'success',
+                    title: '{{ session('success') }}',
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+            @endif
+        });
     </script>
 
 
@@ -453,121 +467,147 @@
         }
     </script>
     
-{{-- <script>
-    $(document).ready(function () {
-        function actualizarUI() {
-            let seleccionados = $('.checkbox-sueldo:checked').length;
+    {{-- <script>
+        $(document).ready(function () {
+            function actualizarUI() {
+                let seleccionados = $('.checkbox-sueldo:checked').length;
 
-            if (seleccionados > 0) {
-                $('#asignacion-pagados').show();
-                $('#contador-pagados').text(seleccionados + ' Seleccionados');
-            } else {
-                $('#asignacion-pagados').hide();
+                if (seleccionados > 0) {
+                    $('#asignacion-pagados').show();
+                    $('#contador-pagados').text(seleccionados + ' Seleccionados');
+                } else {
+                    $('#asignacion-pagados').hide();
+                }
             }
-        }
 
-        // Ejecutar al cargar y cuando se haga clic en un checkbox
-        actualizarUI();
-
-        $(document).on('change', '.checkbox-sueldo', function () {
+            // Ejecutar al cargar y cuando se haga clic en un checkbox
             actualizarUI();
+
+            $(document).on('change', '.checkbox-sueldo', function () {
+                actualizarUI();
+            });
         });
-    });
-</script> --}}
+    </script> --}}
 
 
-{{-- 
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        $('.checkbox-sueldo').on('change', function () {
-            const semana = this.dataset.semana;
-            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
-            const contador = document.getElementById(`contador-${semana}`);
-            const contenedor = document.getElementById(`acciones-${semana}`);
+    {{-- 
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            $('.checkbox-sueldo').on('change', function () {
+                const semana = this.dataset.semana;
+                const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+                const contador = document.getElementById(`contador-${semana}`);
+                const contenedor = document.getElementById(`acciones-${semana}`);
 
-            const total = parseInt($(`.checkbox-sueldo:checked`).data('total'));
+                const total = parseInt($(`.checkbox-sueldo:checked`).data('total'));
 
-            var contar = contar + total;
-            console.warn(parseInt(total));
+                var contar = contar + total;
+                console.warn(parseInt(total));
 
-            if (checkboxes.length > 0) {
-                contador.textContent = `${checkboxes.length} Seleccionados`;
-                contenedor.style.display = 'block';
-            } else {
-                contenedor.style.display = 'none';
-            }
-        });
-
-        // Ejecutar al cargar la vista (útil si se recarga con checks marcados)
-        $('.checkbox-sueldo').each(function () {
-            const semana = this.dataset.semana;
-            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
-            const contador = document.getElementById(`contador-${semana}`);
-            const contenedor = document.getElementById(`acciones-${semana}`);
-
-
-            if (checkboxes.length > 0) {
-                contador.textContent = `${checkboxes.length} Seleccionados`;
-                contenedor.style.display = 'block';
-            }
-        });
-    });
-</script> --}}
-
-
-<script>
-    document.addEventListener('DOMContentLoaded', function () {
-        function actualizarTotalesPorSemana(semana) {
-            const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
-            const contador = document.getElementById(`contador-${semana}`);
-            const contenedor = document.getElementById(`acciones-${semana}`);
-
-            let total = 0;
-            checkboxes.forEach(cb => {
-                total += parseInt(cb.dataset.total) || 0;
+                if (checkboxes.length > 0) {
+                    contador.textContent = `${checkboxes.length} Seleccionados`;
+                    contenedor.style.display = 'block';
+                } else {
+                    contenedor.style.display = 'none';
+                }
             });
 
-            if (checkboxes.length > 0) {
-                contador.textContent = `${checkboxes.length} seleccionados - $${total.toLocaleString('es-CL')}`;
-                contenedor.style.display = 'block';
-            } else {
-                contador.textContent = `0 seleccionados - $0`;
-                contenedor.style.display = 'none';
-            }
-        }
-
-        // Al cambiar un checkbox
-        document.querySelectorAll('.checkbox-sueldo').forEach(checkbox => {
-            checkbox.addEventListener('change', function () {
+            // Ejecutar al cargar la vista (útil si se recarga con checks marcados)
+            $('.checkbox-sueldo').each(function () {
                 const semana = this.dataset.semana;
+                const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+                const contador = document.getElementById(`contador-${semana}`);
+                const contenedor = document.getElementById(`acciones-${semana}`);
+
+
+                if (checkboxes.length > 0) {
+                    contador.textContent = `${checkboxes.length} Seleccionados`;
+                    contenedor.style.display = 'block';
+                }
+            });
+        });
+    </script> --}}
+
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            function actualizarTotalesPorSemana(semana) {
+                const checkboxes = document.querySelectorAll(`.checkbox-sueldo[data-semana="${semana}"]:checked`);
+                const contador = document.getElementById(`contador-${semana}`);
+                const contenedor = document.getElementById(`acciones-${semana}`);
+
+                let total = 0;
+                checkboxes.forEach(cb => {
+                    total += parseInt(cb.dataset.total) || 0;
+                });
+
+                if (checkboxes.length > 0) {
+                    contador.textContent = `${checkboxes.length} seleccionados - $${total.toLocaleString('es-CL')}`;
+                    contenedor.style.display = 'block';
+                } else {
+                    contador.textContent = `0 seleccionados - $0`;
+                    contenedor.style.display = 'none';
+                }
+            }
+
+            // Al cambiar un checkbox
+            document.querySelectorAll('.checkbox-sueldo').forEach(checkbox => {
+                checkbox.addEventListener('change', function () {
+                    const semana = this.dataset.semana;
+                    actualizarTotalesPorSemana(semana);
+                });
+            });
+
+            // Ejecutar al cargar si hay checks marcados
+            document.querySelectorAll('.checkbox-sueldo:checked').forEach(cb => {
+                const semana = cb.dataset.semana;
                 actualizarTotalesPorSemana(semana);
             });
         });
+    </script>
 
-        // Ejecutar al cargar si hay checks marcados
-        document.querySelectorAll('.checkbox-sueldo:checked').forEach(cb => {
-            const semana = cb.dataset.semana;
-            actualizarTotalesPorSemana(semana);
+    <script>
+        $(document).ready(function () {
+            function formatCLP(valor) {
+                return '$' + valor.toLocaleString('es-CL');
+            }
+
+            function limpiarNumero(valor) {
+                valor = (valor || '').toString().replace(/[$.]/g, '').trim();
+                return valor === '' ? null : parseInt(valor, 10);
+            }
+
+            $('.money-format').on('change', function () {
+                let bruto = $(this).val();
+                let numero = limpiarNumero(bruto);
+
+                if (numero === null || isNaN(numero)) {
+                    
+                    $(this).val('');
+                } else {
+                    $(this).val(formatCLP(numero));
+                }
+            });
         });
-    });
-</script>
-
-<script>
-$(document).ready(function () {
-  function formatCLP(valor) {
-    return '$' + valor.toLocaleString('es-CL');
-  }
-
-  function limpiarNumero(valor) {
-    return parseInt(valor.replace(/[$.]/g, '')) || 0;
-  }
+    </script>
 
 
-  $('.money-format').change(function (e) {
-    var soloBono = limpiarNumero($('.money-format').val());
-    $('.money-format').val(formatCLP(soloBono));
-  });
-});
-</script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function (){
+            document.querySelectorAll('.fila-bono-motivo').forEach(function(fila){
+                var semana = fila.dataset.semana;
+
+                var checkbox = document.querySelector('.checkbox-sueldo[data-semana="' + semana + '"]');
+
+                if (!checkbox) {
+                    fila.style.display = 'none';
+                    $(fila).find('input').prop('disabled', true);
+                }
+
+            });
+        });
+    </script>
+
 
 @endsection

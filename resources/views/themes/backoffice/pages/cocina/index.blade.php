@@ -313,7 +313,6 @@
         .listen('.reservaAvisada', (e) => {
           const boton = $(`#avisar_${e.reservaId}`);
           boton.hide();
-
         });
     }else{
         console.error('Echo no está inicializado.');

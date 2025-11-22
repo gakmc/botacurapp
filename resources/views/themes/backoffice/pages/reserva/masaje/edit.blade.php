@@ -55,7 +55,7 @@
                                         @foreach ($tiposMasajes as $tm)
                                             <option value="{{$tm->nombre}}" {{ $masaje->tipo_masaje === $tm->nombre ? 'selected' : ''}}>{{$tm->nombre}}</option>
                                         @endforeach
-                                        {{-- <option value="Relajante" {{ $masaje->tipo_masaje ==='Relajante' ? 'selected' : ''}}>Relajante</option>
+                                        {{-- <option value="Relajación" {{ $masaje->tipo_masaje ==='Relajación' ? 'selected' : ''}}>Relajación</option>
                                         <option value="Descontracturante" {{ $masaje->tipo_masaje ==='Descontracturante' ? 'selected' : '' }}>Descontracturante</option> --}}
       
       

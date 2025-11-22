@@ -411,7 +411,7 @@ class VisitaController extends Controller
 
                             $masaje = Masaje::create([
                                 'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
-                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajante',
+                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajación',
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
                                 'persona'         => $contadorPersonas,
                                 'id_reserva'       => $reserva->id,
@@ -485,7 +485,7 @@ class VisitaController extends Controller
 
                             $masaje = Masaje::create([
                                 'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
-                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajante',
+                                'tipo_masaje'     => $horario['tipo_masaje'] ?? 'Relajación',
                                 'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
                                 'persona'         => $contadorPersonas,
                                 'id_reserva'       => $reserva->id,

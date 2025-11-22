@@ -84,9 +84,9 @@
                                   <select id="tipo_masaje" name="tipo_masaje" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
                                     
-                                      <option value="Relajante" {{ $visita->tipo_masaje === 'Relajante' ? 'selected' : ''
+                                      <option value="Relajación" {{ $visita->tipo_masaje === 'Relajación' ? 'selected' : ''
                                           }}>
-                                          Relajante
+                                          Relajación
                                       </option>
                                       <option value="Descontracturante" {{ $visita->tipo_masaje === 'Descontracturante'
                                           ? 'selected' : '' }}>
@@ -158,9 +158,9 @@
                               <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
 
-                                  <option value="Relajante" {{ isset($masajes[$i]->tipo_masaje) ==='Relajante' ? 'selected' : ''
+                                  <option value="Relajación" {{ isset($masajes[$i]->tipo_masaje) ==='Relajación' ? 'selected' : ''
                                       }}>
-                                      Relajante
+                                      Relajación
                                   </option>
                                   <option value="Descontracturante" {{ isset($masajes[$i]->tipo_masaje) ==='Descontracturante'
                                       ? 'selected' : '' }}>
@@ -250,9 +250,9 @@
 
                                   <select id="tipo_masaje_{{$i}}" name="masajes[{{$i}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
 
-                                        <option value="Relajante" {{ isset($masajes[$i]->tipo_masaje) ==='Relajante' ? 'selected' : ''
+                                        <option value="Relajación" {{ isset($masajes[$i]->tipo_masaje) ==='Relajación' ? 'selected' : ''
                                         }}>
-                                        Relajante
+                                        Relajación
                                         </option>
                                         <option value="Descontracturante" {{ isset($masajes[$i]->tipo_masaje )==='Descontracturante'
                                         ? 'selected' : '' }}>
