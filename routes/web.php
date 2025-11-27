@@ -179,6 +179,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('reservas/registro', 'ReservaController@indexReserva')->name('reservas.registro');
     
     Route::get('reservas/registros', 'ReservaController@indexallRegistros')->name('reservas.registros');
+
+    Route::get('/reservas/eventos', 'ReservaController@eventosCalendar')
+    ->name('reservas.eventos');
     
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
     

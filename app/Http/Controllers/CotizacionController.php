@@ -261,16 +261,28 @@ class CotizacionController extends Controller
         return $pdf->stream('cotizacion_'.$cotizacion->id.'.pdf');
     }
 
+    // public function enviarPDF(Cotizacion $cotizacion)
+    // {
+
+    //     $emitida = $cotizacion->fecha_emision->isoFormat('D [de] MMMM');
+    //     $reserva = $cotizacion->fecha_reserva->isoFormat('D [de] MMMM');
+    //     $pdfData = Pdf::loadView('pdf.cotizacion.viewPDF', compact('cotizacion','emitida','reserva'))
+    //                     ->output();
+
+    //     Mail::to($cotizacion->correo)
+    //         ->queue(new CotizacionMailable($cotizacion,$pdfData));
+
+    //     return back()->with('success','La cotizacion ha sido enviada satisfactoriamente.');
+    // }
+
     public function enviarPDF(Cotizacion $cotizacion)
     {
-        $emitida = $cotizacion->fecha_emision->isoFormat('D [de] MMMM');
-        $reserva = $cotizacion->fecha_reserva->isoFormat('D [de] MMMM');
-        $pdfData = Pdf::loadView('pdf.cotizacion.viewPDF', compact('cotizacion','emitida','reserva'))
-                        ->output();
+        // Por si acaso, carga relaciones que uses en el Mailable (items, itemable, etc.)
+        $cotizacion->load('items.itemable');
 
         Mail::to($cotizacion->correo)
-            ->send(new CotizacionMailable($cotizacion,$pdfData));
-
+            ->queue(new CotizacionMailable($cotizacion));
+            
         return back()->with('success','La cotizacion ha sido enviada satisfactoriamente.');
     }
 }

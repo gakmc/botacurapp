@@ -745,17 +745,17 @@ class VisitaController extends Controller
         // $horariosDisponiblesMasajes = array_diff($horarios, $horariosOcupadosMasajes);
 
         // Obtener productos de tipo "entrada"
-        $entradas = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'entrada');
         })->get();
 
         // Obtener productos de tipo "fondo"
-        $fondos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'fondo');
         })->get();
 
         // Obtener productos de tipo "postre"
-        $acompañamientos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'acompañamiento');
         })->get();
 
@@ -1284,17 +1284,17 @@ class VisitaController extends Controller
         // $horariosDisponiblesMasajes = array_diff($horarios, $horariosOcupadosMasajes);
 
         // Obtener productos de tipo "entrada"
-        $entradas = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'entrada');
         })->get();
 
         // Obtener productos de tipo "fondo"
-        $fondos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'fondo');
         })->get();
 
         // Obtener productos de tipo "postre"
-        $acompañamientos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+        $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
             $query->where('nombre', 'acompañamiento');
         })->get();
 
@@ -1608,17 +1608,17 @@ class VisitaController extends Controller
         }
 
                 // Obtener productos de tipo "entrada"
-                $entradas = Producto::validos()->whereHas('tipoProducto', function ($query) {
+                $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'entrada');
                 })->get();
         
                 // Obtener productos de tipo "fondo"
-                $fondos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+                $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'fondo');
                 })->get();
         
                 // Obtener productos de tipo "postre"
-                $acompañamientos = Producto::validos()->whereHas('tipoProducto', function ($query) {
+                $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
                     $query->where('nombre', 'acompañamiento');
                 })->get();
 

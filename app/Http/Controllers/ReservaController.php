@@ -994,24 +994,27 @@ class ReservaController extends Controller
 
     public function indexallRegistros()
     {
-        Carbon::setLocale('es');
+        // Carbon::setLocale('es');
 
         $inicioDebug = microtime(true);
                 
-        $reservasPorMes = Reserva::with(['cliente'])
-            ->orderBy('fecha_visita')
-            ->get()
-            ->groupBy(function ($date) {
-                return Carbon::parse($date->fecha_visita)->format('Y-m');
-            });
+        // $reservasPorMes = Reserva::with(['cliente'])
+        //     ->orderBy('fecha_visita')
+        //     ->get()
+        //     ->groupBy(function ($date) {
+        //         return Carbon::parse($date->fecha_visita)->format('Y-m');
+        //     });
 
         
         $finDebug = microtime(true);
         Log::info("Tiempo controlador Registro de reservas (/reservas/registros): ".round($finDebug - $inicioDebug, 3)." s");
 
-        return view('themes.backoffice.pages.reserva.all_registro', [
-            'reservasPorMes' => $reservasPorMes,
-        ]);
+        // return view('themes.backoffice.pages.reserva.all_registro', [
+        //     'reservasPorMes' => $reservasPorMes,
+        // ]);
+
+
+        return view('themes.backoffice.pages.reserva.all_registro');
     }
 
 
@@ -1020,22 +1023,35 @@ class ReservaController extends Controller
         $start = Carbon::parse($request->start)->startOfDay();
         $end   = Carbon::parse($request->end)->endOfDay();
 
-        // Traemos SOLO lo que se ve en el calendario
         $reservas = Reserva::with('cliente')
             ->whereBetween('fecha_visita', [$start, $end])
             ->orderBy('fecha_visita')
             ->get()
-            ->groupBy('fecha_visita');
+            ->groupBy(function ($r) {
+                return Carbon::parse($r->fecha_visita)->toDateString();
+            });
+            // ->groupBy('fecha_visita');
 
-        $eventos = [];
+            $eventos = [];
+            
+            foreach ($reservas as $fecha => $lista) {
 
-        foreach ($reservas as $fecha => $lista) {
             $clientes = $lista->pluck('cliente.nombre_cliente')->toArray();
             $reservaEjemplo = $lista->first();
+            $cantidad = $lista->count();
+            $texto = '';
+
+            if ($cantidad > 1) {
+                $texto = ' reservas: ';
+            }elseif ($cantidad <= 0) {
+                $texto = '';
+            }else{
+                $texto = ' reserva: ';
+            }
 
             $eventos[] = [
-                'title' => implode(', ', $clientes),
-                'start' => $fecha, // FullCalendar entiende 'YYYY-MM-DD'
+                'title' => $cantidad.$texto.implode(', ', $clientes),
+                'start' => $fecha,
                 'url'   => route('backoffice.reservas.registro', ['fecha' => $fecha]),
                 'extendedProps' => [
                     'observacion' => $reservaEjemplo->observacion,
