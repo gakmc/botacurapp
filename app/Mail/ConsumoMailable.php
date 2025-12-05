@@ -6,8 +6,9 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
+use Illuminate\Support\Facades\Log;
 
-class ConsumoMailable extends Mailable implements ShouldQueue
+class ConsumoMailable extends Mailable
 {
     use Queueable, SerializesModels;
 
@@ -22,6 +23,12 @@ class ConsumoMailable extends Mailable implements ShouldQueue
 
     public function build()
     {
+        $inicioDebug = microtime(true);
+                
+        
+        $finDebug = microtime(true);
+        Log::info("Tiempo para generar email Consumo (ConsumoMailable): ".round($finDebug - $inicioDebug, 3)." s");
+
         return $this->view('emails.consumo')
                 ->subject('Detalle de su Consumo')
                 ->with('data', $this->data)

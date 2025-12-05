@@ -502,12 +502,12 @@
     @endif
 @endif
 
-<script>
+{{-- <script>
     document.addEventListener('DOMContentLoaded', function () {
         setTimeout(function () {
             if (window.Echo) {
                 window.Echo.channel('canal-publico')
-                    .listen('EjemploEvento', (e) => {
+                    .listen('.EjemploEvento', (e) => {
                         console.log(e.mensaje);
     
                         const Toast = Swal.mixin({
@@ -533,5 +533,42 @@
         }, 1000);
     });
     
+</script> --}}
+
+<script>
+document.addEventListener('DOMContentLoaded', function () {
+
+    if (!window.Echo) {
+        console.error('Echo no está definido');
+        return;
+    }
+
+    // console.log('Suscribiéndome a canal-publico...');
+
+    window.Echo.channel('canal-publico')
+        .listen('EjemploEvento', (e) => {
+            // console.log('Evento recibido en JS:', e);
+
+            const Toast = Swal.mixin({
+                toast: true,
+                position: "top",
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                }
+            });
+
+            Toast.fire({
+                icon: "success",
+                title: e.mensaje ?? 'Sin mensaje'
+            });
+        });
+});
 </script>
+
+
+
 @endsection

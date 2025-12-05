@@ -32,7 +32,12 @@ class EjemploEvento implements ShouldBroadcastNow
      */
     public function broadcastOn()
     {
-        return ['canal-publico'];
+        return new Channel('canal-publico');
         // return new PrivateChannel('channel-name');
     }
+
+    // public function broadcastAs()
+    // {
+    //     return 'notificacion';
+    // }
 }

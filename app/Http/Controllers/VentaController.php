@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Asignacion;
 use App\Consumo;
 use App\DetalleConsumo;
+use App\Jobs\ProcesarVentaCerrada;
 use App\Mail\ConsumoMailable;
 use App\Mail\VentaCerradaMailable;
 use App\PagoConsumo;
@@ -122,7 +123,7 @@ class VentaController extends Controller
 
     }
 
-    public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
+    public function OLDcerrarventa(Request $request, Reserva $reserva, Venta $ventum)
     {
         
         $request->merge([
@@ -410,8 +411,230 @@ class VentaController extends Controller
 
             Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')->showConfirmButton();
             return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id]);
+            
+        } catch (\Exception $e) {
+            return back()->withInput()->with('error', $e->getMessage());
+        }
+    }
+    
+    
+    public function cerrarventa(Request $request, Reserva $reserva, Venta $ventum)
+    {
+        $inicioDebug = microtime(true);
+        // Normalizar montos que vienen como $1.234.567
+        $request->merge([
+            'consumo_bruto'   => (int) str_replace(['$', '.', ','], '', $request->consumo_bruto),
+            'propinaValue'    => (int) str_replace(['$', '.', ','], '', $request->propinaValue),
+            'conPropina'      => (int) str_replace(['$', '.', ','], '', $request->conPropina),
+            'servicio_bruto'  => (int) str_replace(['$', '.', ','], '', $request->servicio_bruto),
+            'servicio_consumo'=> (int) str_replace(['$', '.', ','], '', $request->sinPropina),
+            'pago1'           => (int) str_replace(['$', '.', ','], '', $request->pago1),
+            'pago2'           => (int) str_replace(['$', '.', ','], '', $request->pago2),
+            'diferencia'      => (int) str_replace(['$', '.', ','], '', $request->diferencia),
+            'total_pagar'     => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+        ]);
+        
+        // Validación
+        $validator = Validator::make($request->all(), [
+            'propinaValue' => 'nullable|integer|min:0',
+            'pago1'        => 'required_if:dividir_pago,on|integer|min:0',
+            'pago2'        => 'required_if:dividir_pago,on|integer|min:0',
+            
+            // existencia en BD
+            'id_tipo_transaccion_diferencia'          => 'nullable|exists:tipos_transacciones,id',
+            'id_tipo_transaccion_diferencia_dividida' => 'nullable|exists:tipos_transacciones,id',
+            'id_tipo_transaccion2'                    => 'nullable|exists:tipos_transacciones,id',
+        ], [
+            'pago1.required_if' => 'Cuando divide el pago, debe ingresar el primer monto.',
+            'pago2.required_if' => 'Cuando divide el pago, debe ingresar el segundo monto.',
+        ]);
+
+        // Validación lógica de combinaciones de medios de pago
+        $validator->after(function ($v) use ($request) {
+            $hasDif = $request->filled('id_tipo_transaccion_diferencia');
+            $hasDiv = $request->filled('id_tipo_transaccion_diferencia_dividida');
+            $hasT2  = $request->filled('id_tipo_transaccion2');
+
+            // Caso válido A: solo diferencia
+            $isOnlyDif = $hasDif && !$hasDiv && !$hasT2;
+
+            // Caso válido B: dividido (id_tipo_transaccion_diferencia_dividida + id_tipo_transaccion2)
+            $isBothDiv = !$hasDif && $hasDiv && $hasT2;
+
+            if (!($isOnlyDif || $isBothDiv)) {
+
+                if ($hasDif && ($hasDiv || $hasT2)) {
+                    $v->errors()->add(
+                        'id_tipo_transaccion_diferencia',
+                        'Si informa la transacción de diferencia, no debe informar las de pago dividido.'
+                    );
+                } elseif ($hasDiv && !$hasT2) {
+                    $v->errors()->add(
+                        'id_tipo_transaccion2',
+                        'Cuando informa transacción dividida, también debe informar la segunda transacción.'
+                    );
+                } elseif ($hasT2 && !$hasDiv) {
+                    $v->errors()->add(
+                        'id_tipo_transaccion_diferencia_dividida',
+                        'No puede informar la segunda transacción sin informar la transacción dividida.'
+                    );
+                } else {
+                    // Ninguno vino: exigir uno de los dos casos válidos
+                    $v->errors()->add(
+                        'id_tipo_transaccion_diferencia',
+                        'Debe informar la transacción de diferencia o bien ambas del pago dividido.'
+                    );
+                    $v->errors()->add(
+                        'id_tipo_transaccion_diferencia_dividida',
+                        'Debe informar la transacción de diferencia o bien ambas del pago dividido.'
+                    );
+                }
+            }
+        });
+
+        $validator->validate();
+
+        $venta   = $ventum;
+        $consumo = $venta->consumo;
+        $cliente = $reserva->cliente->nombre_cliente;
+
+        try {
+
+            DB::transaction(function () use ($request, $reserva, &$venta, $consumo) {
+
+                // 1) Actualizar venta (saldar diferencia)
+                $venta->diferencia_programa = $request->input('diferencia');
+                $venta->total_pagar         = 0;
+                $venta->id_tipo_transaccion_diferencia = $request->has('id_tipo_transaccion_diferencia')
+                    ? $request->id_tipo_transaccion_diferencia
+                    : $request->id_tipo_transaccion_diferencia_dividida;
+
+                // 2) Crear registro de pago de consumo base
+                $pagoConsumo = PagoConsumo::create([
+                    'valor_consumo'          => $request->total_pagar,
+                    'pago1'                  => 0,
+                    'pago2'                  => 0,
+                    'imagen_pago1'           => null,
+                    'imagen_pago2'           => null,
+                    'id_venta'               => $venta->id,
+                    'id_tipo_transaccion1'   => $venta->id_tipo_transaccion_diferencia,
+                    'id_tipo_transaccion2'   => null,
+                ]);
+
+                // 3) Manejo de división de pago
+                if ($request->has('dividir_pago')) {
+
+                    // imagen diferencia dividida
+                    if ($request->hasFile('imagen_diferencia_dividida')) {
+                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_diferencia_dividida'));
+                        $venta->folio_diferencia   = $request->input('folio_diferencia') ?? null;
+                        $pagoConsumo->imagen_pago1 = $ruta;
+                    }
+
+                    // imagen pago2
+                    if ($request->hasFile('imagen_pago2')) {
+                        $ruta = $this->guardarImagenYObtenerRuta($request->file('imagen_pago2'));
+                        $pagoConsumo->imagen_pago2 = $ruta;
+                    }
+
+                    if ($request->has('id_tipo_transaccion2')) {
+                        $pagoConsumo->id_tipo_transaccion2 = $request->input('id_tipo_transaccion2');
+                    }
+
+                    $pagoConsumo->pago1 = $request->input('pago1');
+                    $pagoConsumo->pago2 = $request->input('pago2');
+
+                } else {
+
+                    // Pago no dividido: sólo se informa folio y se deja todo en pago1
+                    if ($request->has('folio_diferencia')) {
+                        $venta->folio_diferencia   = $request->input('folio_diferencia');
+                        $pagoConsumo->imagen_pago1 = null;
+                    }
+
+                    $pagoConsumo->pago1 = $request->input('total_pagar');
+                }
+
+                $pagoConsumo->save();
+                $venta->save();
+
+                // 4) Propinas (si hay consumo)
+                if (!is_null($consumo)) {
+
+                    if ($consumo->detallesConsumos->isEmpty()) {
+                        throw new \Exception('No se puede generar propina porque no hay consumo registrado o equipo asignado en esta venta.');
+                    }
+
+                    if ($request->has('propina')) {
+                        // tu lógica actual de asignar propinas
+                        $this->asignarPropinas($consumo, $reserva, $request);
+                    } else {
+                        // marcar que no generan propina
+                        DetalleConsumo::where('id_consumo', $consumo->id)
+                            ->update(['genera_propina' => 0]);
+                    }
+                }
+
+            }); // fin transaction
+
+            // === Después del commit: nada pesado de BD ===
+            // Aquí sólo preparamos lo justo para el Job
+
+            $venta->refresh();
+            $pagoConsumo = $venta->pagoConsumo ?? $venta->pagoConsumos()->latest()->first(); // según tu relación
+            $consumo     = $venta->consumo; // recargar por seguridad
+
+            $idConsumo = $consumo ? $consumo->id : null;
+            $tienePropina = false;
+            $total   = 0;
+            $propina = 'No Aplica';
+            $cantidadPropina = 'No Aplica';
+
+            if ($consumo) {
+                $tienePropina = $consumo->detallesConsumos->contains('genera_propina', 1);
+
+                if ($tienePropina && $request->has('propina')) {
+                    $propina = 'Si';
+                    $total   = $consumo->total_consumo;
+
+                    $propinaModel = Propina::where('propinable_id', $idConsumo)
+                        ->where('propinable_type', Consumo::class)
+                        ->first();
+
+                    $cantidadPropina = $propinaModel ? $propinaModel->cantidad : 'No Aplica';
+                } else {
+                    $propina = $tienePropina ? 'No' : 'No Aplica';
+                    $total   = $consumo->subtotal;
+                }
+            }
+
+            // Payload mínimo para el Job de PDF + correos
+            $payload = [
+                'reserva_id'      => $reserva->id,
+                'venta_id'        => $venta->id,
+                'pago_consumo_id' => $pagoConsumo ? $pagoConsumo->id : null,
+                'total'           => $total,
+                'propina'         => $propina,
+                'propinaPagada'   => $cantidadPropina,
+                'diferencia'      => $request->diferencia,
+                'enviarConsumo'   => $request->has('dividir_pago'),
+            ];
+
+            // 🔥 Aquí ya NO generamos PDF ni enviamos correos directamente
+            ProcesarVentaCerrada::dispatch($payload);
+
+            Alert::success('Éxito', 'Venta para ' . $cliente . ' cerrada con éxito', 'Confirmar')
+                ->showConfirmButton();
+
+                
+        
+            $finDebug = microtime(true);
+            Log::info("Tiempo controlador Cierre de ventas (/reservas/cerrarVenta): ".round($finDebug - $inicioDebug, 3)." s");
+
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id]);
 
         } catch (\Exception $e) {
+            Log::error('Error al cerrar venta: '.$e->getMessage(), ['trace' => $e->getTraceAsString()]);
             return back()->withInput()->with('error', $e->getMessage());
         }
     }

@@ -13,6 +13,8 @@ use App\UnidadMedida;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Illuminate\Support\Facades\Mail;
+
 /*
 |--------------------------------------------------------------------------
 | Web Routes
@@ -24,6 +26,21 @@ use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
 |
  */
 
+
+Route::get('/test-mail', function () {
+    $data = [
+        'pdfPath' => storage_path('app/temp_pdfs/test.pdf'), // crea un archivo dummy si quieres
+        'correo'  => 'tu_correo@ejemplo.com',
+    ];
+
+    // pruébalo con un mailable simple sin adjunto primero
+    Mail::raw('Prueba de correo desde Laravel', function ($message) {
+        $message->to('tu_correo@ejemplo.com')
+                ->subject('Test mail simple');
+    });
+
+    return 'ok';
+});
 
 Route::get('/prueba-pdf', function () {
     $pdf = PDF::loadHTML('<h1>Hola desde wkhtmltopdf</h1>');
