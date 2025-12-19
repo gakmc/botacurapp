@@ -2,173 +2,166 @@
 
 @section('title', 'Menús')
 
-@section('breadcrumbs')
-@endsection
-
-@section('head')
-@endsection
-
 @section('content')
 <div class="section">
-  <p class="caption"><strong>Menús desde <a href="?page=1">{{ now()->format('d-m-Y') }}</a></strong></p>
+  <p class="caption">
+    <strong>
+      Menús desde
+      <a href="javascript:void(0)" id="fecha-label">{{ $fechaInicial }}</a>
+    </strong>
+  </p>
+
   <div class="divider"></div>
-  <div id="basic-form" class="section">
-    <div class="card-panel ">
 
+  <div class="section">
+    <div class="card-panel">
 
+      <div class="row" style="margin-bottom: 0;">
+        <div class="col s12 m6">
+          <a class="btn" id="btn-prev">
+            <i class="material-icons left">chevron_left</i> Día anterior
+          </a>
 
-      @foreach($menusPaginados as $fecha => $reservas)
-      <h5>@if (now()->format('d-m-Y') == $fecha)
-        Hoy
-      @endif
-      {{$fecha}}</h5>
+          <a class="btn" id="btn-next">
+            Día siguiente <i class="material-icons right">chevron_right</i>
+          </a>
+        </div>
 
-
-
-      <div id="work-collections">
-        <div class="row">
-
-          <div class="col s12 m4 l4">
-
-            @if(isset($entradasPorDia[$fecha]))
-            <ul id="projects-collection" class="collection z-depth-1">
-              <li class="collection-item avatar">
-                <i class="material-icons teal circle">restaurant_menu</i>
-                <h6 class="collection-header m-0">Platos de Entrada</h6>
-                <p>Total</p>
-              </li>
-              @foreach($entradasPorDia[$fecha] as $plato => $cantidad)
-                <li class="collection-item">
-                  <div class="row">
-                    <div class="col s9">
-                      <p class="collections-title">{{$plato}}:</p>
-                    </div>
-                    <div class="col s3">
-                      <span class="task-cat teal"><strong>{{$cantidad}}</strong>@if ($cantidad <= 1)
-                        Plato
-                      @else
-                        Platos
-                      @endif</span>
-                    </div>
-                  </div>
-                </li>
-              @endforeach
-            </ul>
-            @else
-            <p>No hay platos para esta fecha.</p>
-            @endif
-            
-
-
-
-
-
-          
+        <div class="col s12 m6 right-align">
+          <div class="input-field" style="margin:0;">
+            <input type="text" id="fecha-input" value="{{ $fechaInicial }}" placeholder="dd-mm-aaaa">
+            <label for="fecha-input" class="active">Ir a fecha</label>
           </div>
-
-
-          <div class="col s12 m4 l4">
-
-            @if(isset($fondosPorDia[$fecha]))
-            <ul id="projects-collection" class="collection z-depth-1">
-              <li class="collection-item avatar">
-                <i class="material-icons cyan circle">restaurant</i>
-                <h6 class="collection-header m-0">Platos de Fondo</h6>
-                <p>Total</p>
-              </li>
-              @foreach($fondosPorDia[$fecha] as $plato => $cantidad)
-                <li class="collection-item">
-                  <div class="row">
-                    <div class="col s9">
-                      <p class="collections-title">{{$plato}}:</p>
-                    </div>
-                    <div class="col s3">
-                      <span class="task-cat cyan"><strong>{{$cantidad}}</strong>@if ($cantidad <= 1)
-                        Plato
-                      @else
-                        Platos
-                      @endif</span>
-                    </div>
-                  </div>
-                </li>
-              @endforeach
-            </ul>
-            @else
-            <p>No hay platos para esta fecha.</p>
-            @endif
-            
-
-
-
-
-
-          
-          </div>
-
-
-          <div class="col s12 m4 l4">
-
-            @if(isset($acompanamientosPorDia[$fecha]))
-            <ul id="projects-collection" class="collection z-depth-1">
-              <li class="collection-item avatar">
-                <i class="material-icons orange circle">restaurant</i>
-                <h6 class="collection-header m-0">Acompañamientos</h6>
-                <p>Total</p>
-              </li>
-              @foreach($acompanamientosPorDia[$fecha] as $plato => $cantidad)
-              <li class="collection-item">
-                <div class="row">
-                  <div class="col s9">
-                    <p class="collections-title">{{$plato}}:</p>
-
-                  </div>
-                  <div class="col s3">
-                    <span class="task-cat orange"> <strong>{{ $cantidad }} </strong>@if ($cantidad <= 1)
-                      Plato
-                    @else
-                      Platos
-                    @endif</span>
-                  </div>
-                </div>
-              </li>
-              @endforeach
-            </ul>
-            @else
-            <p>No hay platos para esta fecha.</p>
-            @endif
-          </div>
-
-
-
+          <a class="btn teal" id="btn-ir">
+            <i class="material-icons left">search</i> Cargar
+          </a>
         </div>
       </div>
 
+      <div id="menus-content" style="margin-top: 15px;">
+        {{-- Aquí renderiza JS --}}
+      </div>
 
-      @foreach($reservas as $reserva)
-      {{-- @foreach($reserva->visitas as $visita) --}}
-@if ($reserva->menus->isNotEmpty())
-  
+    </div>
+  </div>
+</div>
+@endsection
 
+@section('foot')
+<meta name="csrf-token" content="{{ csrf_token() }}">
 
+<script>
+  // ===== Helpers Fecha =====
+  function parseDMY(str) {
+    // str: dd-mm-YYYY
+    var p = str.split('-');
+    if (p.length !== 3) return null;
+    var d = parseInt(p[0], 10);
+    var m = parseInt(p[1], 10) - 1;
+    var y = parseInt(p[2], 10);
+    var dt = new Date(y, m, d);
+    if (dt.getFullYear() !== y || dt.getMonth() !== m || dt.getDate() !== d) return null;
+    return dt;
+  }
+
+  function formatDMY(date) {
+    var d = String(date.getDate()).padStart(2, '0');
+    var m = String(date.getMonth()+1).padStart(2, '0');
+    var y = date.getFullYear();
+    return d + '-' + m + '-' + y;
+  }
+
+  function addDays(d, days) {
+    var x = new Date(d.getTime());
+    x.setDate(x.getDate() + days);
+    return x;
+  }
+
+  // ===== Renderizar HTML =====
+  function renderContador(titulo, icon, colorClass, dataObj) {
+    var keys = Object.keys(dataObj || {});
+    if (!keys.length) {
+      return '<p>No hay platos para esta fecha.</p>';
+    }
+
+    var items = keys.map(function(nombre) {
+      var cantidad = dataObj[nombre];
+      var texto = (cantidad <= 1) ? 'Plato' : 'Platos';
+      return `
+        <li class="collection-item">
+          <div class="row" style="margin-bottom:0;">
+            <div class="col s9">
+              <p class="collections-title">${escapeHtml(nombre)}:</p>
+            </div>
+            <div class="col s3">
+              <span class="task-cat ${colorClass}">
+                <strong>${cantidad}</strong> ${texto}
+              </span>
+            </div>
+          </div>
+        </li>`;
+    }).join('');
+
+    return `
+      <ul class="collection z-depth-1">
+        <li class="collection-item avatar">
+          <i class="material-icons ${colorClass} circle">${icon}</i>
+          <h6 class="collection-header m-0">${titulo}</h6>
+          <p>Total</p>
+        </li>
+        ${items}
+      </ul>`;
+  }
+
+  function renderReservaCard(reserva) {
+    if (!reserva.menus || !reserva.menus.length) return '';
+
+    var btnDisplay = (reserva.avisado_en_cocina === null || reserva.avisado_en_cocina === 'avisado' || reserva.avisado_en_cocina === 'entregado')
+      ? 'display:none;'
+      : '';
+
+    var rows = reserva.menus.map(function(menu, idx) {
+      var entrada = menu.entrada ? escapeHtml(menu.entrada) : '<span class="red-text">No registra</span>';
+      var fondo = menu.fondo ? escapeHtml(menu.fondo) : '<span class="red-text">No registra</span>';
+      var acomp = menu.acompanamiento ? escapeHtml(menu.acompanamiento) : 'Sin Acompañamiento';
+
+      var alergias = menu.alergias ? `<td style="color:red">${escapeHtml(menu.alergias)}</td>` : `<td>No Registra</td>`;
+      var obs = menu.observacion ? `<td style="color:red">${escapeHtml(menu.observacion)}</td>` : `<td>No Registra</td>`;
+
+      return `
+        <tr>
+          <td><strong>Menú ${idx + 1}:</strong></td>
+          <td>${entrada}</td>
+          <td>${fondo}</td>
+          <td>${acomp}</td>
+          ${alergias}
+          ${obs}
+        </tr>
+      `;
+    }).join('');
+
+    return `
       <div class="card-panel">
         <div class="card-content gradient-45deg-light-blue-cyan">
           <h5 class="card-title center white-text">
-            
-            <i class='material-icons white-text'>restaurant_menu</i> Menús para
-            {{ $reserva->cliente->nombre_cliente." - ".$reserva->programa->nombre_programa}} 
-            
+            <i class="material-icons white-text">restaurant_menu</i>
+            Menús para ${escapeHtml(reserva.cliente)} - ${escapeHtml(reserva.programa)}
 
-                <button id="avisar_{{$reserva->id}}" data-id="{{$reserva->id}}" data-url="{{ route('backoffice.reserva.avisar', $reserva->id) }}" class="btn-floating btn-avisar" onclick="darAviso({{$reserva->id}})" @if(in_array($reserva->avisado_en_cocina, [null,'avisado','entregado'])) style="display: none;" @endif>
-                    <i class='material-icons'>notifications_active</i>
-                </button>
-
-          
+            <button
+              id="avisar_${reserva.id}"
+              class="btn-floating btn-avisar"
+              style="${btnDisplay}"
+              data-url="${reserva.avisar_url}"
+              onclick="darAviso(${reserva.id})"
+            >
+              <i class="material-icons">notifications_active</i>
+            </button>
           </h5>
         </div>
 
-        <div class="card-content  grey lighten-4">
+        <div class="card-content grey lighten-4">
           <table class="responsive-table">
-            <thead class="">
+            <thead>
               <tr>
                 <th>Menú</th>
                 <th>Entrada</th>
@@ -179,143 +172,215 @@
               </tr>
             </thead>
             <tbody>
-              @foreach($reserva->menus as $index => $menu)
-              <tr>
-
-
-                <td>
-                  <strong>Menú {{$index + 1}}:</strong>
-                </td>
-                <td>
-                  @if (isset($menu->id_producto_entrada))
-                      {{ $menu->productoEntrada->nombre }}
-                  @else
-                      <span class="red-text">No registra</span>
-                  @endif
-                </td>
-                <td>
-                  @if (isset($menu->id_producto_fondo))
-                      {{ $menu->productoFondo->nombre }}
-                  @else
-                      <span class="red-text">No registra</span>
-                  @endif
-                </td>
-                <td>
-                  @if ($menu->productoAcompanamiento == null)
-                    Sin Acompañamiento
-                  @else
-                    {{ $menu->productoAcompanamiento->nombre }}
-                  @endif
-                </td>
-
-                @if ($menu->alergias == null)
-                <td> No Registra</td>
-                @else
-
-                <td style="color: red">{{ $menu->alergias }}</td>
-                @endif
-
-                @if ($menu->observacion == null)
-                <td> No Registra</td>
-                @else
-
-                <td style="color: red">{{ $menu->observacion }}</td>
-                @endif
-
-              </tr>
-              @endforeach
-              
+              ${rows}
             </tbody>
           </table>
         </div>
       </div>
+    `;
+  }
 
-      @endif
-      {{-- @endforeach --}}
-      @endforeach
+  function escapeHtml(str) {
+    if (str === null || str === undefined) return '';
+    return String(str)
+      .replaceAll('&', '&amp;')
+      .replaceAll('<', '&lt;')
+      .replaceAll('>', '&gt;')
+      .replaceAll('"', '&quot;')
+      .replaceAll("'", '&#039;');
+  }
 
-
-
-      @endforeach
-
-      {{-- Paginación --}}
-      <div class="center">
-        {{ $menusPaginados->links('vendor.pagination.materialize') }}
+  // ===== AJAX =====
+  function cargarDia(fechaDMY) {
+    var cont = document.getElementById('menus-content');
+    cont.innerHTML = `
+      <div class="center" style="padding:20px;">
+        <div class="preloader-wrapper active">
+          <div class="spinner-layer spinner-blue-only">
+            <div class="circle-clipper left"><div class="circle"></div></div>
+            <div class="gap-patch"><div class="circle"></div></div>
+            <div class="circle-clipper right"><div class="circle"></div></div>
+          </div>
+        </div>
+        <p>Cargando menús...</p>
       </div>
+    `;
+
+    document.getElementById('fecha-label').textContent = fechaDMY;
+    document.getElementById('fecha-input').value = fechaDMY;
+
+    var url = "{{ route('backoffice.cocina.dia') }}" + "?fecha=" + encodeURIComponent(fechaDMY);
+
+    fetch(url)
+      .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+      .then(function(data) {
+
+        // Cabecera día
+        var tituloDia = data.hoy ? 'Hoy' : data.fecha;
+
+        // 3 columnas (entradas / fondos / acomp)
+        var cols = `
+          <h5>${tituloDia} ${data.hoy ? data.fecha : ''}</h5>
+          <div id="work-collections">
+            <div class="row">
+              <div class="col s12 m4 l4">
+                ${renderContador('Platos de Entrada', 'restaurant_menu', 'teal', data.entradas)}
+              </div>
+              <div class="col s12 m4 l4">
+                ${renderContador('Platos de Fondo', 'room_service', 'cyan', data.fondos)}
+              </div>
+              <div class="col s12 m4 l4">
+                ${renderContador('Acompañamientos', 'restaurant', 'orange', data.acompanamientos)}
+              </div>
+            </div>
+          </div>
+        `;
+
+        // Cards reservas
+        var cards = '';
+        if (data.reservas && data.reservas.length) {
+          data.reservas.forEach(function(res) {
+            cards += renderReservaCard(res);
+          });
+        }
+
+        if (!cards) {
+          cards = `<p class="grey-text">No hay menús registrados para este día.</p>`;
+        }
+
+        cont.innerHTML = cols + cards;
+      })
+      .catch(function(err) {
+        console.error(err);
+        cont.innerHTML = `<p style="color:red;">Error cargando menús: ${escapeHtml(err.message)}</p>`;
+      });
+  }
 
 
-
-    </div>
-  </div>
-</div>
-@endsection
-
-@section('foot')
-
-
-<script>
   function darAviso(reservaId) {
-  
-  
-    const elegido = $('#avisar_'+reservaId);
-    const url = elegido.data('url');
-    
-    $.ajax({
-      url: url,
+    var btn = document.getElementById('avisar_' + reservaId);
+    if (!btn) return;
+
+    var url = btn.getAttribute('data-url');
+
+    fetch(url, {
       method: 'POST',
-      data: {
-        _token: '{{csrf_token()}}',
-        _method: 'PUT',
-        id: reservaId
+      headers: {
+        'Content-Type': 'application/json',
+        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').getAttribute('content')
       },
-      success: function(response){
-      
-        const Toast = Swal.mixin({
-          toast:false,
-          showConfirmButton: true,
-          title: "Se avisó en cocina respecto al menú de "+response.nombreCliente,
-          icon: "success",
-          showClass: {
-            popup: `
-            animate__animated
-            animate__fadeInUp
-            animate__faster
-            `
-          },
-          hideClass: {
-            popup: `
-            animate__animated
-            animate__fadeOutDown
-            animate__faster
-            `
-          },
+      body: JSON.stringify({ _method: 'PUT', id: reservaId })
+    })
+    .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
+    .then(function(resp) {
+      if (typeof Swal !== 'undefined') {
+        Swal.fire({
+          icon: 'success',
+          title: 'Éxito',
+          text: 'Se avisó en cocina respecto al menú de ' + (resp.nombreCliente || ''),
+          confirmButtonText: 'OK'
         });
-        
-          Toast.fire();
-          
-          
-          
-          
-          elegido.hide();
-      },
-      error: function () {
+      }
+      btn.style.display = 'none';
+    })
+    .catch(function() {
+      if (typeof Swal !== 'undefined') {
         Swal.fire('Error', 'No se pudo registrar la recepción.', 'error');
       }
-    })
-  
+    });
   }
+
+  // ===== Init =====
+  // document.addEventListener('DOMContentLoaded', function() {
+  //   // fecha inicial
+  //   var fecha = "{{ $fechaInicial }}";
+  //   cargarDia(fecha);
+
+  //   document.getElementById('btn-prev').addEventListener('click', function() {
+  //     var dt = parseDMY(document.getElementById('fecha-input').value);
+  //     if (!dt) return;
+  //     cargarDia(formatDMY(addDays(dt, -1)));
+  //   });
+
+  //   document.getElementById('btn-next').addEventListener('click', function() {
+  //     var dt = parseDMY(document.getElementById('fecha-input').value);
+  //     if (!dt) return;
+  //     cargarDia(formatDMY(addDays(dt, 1)));
+  //   });
+
+  //   document.getElementById('btn-ir').addEventListener('click', function() {
+  //     var dt = parseDMY(document.getElementById('fecha-input').value);
+  //     if (!dt) {
+  //       alert('Formato inválido. Usa dd-mm-aaaa');
+  //       return;
+  //     }
+  //     cargarDia(formatDMY(dt));
+  //   });
+  // });
+
+
+
+  document.addEventListener('DOMContentLoaded', function() {
+
+    // EVITA doble inicialización (causa principal del salto de 2 días)
+    if (window.__cocinaMenusInitialized) return;
+    window.__cocinaMenusInitialized = true;
+
+    // fecha inicial
+    var fecha = "{{ $fechaInicial }}";
+    cargarDia(fecha);
+
+    // Helpers para asegurar 1 solo listener
+    function bindClickOnce(el, handler) {
+      if (!el) return;
+      // “Resetea” listeners clonando el nodo (elimina listeners previos)
+      var clone = el.cloneNode(true);
+      el.parentNode.replaceChild(clone, el);
+      clone.addEventListener('click', handler);
+      return clone;
+    }
+
+    var prevBtn = document.getElementById('btn-prev');
+    var nextBtn = document.getElementById('btn-next');
+    var irBtn   = document.getElementById('btn-ir');
+
+    prevBtn = bindClickOnce(prevBtn, function(e) {
+      e.preventDefault();
+      var dt = parseDMY(document.getElementById('fecha-input').value);
+      if (!dt) return;
+      cargarDia(formatDMY(addDays(dt, -1)));
+    });
+
+    nextBtn = bindClickOnce(nextBtn, function(e) {
+      e.preventDefault();
+      var dt = parseDMY(document.getElementById('fecha-input').value);
+      if (!dt) return;
+      cargarDia(formatDMY(addDays(dt, 1)));
+    });
+
+    irBtn = bindClickOnce(irBtn, function(e) {
+      e.preventDefault();
+      var dt = parseDMY(document.getElementById('fecha-input').value);
+      if (!dt) {
+        alert('Formato inválido. Usa dd-mm-aaaa');
+        return;
+      }
+      cargarDia(formatDMY(dt));
+    });
+
+  });
+
 </script>
+
 
 <script>
   $(document).ready(function () {
     if (typeof window.Echo !== 'undefined') {
-        window.Echo.channel('aviso-cocina')
+      window.Echo.channel('aviso-cocina')
         .listen('.reservaAvisada', (e) => {
           const boton = $(`#avisar_${e.reservaId}`);
           boton.hide();
         });
-    }else{
-        console.error('Echo no está inicializado.');
     }
   });
 </script>

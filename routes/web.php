@@ -199,6 +199,19 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/reservas/eventos', 'ReservaController@eventosCalendar')
     ->name('reservas.eventos');
+
+
+    Route::get('/asignaciones/eventos', 'AsignacionController@eventosCalendar')
+    ->name('asignacion.eventos');
+
+
+
+    // Cocina (Menús)
+    Route::get('/cocina', 'MenuController@index')->name('cocina.index');
+    Route::get('/cocina/dia', 'MenuController@dia')->name('cocina.dia'); // JSON
+
+
+
     
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
     

@@ -7,6 +7,8 @@ use App\Reserva;
 use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class AsignacionController extends Controller
@@ -22,14 +24,114 @@ class AsignacionController extends Controller
         $users = User::whereDoesntHave('roles', function ($query) use ($rolesExcluidos) {
             $query->whereIn('name', $rolesExcluidos);
         })->get();
-        $asignados = Asignacion::all()->keyBy('fecha');
 
-        $fechas = Reserva::pluck('fecha_visita')->unique()->map(function ($fecha) {
-            return \Carbon\Carbon::createFromFormat('d-m-Y', $fecha)->format('Y-m-d');
-        })->toArray();
+        // $asignados = Asignacion::all()->keyBy('fecha');
+
+        // $fechas = Reserva::pluck('fecha_visita')->unique()->map(function ($fecha) {
+        //     return \Carbon\Carbon::createFromFormat('d-m-Y', $fecha)->format('Y-m-d');
+        // })->toArray();
 
 
-        return view('themes.backoffice.pages.asignacion.index', compact('users', 'fechas','asignados'));
+        // return view('themes.backoffice.pages.asignacion.index', compact('users', 'fechas','asignados'));
+
+
+        return view('themes.backoffice.pages.asignacion.index', compact('users'));
+
+
+       
+    }
+
+
+
+
+    public function eventosCalendar(Request $request)
+    {
+       
+        // 1) Parsear rango que manda FullCalendar
+            $start = Carbon::parse($request->query('start'))->startOfDay();
+            $end   = Carbon::parse($request->query('end'))->endOfDay();
+
+
+            // 2) Traer todas las reservas (solo lo necesario)
+            $reservasRaw = Reserva::select('id', 'fecha_visita')->get();
+
+            // 3) Filtrar por rango EN PHP, convirtiendo d-m-Y → Carbon
+            $reservasFiltradas = $reservasRaw->filter(function ($r) use ($start, $end) {
+                try {
+                    $fecha = Carbon::createFromFormat('d-m-Y', $r->fecha_visita);
+                } catch (\Exception $e) {
+                    return false; // por si hay alguna fecha mal formateada
+                }
+
+                return $fecha->betweenIncluded($start, $end);
+            });
+
+            // 4) Agrupar por día normalizado (Y-m-d)
+            $reservas = $reservasFiltradas->groupBy(function ($r) {
+                return Carbon::createFromFormat('d-m-Y', $r->fecha_visita)->toDateString();
+            });
+
+            if ($reservas->isEmpty()) {
+
+                return response()->json([]);
+            }
+
+            $fechasISO = $reservas->keys();
+
+            // 5) Asignaciones para esas fechas (Asignacion.fecha está en Y-m-d)
+            $asignaciones = Asignacion::with(['users.roles'])
+                ->whereIn('fecha', $fechasISO)
+                ->get()
+                ->keyBy('fecha');
+
+            $eventos = [];
+
+            foreach ($fechasISO as $fechaISO) {
+
+                $listaReservas    = $reservas[$fechaISO];
+                $cantidadReservas = $listaReservas->count();
+                $asignacion       = $asignaciones->get($fechaISO);
+
+                if ($asignacion) {
+                    // Hay equipo asignado
+                    $usuariosRoles = $asignacion->users->map(function ($user) {
+                        $roles = $user->roles->pluck('name')->implode(', ');
+                        return $roles
+                            ? "{$user->name} ({$roles})"
+                            : $user->name;
+                    })->values()->all();
+
+                    $eventos[] = [
+                        'title' => 'Equipo asignado - ' . implode('; ', $usuariosRoles),
+                        'start' => $fechaISO,
+                        'color' => 'primary',
+                        'extendedProps' => [
+                            'asignado'         => true,
+                            'usuarios'         => $usuariosRoles,
+                            'editUrl'          => route('backoffice.asignacion.edit', $asignacion),
+                            'cantidadReservas' => $cantidadReservas,
+                        ],
+                    ];
+                } else {
+                    // Día con reservas pero sin asignación
+                    $texto = $cantidadReservas === 1 ? ' reserva' : ' reservas';
+
+                    $eventos[] = [
+                        'title' => "Sin equipo ({$cantidadReservas}{$texto})",
+                        'start' => $fechaISO,
+                        'color' => 'red',
+                        'extendedProps' => [
+                            'asignado'         => false,
+                            'createUrl'        => route('backoffice.asignacion.create', $fechaISO),
+                            'cantidadReservas' => $cantidadReservas,
+                        ],
+                    ];
+                }
+            }
+
+
+            return response()->json($eventos);
+ 
     }
 
     /**

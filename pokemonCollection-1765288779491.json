@@ -1,0 +1,50 @@
+[
+  {
+    "color": "default",
+    "type": "mewtwo",
+    "size": "medium",
+    "name": "Mewtwo",
+    "generation": "gen1",
+    "originalSpriteSize": 32
+  },
+  {
+    "color": "default",
+    "type": "mew",
+    "size": "medium",
+    "name": "Mew",
+    "generation": "gen1",
+    "originalSpriteSize": 32
+  },
+  {
+    "color": "default",
+    "type": "charizard",
+    "size": "medium",
+    "name": "Charizard",
+    "generation": "gen1",
+    "originalSpriteSize": 32
+  },
+  {
+    "color": "default",
+    "type": "hooh",
+    "size": "medium",
+    "name": "Ho-Oh",
+    "generation": "gen2",
+    "originalSpriteSize": 64
+  },
+  {
+    "color": "shiny",
+    "type": "lugia",
+    "size": "medium",
+    "name": "Lugia",
+    "generation": "gen2",
+    "originalSpriteSize": 64
+  },
+  {
+    "color": "default",
+    "type": "entei",
+    "size": "medium",
+    "name": "Entei",
+    "generation": "gen2",
+    "originalSpriteSize": 32
+  }
+]

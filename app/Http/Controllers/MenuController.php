@@ -7,11 +7,12 @@ use App\Reserva;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
+use Illuminate\Support\Facades\Log;
 
 class MenuController extends Controller
 {
 
-    public function index()
+    public function OLDindex()
     {
         Carbon::setLocale('es');
 
@@ -103,6 +104,121 @@ class MenuController extends Controller
 
         return view('themes.backoffice.pages.cocina.index', compact('menusPaginados', 'entradasPorDia', 'fondosPorDia', 'acompanamientosPorDia'));
     }
+
+
+    public function index(Request $request)
+    {
+        Carbon::setLocale('es');
+
+        // Fecha inicial (d-m-Y)
+        $fecha = $request->get('fecha');
+        if (!$fecha) {
+            $fecha = now()->format('d-m-Y');
+        }
+
+        return view('themes.backoffice.pages.cocina.index', [
+            'fechaInicial' => $fecha,
+        ]);
+    }
+
+    public function dia(Request $request)
+    {
+        Carbon::setLocale('es');
+
+        $fechaDMY = $request->get('fecha'); // dd-mm-YYYY (desde JS)
+        if (!$fechaDMY) {
+            return response()->json(['message' => 'Falta fecha'], 422);
+        }
+
+        try {
+            $fechaISO = Carbon::createFromFormat('d-m-Y', $fechaDMY)->toDateString(); // YYYY-mm-dd
+        } catch (\Throwable $e) {
+            return response()->json(['message' => 'Formato de fecha inválido, se espera d-m-Y'], 422);
+        }
+
+        // DEBUG (puedes dejarlo un rato)
+        // Log::info('Cocina dia()', ['fechaDMY' => $fechaDMY, 'fechaISO' => $fechaISO]);
+
+        $reservas = Reserva::query()
+            ->where(function ($q) use ($fechaDMY, $fechaISO) {
+                // Caso A: guardado como string "16-12-2025"
+                $q->where('fecha_visita', $fechaDMY);
+
+                // Caso B: guardado como string "2025-12-16"
+                $q->orWhere('fecha_visita', $fechaISO);
+
+                // Caso C: si es DATE/DATETIME real
+                $q->orWhereRaw("DATE(fecha_visita) = ?", [$fechaISO]);
+
+                // Caso D: si está como string d-m-Y pero quieres comparar como DATE
+                $q->orWhereRaw("STR_TO_DATE(fecha_visita, '%d-%m-%Y') = ?", [$fechaISO]);
+            })
+            ->with([
+                'cliente:id,nombre_cliente,whatsapp_cliente,correo',
+                'programa:id,nombre_programa',
+                'menus',
+                'menus.productoEntrada:id,nombre',
+                'menus.productoFondo:id,nombre',
+                'menus.productoAcompanamiento:id,nombre',
+            ])
+            ->orderBy('id', 'asc')
+            ->get();
+
+        // Log::info('Cocina reservas encontradas', ['count' => $reservas->count()]);
+
+        // Contadores por día
+        $entradas = [];
+        $fondos = [];
+        $acomps = [];
+
+        foreach ($reservas as $reserva) {
+            foreach ($reserva->menus as $menu) {
+                if ($menu->id_producto_entrada && $menu->productoEntrada) {
+                    $n = $menu->productoEntrada->nombre;
+                    $entradas[$n] = ($entradas[$n] ?? 0) + 1;
+                }
+                if ($menu->id_producto_fondo && $menu->productoFondo) {
+                    $n = $menu->productoFondo->nombre;
+                    $fondos[$n] = ($fondos[$n] ?? 0) + 1;
+                }
+                if ($menu->productoAcompanamiento) {
+                    $n = $menu->productoAcompanamiento->nombre;
+                    $acomps[$n] = ($acomps[$n] ?? 0) + 1;
+                }
+            }
+        }
+
+        $reservasPayload = $reservas->map(function ($r) {
+            return [
+                'id' => $r->id,
+                'cliente' => $r->cliente ? $r->cliente->nombre_cliente : 'Sin cliente',
+                'programa' => $r->programa ? $r->programa->nombre_programa : 'Sin programa',
+                'observacion_reserva' => $r->observacion ?? 'Sin Observaciones',
+                'avisado_en_cocina' => $r->avisado_en_cocina,
+                'avisar_url' => route('backoffice.reserva.avisar', $r->id), // (sin backoffice, por tu prefix)
+                'menus' => $r->menus->map(function ($m) {
+                    return [
+                        'entrada' => ($m->id_producto_entrada && $m->productoEntrada) ? $m->productoEntrada->nombre : null,
+                        'fondo' => ($m->id_producto_fondo && $m->productoFondo) ? $m->productoFondo->nombre : null,
+                        'acompanamiento' => $m->productoAcompanamiento ? $m->productoAcompanamiento->nombre : null,
+                        'alergias' => $m->alergias,
+                        'observacion' => $m->observacion,
+                    ];
+                })->values(),
+            ];
+        })->values();
+
+        return response()->json([
+            'fecha' => $fechaDMY,
+            'hoy' => now()->format('d-m-Y') === $fechaDMY,
+            'entradas' => $entradas,
+            'fondos' => $fondos,
+            'acompanamientos' => $acomps,
+            'reservas' => $reservasPayload,
+        ]);
+    }
+    
+
 
     public function create()
     {
