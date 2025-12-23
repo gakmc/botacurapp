@@ -32,19 +32,64 @@
                 <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
             
             {{-- Vista Alternativa --}}
-<div id="reservas-content">
-    <div class="center" style="padding:20px;">
-        <div class="preloader-wrapper active">
-            <div class="spinner-layer spinner-blue-only">
-                <div class="circle-clipper left"><div class="circle"></div></div>
-                <div class="gap-patch"><div class="circle"></div></div>
-                <div class="circle-clipper right"><div class="circle"></div></div>
-            </div>
-        </div>
-        <p>Cargando reservas...</p>
-    </div>
-</div>
+            @if ($alternativeView)
 
+                @php
+                    $color = "";
+                @endphp
+
+                {{-- Vista Alternativa en Pantallas L --}}
+                @foreach($reservasPaginadas as $fecha => $reservas)
+                    @include('themes.backoffice.pages.reserva.screens.alternative')
+                @endforeach
+                {{-- Fin Vista Alternativa en Pantallas L --}}
+
+                
+                <!-- Paginación -->
+                <div class="center-align">
+                    {{ $reservasPaginadas->appends(['alternative' => 1])->links('vendor.pagination.materialize') }}
+                </div>
+
+                {{-- Fin Vista Alternativa --}}    
+
+            @else
+                {{-- Vista Comun --}}    
+
+                @foreach ($reservasMovilesPaginadas as $fecha => $reservas)
+
+                {{-- Vista en Pantallas de dispositivos Moviles --}}
+                    @include('themes.backoffice.pages.reserva.screens.mobile', $reservas)
+                {{-- Fin Vista en Pantallas de dispositivos Moviles --}}
+                    
+                @endforeach
+
+
+                @foreach($reservasPaginadas as $fecha => $reservas)
+                    {{-- Vista en Pantallas L --}}
+                    @include('themes.backoffice.pages.reserva.screens.principal', ['reservasPaginadas'=>$reservasPaginadas])
+                    {{-- Fin Vista Pantallas L --}}
+                @endforeach
+
+
+                <!-- Paginación -->
+
+                @if ($mobileView === 'masajes')
+                                <div class="center-align">
+                                    {{ $reservasPaginadas->appends(['mobileview' => 'masajes'])->links('vendor.pagination.materialize') }}
+                                </div>
+                @elseif ($mobileView === 'ubicacion')
+                <div class="center-align">
+                    {{ $reservasPaginadas->appends(['mobileview' => 'ubicacion'])->links('vendor.pagination.materialize') }}
+                </div>
+                @else
+                <div class="center-align">
+                    {{ $reservasPaginadas->links('vendor.pagination.materialize') }}
+                </div>
+                    
+                @endif
+
+                {{-- Fin Vista Comun --}}
+            @endif
 
                 {{-- Modal para mostrar los horarios disponibles --}}
                 @include('themes.backoffice.pages.reserva.includes.modal_sauna_disponible')
@@ -138,106 +183,5 @@
     });
 
 </script> --}}
-
-
-
-<script>
-document.addEventListener('DOMContentLoaded', function () {
-
-    // evita doble init (por layout/partials)
-    if (window.__reservasAjaxInit) return;
-    window.__reservasAjaxInit = true;
-
-    const cont = document.getElementById('reservas-content');
-
-    function currentParamsFromUrl(url) {
-        const u = new URL(url, window.location.origin);
-        return u.searchParams;
-    }
-
-    function buildContenidoUrlFromCurrentLocation() {
-        const u = new URL(window.location.href);
-        // cambiamos a ruta contenido (AJAX)
-        const contenidoBase = "{{ route('reserva.contenido') }}";
-        const out = new URL(contenidoBase, window.location.origin);
-
-        // copiamos query actual (page, alternative, mobileview, etc.)
-        u.searchParams.forEach((v, k) => out.searchParams.set(k, v));
-
-        return out.toString();
-    }
-
-    function loadContenido(pushStateUrl = null) {
-        const url = buildContenidoUrlFromCurrentLocation();
-
-        cont.innerHTML = `
-            <div class="center" style="padding:20px;">
-                <div class="preloader-wrapper active">
-                    <div class="spinner-layer spinner-blue-only">
-                        <div class="circle-clipper left"><div class="circle"></div></div>
-                        <div class="gap-patch"><div class="circle"></div></div>
-                        <div class="circle-clipper right"><div class="circle"></div></div>
-                    </div>
-                </div>
-                <p>Cargando reservas...</p>
-            </div>
-        `;
-
-        fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' }})
-            .then(r => { if (!r.ok) throw new Error('HTTP ' + r.status); return r.text(); })
-            .then(html => {
-                cont.innerHTML = html;
-
-                // Si tu contenido tiene elementos Materialize que requieran init extra, hazlo aquí:
-                // $('.tooltipped').tooltip(); etc.
-
-                // re-inicializar modales si los includes usan modal-trigger
-                if (window.M && typeof M.AutoInit === 'function') {
-                    // OJO: AutoInit puede duplicar cosas, úsalo solo si lo necesitas
-                    // M.AutoInit();
-                }
-            })
-            .catch(err => {
-                console.error(err);
-                cont.innerHTML = `<p class="red-text">Error cargando reservas: ${err.message}</p>`;
-            });
-
-        if (pushStateUrl) {
-            window.history.pushState({}, '', pushStateUrl);
-        }
-    }
-
-    // 1) carga inicial AJAX
-    loadContenido();
-
-    // 2) interceptar clicks de paginación dentro del contenido
-    document.addEventListener('click', function (e) {
-        const a = e.target.closest('#reservas-content .pagination a');
-        if (!a) return;
-
-        e.preventDefault();
-
-        // a.href contiene ?page=N&alternative=... etc
-        const params = currentParamsFromUrl(a.href);
-
-        // aplicamos esos params a la URL actual (para mantener comportamiento)
-        const current = new URL(window.location.href);
-        params.forEach((v, k) => current.searchParams.set(k, v));
-
-        // limpiamos si no viene alguno (opcional)
-        // current.searchParams.delete('page') ... etc
-
-        window.history.pushState({}, '', current.toString());
-        loadContenido(); // recarga contenido según la URL actual
-    });
-
-    // 3) back/forward del navegador
-    window.addEventListener('popstate', function () {
-        loadContenido();
-    });
-
-});
-</script>
-
 
 @endsection

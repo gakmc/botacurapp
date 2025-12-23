@@ -40,13 +40,174 @@ class ReservaController extends Controller
 
     public function index(Request $request)
     {
+        $inicioDebug = microtime(true);
+        Carbon::setLocale('es');
+
+        $alternativeView = $request->query('alternative', false);
+        $alternativeView = $alternativeView == 1 ? true : false;
+
+        $mobileView = $request->query('mobileview', '');
+
+        // ====== TODO ESTO LO DEJAMOS (modales / disponibilidad) ======
+        $fechaSeleccionada = Carbon::now()->format('Y-m-d');
+
+        $ubicacionesOcupadas = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->pluck('ubicaciones.nombre')
+            ->map(function ($nombre) { return $nombre; })
+            ->toArray();
+
+        $ubicacionesAll = DB::table('ubicaciones')->select('id', 'nombre')->get();
+
+        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+            return !in_array($ubicacion->nombre, $ubicacionesOcupadas);
+        })->values();
+
+        $lugaresMasajes = LugarMasaje::all();
+
+        $horariosDisponibles = $this->calcularHorariosDisponiblesSpa($fechaSeleccionada);
+        $horariosDisponiblesMasajes = $this->calcularHorariosDisponiblesMasajes($fechaSeleccionada);
+        $lugaresDisponibles = $this->obtenerUbicacionesDisponibles($fechaSeleccionada);
+        
+        
+        $finDebug = microtime(true);
+        Log::info("Tiempo controlador Registro de reservas (/reservas/index): ".round($finDebug - $inicioDebug, 3)." s");
+
+        // ====== IMPORTANTE: ya NO pasamos reservasPaginadas aquí ======
+        return view('themes.backoffice.pages.reserva.index', compact(
+            'alternativeView',
+            'mobileView',
+            'horariosDisponibles',
+            'horariosDisponiblesMasajes',
+            'lugaresDisponibles',
+            'lugaresMasajes'
+        ));
+
+
+    }
+
+
+    public function contenido(Request $request)
+    {
+        Carbon::setLocale('es');
+
+        $alternativeView = $request->query('alternative', false);
+        $alternativeView = $alternativeView == 1 ? true : false;
+
+        $mobileView = $request->query('mobileview', '');
+
+        $fechaActual = Carbon::now()->startOfDay();
+
+        // ====== Query principal según alternativa ======
+        if ($alternativeView) {
+            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+                ->with(['cliente', 'visitas.ubicacion', 'masajes', 'programa', 'venta'])
+                ->select('reservas.*')
+                ->selectSub(
+                    DB::table('visitas')
+                        ->whereColumn('visitas.id_reserva', 'reservas.id')
+                        ->orderBy('id_ubicacion', 'asc')
+                        ->limit(1)
+                        ->select('id_ubicacion'),
+                    'first_id_ubicacion'
+                )
+                ->orderBy('fecha_visita', 'asc')
+                ->orderBy('first_id_ubicacion', 'asc');
+        } else {
+            $reservasQuery = Reserva::where('fecha', '>=', $fechaActual)
+                ->with(['cliente', 'visitas.ubicacion', 'masajes', 'programa', 'venta'])
+                ->select('reservas.*')
+                ->selectSub(
+                    DB::table('visitas')
+                        ->whereColumn('visitas.id_reserva', 'reservas.id')
+                        ->orderBy('horario_sauna', 'asc')
+                        ->limit(1)
+                        ->select('horario_sauna'),
+                    'first_horario_sauna'
+                )
+                ->orderBy('fecha_visita', 'asc')
+                ->orderBy('first_horario_sauna', 'asc');
+        }
+
+        $reservas = $reservasQuery->get();
+
+        // ====== (Opcional) hora_slot si tus includes lo usan ======
+        $reservas->each(function ($r) {
+            $horaSauna  = $r->first_horario_sauna ?? optional($r->visitas->sortBy('horario_sauna')->first())->horario_sauna;
+            $horaMasaje = optional($r->masajes)->min('horario_masaje');
+            $hora = collect([$horaSauna, $horaMasaje])->filter()->sort()->first();
+            $r->hora_slot = $hora ? Carbon::parse($hora)->format('H:i') : '23:59';
+        });
+
+        // ====== Agrupar por día (como en tu base) ======
+        $reservasPorDia = $reservas->groupBy(function ($reserva) {
+            return Carbon::parse($reserva->fecha_visita)->format('d-m-Y');
+        });
+
+        // ====== Paginación por día ======
+        $perPage = 1;
+        $currentPage = LengthAwarePaginator::resolveCurrentPage();
+        $currentItems = $reservasPorDia->slice(($currentPage - 1) * $perPage, $perPage)->all();
+        $reservasPaginadas = new LengthAwarePaginator($currentItems, $reservasPorDia->count(), $perPage, $currentPage);
+        $reservasPaginadas->setPath(request()->url());
+
+        // ====== Movil (si la usas en pantalla pequeña) ======
+        $reservasMoviles = Reserva::where('fecha_visita', '>=', $fechaActual)
+            ->with(['cliente', 'visitas.ubicacion', 'masajes', 'programa', 'venta'])
+            ->select('reservas.*')
+            ->selectSub(
+                DB::table('visitas')
+                    ->whereColumn('visitas.id_reserva', 'reservas.id')
+                    ->orderBy('horario_sauna', 'asc')
+                    ->limit(1)
+                    ->select('horario_sauna'),
+                'first_horario_sauna'
+            )
+            ->orderBy('fecha_visita', 'asc')
+            ->orderBy('first_horario_sauna', 'asc')
+            ->get();
+
+        $reservasMoviles->each(function ($r) {
+            $horaSauna  = $r->first_horario_sauna ?? optional($r->visitas->sortBy('horario_sauna')->first())->horario_sauna;
+            $horaMasaje = optional($r->masajes)->min('horario_masaje');
+            $hora = collect([$horaSauna, $horaMasaje])->filter()->sort()->first();
+            $r->hora_slot = $hora ? Carbon::parse($hora)->format('H:i') : '23:59';
+        });
+
+        $reservasDia = $reservasMoviles->groupBy(function ($reservamovil) {
+            return Carbon::parse($reservamovil->fecha_visita)->format('d-m-Y');
+        });
+
+        $porPagina = 1;
+        $paginaActual = LengthAwarePaginator::resolveCurrentPage();
+        $itemsActuales = $reservasDia->slice(($paginaActual - 1) * $porPagina, $porPagina)->all();
+        $reservasMovilesPaginadas = new LengthAwarePaginator($itemsActuales, $reservasDia->count(), $porPagina, $paginaActual);
+        $reservasMovilesPaginadas->setPath(request()->url());
+
+        // ====== Retornar HTML parcial ======
+        $html = view('themes.backoffice.pages.reserva.includes.contenido_reservas', compact(
+            'reservasPaginadas',
+            'reservasMovilesPaginadas',
+            'alternativeView',
+            'mobileView'
+        ))->render();
+
+        return response($html);
+    }
+
+
+    public function OldFuncionalindex(Request $request)
+    {
+                $inicioDebug = microtime(true);
         Carbon::setLocale('es');
         $alternativeView = $request->query('alternative', false);
         $alternativeView = $alternativeView == 1 ? true : false;
         $mobileView = $request->query('mobileview', '');
         $fechaActual     = Carbon::now()->startOfDay();
     
-        
+    
         if ($alternativeView) {
 
             $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
@@ -216,7 +377,8 @@ class ReservaController extends Controller
 
         //FINCAMBIAR
 
-    
+        $finDebug = microtime(true);
+        Log::info("Tiempo controlador Registro de reservas (/reservas/index): ".round($finDebug - $inicioDebug, 3)." s");
         return view('themes.backoffice.pages.reserva.index', compact('reservasPaginadas', 'alternativeView', 'reservasMovilesPaginadas', 'mobileView', 'horariosDisponibles', 'horariosDisponiblesMasajes', 'lugaresDisponibles', 'lugaresMasajes'));
     }
 

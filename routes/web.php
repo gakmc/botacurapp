@@ -166,6 +166,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::get('user/{user}/assign_permission', 'UserController@assign_permission')->name('user.assign_permission');
     Route::get('reserva', 'ReservaController@index')->name('reserva.index');
+
+    // NUEVA: contenido (HTML) para cargar por JS
+    Route::get('/reserva/contenido', 'ReservaController@contenido')->name('reserva.contenido');
+
     Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
 
 
