@@ -1,23 +1,17 @@
 <?php
-
 namespace App\Http\Controllers;
 
-use App\AnularSueldoUsuario;
 use App\Consumo;
-use App\Masaje;
 use App\Propina;
-use App\RangoSueldoRole;
 use App\Sueldo;
 use App\SueldoPagado;
 use App\User;
 use App\VentaDirecta;
+use Carbon\Carbon;
 use Exception;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Cache;
-use RealRashid\SweetAlert\Facades\Alert;
-use Carbon\Carbon;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Str;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class SueldoController extends Controller
 {
@@ -30,7 +24,7 @@ class SueldoController extends Controller
     // {
     //     $mes = $request->input('mes', now()->month);
     //     $anio = $request->input('anio', now()->year);
-    
+
     //     // Obtener usuarios que tengan al menos un sueldo ese mes/año
     //     $usuarios = User::whereHas('sueldos', function ($query) use ($mes, $anio) {
     //         $query->whereMonth('dia_trabajado', $mes)
@@ -49,7 +43,7 @@ class SueldoController extends Controller
     //     ->orderBy('anio', 'desc')
     //     ->orderBy('mes', 'desc')
     //     ->get();
-    
+
     //     return view('themes.backoffice.pages.sueldo.index', [
     //         'usuarios' => $usuarios,
     //         'mes' => $mes,
@@ -58,10 +52,9 @@ class SueldoController extends Controller
     //     ]);
     // }
 
-
     public function OLDindex(Request $request)
     {
-        $mes = $request->input('mes', now()->month);
+        $mes  = $request->input('mes', now()->month);
         $anio = $request->input('anio', now()->year);
 
         $sueldos = Sueldo::with('user')
@@ -73,33 +66,33 @@ class SueldoController extends Controller
         $semanas = [];
 
         foreach ($sueldos as $sueldo) {
-            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $fecha        = Carbon::parse($sueldo->dia_trabajado);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
-            $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+            $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
             $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
 
             $roles = $sueldo->user->list_roles();
 
-            $userId = $sueldo->user->id;
+            $userId   = $sueldo->user->id;
             $userName = $sueldo->user->name;
             $userRole = $sueldo->user->roles;
 
-            if (!isset($semanas[$rango])) {
+            if (! isset($semanas[$rango])) {
                 $semanas[$rango] = [];
             }
-            
-            if (!isset($semanas[$rango][$userId])) {
+
+            if (! isset($semanas[$rango][$userId])) {
                 $semanas[$rango][$userId] = [
-                    'role' => $roles,
-                    'name' => $userName,
-                    'dias' => 0,
-                    'sueldos' => 0,
+                    'role'     => $roles,
+                    'name'     => $userName,
+                    'dias'     => 0,
+                    'sueldos'  => 0,
                     'propinas' => 0,
-                    'total' => 0,
-                    'user_id' => $userId,
-                    'inicio' => $inicioSemana->format('Y-m-d'),
-                    'fin' => $finSemana->format('Y-m-d')
+                    'total'    => 0,
+                    'user_id'  => $userId,
+                    'inicio'   => $inicioSemana->format('Y-m-d'),
+                    'fin'      => $finSemana->format('Y-m-d'),
                 ];
             }
 
@@ -107,7 +100,7 @@ class SueldoController extends Controller
             $semanas[$rango][$userId]['sueldos'] += $sueldo->valor_dia;
             if (in_array($roles, ['Masoterapeuta'])) {
                 $semanas[$rango][$userId]['propinas'] = 0;
-            }else{
+            } else {
                 $semanas[$rango][$userId]['propinas'] += $sueldo->sub_sueldo - $sueldo->valor_dia;
             }
             $semanas[$rango][$userId]['total'] += $sueldo->total_pagar;
@@ -128,18 +121,14 @@ class SueldoController extends Controller
 
         $pagosRealizados = SueldoPagado::select('*')->get();
 
-
         return view('themes.backoffice.pages.sueldo.index', [
-            'semanas' => $semanas,
-            'mes' => $mes,
-            'anio' => $anio,
+            'semanas'           => $semanas,
+            'mes'               => $mes,
+            'anio'              => $anio,
             'fechasDisponibles' => $fechasDisponibles,
-            'pagosRealizados' => $pagosRealizados
+            'pagosRealizados'   => $pagosRealizados,
         ]);
     }
-
-
-
 
     public function index(Request $request)
     {
@@ -156,35 +145,35 @@ class SueldoController extends Controller
         $semanas = [];
 
         foreach ($sueldos as $sueldo) {
-            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $fecha        = Carbon::parse($sueldo->dia_trabajado);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
             $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
-            $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+            $rango  = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
             $roles  = $sueldo->user->list_roles();
             $esMaso = is_array($roles) ? in_array('Masoterapeuta', $roles)
-                                    : (stripos((string)$roles, 'Masoterapeuta') !== false);
+                : (stripos((string) $roles, 'Masoterapeuta') !== false);
 
             $userId   = $sueldo->user->id;
             $userName = $sueldo->user->name;
 
-            if (!isset($semanas[$rango])) {
+            if (! isset($semanas[$rango])) {
                 $semanas[$rango] = [];
             }
 
-            if (!isset($semanas[$rango][$userId])) {
+            if (! isset($semanas[$rango][$userId])) {
                 $semanas[$rango][$userId] = [
-                    'role'    => $roles,
-                    'name'    => $userName,
-                    'dias'    => 0,   // aquí guardaremos "días" o "masajes" según rol
-                    'sueldos' => 0,
-                    'propinas'=> 0,
-                    'bono'=> 0,
-                    'motivo' => '',
-                    'total'   => 0,
-                    'user_id' => $userId,
-                    'inicio'  => $inicioSemana->format('Y-m-d'),
-                    'fin'     => $finSemana->format('Y-m-d'),
+                    'role'     => $roles,
+                    'name'     => $userName,
+                    'dias'     => 0, // aquí guardaremos "días" o "masajes" según rol
+                    'sueldos'  => 0,
+                    'propinas' => 0,
+                    'bono'     => 0,
+                    'motivo'   => '',
+                    'total'    => 0,
+                    'user_id'  => $userId,
+                    'inicio'   => $inicioSemana->format('Y-m-d'),
+                    'fin'      => $finSemana->format('Y-m-d'),
                 ];
 
                 // Si es masoterapeuta, calculamos una sola vez los MASAJES de la semana
@@ -201,27 +190,26 @@ class SueldoController extends Controller
 
                     // $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
 
-
                     $ini = $inicioSemana->toDateString();
                     $fin = $finSemana->toDateString();
 
                     $cantMasajes = DB::table('masajes as m')
                         ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
                         ->whereBetween('r.fecha_visita', [$ini, $fin])
-                        ->where('m.user_id', $userId)       // masoterapeuta
-                        ->count();                           // cada fila = 1 masaje (incluye pareja como 2)
+                        ->where('m.user_id', $userId) // masoterapeuta
+                        ->count();                    // cada fila = 1 masaje (incluye pareja como 2)
 
                     $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
                 }
             }
 
-            if (!$esMaso) {
+            if (! $esMaso) {
                 $semanas[$rango][$userId]['dias'] += 1;
             }
 
-            $semanas[$rango][$userId]['sueldos']  += $sueldo->valor_dia;
+            $semanas[$rango][$userId]['sueldos'] += $sueldo->valor_dia;
             $semanas[$rango][$userId]['propinas'] += $esMaso ? 0 : ($sueldo->sub_sueldo - $sueldo->valor_dia);
-            $semanas[$rango][$userId]['total']    += $sueldo->total_pagar;
+            $semanas[$rango][$userId]['total'] += $sueldo->total_pagar;
         }
 
         // Orden cronológico de semanas
@@ -246,7 +234,7 @@ class SueldoController extends Controller
             $inicioSemana = Carbon::parse($pago->semana_inicio);
             $finSemana    = Carbon::parse($pago->semana_fin);
 
-            $rango = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+            $rango  = $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
             $userId = $pago->user_id;
 
             if (isset($semanas[$rango]) && isset($semanas[$rango][$userId])) {
@@ -259,17 +247,14 @@ class SueldoController extends Controller
         }
 
         return view('themes.backoffice.pages.sueldo.index', compact(
-            'semanas','mes','anio','fechasDisponibles','pagosRealizados'
+            'semanas', 'mes', 'anio', 'fechasDisponibles', 'pagosRealizados'
         ));
     }
-
-
-
 
     public function adminViewSueldos(User $user, $anio, $mes, Request $request)
     {
         $userId = $user->id;
-        
+
         // Obtener todos los meses/años únicos en que el usuario trabajó
         $fechasDisponibles = Sueldo::where('id_user', $userId)
             ->selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
@@ -280,8 +265,8 @@ class SueldoController extends Controller
 
         // Si no se selecciona fecha, usar la más reciente disponible
         $fechaSeleccionada = $fechasDisponibles->first();
-        $currentMonth = ($fechaSeleccionada ? $mes : now()->month);
-        $currentYear = ($fechaSeleccionada ? $anio : now()->year);
+        $currentMonth      = ($fechaSeleccionada ? $mes : now()->month);
+        $currentYear       = ($fechaSeleccionada ? $anio : now()->year);
         // $currentMonth = $request->input('mes', $fechaSeleccionada ? $fechaSeleccionada->mes : now()->month);
         // $currentYear = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
 
@@ -296,7 +281,6 @@ class SueldoController extends Controller
         foreach ($sueldos as $sueldo) {
             $fecha = Carbon::parse($sueldo->dia_trabajado)->toDateString();
 
-
             $masajesPorDia[$fecha] = DB::table('masajes as m')
                 ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
                 ->where('m.user_id', $userId)
@@ -304,47 +288,39 @@ class SueldoController extends Controller
                 ->count();
         }
 
-
         // // Agrupar los sueldos por semana
         $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
-            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $fecha        = Carbon::parse($sueldo->dia_trabajado);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
-            $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+            $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
             return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
         });
 
-
         if ($user->has_role('masoterapeuta')) {
 
             return view('themes.backoffice.pages.sueldo.admin_view_maso', [
-                'sueldosAgrupados' => $sueldosAgrupados,
-                'mes' => $mes,
-                'anio' => $anio,
+                'sueldosAgrupados'  => $sueldosAgrupados,
+                'mes'               => $mes,
+                'anio'              => $anio,
                 'fechasDisponibles' => $fechasDisponibles,
-                'user' => $user,
-                'masajesPorDia' => $masajesPorDia
+                'user'              => $user,
+                'masajesPorDia'     => $masajesPorDia,
             ]);
 
-        }else{
-            
+        } else {
+
             return view('themes.backoffice.pages.sueldo.admin_view', [
-                'sueldosAgrupados' => $sueldosAgrupados,
-                'mes' => $mes,
-                'anio' => $anio,
+                'sueldosAgrupados'  => $sueldosAgrupados,
+                'mes'               => $mes,
+                'anio'              => $anio,
                 'fechasDisponibles' => $fechasDisponibles,
-                'user' => $user,
+                'user'              => $user,
             ]);
 
         }
 
-
     }
-
-
-
-
-
 
     public function OLDview(User $user, Request $request)
     {
@@ -352,7 +328,7 @@ class SueldoController extends Controller
 
         // Obtener mes y año del request o usar el mes y año actuales como predeterminado
         $currentMonth = $request->input('mes', now()->month);
-        $currentYear = $request->input('anio', now()->year);
+        $currentYear  = $request->input('anio', now()->year);
 
         // Filtrar registros por el mes seleccionado
         $sueldos = Sueldo::where('id_user', $userId)
@@ -363,20 +339,89 @@ class SueldoController extends Controller
 
         // Verificar la autorización para al menos un sueldo
         // if ($sueldos->isNotEmpty()) {
-            $this->authorize('view', $sueldos->first());
+        $this->authorize('view', $sueldos->first());
         // } else {
         //     abort(403);
         // }
 
         return view('themes.backoffice.pages.sueldo.view', [
             'sueldos' => $sueldos,
-            'mes' => $currentMonth,
-            'anio' => $currentYear,
-            'user' => $user,
+            'mes'     => $currentMonth,
+            'anio'    => $currentYear,
+            'user'    => $user,
         ]);
     }
 
-    public function view(User $user, Request $request)
+public function view(User $user, Request $request)
+{
+    $userId = $user->id;
+
+    $fechasDisponibles = Sueldo::where('id_user', $userId)
+        ->selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
+        ->groupBy('mes', 'anio')
+        ->orderBy('anio', 'desc')
+        ->orderBy('mes', 'desc')
+        ->get();
+
+    $fechaSeleccionada = $fechasDisponibles->first();
+    $currentMonth = $request->input('mes', $fechaSeleccionada ? $fechaSeleccionada->mes : now()->month);
+    $currentYear  = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
+
+    $sueldos = Sueldo::where('id_user', $userId)
+        ->whereMonth('dia_trabajado', $currentMonth)
+        ->whereYear('dia_trabajado', $currentYear)
+        ->orderBy('dia_trabajado', 'asc')
+        ->get();
+
+    if ($sueldos->isNotEmpty()) {
+        $this->authorize('view', $sueldos->first());
+    }
+
+    // Traemos TODOS los sueldos_pagados del usuario (o filtra por mes si quieres)
+    $pagos = SueldoPagado::where('user_id', $userId)->get();
+
+    $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
+        $fecha = Carbon::parse($sueldo->dia_trabajado);
+        $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
+        $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+
+        return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+    });
+
+    // Para cada grupo semanal, buscamos el pago cuyo rango contenga el dia_trabajado
+    $sueldosAgrupados->each(function ($items) use ($pagos) {
+
+        $fechaTrabajo = Carbon::parse($items->first()->dia_trabajado)->toDateString();
+
+        $pagoSemana = $pagos->first(function ($p) use ($fechaTrabajo) {
+            $ini = Carbon::parse($p->semana_inicio)->toDateString();
+            $fin = Carbon::parse($p->semana_fin)->toDateString();
+
+            return ($fechaTrabajo >= $ini && $fechaTrabajo <= $fin);
+        });
+
+        
+        $bono   = $pagoSemana ? (int) $pagoSemana->bono : 0;
+        $motivo = $pagoSemana ? $pagoSemana->motivo : null;
+
+        foreach ($items as $sueldo) {
+            $sueldo->setAttribute('bono', $bono);
+            $sueldo->setAttribute('motivo', $motivo);
+        }
+    });
+
+
+
+    return view('themes.backoffice.pages.sueldo.view', [
+        'sueldosAgrupados' => $sueldosAgrupados,
+        'mes' => $currentMonth,
+        'anio' => $currentYear,
+        'fechasDisponibles' => $fechasDisponibles,
+        'user' => $user,
+    ]);
+}
+
+    public function viewOLDFUNCIONANDO(User $user, Request $request)
     {
         $userId = $user->id;
 
@@ -390,8 +435,8 @@ class SueldoController extends Controller
 
         // Si no se selecciona fecha, usar la más reciente disponible
         $fechaSeleccionada = $fechasDisponibles->first();
-        $currentMonth = $request->input('mes', $fechaSeleccionada ? $fechaSeleccionada->mes : now()->month);
-        $currentYear = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
+        $currentMonth      = $request->input('mes', $fechaSeleccionada ? $fechaSeleccionada->mes : now()->month);
+        $currentYear       = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
 
         // Obtener todos los sueldos del mes seleccionado
         $sueldos = Sueldo::where('id_user', $userId)
@@ -406,22 +451,21 @@ class SueldoController extends Controller
 
         // Agrupar los sueldos por semana
         $sueldosAgrupados = $sueldos->groupBy(function ($sueldo) {
-            $fecha = Carbon::parse($sueldo->dia_trabajado);
+            $fecha        = Carbon::parse($sueldo->dia_trabajado);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
-            $finSemana = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
+            $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
             return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
         });
 
         return view('themes.backoffice.pages.sueldo.view', [
-            'sueldosAgrupados' => $sueldosAgrupados,
-            'mes' => $currentMonth,
-            'anio' => $currentYear,
+            'sueldosAgrupados'  => $sueldosAgrupados,
+            'mes'               => $currentMonth,
+            'anio'              => $currentYear,
             'fechasDisponibles' => $fechasDisponibles,
-            'user' => $user,
+            'user'              => $user,
         ]);
     }
-
 
     public function viewSueldos(User $user, Request $request)
     {
@@ -439,8 +483,7 @@ class SueldoController extends Controller
         $fechaSeleccionada = $fechasDisponibles->first();
 
         $currentMonth = $request->input('mes', $fechaSeleccionada ? $fechaSeleccionada->mes : now()->month);
-        $currentYear = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
-        
+        $currentYear  = $request->input('anio', $fechaSeleccionada ? $fechaSeleccionada->anio : now()->year);
 
         $sueldos = Sueldo::where('id_user', $userId)
             ->whereMonth('dia_trabajado', $currentMonth)
@@ -453,19 +496,17 @@ class SueldoController extends Controller
         }
 
         return view('themes.backoffice.pages.sueldo.view', [
-            'sueldos' => $sueldos,
-            'mes' => $currentMonth,
-            'anio' => $currentYear,
+            'sueldos'           => $sueldos,
+            'mes'               => $currentMonth,
+            'anio'              => $currentYear,
             'fechasDisponibles' => $fechasDisponibles,
-            'user' => $user,
+            'user'              => $user,
         ]);
     }
 
-
-    
-    public function detalle_diario(User $user, $anio, $mes, $dia )
+    public function detalle_diario(User $user, $anio, $mes, $dia)
     {
-        $user = $user->load('sueldos', 'propinas');
+        $user  = $user->load('sueldos', 'propinas');
         $fecha = Carbon::createFromDate($anio, $mes, $dia);
 
         $sueldo = Sueldo::where('id_user', $user->id)
@@ -475,14 +516,11 @@ class SueldoController extends Controller
 
         // Obtener propinas del día con las relaciones necesarias
         $propinas = Propina::with('propinable')
-        ->whereDate('fecha', $fecha)
-        ->get();
-    
-
-
+            ->whereDate('fecha', $fecha)
+            ->get();
 
         // Filtrar solo las asignaciones del usuario actual
-        $asignaciones = collect();
+        $asignaciones          = collect();
         $total_propina_usuario = 0;
 
         // foreach ($propinas as $propina) {
@@ -496,12 +534,11 @@ class SueldoController extends Controller
         //     }
         // }
 
-
         foreach ($propinas as $propina) {
             $pivot = $propina->users()->where('users.id', $user->id)->first();
             if ($pivot) {
                 $nombre_cliente = 'Desconocido';
-        
+
                 if ($propina->propinable) {
                     if ($propina->propinable_type == VentaDirecta::class) {
                         $nombre_cliente = 'Venta Directa';
@@ -509,26 +546,24 @@ class SueldoController extends Controller
                         $nombre_cliente = optional($propina->propinable->venta->reserva->cliente)->nombre_cliente ?? 'Desconocido';
                     }
                 }
-        
-                $asignaciones->push((object)[
+
+                $asignaciones->push((object) [
                     'nombre_cliente' => $nombre_cliente,
                     'monto_asignado' => $pivot->pivot->monto_asignado,
                 ]);
-        
+
                 $total_propina_usuario += $pivot->pivot->monto_asignado;
             }
         }
 
-
         return view('themes.backoffice.pages.sueldo.detalle_diario', [
-            'user' => $user,
-            'fecha' => $fecha,
-            'sueldo' => $sueldo,
-            'asignaciones' => $asignaciones,
+            'user'                  => $user,
+            'fecha'                 => $fecha,
+            'sueldo'                => $sueldo,
+            'asignaciones'          => $asignaciones,
             'total_propina_usuario' => $total_propina_usuario,
         ]);
     }
-
 
     // public function view_maso(User $user, Request $request)
     // {
@@ -560,10 +595,6 @@ class SueldoController extends Controller
     //     ]);
     // }
 
-
-
-
-
     public function view_maso(User $user, Request $request)
     {
         $userId = $user->id;
@@ -591,7 +622,6 @@ class SueldoController extends Controller
         $masajesPorDia = [];
         foreach ($sueldos as $sueldo) {
             $fecha = Carbon::parse($sueldo->dia_trabajado)->toDateString();
-
 
             $masajesPorDia[$fecha] = DB::table('masajes as m')
                 ->join('reservas as r', 'r.id', '=', 'm.id_reserva')
@@ -627,13 +657,6 @@ class SueldoController extends Controller
         ]);
     }
 
-
-
-
-
-
-
-
     /**
      * Show the form for creating a new resource.
      *
@@ -661,11 +684,11 @@ class SueldoController extends Controller
                 Sueldo::updateOrCreate(
                     [
                         'dia_trabajado' => $sueldo['dia_trabajado'],
-                        'id_user' => $sueldo['id_user'],
+                        'id_user'       => $sueldo['id_user'],
                     ],
                     [
-                        'valor_dia' => $sueldo['valor_dia'],
-                        'sub_sueldo' => $sueldo['sub_sueldo'],
+                        'valor_dia'   => $sueldo['valor_dia'],
+                        'sub_sueldo'  => $sueldo['sub_sueldo'],
                         'total_pagar' => $sueldo['total_pagar'],
                     ]
                 );
@@ -691,12 +714,11 @@ class SueldoController extends Controller
     //     // Recuperar el sueldo base actual del cache
     //     $sueldoActual = Cache::get('sueldoBase');
 
-
     //     // Verificar si el valor es diferente al actual
     //     if ($sueldoActual !== $request->sueldoBase) {
     //         // Guardar el nuevo valor en cache
     //         Cache::forever('sueldoBase', $request->sueldoBase);
-    
+
     //         // Redirigir con un mensaje de éxito
     //         return redirect()->back()->with('success', 'El sueldo base se ha actualizado correctamente.');
 
@@ -718,11 +740,11 @@ class SueldoController extends Controller
                 Sueldo::updateOrCreate(
                     [
                         'dia_trabajado' => $sueldo['dia_trabajado'],
-                        'id_user' => $sueldo['id_user'],
+                        'id_user'       => $sueldo['id_user'],
                     ],
                     [
-                        'valor_dia' => $sueldo['valor_dia'],
-                        'sub_sueldo' => $sueldo['sub_sueldo'],
+                        'valor_dia'   => $sueldo['valor_dia'],
+                        'sub_sueldo'  => $sueldo['sub_sueldo'],
                         'total_pagar' => $sueldo['total_pagar'],
                     ]
                 );
@@ -783,10 +805,5 @@ class SueldoController extends Controller
     {
         //
     }
-
-
-
-
-
 
 }

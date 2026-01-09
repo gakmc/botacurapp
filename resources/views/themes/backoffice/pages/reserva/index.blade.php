@@ -45,7 +45,6 @@
     </div>
 </div>
 
-
                 {{-- Modal para mostrar los horarios disponibles --}}
                 @include('themes.backoffice.pages.reserva.includes.modal_sauna_disponible')
                 @include('themes.backoffice.pages.reserva.includes.modal_lugares_disponible')
@@ -158,7 +157,7 @@ document.addEventListener('DOMContentLoaded', function () {
     function buildContenidoUrlFromCurrentLocation() {
         const u = new URL(window.location.href);
         // cambiamos a ruta contenido (AJAX)
-        const contenidoBase = "{{ route('reserva.contenido') }}";
+        const contenidoBase = "{{ route('backoffice.reserva.contenido') }}";
         const out = new URL(contenidoBase, window.location.origin);
 
         // copiamos query actual (page, alternative, mobileview, etc.)

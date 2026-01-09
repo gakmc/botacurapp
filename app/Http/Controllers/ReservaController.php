@@ -100,6 +100,7 @@ class ReservaController extends Controller
 
         $fechaActual = Carbon::now()->startOfDay();
 
+        
         // ====== Query principal según alternativa ======
         if ($alternativeView) {
             $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
@@ -116,7 +117,7 @@ class ReservaController extends Controller
                 ->orderBy('fecha_visita', 'asc')
                 ->orderBy('first_id_ubicacion', 'asc');
         } else {
-            $reservasQuery = Reserva::where('fecha', '>=', $fechaActual)
+            $reservasQuery = Reserva::where('fecha_visita', '>=', $fechaActual)
                 ->with(['cliente', 'visitas.ubicacion', 'masajes', 'programa', 'venta'])
                 ->select('reservas.*')
                 ->selectSub(
@@ -186,6 +187,7 @@ class ReservaController extends Controller
         $reservasMovilesPaginadas = new LengthAwarePaginator($itemsActuales, $reservasDia->count(), $porPagina, $paginaActual);
         $reservasMovilesPaginadas->setPath(request()->url());
 
+        
         // ====== Retornar HTML parcial ======
         $html = view('themes.backoffice.pages.reserva.includes.contenido_reservas', compact(
             'reservasPaginadas',

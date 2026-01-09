@@ -173,6 +173,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('reserva/create/{cliente}', 'ReservaController@create')->name('reserva.create');
 
 
+    
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
 
