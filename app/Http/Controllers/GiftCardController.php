@@ -76,7 +76,7 @@ class GiftCardController extends Controller
             'fecha_uso'         => null,
             'id_programa'       => $request->id_programa,
             'id_venta'          => null,
-            'validez_hasta'     => Carbon::now()->addDays(60)->toDateString(),
+            'validez_hasta'     => Carbon::now()->addDays(45)->toDateString(),
             'de'                => $request->de,
             'para'              => $request->para,
             'correo'            => $request->correo,
