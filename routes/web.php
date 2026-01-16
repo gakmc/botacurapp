@@ -47,6 +47,186 @@ Route::get('/prueba-pdf', function () {
     return $pdf->inline('test.pdf'); // o ->download('test.pdf')
 });
 
+
+Route::get('/prueba-certificado', function () {
+    $pdf = PDF::loadHTML('
+    <head>
+        < meta charset = "utf-8" >
+        < style >
+
+        body {
+        font - family: Arial, Helvetica, sans - serif;
+        font - size: 12px;
+        margin: 30px;
+        margin - top: 0px;
+        }
+        . title {text - align: center;
+        font - size: 18px;
+        font - weight: bold;
+        margin - top: 10px;}
+        . box {
+        margin - top: 20px;
+        line - height: 1.7;
+        text - align: justify; /* ayuda al corte */
+        }
+
+        . box li {
+        margin - bottom: 8px;
+        }
+
+        ol {margin: 0;
+        padding - left: 18px;}
+        ul {margin: 6px000;
+        padding - left: 18px;}
+
+        ol > li {margin - bottom: 12px;}
+        ul > li {margin - bottom: 6px;}
+
+        . box listrong {
+        display: inline - block; /* 👈 CLAVE */
+        margin - right: 4px;
+        }
+
+        . box lispan {
+        display: inline;
+        }
+
+        . firma {margin - top: 60px;
+        text - align: center;}
+        . small {margin - top: 25px;
+        font - size: 10px;
+        color: #555; }
+
+        . header {
+            text - align: center;
+            margin - bottom: 30px;
+        }
+
+        . logo {
+            max - height: 120px;
+        }
+
+        . info - table,  . items - table {
+            width: 100 % ;
+            border - collapse: collapse;
+            margin - top: 20px;
+        }
+
+        . info - table td {
+            padding: 4px0;
+        }
+
+        . items - table th,  . items - table td {
+            border: 1px solid#ccc;
+            padding: 8px;
+        }
+
+        . items - table th {
+            background - color: #f2f2f2;
+        }
+
+        . text - right {
+            text - align: right;
+        }
+
+        . text - left {
+            text - align: left;
+        }
+
+        . highlight {
+            color: #039B7B;
+            font - weight: bold;
+        }
+
+        . enlaces {
+            color: #777;
+            text - decoration: none;
+        }
+
+        @page {
+            margin: 50px30px;
+            footer: footer;
+        }
+        <  / style >
+
+    </head>
+    <body>
+        <div class="header">
+            <img src="https://botacura.cl/wp-content/uploads/2024/04/logo.png" alt="Logo Botacura" class="logo">
+            <p>Cam. Al Volcán 13274, El Manzano, San José de Maipo, Región Metropolitana</p>
+            <p>Centro de relajación y descanso</p>
+            <h2 class="highlight title">CERTIFICADO DE FUNCIONES Y COMPETENCIAS LABORALES</h2>
+        </div>
+
+
+        <div class="box">
+            Quien suscribe, en representación de <strong>Botacura</strong>. 
+            <br><br>
+            Hace constar que el <strong>Sr. Gabriel Villar Vera</strong> se desempeña en el área de Tecnología de la Información, cumpliendo con excelencia las siguientes responsabilidades técnicas:
+
+                <br>
+                <br>
+            <ol>
+                <li type="number">
+                    <strong>Desarrollo y Mantenimiento Web</strong>
+                
+                    <ul>
+                        <li>
+                        <strong>Ciclo de Vida de Software:</strong> 
+                        <span>Liderazgo en la creación, desarrollo evolutivo y mantenimiento preventivo/correctivo de la plataforma web institucional.</span>
+                        </li>
+
+                        <li>
+                            <strong>Optimización:</strong> 
+                            <span>Implementación de mejoras funcionales y de interfaz para asegurar la escalabilidad del sitio.</span>
+                        </li>
+                    </ul>
+                </li>
+                <br>
+
+                <li type="number">
+                    <strong>Administración de Infraestructura Cloud (AWS)</strong>
+                    <ul>
+                    <li><strong>Gestión de Servidores:</strong> <span>Administración integral de instancias en Amazon EC2, incluyendo configuración, monitoreo de rendimiento y despliegue de servicios.</span></li>
+                    <li><strong>Gestión de Bases de Datos:</strong> <span>Diseño, administración y optimización de bases de datos para garantizar la integridad y disponibilidad de la información.</span></li>
+                    </ul>
+                    </li>
+                <br>
+
+                <li type="number">
+                <strong>Gestión de Servicios y Soporte Técnico</strong>
+                <ul>
+                <li><strong>Administración de Correo:</strong> <span>Configuración y gestión de cuentas de correo corporativo y servicios de mensajería.</span></li>
+                <li><strong>Capacitación Técnica:</strong> <span>Formación y apoyo a los usuarios finales en el uso correcto y eficiente de la plataforma web y herramientas digitales del centro.</span></li>
+                </ul>
+                </li>
+                </ol>
+                </div>
+                
+                <div class="firma">
+                <strong>Observaciones:</strong> El Sr. Villar Vera ha demostrado un alto dominio de herramientas tecnologicas, capacidad de resolución de problemas y una notable disposición para la colaboración al equipo.
+                
+                
+                </div>
+                <br><br>
+                <div class="box">
+                    Se extiende el presente certificado, para los fines que el interesado estime conveniente.
+                </div>
+
+                <div class="firma">
+            ___________________________<br>
+            Firma y timbre <br>
+
+
+            Sebastian Wimmer Wirlok - Administrador - Botacura - +56 9 6191 0398
+        </div>
+    </body>
+    ');
+    return $pdf->stream('Certificado_de_funciones_Gabriel_Villar.pdf'); // o ->download('test.pdf')
+});
+
+
+
 Route::get('/email', [EmailPreviewController::class, 'preview']);
 
 Route::get('/emitir', function () {
@@ -425,7 +605,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
 
-
+    Route::get('/certificados/antiguedad/{user}', 'CertificadoController@create')->name('certificados.antiguedad.create');
+    Route::post('/certificados/antiguedad/{user}', 'CertificadoController@store')->name('certificados.antiguedad.store');
 
 
 });

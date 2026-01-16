@@ -38,6 +38,7 @@
                     $egresosData = 
                         optional($egresos->firstWhere('mes', $i))->total +
                         optional($sueldos->firstWhere('mes', $i))->total +
+                        optional($bonos->firstWhere('mes', $i))->total +
                         optional($impuestos->firstWhere('mes', $i))->total;
 
 

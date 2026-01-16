@@ -87,6 +87,13 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mes')
             ->get();
 
+                // BONOS
+        $bonos = DB::table('sueldos_pagados')
+            ->selectRaw('MONTH(fecha_pago) as mes, SUM(bono) as total')
+            ->whereYear('fecha_pago', $anio)
+            ->groupBy('mes')
+            ->get();
+
         // $impuestos = DB::table('egresos')
         //     ->selectRaw('MONTH(fecha) as mes, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
         //     ->whereYear('fecha', $anio)
@@ -110,7 +117,7 @@ class ReporteFinancieroController extends Controller
 
         return view('themes.backoffice.pages.reporte.financiero.anual', compact(
             'abonos', 'diferencias', 'consumos', 'servicios',
-            'egresos', 'sueldos', 'impuestos', 'ventasDirectas', 'anio'
+            'egresos', 'sueldos', 'bonos', 'impuestos', 'ventasDirectas', 'anio'
         ));
     }
 
@@ -125,6 +132,7 @@ class ReporteFinancieroController extends Controller
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
+
 
         // DIFERENCIAS
         $diferencias = DB::table('ventas')
@@ -187,6 +195,14 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
+        // BONOS
+        $bonos = DB::table('sueldos_pagados')
+            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(bono) as total')
+            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+            ->groupBy('yearweek', 'fecha')
+            ->orderBy('fecha')
+            ->get();
+
         // IMPUESTOS
         $impuestos = DB::table('pagos_egresos')
             ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
@@ -203,7 +219,7 @@ class ReporteFinancieroController extends Controller
         return view('themes.backoffice.pages.reporte.financiero.mensual', compact(
             'anio', 'mes', 'mesNombre',
             'abonos', 'diferencias', 'consumos', 'servicios',
-            'egresos', 'sueldos', 'impuestos', 'ventasDirectas'
+            'egresos', 'sueldos', 'bonos', 'impuestos', 'ventasDirectas'
         ));
     }
 

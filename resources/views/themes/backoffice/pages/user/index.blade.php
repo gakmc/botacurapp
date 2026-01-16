@@ -36,7 +36,7 @@
                                     <th>Nombre</th>
                                     <th>Edad</th>
                                     <th>Correo</th>
-                                    <th colspan="2">Acciones</th>
+                                    <th colspan="3">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -47,6 +47,9 @@
                                   <td>{{$user->email}}</td>
                                   
                                   <td><a href="{{ route('backoffice.user.edit', $user )}}">Editar</a></td>
+                                  @if (Auth::user()->has_role(config('app.admin_role')))
+                                    <td><a class="tooltipped" data-position="top" data-delay="50" data-tooltip="Certificado de antiguedad" href="{{ route('backoffice.certificados.antiguedad.create', $user )}}"><i class='material-icons red-text'>library_books</i></a></td>
+                                  @endif
                                 </tr>
                                 @endforeach
                               </tbody>

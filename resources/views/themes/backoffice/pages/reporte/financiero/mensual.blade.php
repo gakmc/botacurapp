@@ -23,6 +23,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
             ->merge(collect($servicios)->pluck('yearweek'))
             ->merge(collect($egresos)->pluck('yearweek'))
             ->merge(collect($sueldos)->pluck('yearweek'))
+            ->merge(collect($bonos)->pluck('yearweek'))
             ->merge(collect($impuestos)->pluck('yearweek'))
             ->merge(collect($ventasDirectas)->pluck('yearweek'))
             ->unique()->sort();
@@ -43,6 +44,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                 ->merge($servicios)
                 ->merge($egresos)
                 ->merge($sueldos)
+                ->merge($bonos)
                 ->merge($impuestos)
                 ->merge($ventasDirectas)
                 ->where('yearweek', $week)
@@ -75,6 +77,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                     <th>Consumos</th>
                     <th>Servicios</th>
                     <th>Sueldos</th>
+                    <th>Bonos</th>
                     <th>Egresos</th>
                     <th>Impuestos</th>
                 </tr>
@@ -93,6 +96,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
 
                     $egresosData += (optional($egresos->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($sueldos->firstWhere('fecha', $fecha))->total ?? 0)
+                                + (optional($bonos->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($impuestos->firstWhere('fecha', $fecha))->total ?? 0);
                 @endphp
                     <tr>
@@ -102,6 +106,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                         <td>${{ number_format(optional($consumos->firstWhere('fecha', $fecha))->total + optional($ventasDirectas->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($servicios->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($sueldos->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
+                        <td>${{ number_format(optional($bonos->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($egresos->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($impuestos->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                     </tr>
