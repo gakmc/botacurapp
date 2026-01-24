@@ -140,12 +140,13 @@
       `;
     }).join('');
 
+
     return `
       <div class="card-panel">
         <div class="card-content gradient-45deg-light-blue-cyan">
           <h5 class="card-title center white-text">
             <i class="material-icons white-text">restaurant_menu</i>
-            Menús para ${escapeHtml(reserva.cliente)} - ${escapeHtml(reserva.programa)}
+            Menús para ${escapeHtml(reserva.cliente)} (${escapeHtml(reserva.cantidad_personas)} ${reserva.cantidad_personas >= 1 ? (reserva.cantidad_personas > 2 ? "Comensales" : "Comensal") : ""}) - ${escapeHtml(reserva.programa)}
 
             <button
               id="avisar_${reserva.id}"
@@ -240,6 +241,7 @@
         var cards = '';
         if (data.reservas && data.reservas.length) {
           data.reservas.forEach(function(res) {
+           
             cards += renderReservaCard(res);
           });
         }

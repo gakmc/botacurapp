@@ -1,6 +1,6 @@
 @if ($mobileView == 'masajes')
     <div class="col s12 hide-on-large-only">
-        <h5>Masajes: {{ $fecha }}</h5>
+        <h5>Masajes: {{ \Carbon\Carbon::parse($fecha)->format('d-m-Y') }}</h5>
         <div class="row">
                 <!-- Cada reserva tiene un `data-tipo` para filtrarlas con jQuery -->
                 {{-- <a href="{{ route('backoffice.reserva.show', $reserva) }}"> --}}
@@ -72,7 +72,7 @@
 
 @elseif($mobileView === 'ubicacion')
     <div class="col s12 hide-on-large-only">
-        <h5>Ubicaciones: {{ $fecha }}</h5>
+        <h5>Ubicaciones: {{ \Carbon\Carbon::parse($fecha)->format('d-m-Y') }}</h5>
         <div class="row">
                 <!-- Cada reserva tiene un `data-tipo` para filtrarlas con jQuery -->
                 
@@ -148,7 +148,7 @@
     </div>
 @else
     <div class="col s12 hide-on-large-only">
-        <h5>SPA: {{ $fecha }}</h5>
+        <h5>SPA: {{ \Carbon\Carbon::parse($fecha)->format('d-m-Y') }}</h5>
         <div class="row">
             <!-- Cada reserva tiene un `data-tipo` para filtrarlas con jQuery -->
             {{-- <a href="{{ route('backoffice.reserva.show', $reserva) }}"> --}}

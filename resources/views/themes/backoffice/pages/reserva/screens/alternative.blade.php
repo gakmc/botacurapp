@@ -1,5 +1,5 @@
 <div class="col s12">
-    <h5>Horarios: {{ $fecha }}</h5>
+    <h5>Horarios: {{ \Carbon\Carbon::parse($fecha)->format('d-m-Y') }}</h5>
     <div class="row">
 
         @foreach($reservas as $reserva)

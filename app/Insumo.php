@@ -45,4 +45,9 @@ class Insumo extends Model
         return $unidadMedida ? $unidadMedida->nombre : 'No disponible';
     }
 
+    public function movimientosDetalle()
+    {
+        return $this->hasMany(InventarioMovimientoDetalle::class, 'id_insumo');
+    }
+
 }

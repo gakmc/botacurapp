@@ -141,28 +141,20 @@ class MenuController extends Controller
 
         $reservas = Reserva::query()
             ->where(function ($q) use ($fechaDMY, $fechaISO) {
-                // Caso A: guardado como string "16-12-2025"
-                $q->where('fecha_visita', $fechaDMY);
-
-                // Caso B: guardado como string "2025-12-16"
+                // "YYYY-MM-DD"
                 $q->orWhere('fecha_visita', $fechaISO);
-
-                // Caso C: si es DATE/DATETIME real
-                $q->orWhereRaw("DATE(fecha_visita) = ?", [$fechaISO]);
-
-                // Caso D: si está como string d-m-Y pero quieres comparar como DATE
-                $q->orWhereRaw("STR_TO_DATE(fecha_visita, '%d-%m-%Y') = ?", [$fechaISO]);
             })
             ->with([
                 'cliente:id,nombre_cliente,whatsapp_cliente,correo',
                 'programa:id,nombre_programa',
-                'menus',
+                'menus:id,id_reserva,id_producto_entrada,id_producto_fondo,id_producto_acompanamiento,alergias,observacion',
                 'menus.productoEntrada:id,nombre',
                 'menus.productoFondo:id,nombre',
                 'menus.productoAcompanamiento:id,nombre',
             ])
             ->orderBy('id', 'asc')
             ->get();
+
 
         // Log::info('Cocina reservas encontradas', ['count' => $reservas->count()]);
 
@@ -192,6 +184,7 @@ class MenuController extends Controller
             return [
                 'id' => $r->id,
                 'cliente' => $r->cliente ? $r->cliente->nombre_cliente : 'Sin cliente',
+                'cantidad_personas' => $r->cantidad_personas ?? 0,
                 'programa' => $r->programa ? $r->programa->nombre_programa : 'Sin programa',
                 'observacion_reserva' => $r->observacion ?? 'Sin Observaciones',
                 'avisado_en_cocina' => $r->avisado_en_cocina,

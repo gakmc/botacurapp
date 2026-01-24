@@ -12,7 +12,7 @@ use App\Ubicacion;
 use App\UnidadMedida;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
-use Barryvdh\Snappy\Facades\SnappyPdf as PDF;
+use Barryvdh\DomPDF\Facade\Pdf as PDF;
 use Illuminate\Support\Facades\Mail;
 
 /*
@@ -51,103 +51,105 @@ Route::get('/prueba-pdf', function () {
 Route::get('/prueba-certificado', function () {
     $pdf = PDF::loadHTML('
     <head>
-        < meta charset = "utf-8" >
-        < style >
+        <meta charset="utf-8">
+        <style>
 
-        body {
-        font - family: Arial, Helvetica, sans - serif;
-        font - size: 12px;
-        margin: 30px;
-        margin - top: 0px;
-        }
-        . title {text - align: center;
-        font - size: 18px;
-        font - weight: bold;
-        margin - top: 10px;}
-        . box {
-        margin - top: 20px;
-        line - height: 1.7;
-        text - align: justify; /* ayuda al corte */
-        }
+            body {
+            font-family: Arial, Helvetica, sans-serif;
+            font-size: 12px;
+            margin: 30px;
+            margin-top: 0px;
+            }
 
-        . box li {
-        margin - bottom: 8px;
-        }
+            .title {text-align: center;
+            font-size: 18px;
+            font-weight: bold;
+            margin-top: 10px;}
 
-        ol {margin: 0;
-        padding - left: 18px;}
-        ul {margin: 6px000;
-        padding - left: 18px;}
+            .box {
+            margin-top: 20px;
+            line-height: 1.7;
+            text-align: justify; /* ayuda al corte */
+            }
 
-        ol > li {margin - bottom: 12px;}
-        ul > li {margin - bottom: 6px;}
+            .box li {
+                margin-bottom: 8px;
+            }
 
-        . box listrong {
-        display: inline - block; /* 👈 CLAVE */
-        margin - right: 4px;
-        }
+            ol {margin: 0;
+            padding-left: 18px;}
+            ul {margin: 6px000;
+            padding-left: 18px;}
 
-        . box lispan {
-        display: inline;
-        }
+            ol > li {margin-bottom: 12px;}
+            ul > li {margin-bottom: 6px;}
 
-        . firma {margin - top: 60px;
-        text - align: center;}
-        . small {margin - top: 25px;
-        font - size: 10px;
-        color: #555; }
+            .box li strong {
 
-        . header {
-            text - align: center;
-            margin - bottom: 30px;
-        }
+            margin-right: 4px;
+            }
 
-        . logo {
-            max - height: 120px;
-        }
+            .box li span {
+            display: inline;
+            }
 
-        . info - table,  . items - table {
-            width: 100 % ;
-            border - collapse: collapse;
-            margin - top: 20px;
-        }
+            .firma {margin-top: 60px;
+            text-align: center;}
+            .small {margin-top: 25px;
+            font-size: 10px;
+            color: #555; }
 
-        . info - table td {
-            padding: 4px0;
-        }
+            .header {
+                text-align: center;
+                margin-bottom: 30px;
+            }
 
-        . items - table th,  . items - table td {
-            border: 1px solid#ccc;
-            padding: 8px;
-        }
+            .logo {
+                max-height: 120px;
+            }
 
-        . items - table th {
-            background - color: #f2f2f2;
-        }
+            .info-table,  .items-table {
+                width: 100 % ;
+                border-collapse: collapse;
+                margin-top: 20px;
+            }
 
-        . text - right {
-            text - align: right;
-        }
+            .info-table td {
+                padding: 4px0;
+            }
 
-        . text - left {
-            text - align: left;
-        }
+            .items-table th,  .items-table td {
+                border: 1px solid#ccc;
+                padding: 8px;
+            }
 
-        . highlight {
-            color: #039B7B;
-            font - weight: bold;
-        }
+            .items-table th {
+                background-color: #f2f2f2;
+            }
 
-        . enlaces {
-            color: #777;
-            text - decoration: none;
-        }
+            .text-right {
+                text-align: right;
+            }
 
-        @page {
-            margin: 50px30px;
-            footer: footer;
-        }
-        <  / style >
+            .text-left {
+                text-align: left;
+            }
+
+            .highlight {
+                color: #039B7B;
+                font-weight: bold;
+            }
+
+            .enlaces {
+                color: #777;
+                text-decoration: none;
+            }
+
+            @page {
+                margin: 50px30px;
+                footer: footer;
+            }
+        </style>
 
     </head>
     <body>
@@ -203,7 +205,7 @@ Route::get('/prueba-certificado', function () {
                 </ol>
                 </div>
                 
-                <div class="firma">
+                <div class="">
                 <strong>Observaciones:</strong> El Sr. Villar Vera ha demostrado un alto dominio de herramientas tecnologicas, capacidad de resolución de problemas y una notable disposición para la colaboración al equipo.
                 
                 
@@ -218,8 +220,9 @@ Route::get('/prueba-certificado', function () {
             Firma y timbre <br>
 
 
-            Sebastian Wimmer Wirlok - Administrador - Botacura - +56 9 6191 0398
+            Sebastian Wimmer Wirlok - Administrador - Botacura <br> +56 9 6191 0398 - hola@botacura.cl
         </div>
+        
     </body>
     ');
     return $pdf->stream('Certificado_de_funciones_Gabriel_Villar.pdf'); // o ->download('test.pdf')

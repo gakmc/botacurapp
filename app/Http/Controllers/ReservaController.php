@@ -89,7 +89,98 @@ class ReservaController extends Controller
     }
 
 
-    public function contenido(Request $request)
+
+
+public function contenido(Request $request)
+{
+    Carbon::setLocale('es');
+
+    $alternativeView = (int) $request->query('alternative', 0) === 1;
+    $mobileView      = $request->query('mobileview', '');
+
+    // hoy
+    $fecha = Carbon::today()->format('Y-m-d');
+
+    // Subquery para ordenar sin recorrer colecciones
+    $vmin = DB::table('visitas')
+        ->selectRaw('id_reserva, MIN(horario_sauna) as first_horario_sauna, MIN(id_ubicacion) as first_id_ubicacion')
+        ->groupBy('id_reserva');
+
+    $query = Reserva::query()
+        ->whereDate('reservas.fecha_visita', $fecha)
+        ->leftJoinSub($vmin, 'vmin', function ($join) {
+            $join->on('vmin.id_reserva', '=', 'reservas.id');
+        })
+        ->select('reservas.*')
+        ->addSelect([
+            'vmin.first_horario_sauna',
+            'vmin.first_id_ubicacion',
+        ])
+        ->with([
+            'cliente',
+            'venta',
+            'programa.servicios',
+            'visitas.ubicacion',
+            'masajes',
+        ]);
+
+    if ($alternativeView) {
+        $query->orderBy('vmin.first_id_ubicacion', 'asc')
+              ->orderBy('vmin.first_horario_sauna', 'asc');
+    } else {
+        $query->orderBy('vmin.first_horario_sauna', 'asc')
+              ->orderBy('vmin.first_id_ubicacion', 'asc');
+    }
+
+    // Traemos reservas del día
+    $reservasDelDia = $query->get();
+
+    /**
+     * Tu blade "contenido_reservas" hace:
+     *   @foreach($reservasPaginadas as $fecha => $reservas)
+     * y luego usa ->links()
+     *
+     * Por lo tanto, $reservasPaginadas debe ser un Paginator que contenga
+     * "grupos por fecha" (en este caso hoy es un solo grupo).
+     */
+    $grouped = collect([
+        $fecha => $reservasDelDia,
+    ]);
+
+    // paginación por "día/grupo" (aquí siempre será 1, pero mantiene tu blade intacto)
+    $page    = (int) $request->query('page', 1);
+    $perPage = 1;
+
+    // $items = $grouped->forPage($page, $perPage)->values();
+    $items = $grouped->forPage($page, $perPage); // sin values() para conservar la key (fecha)
+
+
+    $reservasPaginadas = new LengthAwarePaginator(
+        $items,
+        $grouped->count(),
+        $perPage,
+        $page,
+        [
+            'path'  => url()->current(),
+            'query' => $request->query(),
+        ]
+    );
+
+    // Si tu "paginator móvil" era distinto antes, aquí podrías construirlo distinto.
+    // Para que funcione igual que antes sin crear otra lógica, lo igualamos:
+    $reservasMovilesPaginadas = $reservasPaginadas;
+
+    return response()->view(
+        'themes.backoffice.pages.reserva.includes.contenido_reservas',
+        compact('reservasPaginadas', 'reservasMovilesPaginadas', 'mobileView', 'alternativeView')
+    );
+}
+
+
+
+
+
+    public function OLDcontenido(Request $request)
     {
         Carbon::setLocale('es');
 

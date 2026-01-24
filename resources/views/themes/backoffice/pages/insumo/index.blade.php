@@ -94,6 +94,9 @@
                 @endif
               </td>
               <td class="center">
+                <a href="{{ route('backoffice.insumo.edit', $insumo->id) }}" class="tooltipped" data-tooltip="Añadir">
+                  <i class="material-icons text-green">add_shopping_cart</i>
+                </a>
                 <a href="{{ route('backoffice.insumo.edit', $insumo->id) }}" class="tooltipped" data-tooltip="Editar">
                   <i class="material-icons">mode_edit</i>
                 </a>

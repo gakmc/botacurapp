@@ -19,12 +19,12 @@
 
 @if ($reserva->menus->isNotEmpty())
 
-    <div id="menuSelect_{{$reserva->id}}" class="col s12 m6">
+    <div id="menuSelect_{{$reserva->id}}" class="col s12">
         <div class="card-panel ">
             <div class="card-content gradient-45deg-light-blue-cyan">
                 <h5 class="card-title center white-text">
                     <i class="material-icons white-text">restaurant_menu</i>
-                    Menús para {{ $reserva->cliente->nombre_cliente }} - {{ $reserva->programa->nombre_programa }}
+                    Menús para {{ $reserva->cliente->nombre_cliente }} - {{ $reserva->cantidad_personas }} {{($reserva->cantidad_personas >= 1) ? (($reserva->cantidad_personas >= 2) ? "Comensales" : "Comensal") : ""}}
 
                 
                 <button id="entregar_{{$reserva->id}}" data-id="{{$reserva->id}}" data-url="{{ route('backoffice.reserva.entregar', $reserva->id) }}" class="btn-floating btn-entregar" onclick="entregado({{$reserva->id}})" @if($reserva->avisado_en_cocina == 'entregado') style="display: none;" @endif>

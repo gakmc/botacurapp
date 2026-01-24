@@ -95,7 +95,7 @@
     Firma y timbre<br>
 
 
-    {{--$emitido_por->name--}} Sebastian Wimmer Wirlok - Administrador - Botacura - +56 9 6191 0398
+    {{--$emitido_por->name--}} Sebastian Wimmer Wirlok - Administrador - Botacura <br> +56 9 6191 0398 - hola@botacura.cl
   </div>
 
   <div class="small">
