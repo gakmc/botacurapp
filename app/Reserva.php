@@ -17,7 +17,8 @@ class Reserva extends Model
         'observacion',
         'id_programa',
         'user_id',
-        'avisado_en_cocina'
+        'avisado_en_cocina',
+        'cantidad_masajes_extra'
     ];
 
     //RELACIONES

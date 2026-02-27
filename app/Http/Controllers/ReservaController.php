@@ -665,6 +665,144 @@ public function contenido(Request $request)
     public function store(StoreRequest $request, Reserva $reserva)
     {
 
+
+        $request->merge([
+            'abono_programa'    => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
+            'cantidad_personas' => (int) str_replace(['$', '.', ','], '', $request->cantidad_personas),
+            'total_pagar'       => (int) str_replace(['$', '.', ','], '', $request->total_pagar),
+        ]);
+
+        // $masajesExtra         = null;
+        $almuerzosExtra       = null;
+        // $cantidadMasajesExtra = null;
+
+        // Verificar si el programa seleccionado incluye un masaje
+        $programa = Programa::findOrFail($request->id_programa);
+
+        // Buscar si el programa tiene un servicio de masaje
+        $incluyeMasaje = $programa->incluye_masajes;
+
+        try {
+
+            // Iniciar la transacción
+            DB::transaction(function () use ($request, &$reserva, $incluyeMasaje, &$masajesExtra, &$almuerzosExtra, &$cantidadMasajesExtra) {
+
+                // Asignar el id del cliente con la reserva
+                if ($request->has('cliente_id')) {
+                    $cliente = $request->cliente_id;
+                    $request->merge(['cliente_id' => $cliente]);
+                }
+
+                if ($request->has('gcard_id')) {
+                    $gc = GiftCard::findOrFail($request->gcard_id);
+                }
+
+                // Asignar el user_id del usuario autenticado
+                $user_id = auth()->id();
+                $request->merge(['user_id' => $user_id]);
+
+                // Crear la reserva
+                $reserva = Reserva::create($request->all());
+
+                $cantExtras = 0;
+                if ($request->filled('agregar_masajes')) {
+                    $cantExtras = (int) $request->input('cantidad_masajes_extra', 0);
+                }
+                $reserva->update([
+                    'cantidad_masajes_extra' => max(0, $cantExtras),
+                ]);
+
+
+                // Asignar cantidad_personas a cantidad_masajes solo si el programa incluye masaje
+                if ($incluyeMasaje) {
+                    $reserva->update(['cantidad_masajes' => $reserva->cantidad_personas]);
+                } else {
+                    // Dejarlo nulo explícitamente si no hay masaje
+                    $reserva->update(['cantidad_masajes' => null]);
+                }
+
+
+                // Crear la venta relacionada con la reserva
+                $venta = Venta::create([
+                    'id_reserva'                => $reserva->id,
+                    'abono_programa'            => $request->abono_programa,
+                    'folio_abono'              => $request->folio_abono,
+                    'id_tipo_transaccion_abono' => $request->tipo_transaccion,
+                    'total_pagar'               => $request->total_pagar,
+                ]);
+
+                if ($request->has('gcard_id')) {
+                    $gc->usada = true;
+                    $gc->fecha_uso = Carbon::now()->format('Y-m-d');
+                    $gc->id_venta = $venta->id;
+                    $gc->save();
+                }
+
+
+                $consumo = null;
+
+
+
+                if ($request->filled('agregar_almuerzos')) {
+
+                    $almuerzosExtra = $request->filled('agregar_almuerzos');
+
+                    if (!$consumo) {
+                        $consumo = Consumo::create([
+                            'id_venta'      => $venta->id,
+                            'subtotal'      => 0,
+                            'total_consumo' => 0,
+                        ]);
+                    }
+
+                    $servicioAlmuerzo = Servicio::whereIn('nombre_servicio', ['Almuerzo', 'Almuerzos', 'almuerzo', 'almuerzos'])->first();
+
+                    if ($servicioAlmuerzo) {
+                        $subtotal               = 0;
+                        $cantidadAlmuerzosExtra = intval($request->input('cantidad_personas'));
+                        $subtotalAlmuerzos      = $servicioAlmuerzo->valor_servicio * $cantidadAlmuerzosExtra;
+                        $subtotal               = $subtotalAlmuerzos;
+
+                        // Crear el detalle del servicio extra
+                        DetalleServiciosExtra::create([
+                            'cantidad_servicio' => $cantidadAlmuerzosExtra,
+                            'subtotal'          => $subtotalAlmuerzos,
+                            'id_consumo'        => $consumo->id,
+                            'id_servicio_extra' => $servicioAlmuerzo->id,
+                        ]);
+
+                        $consumo->subtotal += $subtotal;
+                        $consumo->total_consumo += $subtotal;
+                        $consumo->save();
+                    }
+
+                }
+            });
+
+            // Mostrar alerta de éxito
+            // Alert::success('Éxito', 'Reserva realizada con éxito', 'Confirmar')->showConfirmButton();
+
+            session()->put([
+                // 'masajesExtra'         => $masajesExtra,
+                'almuerzosExtra'       => $almuerzosExtra,
+                // 'cantidadMasajesExtra' => $cantidadMasajesExtra,
+            ]);
+
+            // Redirigir fuera de la transacción
+            return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success', 'Reserva realizada con éxito');
+
+        } catch (\Throwable $e) {
+            // Alert::error('Falló', 'Error: ' . $e, 'Confirmar')->showConfirmButton();
+            // return redirect()->back()->with('error', 'Error: ' . $e)->withInput();
+            return back()->with('error', 'Error: '.$e->getMessage())->withInput();
+        }
+
+    }
+
+
+    public function OLDstore(StoreRequest $request, Reserva $reserva)
+    {
+
         $request->merge([
             'abono_programa'    => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
             'cantidad_personas' => (int) str_replace(['$', '.', ','], '', $request->cantidad_personas),

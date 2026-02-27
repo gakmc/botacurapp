@@ -27,20 +27,21 @@
           <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong>
           </h4>
           <div class="row">
-            <form class="col s12" method="post"
-            action="{{route('backoffice.reserva.store')}}">
-            
-            
-            {{csrf_field() }}
-            @if ($gc)
-            <p class="blue-text"><i class='material-icons left'>info_outline</i> Existe una GiftCard asociada a este nombre. <a class="btn-small btn-floating" href="#" id="usarGC" data-programa="{{$gc->id_programa}}" data-cantidad="{{$gc->cantidad_personas}}" data-monto="{{$gc->monto}}" data-codigo="{{$gc->codigo}}"><i class='material-icons tiny'>file_download</i></a></p>
-  
-            <input type="hidden" name="gcard_id" id="gcard_id" value="{{$gc->id}}">
+            <form class="col s12" method="post" action="{{route('backoffice.reserva.store')}}">
 
-            @else
-            <label for="gcard_codigo">¿Tiene Giftcard?</label>
-            <input type="text" name="gcard_codigo" id="gcard_codigo" placeholder="Ingrese el código">
-            @endif
+              {{csrf_field() }}
+              @if ($gc)
+              <p class="blue-text"><i class='material-icons left'>info_outline</i> Existe una GiftCard asociada a este
+                nombre. <a class="btn-small btn-floating" href="#" id="usarGC" data-programa="{{$gc->id_programa}}"
+                  data-cantidad="{{$gc->cantidad_personas}}" data-monto="{{$gc->monto}}"
+                  data-codigo="{{$gc->codigo}}"><i class='material-icons tiny'>file_download</i></a></p>
+
+              <input type="hidden" name="gcard_id" id="gcard_id" value="{{$gc->id}}">
+
+              @else
+              <label for="gcard_codigo">¿Tiene Giftcard?</label>
+              <input type="text" name="gcard_codigo" id="gcard_codigo" placeholder="Ingrese el código">
+              @endif
 
 
 
@@ -99,7 +100,7 @@
                   <label for="abono_programa" class="black-text">Cantidad de Abono</label>
                   <input id="abono_programa" type="text" name="abono_programa" class=""
                     value="{{ old('abono_programa') }}">
-                    
+
                   <input type="hidden" id="abono_hidden">
                   @error('abono_programa')
                   <span class="invalid-feedback" role="alert">
@@ -115,7 +116,7 @@
 
                   <label for="folio_abono" class="black-text">Folio Abono</label>
                   <input id="folio_abono" type="text" name="folio_abono" class="" value="{{ old('folio_abono') }}">
-                    
+
                   @error('folio_abono')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -129,7 +130,8 @@
                   <select id="tipo_transaccion" name="tipo_transaccion">
                     <option disabled selected>-- Seleccione --</option>
                     @foreach ($tipos as $tipo)
-                    <option value="{{ $tipo->id }}" @if (old('tipo_transaccion')==$tipo->id) selected @endif>{{ $tipo->nombre }}</option>
+                    <option value="{{ $tipo->id }}" @if (old('tipo_transaccion')==$tipo->id) selected @endif>{{
+                      $tipo->nombre }}</option>
                     @endforeach
                   </select>
                   @error('tipo_transaccion')
@@ -217,7 +219,7 @@
 
               <div class="row">
                 <div class="input-field col s12">
-                  <button class="btn waves-effect waves-light right" type="submit">Guardar
+                  <button id="btn-guardar" class="btn waves-effect waves-light right" type="submit">Guardar
                     <i class="material-icons right">send</i>
                   </button>
                 </div>
@@ -235,6 +237,7 @@
 
 
 @section('foot')
+
 
 <script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
 <script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
@@ -556,8 +559,7 @@ function formatCLP(number)
 </script>
 
 <script>
-
-$.get('{{ route("backoffice.giftcards.lista") }}', function(data){
+  $.get('{{ route("backoffice.giftcards.lista") }}', function(data){
   $('#gcard_codigo').autocomplete({
     data: data,
     limit: 5,
@@ -570,4 +572,14 @@ $.get('{{ route("backoffice.giftcards.lista") }}', function(data){
 
 </script>
 
+
+<script>
+  $(document).ready(function () {
+    $('form').on('submit', function (){
+      const $btn = $('#btn-guardar');
+      $btn.prop('disabled', true);
+      $btn.html('<i class="material-icons left">hourglass_empty</i>Guardando...');
+    });
+  });
+</script>
 @endsection
