@@ -23,47 +23,74 @@
 
 
                 @php
-                    $indexPedido = 0;
+                $indexPedido = 0;
                 @endphp
 
                 <div class="row">
 
                     <!-- Completado -->
                     <div class="col s12 m6" id="completado">
-                        <h5>Completado</h5>
-                        <ul class="collection">
-                            @foreach($productos->where('estado', 'completado') as $producto)
-                            <li class="collection-item avatar" data-id="{{ $producto->id }}">
-                                <i class="material-icons circle green">done_all</i>
-                                <span class="title">{{ $producto->producto }} X{{$producto->cantidad_producto }}</span>
-                                <p>
-                                    Cliente: {{ $producto->nombre_cliente }} <br>
-                                    Ubicacion: {{ $producto->ubicacion }}
-                                </p>
-                            </li>
-                            @php
-                                $indexPedido++
-                            @endphp
-                            @endforeach
-                        </ul>
+                    <h5>Completado</h5>
+
+                    <ul class="collection pedidos">
+                        @foreach(($pedidos['completado'] ?? collect()) as $idConsumo => $items)
+                                @php 
+            $first = $items->first();
+            $pedidoKey = $first->pedido_key; 
+        @endphp
+
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+    data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
+                            <div style="display:flex; gap:10px; align-items:flex-start;">
+                            <i class="material-icons circle green" style="color:white; padding:8px; border-radius:50%;">done_all</i>
+
+                            <div>
+                                <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+                                <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
+
+                                <ul class="productos">
+                                @foreach($items as $p)
+                                    <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                                @endforeach
+                                </ul>
+                            </div>
+                            </div>
+                        </li>
+                        @endforeach
+                    </ul>
                     </div>
 
                     <!-- Entregado -->
-                    <div class="col s12 m6" id="entregado">
-                        <h5>Entregado</h5>
-                        <ul class="collection">
-                            @foreach($productos->where('estado', 'entregado') as $producto)
-                            <li class="collection-item avatar" data-id="{{ $producto->id }}">
-                                <i class="material-icons circle green">local_bar</i>
-                                <span class="title">{{ $producto->producto }} X{{$producto->cantidad_producto }}</span>
-                                <p>
-                                    Cliente: {{ $producto->nombre_cliente }} <br>
-                                    Ubicacion: {{ $producto->ubicacion }}
-                                </p>
-                            </li>
-                            @endforeach
-                        </ul>
-                    </div>
+<div class="col s12 m6" id="entregado">
+  <h5>Entregado</h5>
+
+  <ul class="collection pedidos">
+    @foreach(($pedidos['entregado'] ?? collect()) as $idConsumo => $items)
+        @php 
+            $first = $items->first();
+            $pedidoKey = $first->pedido_key; 
+        @endphp
+
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+    data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
+        <div style="display:flex; gap:10px; align-items:flex-start;">
+          <i class="material-icons circle green" style="color:white; padding:8px; border-radius:50%;">local_bar</i>
+
+          <div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
+
+            <ul class="productos">
+              @foreach($items as $p)
+                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+              @endforeach
+            </ul>
+          </div>
+        </div>
+      </li>
+    @endforeach
+  </ul>
+</div>
 
                 </div>
 
@@ -81,98 +108,198 @@
 <script src='{{ asset('assets/sortable/Sortable.min.js')}}'></script>
 
 <script>
-    ['completado', 'entregado'].forEach(function (id) {
-        new Sortable(document.getElementById(id).querySelector('.collection'), {
-            group: 'shared',
-            animation: 150,
-            onEnd: function (evt) {
-                const detalleId = evt.item.getAttribute('data-id');
-                const nuevoEstado = evt.to.parentNode.id;
+['completado', 'entregado'].forEach(function (colId) {
 
-                // Actualizar estado en el servidor
-                fetch('bebidas/detalles-consumos/' + detalleId + '/actualizar-estado', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ estado: nuevoEstado })
-                }).then(response => {
-                    if (!response.ok) {
-                        console.error('Error al actualizar el estado');
-                    }
-                }).catch(error => console.error(error));
-            }
-        });
+    const ul = document.querySelector(`#${colId} .pedidos`);
+    if (!ul) return;
+
+    new Sortable(ul, {
+        group: 'pedidos-garzon',
+        animation: 150,
+        draggable: '.pedido',
+        filter: '.productos, .productos *',
+        onEnd: function (evt) {
+
+            const idConsumo   = evt.item.getAttribute('data-id-consumo');
+            const pedidoCreado = evt.item.getAttribute('data-pedido-creado');
+            const nuevoEstado = evt.to.closest('[id]').id;
+
+            fetch(`/barman/consumos/${idConsumo}/actualizar-estado`, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                },
+                body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado })
+            }).catch(console.error);
+        }
     });
-</script>
-<script>
-document.addEventListener('DOMContentLoaded', function () { 
-    if (typeof window.Echo !== 'undefined') {
-        // Escuchar cambios de estado            
-        window.Echo.channel('consumo-canal-actualizar')
-        .listen('Consumos.EstadoConsumoActualizado', (e) => {
-            const detalleId = e.detalleId;
-            const nuevoEstado = e.estado;
-
-            // Buscar el elemento en la lista actual
-            let elemento = document.querySelector(`[data-id="${detalleId}"]`);
-            
-            if (elemento) {
-                // Mover el elemento a la nueva lista
-                const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
-                nuevaLista.appendChild(elemento);
-            } else {
-                // Si el elemento no existe, crearlo dinámicamente
-                const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
-                const nuevoElemento = document.createElement('li');
-                nuevoElemento.classList.add('collection-item', 'avatar');
-                nuevoElemento.setAttribute('data-id', detalleId);
-                nuevoElemento.innerHTML = `
-                    <i class="material-icons circle green">${nuevoEstado === 'completado' ? 'done_all' : 'local_bar'}</i>
-                    <span class="title">${e.producto.nombre} X${e.producto.cantidad}</span>
-                    <p>
-                        Cliente: ${e.producto.cliente} <br>
-                        Ubicación: ${e.producto.ubicacion}
-                    </p>
-                `;
-                nuevaLista.appendChild(nuevoElemento);
-            }
-
-            // Mostrar un toast
-            const Toast = Swal.mixin({
-                toast: true,
-                position: "top-right",
-                showConfirmButton: false,
-                timer: 3000,
-                timerProgressBar: true,
-                didOpen: (toast) => {
-                    toast.onmouseenter = Swal.stopTimer;
-                    toast.onmouseleave = Swal.resumeTimer;
-                }
-            });
-
-            let estado = "";
-            switch (nuevoEstado) {
-                case 'completado':
-                    estado = 'Pedido completado';
-                    break;
-                case 'entregado':
-                    estado = 'Pedido entregado';
-                    break;
-                default:
-                    estado = 'Estado desconocido';
-                    break;
-            }
-
-            Toast.fire({
-                icon: "success",
-                title: estado
-            });
-        });
-    }
 });
 </script>
+<script>
+    document.addEventListener('DOMContentLoaded', function () { 
+        if (typeof window.Echo !== 'undefined') {
+            // Escuchar cambios de estado            
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.EstadoConsumoActualizado', (e) => {
+
+                const nuevoEstado = e.estado;
+                const pedidoKey = e.detalleId; // pedido_key
+                const data = e.producto || {};
+
+                // Solo nos interesan completado/entregado en esta vista
+                if (nuevoEstado !== 'completado' && nuevoEstado !== 'entregado') return;
+
+                let pedidoEl = document.querySelector(`[data-pedido-key="${pedidoKey}"]`);
+                let nuevaLista = document.querySelector(`#${nuevoEstado} .pedidos`);
+                if (!nuevaLista) return;
+
+                // Si no existe, lo creamos con la data del evento
+                if (!pedidoEl) {
+                    pedidoEl = document.createElement('li');
+                    pedidoEl.className = 'collection-item pedido';
+                    pedidoEl.setAttribute('data-pedido-key', data.pedido_key || pedidoKey);
+                    pedidoEl.setAttribute('data-id-consumo', data.pedido_id || data.id_consumo || '');
+                    pedidoEl.setAttribute('data-pedido-creado', data.pedido_creado || '');
+
+                    const icon = (nuevoEstado === 'completado') ? 'done_all' : 'playlist_add_check';
+
+                    pedidoEl.innerHTML = `
+                    <div style="display:flex; gap:10px; align-items:flex-start;">
+                        <i class="material-icons circle green" style="color:white; padding:8px; border-radius:50%;">${icon}</i>
+                        <div>
+                        <div style="font-weight:600;">${data.cliente || ''}</div>
+                        <div class="grey-text text-darken-1">Ubicación: ${data.ubicacion || ''}</div>
+                        <ul class="productos"></ul>
+                        </div>
+                    </div>
+                    `;
+
+                    // Render productos del pedido (items)
+                    const ulProductos = pedidoEl.querySelector('.productos');
+                    (data.items || []).forEach(p => {
+                        const li = document.createElement('li');
+                        li.setAttribute('data-detalle-id', p.id_detalle);
+                        li.innerHTML = `- ${p.nombre} <span class="cantidad">X${p.cantidad}</span>`;
+                        ulProductos.appendChild(li);
+                    });
+                }
+
+                // mover a la columna destino
+                nuevaLista.appendChild(pedidoEl);
+
+                estado = "";
+
+                switch (nuevoEstado) {
+                    case 'completado':
+                        estado = 'Pedido completado';
+                        break;
+
+                    case 'entregado':
+                        estado = 'Pedido Entregado';
+                        break;
+                
+                    default:
+                        estado = 'Estado desconocido';
+                        break;
+                }
+                
+
+                const Toast = Swal.mixin({
+                        toast: true,
+                        position: "top-right",
+                        showConfirmButton: false,
+                        timer: 3000,
+                        timerProgressBar: true,
+                        didOpen: (toast) => {
+                            toast.onmouseenter = Swal.stopTimer;
+                            toast.onmouseleave = Swal.resumeTimer;
+                        }
+                    });
+            
+                    Toast.fire({
+                        icon: "success",
+                        title: estado
+                    });
+
+            });
+        }
+    });
+</script>
+
+
+{{-- <script>
+    document.addEventListener('DOMContentLoaded', function () { 
+        if (typeof window.Echo !== 'undefined') {
+            // Escuchar cambios de estado            
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.EstadoConsumoActualizado', (e) => {
+                const audio = new Audio('/sounds/notificacionv2.mp3');
+
+                // const pedidoId    = e.detalleId; // en tu evento ahora viaja id_consumo
+                const nuevoEstado = e.estado;
+
+                const pedidoKey = e.detalleId;
+
+                const pedidoEl = document.querySelector(`[data-pedido-key="${pedidoKey}"]`);
+                const nuevaLista = document.querySelector(`#${nuevoEstado} .pedidos`);
+
+                if (!pedidoEl || !nuevaLista) return;
+
+                // Si el garzón marca entregado, en barman debe desaparecer:
+                if (nuevoEstado === 'entregado') {
+                    pedidoEl.remove();
+                    return;
+                }
+
+                nuevaLista.appendChild(pedidoEl);
+
+                audio.play();
+
+                // Mostrar un toast
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: "top-right",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+
+                let estado = "";
+                switch (nuevoEstado) {
+                    case 'por-procesar':
+                        estado = 'Pedido por procesar';
+                        break;
+
+                    case 'en-preparacion':
+                        estado = 'Preparando pedido';
+                        break;
+
+                    case 'completado':
+                        estado = 'Pedido completado';
+                        break;
+
+                    case 'entregado':
+                        estado = 'Pedido entregado al cliente';
+                        break;
+                        
+                    default:
+                        estado = 'Estado desconocido';
+                        break;
+                }
+
+                Toast.fire({
+                    icon: "success",
+                    title: estado
+                });
+            });
+        }
+    });
+</script> --}}
 
 <script>
     $(document).ready(function () {

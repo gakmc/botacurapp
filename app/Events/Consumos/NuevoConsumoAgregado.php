@@ -7,10 +7,11 @@ use Illuminate\Broadcasting\InteractsWithSockets;
 use Illuminate\Broadcasting\PresenceChannel;
 use Illuminate\Broadcasting\PrivateChannel;
 use Illuminate\Contracts\Broadcasting\ShouldBroadcast;
+use Illuminate\Contracts\Broadcasting\ShouldBroadcastNow;
 use Illuminate\Foundation\Events\Dispatchable;
 use Illuminate\Queue\SerializesModels;
 
-class NuevoConsumoAgregado implements ShouldBroadcast
+class NuevoConsumoAgregado implements ShouldBroadcastNow
 {
     use Dispatchable, InteractsWithSockets, SerializesModels;
 
@@ -29,9 +30,12 @@ class NuevoConsumoAgregado implements ShouldBroadcast
     public function broadcastWith()
     {
         return [
-            'mensaje' => $this->mensaje['mensaje'],
-            'productos' => $this->mensaje['productos'], // IDs de productos
-            'estado' => $this->mensaje['estado'], // Estado actual
+            'mensaje'    => $this->mensaje['mensaje'],
+            'pedido_id'  => $this->mensaje['pedido_id'],
+            'cliente'    => $this->mensaje['cliente'],
+            'ubicacion'  => $this->mensaje['ubicacion'],
+            'productos'  => $this->mensaje['productos'],
+            'estado'     => $this->mensaje['estado'],
         ];
     }
 }

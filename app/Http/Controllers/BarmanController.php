@@ -1,5 +1,4 @@
 <?php
-
 namespace App\Http\Controllers;
 
 use App\DetalleConsumo;
@@ -9,7 +8,6 @@ use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 
 class BarmanController extends Controller
 {
@@ -33,6 +31,7 @@ class BarmanController extends Controller
                 $query->where('sectores.nombre', 'barra');
             })
             ->select(
+                'detalles_consumos.id_consumo',
                 'clientes.nombre_cliente',
                 'detalles_consumos.cantidad_producto',
                 'detalles_consumos.estado as estado',
@@ -49,13 +48,29 @@ class BarmanController extends Controller
 
         // dd($productos);
 
+        // $pedidos = $productos
+        //     ->sortBy('creado')
+        //     ->groupBy(['estado', 'id_consumo']);
+
+        $productos = $productos->map(function($row){
+            $row->pedido_key = $row->id_consumo.'|'.Carbon::parse($row->creado)->format('Y-m-d H:i:s');
+            return $row;
+        });
+
+        $pedidos = $productos
+            ->groupBy('estado')
+            ->map(function ($porEstado) {
+                return $porEstado->groupBy('pedido_key');
+            });
+
         return view('themes.backoffice.pages.barman.index', [
             'productos' => $productos,
+            'pedidos' => $pedidos,
         ]);
 
     }
 
-    public function actualizarEstado(Request $request, $id)
+    public function OLDactualizarEstado(Request $request, $id)
     {
         // // Buscar el detalle de consumo por ID
         // $detalleConsumo = DB::table('detalles_consumos')->where('id', $id)->first();
@@ -71,16 +86,16 @@ class BarmanController extends Controller
 
         // return response()->json(['success' => true, 'estado' => $request->input('estado')]);
 
-        $detalle = DetalleConsumo::findOrFail($id);
+        $detalle         = DetalleConsumo::findOrFail($id);
         $detalle->estado = $request->estado;
         $detalle->save();
 
         $visita = Visita::where('id_reserva', $detalle->consumo->venta->reserva->id)->first();
 
         $producto = [
-            'nombre' => $detalle->producto->nombre,
-            'cantidad' => $detalle->cantidad_producto,
-            'cliente' => $detalle->consumo->venta->reserva->cliente->nombre_cliente,
+            'nombre'    => $detalle->producto->nombre,
+            'cantidad'  => $detalle->cantidad_producto,
+            'cliente'   => $detalle->consumo->venta->reserva->cliente->nombre_cliente,
             'ubicacion' => $visita->ubicacion->nombre,
         ];
 
@@ -88,6 +103,100 @@ class BarmanController extends Controller
         event(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
 
         return response()->json(['success' => true, 'estado' => $request->input('estado')]);
+    }
+
+    public function actualizarEstado(Request $request, $id)
+    {
+        $request->validate([
+            'estado' => 'required|in:por-procesar,en-preparacion,completado,entregado'
+        ]);
+
+        // Detectamos si el ID corresponde a un detalle o a un consumo completo
+        $detalle = DetalleConsumo::find($id);
+
+        if ($detalle) {
+            // 👉 Caso antiguo: actualizar 1 detalle
+            $detalle->estado = $request->estado;
+            $detalle->save();
+
+            $idConsumo = $detalle->id_consumo;
+
+        } else {
+            // 👉 Caso nuevo: actualizar pedido completo (id_consumo)
+            $idConsumo = $id;
+
+            // DetalleConsumo::where('id_consumo', $idConsumo)
+            //     ->update(['estado' => $request->estado]);
+
+            if ($request->filled('pedido_creado')) {
+                $pedidoCreado = Carbon::parse($request->pedido_creado)->format('Y-m-d H:i:s');
+
+                DetalleConsumo::where('id_consumo', $idConsumo)
+                    ->whereRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') = ?", [$pedidoCreado])
+                    ->update(['estado' => $request->estado]);
+            } else {
+                // fallback antiguo (NO recomendado para tu caso)
+                DetalleConsumo::where('id_consumo', $idConsumo)
+                    ->update(['estado' => $request->estado]);
+            }
+        }
+
+        // Tomamos un detalle para obtener datos del cliente
+        $detalleBase = DetalleConsumo::where('id_consumo', $idConsumo)
+            ->with(['consumo.venta.reserva.cliente', 'producto'])
+            ->first();
+
+        if (!$detalleBase) {
+            return response()->json(['error' => 'Pedido no encontrado'], 404);
+        }
+
+        $reservaId = $detalleBase->consumo->venta->reserva->id;
+
+        $visita = Visita::where('id_reserva', $reservaId)
+            ->with('ubicacion')
+            ->first();
+
+        $pedidoCreado = $request->filled('pedido_creado')
+            ? Carbon::parse($request->pedido_creado)->format('Y-m-d H:i:s')
+            : null;
+
+        $producto = [
+            'pedido_id' => $idConsumo,
+            'cliente'   => $detalleBase->consumo->venta->reserva->cliente->nombre_cliente,
+            'ubicacion' => $visita ? $visita->ubicacion->nombre : '',
+            'pedido_creado'  => $pedidoCreado,
+            'pedido_key'     => $pedidoCreado ? ($idConsumo.'|'.$pedidoCreado) : (string)$idConsumo,
+        ];
+
+        $items = DetalleConsumo::where('id_consumo', $idConsumo)
+            ->when($pedidoCreado, function($q) use ($pedidoCreado) {
+                $q->whereRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') = ?", [$pedidoCreado]);
+            })
+            ->with('producto:id,nombre')
+            ->get()
+            ->map(function($d){
+                return [
+                    'id_detalle' => $d->id,
+                    'nombre'     => $d->producto->nombre,
+                    'cantidad'   => $d->cantidad_producto,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $producto['items'] = $items;
+
+        // Reutilizamos tu evento actual
+        event(new EstadoConsumoActualizado(
+            $producto['pedido_key'],                  // ahora enviamos pedido completo
+            $request->estado,
+            $producto
+        ));
+
+        return response()->json([
+            'success' => true,
+            'estado'  => $request->estado
+        ]);
     }
 
     public function bebidas()
@@ -119,17 +228,35 @@ class BarmanController extends Controller
                 'productos.nombre as producto',
                 'reservas.fecha_visita',
                 'tipos_productos.nombre as categoria',
-                'ubicaciones.nombre as ubicacion'
+                'ubicaciones.nombre as ubicacion',
+                'detalles_consumos.id_consumo'
             )
             ->orderBy('reservas.fecha_visita', 'asc')
             ->get();
 
         // dd($productos);
 
+        // $pedidos = $productos
+        //     ->groupBy('estado') // completado / entregado
+        //     ->map(function ($porEstado) {
+        //         return $porEstado->groupBy('id_consumo'); // agrupar por pedido
+        //     });
+
+        $productos = $productos->map(function($row){
+            $row->pedido_key = $row->id_consumo.'|'.Carbon::parse($row->creado)->format('Y-m-d H:i:s');
+            return $row;
+        });
+
+        $pedidos = $productos
+            ->groupBy('estado')
+            ->map(function ($porEstado) {
+                return $porEstado->groupBy('pedido_key');
+            });
+
         return view('themes.backoffice.pages.barman.bebida', [
             'productos' => $productos,
+            'pedidos' => $pedidos,
         ]);
     }
-
 
 }

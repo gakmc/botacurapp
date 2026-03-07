@@ -24,3 +24,5 @@ yarn-error.log
 /storage/imagenes
 phpunit.xml*
 /.vscode/tasks.json
+**/database/temp
+**/database/factories

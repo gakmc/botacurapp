@@ -296,6 +296,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::patch('/producto/{producto}/estado', 'ProductoController@cambiarEstado')->name('producto.estado');
     
 
+    Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
+
+
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('asistencia', 'AsistenciaController');
@@ -558,11 +561,17 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     
     Route::post('sueldo/masoterapeuta', 'SueldoController@store_maso')->name('sueldo.store_maso');
     
-    Route::post('barman/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
-    Route::post('barman/bebidas/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
+    // Route::post('barman/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
+    // Route::post('barman/bebidas/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')->name('barman.actualizar_estado');
+
+    Route::post('barman/detalles-consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')
+        ->name('barman.detalle.actualizar_estado');
+
+    Route::post('barman/consumos/{id}/actualizar-estado', 'BarmanController@actualizarEstado')
+        ->name('barman.consumo.actualizar_estado');
     
     
-    Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
+
     Route::get('/subcategorias/{categoria_id}', 'SubcategoriaController@getByCategoria')->name('subcategoria.categoria');
     
     

@@ -15,6 +15,7 @@ use App\TipoProducto;
 use App\Ubicacion;
 use App\Venta;
 use App\Visita;
+use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
@@ -1021,19 +1022,38 @@ class ConsumoController extends Controller
                 'total_consumo' => $totalConPropina,
             ]);
 
-            $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
+            // $productosEvento = array_map(function ($detalle) use ($request, $cliente, $ubicacion) {
+            //     $producto = Producto::find($detalle->id_producto);
+            //     return [
+            //         'id'        => $detalle->id,
+            //         'nombre'    => $producto->nombre,
+            //         'cantidad'  => $detalle->cantidad_producto,
+            //         'cliente'   => $cliente ?? 'Cliente Desconocido',      // Ajusta según los datos disponibles
+            //         'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
+            //     ];
+            // }, $detallesConsumo);
+
+            $pedidoCreado = Carbon::parse($detallesConsumo[0]->created_at)->format('Y-m-d H:i:s');
+
+            $productosEvento = array_map(function ($detalle) use ($cliente, $ubicacion, $pedidoCreado) {
                 $producto = Producto::find($detalle->id_producto);
+
                 return [
-                    'id'        => $detalle->id,
-                    'nombre'    => $producto->nombre,
-                    'cantidad'  => $detalle->cantidad_producto,
-                    'cliente'   => $cliente ?? 'Cliente Desconocido',      // Ajusta según los datos disponibles
-                    'ubicacion' => $ubicacion ?? 'Ubicación Desconocida', // Ajusta según los datos disponibles
+                    'id'           => $detalle->id, // id detalle_consumo
+                    'id_consumo'   => $detalle->id_consumo,
+                    'pedido_creado'=> $pedidoCreado,
+                    'nombre'       => $producto->nombre,
+                    'cantidad'     => $detalle->cantidad_producto,
+                    'cliente'      => $cliente ?? 'Cliente Desconocido',
+                    'ubicacion'    => $ubicacion ?? 'Ubicación Desconocida',
                 ];
             }, $detallesConsumo);
 
             event(new NuevoConsumoAgregado([
                 'mensaje'   => 'Nuevo consumo agregado ' . $nombres,
+                'pedido_id' => $consumo->id,
+                'cliente'   => $cliente,
+                'ubicacion' => $ubicacion,
                 'productos' => $productosEvento,
                 'estado'    => 'por-procesar',
             ]));

@@ -25,7 +25,7 @@
 
                     <div class="row">
                         <!-- Por Procesar -->
-                        <div class="col s12 m4" id="por-procesar">
+                        {{-- <div class="col s12 m4" id="por-procesar">
                             <h5>Por Procesar</h5>
                             <ul class="collection">
                                 @foreach($productos->where('estado', 'por-procesar')->sortBy('creado') as $producto)
@@ -39,41 +39,106 @@
                                     </li>
                                 @endforeach
                             </ul>
-                        </div>
+                        </div> --}}
+
+<div class="col s12 m4" id="por-procesar">
+  <h5>Por Procesar</h5>
+
+  {{-- LISTA EXTERNA: pedidos --}}
+  <ul class="collection pedidos">
+    @foreach(($pedidos['por-procesar'] ?? collect()) as $idConsumo => $items)
+        @php 
+            $first = $items->first();
+            $pedidoKey = $first->pedido_key; 
+        @endphp
+
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+    data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
+        <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
+          <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_drink</i>
+
+          <div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
+
+            {{-- LISTA INTERNA: productos --}}
+            <ul class="" style="">
+              @foreach($items as $p)
+                <li class="" data-id="{{ $p->id }}">
+                  - {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span>
+                </li>
+              @endforeach
+            </ul>
+          </div>
+        </div>
+      </li>
+    @endforeach
+  </ul>
+</div>
                     
                         <!-- En Preparación -->
-                        <div class="col s12 m4" id="en-preparacion">
-                            <h5>En Preparación</h5>
-                            <ul class="collection">
-                                @foreach($productos->where('estado', 'en-preparacion') as $producto)
-                                <li class="collection-item avatar" data-id="{{ $producto->id }}">
-                                    <i class="material-icons circle red">local_bar</i>
-                                    <span class="title">{{ $producto->producto }} X{{$producto->cantidad_producto }}</span>
-                                    <p>
-                                        Cliente: {{ $producto->nombre_cliente }} <br>
-                                        Ubicacion: {{ $producto->ubicacion }}
-                                    </p>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
+<div class="col s12 m4" id="en-preparacion">
+  <h5>En Preparación</h5>
+
+  <ul class="collection pedidos">
+    @foreach(($pedidos['en-preparacion'] ?? collect()) as $idConsumo => $items)
+        @php 
+            $first = $items->first();
+            $pedidoKey = $first->pedido_key; 
+        @endphp
+
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+    data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
+        <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
+          <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_bar</i>
+
+          <div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
+
+            <ul class="productos">
+              @foreach($items as $p)
+                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+              @endforeach
+            </ul>
+          </div>
+        </div>
+      </li>
+    @endforeach
+  </ul>
+</div>
                     
                         <!-- Completado -->
-                        <div class="col s12 m4" id="completado">
-                            <h5>Completado</h5>
-                            <ul class="collection">
-                                @foreach($productos->where('estado', 'completado') as $producto)
-                                <li class="collection-item avatar" data-id="{{ $producto->id }}">
-                                    <i class="material-icons circle red">done_all</i>
-                                    <span class="title">{{ $producto->producto }} X{{$producto->cantidad_producto }}</span>
-                                    <p>
-                                        Cliente: {{ $producto->nombre_cliente }} <br>
-                                        Ubicacion: {{ $producto->ubicacion }}
-                                    </p>
-                                </li>
-                                @endforeach
-                            </ul>
-                        </div>
+<div class="col s12 m4" id="completado">
+  <h5>Completado</h5>
+
+  <ul class="collection pedidos">
+    @foreach(($pedidos['completado'] ?? collect()) as $idConsumo => $items)
+        @php 
+            $first = $items->first();
+            $pedidoKey = $first->pedido_key; 
+        @endphp
+
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+    data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
+        <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
+          <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">done_all</i>
+
+          <div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
+
+            <ul class="productos">
+              @foreach($items as $p)
+                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+              @endforeach
+            </ul>
+          </div>
+        </div>
+      </li>
+    @endforeach
+  </ul>
+</div>
                     </div>
                     
                     
@@ -90,7 +155,7 @@
 @section('foot')
 <script src='{{ asset('assets/sortable/Sortable.min.js')}}'></script>
 
-<script>
+{{-- <script>
     ['por-procesar', 'en-preparacion', 'completado'].forEach(function (id) {
         new Sortable(document.getElementById(id).querySelector('.collection'), {
             group: 'shared',
@@ -117,6 +182,37 @@
             }
         });
     });
+</script> --}}
+
+
+<script>
+    ['por-procesar','en-preparacion','completado'].forEach(function(colId){
+
+            const ul = document.querySelector(`#${colId} .pedidos`);
+            if(!ul) return;
+
+            new Sortable(ul, {
+                group: 'pedidos',
+                animation: 150,
+                draggable: '.pedido',
+                filter: '.productos, .productos *',
+                onEnd: function(evt){
+
+                const idConsumo   = evt.item.getAttribute('data-id-consumo');
+                const pedidoCreado = evt.item.getAttribute('data-pedido-creado');
+                const nuevoEstado = evt.to.closest('[id]').id;
+
+                fetch(`barman/consumos/${idConsumo}/actualizar-estado`, {
+                    method: 'POST',
+                    headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': '{{ csrf_token() }}'
+                    },
+                    body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado })
+                }).catch(console.error);
+                }
+            });
+        });
 </script>
 
 
@@ -143,6 +239,8 @@
                         title: e.mensaje
                     });
 
+                    const audio = new Audio('/sounds/notificacionv2.mp3');
+                    audio.play();
                     
                     // // Recargar la página después de mostrar el Toast
                     // setTimeout(() => {
@@ -151,30 +249,51 @@
 
 
                 // Agregar nuevo consumo a la lista "Por Procesar"
-                const listaPorProcesar = document.querySelector('#por-procesar .collection');
-                e.productos.forEach((producto) => {
-                    // Verificar si ya existe el producto en la lista
-                    const existente = listaPorProcesar.querySelector(`[data-id="${producto.id}"]`);
+                // const listaPorProcesar = document.querySelector('#por-procesar .collection');
+                const listaPorProcesar = document.querySelector('#por-procesar .pedidos');
 
-                    if (existente) {
-                        // Actualizar cantidad del producto existente
-                        const cantidadSpan = existente.querySelector('.cantidad');
-                        cantidadSpan.textContent = `X${producto.cantidad}`;
-                    } else {
-                        // Crear un nuevo elemento para el producto
-                        const nuevoElemento = document.createElement('li');
-                        nuevoElemento.classList.add('collection-item', 'avatar');
-                        nuevoElemento.setAttribute('data-id', producto.id);
-                        nuevoElemento.innerHTML = `
-                            <i class="material-icons circle red">local_drink</i>
-                            <span class="title">${producto.nombre} <span class="cantidad">X${producto.cantidad}</span></span>
-                            <p>
-                                Cliente: ${producto.cliente} <br>
-                                Ubicación: ${producto.ubicacion}
-                            </p>
-                        `;
-                        listaPorProcesar.appendChild(nuevoElemento);
+                // OJO: NuevoConsumoAgregado NO trae e.producto, trae e.productos[]
+                // Así que armamos pedidoKey desde el primer producto:
+                const first = e.productos && e.productos.length ? e.productos[0] : null;
+                if (!first) return;
+
+                // Estos 2 campos DEBEN venir desde el backend en el evento NuevoConsumoAgregado:
+                // first.id_consumo y first.pedido_creado (te digo abajo qué agregar)
+                const pedidoKey = `${first.id_consumo}|${first.pedido_creado}`;
+
+                let pedidoEl = listaPorProcesar.querySelector(`[data-pedido-key="${pedidoKey}"]`);
+
+                if (!pedidoEl) {
+                    pedidoEl = document.createElement('li');
+                    pedidoEl.className = 'collection-item pedido';
+                    pedidoEl.setAttribute('data-pedido-key', pedidoKey);
+                    pedidoEl.setAttribute('data-id-consumo', first.id_consumo);
+                    pedidoEl.setAttribute('data-pedido-creado', first.pedido_creado);
+
+                    pedidoEl.innerHTML = `
+                        <div style="display:flex; gap:10px; align-items:flex-start;">
+                        <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_drink</i>
+                        <div>
+                            <div style="font-weight:600;">${first.cliente}</div>
+                            <div class="grey-text text-darken-1">Ubicación: ${first.ubicacion}</div>
+                            <ul class="productos"></ul>
+                        </div>
+                        </div>
+                    `;
+                    listaPorProcesar.appendChild(pedidoEl);
+                }
+
+                const ulProductos = pedidoEl.querySelector('.productos');
+
+                e.productos.forEach((p) => {
+                    // p.id debe ser el id del detalle (detalles_consumos.id)
+                    let li = ulProductos.querySelector(`[data-detalle-id="${p.id}"]`);
+                    if (!li) {
+                        li = document.createElement('li');
+                        li.setAttribute('data-detalle-id', p.id);
+                        ulProductos.appendChild(li);
                     }
+                    li.innerHTML = `- ${p.nombre} <span class="cantidad">X${p.cantidad}</span>`;
                 });
             });
 
@@ -182,20 +301,24 @@
             // Escuchar cambios de estado            
             window.Echo.channel('consumo-canal-actualizar')
             .listen('Consumos.EstadoConsumoActualizado', (e) => {
-
-                const detalleId = e.detalleId;
+                const audio = new Audio('/sounds/notificacionv2.mp3');
+                audio.play();
+                
                 const nuevoEstado = e.estado;
-                
+                const pedidoKey = e.detalleId; // ahora es pedido_key
 
+                const pedidoEl = document.querySelector(`[data-pedido-key="${pedidoKey}"]`);
+                if (!pedidoEl) return;
 
-                // Encontrar el elemento actual
-                const elemento = document.querySelector(`[data-id="${detalleId}"]`);
-                
-                if (elemento) {
-                    // Mover el elemento a la nueva lista
-                    const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
-                    nuevaLista.appendChild(elemento);
+                // Si el garzón lo dejó entregado -> debe desaparecer del barman
+                if (nuevoEstado === 'entregado') {
+                    pedidoEl.remove();
+                    return;
                 }
+
+                const nuevaLista = document.querySelector(`#${nuevoEstado} .pedidos`);
+                if (nuevaLista) nuevaLista.appendChild(pedidoEl);
+
 
                 estado = "";
 
@@ -210,6 +333,10 @@
 
                     case 'completado':
                         estado = 'Pedido completado';
+                        break;
+
+                    case 'entregado':
+                        estado = 'Pedido entregado al cliente';
                         break;
                 
                     default:
