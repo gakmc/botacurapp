@@ -48,6 +48,14 @@ Route::get('/prueba-pdf', function () {
 });
 
 
+Route::middleware('auth')->group(function () {
+    Route::post('/push/subscribe', 'PushSubscriptionController@store')->name('push.subscribe');
+    Route::post('/push/unsubscribe', 'PushSubscriptionController@destroy')->name('push.unsubscribe');
+});
+
+    // Route::post('/push/subscribe', 'PushSubscriptionController@store')->name('push.subscribe')->middleware('auth');
+    // Route::post('/push/unsubscribe', 'PushSubscriptionController@destroy')->name('push.unsubscribe')->middleware('auth');
+
 Route::get('/prueba-certificado', function () {
     $pdf = PDF::loadHTML('
     <head>
@@ -338,6 +346,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
 
 
+    
     Route::get('home', 'AdminController@show')->name('admin.show');
     Route::get('home/masajes', 'AdminController@index')->name('admin.index');
     Route::get('home/equipos', 'AdminController@team')->name('admin.team');

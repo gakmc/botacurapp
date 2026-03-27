@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 use App\DetalleConsumo;
 use App\Events\Consumos\EstadoConsumoActualizado;
 use App\Producto;
+use App\Services\WebPushService;
+use App\User;
 use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -185,6 +187,35 @@ class BarmanController extends Controller
             ->all();
 
         $producto['items'] = $items;
+
+
+
+
+        if ($request->estado === 'completado') {
+
+            $fechaHoy = Carbon::now()->toDateString();
+
+            $usuarios = User::query()
+                ->join('asignacion_user', 'users.id', '=', 'asignacion_user.user_id')
+                ->join('asignaciones', 'asignacion_user.asignacion_id', '=', 'asignaciones.id')
+                ->join('role_user', 'users.id', '=', 'role_user.user_id')
+                ->join('roles', 'role_user.role_id', '=', 'roles.id')
+                ->whereDate('asignaciones.fecha', $fechaHoy)
+                ->whereIn('roles.name', ['garzon', 'anfitrion'])
+                ->select('users.*')
+                ->distinct()
+                ->get();
+
+            if ($usuarios->isNotEmpty()) {
+
+                app(WebPushService::class)->sendToUsers($usuarios, [
+                    'title' => 'Pedido listo',
+                    'body'  => 'Cliente: '.$producto['cliente'].' - Ubicación: '.$producto['ubicacion'],
+                    'url'   => url('/barman/bebidas'),
+                ]);
+            }
+        }
+
 
         // Reutilizamos tu evento actual
         event(new EstadoConsumoActualizado(

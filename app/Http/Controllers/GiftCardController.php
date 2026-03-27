@@ -152,7 +152,7 @@ class GiftCardController extends Controller
 
         // dd($id, $request->all());
 
-        GiftCard::update([
+        $gc->update([
             'codigo'            => $request->codigo,
             'monto'             => $request->monto,
             'usada'             => $gc->usada,

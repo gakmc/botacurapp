@@ -178,6 +178,45 @@
 
 
 
+<script>
+    $(document).ready(function () {
+        
+  
+        @if(session('info'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'info',
+                title: '{{ session('info') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
 
+        @if(session('success'))
+            Swal.fire({
+                toast: true,
+                position: '',
+                icon: 'success',
+                title: '{{ session('success') }}',
+                showConfirmButton: false,
+                timer: 3000,
+                timerProgressBar: true,
+                  didOpen: (toast) => {
+                    toast.onmouseenter = Swal.stopTimer;
+                    toast.onmouseleave = Swal.resumeTimer;
+                  }
+            });
+        @endif
+
+    });
+        
+
+</script>
 
 @endsection

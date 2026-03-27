@@ -24,6 +24,12 @@
     <li><a href="{{ route('backoffice.reserva.menus', $reserva) }}" class="grey-text text-darken-2">Editar Menú</a></li>
   @endif
 
+  @if (Auth::user()->has_role(config('app.admin_role')))
+    <li>
+      <a href="#" style="color: red" onclick="enviar_formulario()">Eliminar Reserva</a>
+    </li>
+  @endif
+
 @endsection
 
 @section('content')

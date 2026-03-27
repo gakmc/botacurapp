@@ -61,6 +61,7 @@ class VisitaController extends Controller
 
     public function create($reserva)
     {
+
         // session()->put('masajesExtra',true);
         // session()->put('cantidadMasajesExtra',3);
         // dd(session()->get('cantidadMasajesExtra'));
@@ -276,6 +277,25 @@ class VisitaController extends Controller
                 })
                 ->values();
         }
+
+            //     dd([
+            //                     'reserva'               => $reserva,
+            // 'ubicaciones'           => $ubicaciones,
+            // 'lugares'               => LugarMasaje::all(),
+            // 'servicios'             => $serviciosDisponibles,
+            // 'horarios'              => $horariosDisponiblesSPA,
+            // 'horasMasaje'           => $horariosDisponiblesMasajes,
+            // 'entradas'              => $entradas,
+            // 'fondos'                => $fondos,
+            // 'acompañamientos'       => $acompañamientos,
+            // 'masajesExtra'          => $masajesExtra,
+            // 'almuerzosExtra'        => $almuerzosExtra,
+            // 'cantidadMasajesExtra'  => $cantidadMasajesExtra,
+            // 'incluyeMasajePrograma' => $incluyeMasajePrograma,
+            // 'modoMasaje'            => $modoMasaje,
+            // 'cantidadSlotsMasaje'   => $cantidadSlotsMasaje,
+            // 'catalogoMasajes'       => $catalogoMasajes,
+            //     ]);
 
         return view('themes.backoffice.pages.visita.create', [
             'reserva'               => $reserva,
@@ -1454,42 +1474,438 @@ class VisitaController extends Controller
     //     session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
     // }
 
-    // private function sinData(Request $request, Reserva $reserva, $incluyeMasaje, $personas): void
+    private function sinData(Request $request, Reserva $reserva, $incluyeMasaje, $personas): void
+    {
+        $cantidadPersonas     = $reserva->cantidad_personas;
+        $maxPersonasPorVisita = 5;
+        $visita               = null;
+
+        for ($i = 1; $i <= ceil($cantidadPersonas / $maxPersonasPorVisita); $i++) {
+            Visita::create([
+                'horario_sauna'  => null,
+                'horario_tinaja' => null,
+                'trago_cortesia' => $request->input('trago_cortesia') ?? null,
+                'observacion'    => null,
+                'id_reserva'     => $reserva->id,
+                'id_ubicacion'   => $request->input('id_ubicacion') ?? null,
+            ]);
+        }
+
+        if ($incluyeMasaje) {
+            for ($i = 1; $i <= $personas; $i++) {
+                Masaje::create([
+                    'horario_masaje'  => null,
+                    'tipo_masaje'     => null,
+                    'id_lugar_masaje' => 1,
+                    'persona'         => $i,
+                    'id_reserva'      => $reserva->id,
+                    'user_id'         => null,
+                ]);
+            }
+        }
+    }
+
+
+
+
+    // public function CADUCADOstore(StoreRequest $request, Reserva $reserva)
     // {
-    //     $cantidadPersonas     = $reserva->cantidad_personas;
-    //     $maxPersonasPorVisita = 5;
-    //     $visita               = null;
 
-    //     for ($i = 1; $i <= ceil($cantidadPersonas / $maxPersonasPorVisita); $i++) {
-    //         Visita::create([
-    //             'horario_sauna'  => null,
-    //             'horario_tinaja' => null,
-    //             'trago_cortesia' => $request->input('trago_cortesia') ?? null,
-    //             'observacion'    => null,
-    //             'id_reserva'     => $reserva->id,
-    //             'id_ubicacion'   => $request->input('id_ubicacion') ?? null,
-    //         ]);
+    //     dd($request->input('masajes'));
+
+    //     dd("DETENTEEEE...");
+
+    //     if (session()->get('cantidadMasajesExtra') !== null) {
+    //         $personas = session()->get('cantidadMasajesExtra');
+    //     } elseif ($reserva->cantidad_masajes !== null) {
+    //         $personas = $reserva->cantidad_masajes;
+    //     } else {
+    //         $personas = $reserva->cantidad_personas;
     //     }
 
-    //     if ($incluyeMasaje) {
-    //         for ($i = 1; $i <= $personas; $i++) {
-    //             Masaje::create([
-    //                 'horario_masaje'  => null,
-    //                 'tipo_masaje'     => null,
-    //                 'id_lugar_masaje' => 1,
-    //                 'persona'         => $i,
-    //                 'id_reserva'      => $reserva->id,
-    //                 'user_id'         => null,
-    //             ]);
+    //     $visita         = null;
+    //     $cliente        = null;
+    //     $programa       = $reserva->programa;
+    //     $almuerzosExtra = session()->get('almuerzosExtra');
+    //     $masajesExtra   = session()->get('masajesExtra');
+
+    //     $almuerzoIncluido = $programa->servicios->pluck('nombre_servicio')->toArray();
+
+    //     try {
+    //         DB::transaction(function () use ($request, &$reserva, &$visita, &$cliente, $almuerzoIncluido, $almuerzosExtra, $masajesExtra, $personas) {
+
+    //             $cliente = $reserva->cliente;
+
+    //             // Caso 1: Solo SPA (sin masajes)
+    //             if (! $request->has('masajes') && ! $request->has('horario_masaje') && $request->has('horario_sauna')) {
+    //                 // Convertir horario_sauna a objeto Carbon
+    //                 $horarioSauna  = Carbon::createFromFormat('H:i', $request->input('horario_sauna'));
+    //                 $horarioTinaja = $horarioSauna->copy()->addMinutes(15);
+
+    //                 // Crear una visita con solo SPA
+    //                 $visita = Visita::create([
+    //                     'id_reserva'     => $reserva->id,
+    //                     'horario_sauna'  => $horarioSauna,  // Horario del SPA
+    //                     'horario_tinaja' => $horarioTinaja, // Horario de tinaja
+    //                     'id_ubicacion'   => $request->input('id_ubicacion'),
+    //                     'trago_cortesia' => $request->input('trago_cortesia'),
+    //                     'observacion'    => $request->input('observacion'),
+    //                 ]);
+
+    //                 session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
+    //             }
+
+    //             // Caso 2: 1 SPA + 1 horario Masaje
+    //             if ($request->has('horario_masaje') && $request->has('horario_sauna')) {
+    //                 // Convertir horario_sauna a objeto Carbon
+    //                 $horarioSauna     = Carbon::createFromFormat('H:i', $request->input('horario_sauna'));
+    //                 $horarioTinaja    = $horarioSauna->copy()->addMinutes(15);
+    //                 $horarioMasaje    = Carbon::createFromFormat('H:i', $request->input('horario_masaje'));
+    //                 $tipoMasaje       = TipoMasaje::where('slug', $request->masaje['tipo_slug'])->value('nombre');
+    //                 $precioTipoMasaje = PrecioTipoMasaje::where('id', $request->masaje['precio_id'])->value('duracion_minutos');
+
+    //                 // Crear una visita con solo SPA
+    //                 $visita = Visita::create([
+    //                     'id_reserva'     => $reserva->id,
+    //                     'horario_sauna'  => $horarioSauna,  // Horario del SPA
+    //                     'horario_tinaja' => $horarioTinaja, // Horario de tinaja
+    //                     'id_ubicacion'   => $request->input('id_ubicacion'),
+    //                     'trago_cortesia' => $request->input('trago_cortesia'),
+    //                     'observacion'    => $request->input('observacion'),
+    //                 ]);
+
+    //                 for ($i = 1; $i <= $personas; $i++) {
+    //                     Masaje::create([
+    //                         'horario_masaje'  => $horarioMasaje, // Horario de masaje
+    //                         'tipo_masaje'     => $tipoMasaje,
+    //                         'id_lugar_masaje' => $request->input('id_lugar_masaje'),
+    //                         'persona'         => $i,
+    //                         'tiempo_extra'    => ($precioTipoMasaje != 30) ? true : false,
+    //                         'id_reserva'      => $reserva->id,
+    //                     ]);
+    //                 }
+
+    //                 session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
+
+    //             }
+
+    //             // Caso 3: 1 horario SPA con arreglo de masajes
+    //             if ($request->has('masajes') && $request->has('horario_sauna')) {
+    //                 // Obtener horario de sauna
+    //                 $horarioSauna  = Carbon::createFromFormat('H:i', $request->input('horario_sauna'));
+    //                 $horarioTinaja = $horarioSauna->copy()->addMinutes(15);
+
+    //                 // Inicializar variables
+    //                 $masajes               = $request->input('masajes');
+    //                 $contadorPersonas      = 1; // Contador de personas que reciben masaje
+    //                 $maxPersonasPorHorario = 2; // Máximo de personas por cada horario de masaje
+    //                 $totalMasajes          = $personas;
+
+    //                 // Crear la visita una sola vez
+    //                 $visita = Visita::create([
+    //                     'id_reserva'     => $reserva->id,
+    //                     'horario_sauna'  => $horarioSauna,
+    //                     'horario_tinaja' => $horarioTinaja,
+    //                     'id_ubicacion'   => $request->input('id_ubicacion'),
+    //                     'trago_cortesia' => $request->input('trago_cortesia'),
+    //                     'observacion'    => $request->input('observacion'),
+    //                 ]);
+
+    //                 // Procesar los masajes
+    //                 foreach ($masajes as $index => $horario) {
+    //                     for ($i = 1; $i <= $maxPersonasPorHorario; $i++) {
+    //                         if ($contadorPersonas > $totalMasajes) {
+    //                             break;
+    //                         }
+
+    //                         $tipoMasaje       = TipoMasaje::where('slug', data_get($horario, 'tipo_slug'))->value('nombre');
+    //                         $precioTipoMasaje = PrecioTipoMasaje::where('id', $horario['precio_id'])->value('duracion_minutos');
+
+    //                         $masaje = Masaje::create([
+    //                             'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
+    //                             'tipo_masaje'     => $tipoMasaje,
+    //                             'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
+    //                             'persona'         => $contadorPersonas,
+    //                             'tiempo_extra'    => ($precioTipoMasaje != 30) ? true : false,
+    //                             'id_reserva'      => $reserva->id,
+    //                         ]);
+    //                         $contadorPersonas++;
+
+    //                     }
+    //                 }
+
+    //                 session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
+    //             }
+
+    //             // Caso 4: Arreglos de SPA sin masajes
+    //             if (! $request->has('masajes') && $request->has('spas')) {
+    //                 foreach ($request->input('spas') as $indexSpa => $spa) {
+    //                     // Validar que el horario_sauna exista en el arreglo actual
+    //                     if (isset($spa['horario_sauna'])) {
+    //                         $horarioSauna  = Carbon::createFromFormat('H:i', $spa['horario_sauna']);
+    //                         $horarioTinaja = $horarioSauna->copy()->addMinutes(15);
+
+    //                         // Crear una visita para cada SPA
+    //                         $visita = Visita::create([
+    //                             'id_reserva'     => $reserva->id,
+    //                             'horario_sauna'  => $horarioSauna,
+    //                             'horario_tinaja' => $horarioTinaja,
+    //                             'id_ubicacion'   => $request->input('id_ubicacion'),
+    //                             'trago_cortesia' => $request->input('trago_cortesia'),
+    //                             'observacion'    => $request->input('observacion'),
+    //                         ]);
+
+    //                     }
+    //                 }
+
+    //                 session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
+    //             }
+
+    //             // Caso 5: Arreglos de SPA y masajes
+    //             if ($request->has('masajes') && $request->has('spas')) {
+    //                 // Inicializar variables
+    //                 $masajes               = $request->input('masajes');
+    //                 $contadorPersonas      = 1; // Contador de personas que reciben masaje
+    //                 $maxPersonasPorHorario = 2; // Máximo de personas por cada horario de masaje
+    //                 $totalMasajes          = $personas;
+
+    //                 //Procesar los horarios SPA
+    //                 foreach ($request->input('spas') as $indexSpa => $spa) {
+    //                     // Validar que el horario_sauna exista en el arreglo actual
+    //                     if (isset($spa['horario_sauna'])) {
+    //                         $horarioSauna  = Carbon::createFromFormat('H:i', $spa['horario_sauna']);
+    //                         $horarioTinaja = $horarioSauna->copy()->addMinutes(15);
+
+    //                         // Crear una visita para cada SPA
+    //                         $visita = Visita::create([
+    //                             'id_reserva'     => $reserva->id,
+    //                             'horario_sauna'  => $horarioSauna,
+    //                             'horario_tinaja' => $horarioTinaja,
+    //                             'id_ubicacion'   => $request->input('id_ubicacion'),
+    //                             'trago_cortesia' => $request->input('trago_cortesia'),
+    //                             'observacion'    => $request->input('observacion'),
+    //                         ]);
+
+    //                     }
+    //                 }
+
+    //                 // Procesar los masajes
+    //                 foreach ($masajes as $index => $horario) {
+    //                     for ($i = 1; $i <= $maxPersonasPorHorario; $i++) {
+    //                         if ($contadorPersonas > $totalMasajes) {
+    //                             break;
+    //                         }
+
+    //                         $tipoMasaje       = TipoMasaje::where('slug', data_get($horario, 'tipo_slug'))->value('nombre');
+    //                         $precioTipoMasaje = PrecioTipoMasaje::where('id', $horario['precio_id'])->value('duracion_minutos');
+
+    //                         $masaje = Masaje::create([
+    //                             'horario_masaje'  => Carbon::createFromFormat('H:i', $horario['horario_masaje']),
+    //                             'tipo_masaje'     => $tipoMasaje,
+    //                             'id_lugar_masaje' => $horario['id_lugar_masaje'] ?? 1,
+    //                             'persona'         => $contadorPersonas,
+    //                             'tiempo_extra'    => ($precioTipoMasaje != 30) ? true : false,
+    //                             'id_reserva'      => $reserva->id,
+    //                         ]);
+    //                         $contadorPersonas++;
+
+    //                     }
+    //                 }
+
+    //                 session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
+    //             }
+
+    //             // En caso de no registrar horarios
+    //             $arrayMasajes  = $request->input('masajes', []);
+    //             $arraySpas     = $request->input('spas', []);
+    //             $incluyeMasaje = $reserva->programa->servicios->contains('nombre_servicio', 'Masaje') || $masajesExtra;
+
+    //             // Validar que en los arreglos internos de `masajes` exista al menos una clave `horario_masaje`.
+    //             $tieneHorarioMasaje = ! empty(array_filter($arrayMasajes, function ($item) {
+    //                 return is_array($item) && array_key_exists('horario_masaje', $item);
+    //             }));
+
+    //             // Caso 6: Sin data
+    //             if ((empty($arrayMasajes) || ! $tieneHorarioMasaje) && empty($request->input('horario_masaje')) && empty($arraySpas) && empty($request->input('horario_sauna'))) {
+
+    //                 $cantidadPersonas     = $reserva->cantidad_personas;
+    //                 $maxPersonasPorVisita = 5;
+    //                 $visita               = null;
+
+    //                 for ($i = 1; $i <= ceil($cantidadPersonas / $maxPersonasPorVisita); $i++) {
+    //                     $visita = Visita::create([
+    //                         'horario_sauna'  => null,
+    //                         'horario_tinaja' => null,
+    //                         'trago_cortesia' => $request->input('trago_cortesia') ?? null,
+    //                         'observacion'    => null,
+    //                         'id_reserva'     => $reserva->id,
+    //                         'id_ubicacion'   => $request->input('id_ubicacion') ?? null,
+    //                     ]);
+    //                 }
+
+    //                 if ($incluyeMasaje) {
+    //                     for ($i = 1; $i <= $personas; $i++) {
+    //                         Masaje::create([
+    //                             'horario_masaje'  => null,
+    //                             'tipo_masaje'     => null,
+    //                             'id_lugar_masaje' => 1,
+    //                             'persona'         => $i,
+    //                             'id_reserva'      => $reserva->id,
+    //                             'user_id'         => null,
+    //                         ]);
+    //                     }
+    //                 }
+    //             }
+
+    //             // Menus
+    //             if (in_array('Almuerzo', $almuerzoIncluido) || $almuerzosExtra) {
+    //                 $menusExistentes = Menu::where('id_reserva', $reserva->id)->count();
+    //                 if ($menusExistentes === 0) {
+    //                     $menusPayload = $request->input('menus', []);
+
+    //                     if (! is_array($menusPayload)) {
+    //                         $menusPayload = [];
+    //                     }
+
+    //                     //Si vienen menus en el Payload crear
+    //                     foreach ($menusPayload as $menu) {
+    //                         if (! is_array($menu)) {
+    //                             continue;
+    //                         }
+
+    //                         Menu::create([
+    //                             'id_reserva'                 => $reserva->id,
+    //                             'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
+    //                             'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
+    //                             'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
+    //                             'alergias'                   => $menu['alergias'] ?? null,
+    //                             'observacion'                => $menu['observacion'] ?? null,
+    //                         ]);
+    //                     }
+
+    //                     //Si no vienen, crear menus vacios
+    //                     $cantidadNecesaria = (int) $personas;
+    //                     $creados           = max(0, count($menusPayload));
+    //                     $faltantes         = max(0, $cantidadNecesaria - $creados);
+
+    //                     for ($i = 0; $i < $faltantes; $i++) {
+    //                         Menu::create([
+    //                             'id_reserva'                 => $reserva->id,
+    //                             'id_producto_entrada'        => null,
+    //                             'id_producto_fondo'          => null,
+    //                             'id_producto_acompanamiento' => null,
+    //                             'alergias'                   => null,
+    //                             'observacion'                => null,
+    //                         ]);
+    //                     }
+    //                 }
+
+    //                 // //Anterior controlador de los menus
+    //                 // foreach ($request->menus as $menu) {
+    //                 //     Menu::create([
+    //                 //         'id_reserva'                 => $reserva->id,
+    //                 //         'id_producto_entrada'        => $menu['id_producto_entrada'] ?? null,
+    //                 //         'id_producto_fondo'          => $menu['id_producto_fondo'] ?? null,
+    //                 //         'id_producto_acompanamiento' => $menu['id_producto_acompanamiento'] ?? null,
+    //                 //         'alergias'                   => $menu['alergias'] ?? null,
+    //                 //         'observacion'                => $menu['observacion'] ?? null,
+    //                 //     ]);
+    //                 // }
+
+    //             }
+
+    //             $ventaId = optional($reserva->venta)->id;
+    //             if (! $ventaId) {
+    //                 return;
+    //             }
+
+    //             $consumo = Consumo::where('id_venta', $ventaId)->first();
+    //             if (! $consumo) {
+    //                 return;
+    //             }
+
+    //             // id del servicio masaje (ajusta slug/nombre a tu realidad)
+    //             $idServicioMasaje = Servicio::where('slug', 'masaje')
+    //                 ->orWhereIn('nombre_servicio', ['Masaje', 'Masajes', 'masaje', 'masajes'])
+    //                 ->value('id');
+
+    //             if (! $idServicioMasaje) {
+    //                 return;
+    //             }
+
+    //             // Placeholder ya existe desde "generar reserva" (según tu explicación)
+    //             $detalleExtra = DetalleServiciosExtra::where('id_consumo', $consumo->id)
+    //                 ->where('id_servicio_extra', $idServicioMasaje)
+    //                 ->lockForUpdate()
+    //                 ->first();
+
+    //             // ✅ Si no hay placeholder => no cobrar extra
+    //             if (! $detalleExtra) {
+    //                 return;
+    //             }
+
+    //             $cantExtras = (int) $detalleExtra->cantidad_servicio;
+
+    //             // ✅ Si cantidad = 0 => no cobrar extra
+    //             if ($cantExtras <= 0) {
+    //                 // opcional: asegurar subtotal 0
+    //                 $detalleExtra->subtotal              = 0;
+    //                 $detalleExtra->id_precio_tipo_masaje = null;
+    //                 $detalleExtra->save();
+
+    //                 $this->recalcularTotalesConsumo($consumo->id);
+    //                 return;
+    //             }
+
+    //             // Extrae el precio_id (singular o array). Debe existir si hay extras.
+    //             $precioId = $this->extraerPrecioIdSeleccionado($request);
+
+    //             if ($precioId <= 0) {
+    //                 throw ValidationException::withMessages([
+    //                     'masajes' => "Hay {$cantExtras} masaje(s) extra, pero no seleccionaste Duración/Precio.",
+    //                 ]);
+    //             }
+
+    //             // Calcula subtotal real en base a PrecioTipoMasaje (con regla pareja)
+    //             $subtotalExtras = $this->subtotalMasajePorPrecioId($precioId, $cantExtras);
+
+    //             // Actualiza placeholder (NO crees otra línea)
+    //             $detalleExtra->id_precio_tipo_masaje = $precioId;
+    //             $detalleExtra->subtotal              = $subtotalExtras;
+    //             $detalleExtra->save();
+
+    //             // Recalcula consumo (subtotal / total_consumo) desde BD
+    //             $this->recalcularTotalesConsumo($consumo->id);
+
+    //         });
+
+    //         if ($cliente && $visita) {
+    //             Mail::to($cliente->correo)->send(new RegistroReservaMailable($visita, $reserva, $cliente, $programa));
     //         }
+
+    //         return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Se ha generado la visita.');
+
+    //     } catch (\Exception $e) {
+
+    //         Log::error('Error al generar visita en store(): ' . $e->getMessage(), [
+    //             'exception'    => $e,
+    //             'trace'        => $e->getTraceAsString(),
+    //             'mensaje'      => 'Fallo la creacion de la visita, revisa el menu o los servicios',
+    //             'reserva_id'   => $reserva->id ?? null,
+    //             'request_data' => $request->all(),
+    //         ]);
+
+    //         return redirect()->back()->withInput()->with('error', 'Debe completar todo el formulario o NO seleccionar nada');
     //     }
+
     // }
+
+
 
     // ======================= STORE =========================
 
     public function store(StoreRequest $request, Reserva $reserva)
     {
-        // dd($request->all());    
 
         // ===== Personas para MASAJES (NO confundir con asistentes para MENÚ) =====
         $personasMasaje = $this->resolverCantidadMasajes($reserva);
@@ -1640,6 +2056,7 @@ class VisitaController extends Controller
                 ->back()
                 ->withInput()
                 ->with('error', 'Debe completar todo el formulario o NO seleccionar nada.');
+                // ->with('error', $e->getMessage());
         }
     }
 
@@ -1747,7 +2164,7 @@ class VisitaController extends Controller
                     'tipo_slug'       => Arr::get($request->input('masaje'), 'tipo_slug'),
                     'precio_id'       => Arr::get($request->input('masaje'), 'precio_id'),
                     'tipo_masaje'     => null,
-                    'tiempo_extra'    => null,
+                    'tiempo_extra'    => 0,
                 ];
                 return $out;
             }
@@ -1832,7 +2249,7 @@ class VisitaController extends Controller
                 'tipo_masaje'     => null,
                 'id_lugar_masaje' => 1,
                 'persona'         => $i,
-                'tiempo_extra'    => null,
+                'tiempo_extra'    => 0,
                 'id_reserva'      => $reserva->id,
                 'user_id'         => null,
             ]);
@@ -1894,7 +2311,7 @@ class VisitaController extends Controller
                     'tipo_masaje'     => null,
                     'id_lugar_masaje' => 1,
                     'persona'         => $persona,
-                    'tiempo_extra'    => null,
+                    'tiempo_extra'    => 0,
                     'id_reserva'      => $reserva->id,
                     'user_id'         => null,
                 ]);
@@ -1938,7 +2355,7 @@ class VisitaController extends Controller
                 'tipo_masaje'     => null,
                 'id_lugar_masaje' => 1,
                 'persona'         => $contadorPersonas,
-                'tiempo_extra'    => null,
+                'tiempo_extra'    => 0,
                 'id_reserva'      => $reserva->id,
                 'user_id'         => null,
             ]);
@@ -1978,7 +2395,7 @@ class VisitaController extends Controller
             ]);
             $creados++;
         }
-
+        // dd($creados);
         // Completa faltantes con vacíos
         $faltantes = max(0, $cantidadNecesaria - $creados);
         for ($i = 0; $i < $faltantes; $i++) {

@@ -16,6 +16,22 @@
 @section('content')
 <div class="section">
     <p class="caption"><strong>Bebidas</strong></p>
+<a href="#!"
+   id="btnPushDesktop"
+   onclick="event.preventDefault(); activarNotificacionesPush();"
+   class="btn green hide-on-med-and-down">
+    <i class="material-icons left">notifications</i>
+    Activar notificaciones
+</a>
+
+<div id="btnPushFab" class="fixed-action-btn hide-on-large-only">
+    <a href="#!"
+       onclick="event.preventDefault(); activarNotificacionesPush();"
+       class="btn-floating btn-large red">
+        <i class="large material-icons">notifications</i>
+    </a>
+</div>
+    
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">

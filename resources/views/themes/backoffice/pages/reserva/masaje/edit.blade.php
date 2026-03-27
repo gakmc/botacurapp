@@ -20,7 +20,7 @@
                   <div class="row">
                       <form class="col s12" method="post"
                           action="{{route('backoffice.reserva.masaje_update', [$reserva])}}">
-
+ 
 
                           {{csrf_field() }}
                           @method('PUT')
