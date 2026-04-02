@@ -15,6 +15,7 @@
   <li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
     
   <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
+
     
   @if ($reserva->programa->incluye_masajes || $reserva->incluye_masajes_extra)
     <li><a href="{{ route('backoffice.reserva.masajes', ['reserva' => $reserva]) }}" class="grey-text text-darken-2">Editar Masajes</a></li>
@@ -23,6 +24,8 @@
   @if ($reserva->programa->incluye_almuerzos || $reserva->visitas->last()->incluye_almuerzos_extra)
     <li><a href="{{ route('backoffice.reserva.menus', $reserva) }}" class="grey-text text-darken-2">Editar Menú</a></li>
   @endif
+
+
 
   @if (Auth::user()->has_role(config('app.admin_role')))
     <li>

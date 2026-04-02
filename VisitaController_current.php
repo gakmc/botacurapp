@@ -1492,26 +1492,7 @@ class VisitaController extends Controller
     {
         $reserva->load(['programa.servicios', 'cliente', 'venta', 'visitas', 'masajes', 'menus']);
 
-        $personasMasaje = session()->get('cantidadMasajesExtra');
-        if ($personasMasaje === null) {
-            if (! is_null($reserva->cantidad_masajes_extra)) {
-                $personasMasaje = $reserva->cantidad_masajes_extra;
-            } elseif (! is_null($reserva->cantidad_masajes)) {
-                $personasMasaje = $reserva->cantidad_masajes;
-            } else {
-                $personasMasaje = $reserva->cantidad_personas;
-            }
-        }
-        $personasMasaje = (int) $personasMasaje;
-        if ($personasMasaje <= 0) {
-            $personasMasaje = (int) $reserva->masajes->count();
-        }
-        if ($personasMasaje <= 0) {
-            $personasMasaje = (int) $reserva->cantidad_personas;
-        }
-        if ($personasMasaje <= 0) {
-            $personasMasaje = 1;
-        }
+        $personasMasaje = $this->resolverCantidadMasajes($reserva);
         $programa       = $reserva->programa;
         $cliente        = $reserva->cliente;
         $visitaMail     = null;
@@ -1598,17 +1579,9 @@ class VisitaController extends Controller
 
             session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
 
-            $fechaRegistro = null;
-            try {
-                $fechaRegistro = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-            } catch (\Throwable $e) {
-                $fechaRegistro = optional($reserva->getOriginal('fecha_visita')) ? Carbon::parse($reserva->getOriginal('fecha_visita'))->format('Y-m-d') : null;
-            }
-
             return redirect()
-                ->route('backoffice.reservas.registro', ['fecha' => $fechaRegistro])
+                ->route('backoffice.reserva.show', ['reserva' => $reserva])
                 ->with('success', 'La visita ha sido actualizada.');
-
         } catch (\Throwable $e) {
             Log::error('Error al actualizar visita', [
                 'reserva_id'   => $reserva->id,
@@ -1994,7 +1967,7 @@ class VisitaController extends Controller
 
         $serviciosPrograma = $programa->servicios->pluck('nombre_servicio')->toArray();
         $incluyeAlmuerzo   = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
-        $incluyeMasaje     = $programa->servicios->contains('nombre_servicio', 'Masaje') || $masajesExtra;
+        $incluyeMasaje     = $this->reservaIncluyeMasaje($reserva) || $masajesExtra;
 
         try {
             DB::transaction(function () use (
@@ -2141,6 +2114,10 @@ class VisitaController extends Controller
     {
         if (session()->get('cantidadMasajesExtra') !== null) {
             return (int) session()->get('cantidadMasajesExtra');
+        }
+
+        if (! is_null($reserva->cantidad_masajes_extra)) {
+            return (int) $reserva->cantidad_masajes_extra;
         }
 
         if (! is_null($reserva->cantidad_masajes)) {

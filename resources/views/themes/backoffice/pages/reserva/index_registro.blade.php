@@ -196,9 +196,10 @@
                                         </td>
                                         <td>
                                             @if(isset($ultimaVisita))
-                                                @if (is_null($ultimaVisita->id_ubicacion))
-                                                    <a href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}">
-                                                        No Registrada
+                                                @if (is_null($ultimaVisita->id_ubicacion) && is_null($ultimaVisita->horario_sauna))
+                                                    {{-- <a href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}" class="blue"> --}}
+                                                    <a href="{{route('backoffice.visita.registrar',$reserva)}}" class="blue-text">
+                                                        Falta informacion
                                                     </a>
                                                 @else
                                                     {{$ultimaVisita->ubicacion->nombre}}
