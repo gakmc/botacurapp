@@ -52,6 +52,8 @@
 
                             // Slots: ya vienen calculados desde el controller (fuente de verdad)
                             $slotsMasaje = (int) $cantidadSlotsMasaje;
+
+                            $indexSpa = ceil((($reserva->cantidad_personas)/5))
                         @endphp
 
 
