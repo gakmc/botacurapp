@@ -116,7 +116,7 @@ class VentaDirectaController extends Controller
         //     'total' => $request->total,
         // ]);
         // Iniciar una transacción en la base de datos
-        DB::transaction(function () use ($request, &$venta, &$productos, &$cliente, &$ubicacion, &$detallesVentas, $poseePropina, $nombres) {
+        DB::transaction(function () use ($request, &$productos, &$cliente, &$ubicacion, &$detallesVentas, $poseePropina, $nombres) {
 
             $fecha = Carbon::now()->toDateString();
             // Crear la venta directa
@@ -173,10 +173,19 @@ class VentaDirectaController extends Controller
             }, $detallesVentas);
     
     
+            // event(new NuevoConsumoAgregado([
+            //     'mensaje'=>'Nuevo consumo agregado '.$nombres,
+            //     'productos' => $productosEvento,
+            //     'estado' => 'por-procesar'
+            // ]));
+
             event(new NuevoConsumoAgregado([
-                'mensaje'=>'Nuevo consumo agregado '.$nombres,
+                'mensaje'   => 'Nuevo consumo agregado ' . $nombres,
+                'pedido_id' => $venta_directa->id,
+                'cliente'   => 'Venta Directa',
+                'ubicacion' => 'Venta Directa',
                 'productos' => $productosEvento,
-                'estado' => 'por-procesar'
+                'estado'    => 'por-procesar',
             ]));
 
             // broadcast(new NuevoConsumoAgregado([

@@ -30,8 +30,8 @@
                         @foreach ($masajes as $masaje)
                             <div class="row">
 
-                                <h6><strong>Persona {{$masaje->persona}}</strong></h6>
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) & !$masajesExtra) style="display: none;" @endif>
+                                <h6 class="col l10 offset-l1"><strong>Persona {{$masaje->persona}}</strong></h6>
+                                <div class="input-field col s12 m6 l4 offset-l1" @if(!in_array('Masaje', $servicios) & !$masajesExtra) style="display: none;" @endif>
 
                                     <select id="horario_masaje_{{$masaje->id}}" name="masajes[{{$masaje->id}}][horario_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
       
@@ -48,15 +48,13 @@
       
                                 </div>
       
-                                <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
+                                {{-- <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
       
                                     <select id="tipo_masaje_{{$masaje->id}}" name="masajes[{{$masaje->id}}][tipo_masaje]" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
       
                                         @foreach ($tiposMasajes as $tm)
                                             <option value="{{$tm->nombre}}" {{ $masaje->tipo_masaje === $tm->nombre ? 'selected' : ''}}>{{$tm->nombre}}</option>
                                         @endforeach
-                                        {{-- <option value="Relajación" {{ $masaje->tipo_masaje ==='Relajación' ? 'selected' : ''}}>Relajación</option>
-                                        <option value="Descontracturante" {{ $masaje->tipo_masaje ==='Descontracturante' ? 'selected' : '' }}>Descontracturante</option> --}}
       
       
       
@@ -68,7 +66,7 @@
                                     </span>
                                     @enderror
       
-                                </div>
+                                </div> --}}
       
                                 <div class="input-field col s12 m6 l4" @if(!in_array('Masaje', $servicios) && !$masajesExtra) style="display: none;" @endif>
                                     <select name="masajes[{{$masaje->id}}][id_lugar_masaje]" id="id_lugar_masaje_{{$masaje->id}}" @if(!in_array('Masaje', $servicios) && !$masajesExtra) disabled hidden @endif>
