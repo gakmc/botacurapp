@@ -1540,10 +1540,10 @@ class ReservaController extends Controller
 
     public function masaje_update(Request $request, Reserva $reserva) 
     {
-        dd($request->all());
+        // dd($request->all());
         $request->validate([
             'masajes.*.horario_masaje' => 'required|string',
-            'masajes.*.tipo_masaje' => 'required|string|exists:tipos_masajes,nombre',
+            // 'masajes.*.tipo_masaje' => 'required|string|exists:tipos_masajes,nombre',
             'masajes.*.id_lugar_masaje' => 'required|exists:lugares_masajes,id',
         ]);
     
@@ -1555,7 +1555,7 @@ class ReservaController extends Controller
     
                 $masaje->update([
                     'horario_masaje' => $datos['horario_masaje'],
-                    'tipo_masaje' => $datos['tipo_masaje'],
+                    // 'tipo_masaje' => $datos['tipo_masaje'],
                     'id_lugar_masaje' => $datos['id_lugar_masaje'] ?? 1,
                 ]);
             }
