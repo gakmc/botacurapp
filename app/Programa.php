@@ -100,5 +100,7 @@ class Programa extends Model
     //RECUPERACION DE INFORMACION
 
     //OTRAS OPERACIONES
+    public function scopeActivos($q){ return $q->where('estado', 'activo')->orWhereNull('estado'); }
+    public function scopeInactivos($q){ return $q->where('estado', 'inactivo'); }
 
 }

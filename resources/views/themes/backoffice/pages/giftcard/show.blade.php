@@ -63,7 +63,7 @@ Gift Card solicitada por {{$gc->de}}
                                         <p><strong>Para:</strong> {{$gc->para}}</p>
                                         <p><strong>Válido hasta:</strong>{{$gc->valido}}</p>
                                         <p style="margin-top: 40px;">Programa tu horario al WhatsApp:</p>
-                                        <h6><strong>+56 9 8272 0582</strong></h6>
+                                        <h6><strong>+56 9 7448 4112</strong></h6>
 
                                         <div class="center">
 

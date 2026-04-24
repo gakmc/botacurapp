@@ -283,6 +283,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('role', 'RoleController@index')->name('role.index');
     // Route::get('home','AdminController@show')->name('admin.show');
 
+
+    Route::match(['put', 'patch'],'usuarios/{user}/retencion', 'UsuarioRetencionController@update')->name('usuario-retencion.update');
+
+
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
     Route::get('venta/{venta}/consumo/ingresar_servicio', 'ConsumoController@service_create')->name('venta.consumo.service_create');
@@ -295,6 +299,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/producto/inactivos', 'ProductoController@index_inactivos')->name('producto.inactivos');
     Route::patch('/producto/{producto}/estado', 'ProductoController@cambiarEstado')->name('producto.estado');
+
+    Route::get('/programa/inactivos', 'ProgramaController@index_inactivos')->name('programa.inactivos');
+    Route::patch('/programa/{programa}/estado', 'ProgramaController@cambiarEstado')->name('programa.estado');
 
     Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
 

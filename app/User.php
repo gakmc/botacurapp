@@ -1,5 +1,4 @@
 <?php
-
 namespace App;
 
 use Carbon\Carbon;
@@ -13,8 +12,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
 {
     use Notifiable;
 
-
-     public function getJWTIdentifier()
+    public function getJWTIdentifier()
     {
         return $this->getKey();
     }
@@ -80,8 +78,8 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     public function propinas()
     {
         return $this->belongsToMany(Propina::class, 'propina_user', 'id_user', 'id_propina')
-                    ->withPivot('monto_asignado')
-                    ->withTimestamps();
+            ->withPivot('monto_asignado')
+            ->withTimestamps();
     }
 
     public function sueldos()
@@ -103,12 +101,12 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     {
         return $this->hasMany(EstadoRecepcion::class, 'user_id');
     }
-    
+
     public function anularSueldo()
     {
         return $this->hasOne(AnularSueldoUsuario::class, 'user_id');
     }
-    
+
     public function asistencias()
     {
         return $this->belongsToMany(Asistencia::class);
@@ -119,7 +117,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
         return $this->hasMany(sueldoPagado::class, 'user_id');
     }
 
-        public function inventarioMovimientos()
+    public function inventarioMovimientos()
     {
         return $this->hasMany(InventarioMovimiento::class, 'id_user');
     }
@@ -127,6 +125,11 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     public function pushSubscriptions()
     {
         return $this->hasMany(PushSubscription::class);
+    }
+
+    public function impuestoUsuario()
+    {
+        return $this->hasOne(UserImpuesto::class);
     }
 
 //ALMACENAMIENTO
@@ -205,10 +208,10 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
 
     public function age()
     {
-        if (!is_null($this->dob)) {
-            $age = $this->dob->age;
+        if (! is_null($this->dob)) {
+            $age   = $this->dob->age;
             $years = ($age == 1) ? ' año' : ' años';
-            $msj = $age . '' . $years;
+            $msj   = $age . '' . $years;
         } else {
             $msj = 'Indefinido';
         }
@@ -291,7 +294,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     {
         $permissions = $this->permissions;
         foreach ($permissions as $permission) {
-            if (!in_array($permission->role->id, $roles)) {
+            if (! in_array($permission->role->id, $roles)) {
                 $this->permissions()->detach($permission->id);
             }
         }
@@ -300,8 +303,8 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     public function permission_mass_assigment(array $roles)
     {
         foreach ($roles as $role) {
-            if (!$this->has_role($role)) {
-                $role_obj = \App\Role::findOrFail($role);
+            if (! $this->has_role($role)) {
+                $role_obj    = \App\Role::findOrFail($role);
                 $permissions = $role_obj->permissions;
                 $this->permissions()->syncWithoutDetaching($permissions);
             }
@@ -310,12 +313,10 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
 
     public function list_roles()
     {
-        $roles = $this->roles->pluck('name')->toArray();
+        $roles  = $this->roles->pluck('name')->toArray();
         $string = implode(', ', $roles);
         return $string;
     }
-
-
 
     public function getSalarioAttribute()
     {
@@ -339,6 +340,18 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
             ->first();
 
         return $rango ? $rango->sueldo_base : 0;
+    }
+
+    public function getRetieneImpuestosAttribute()
+    {
+        return optional($this->impuestoUsuario)->retiene_impuestos;
+    }
+
+    public function scopeRetenedores($query)
+    {
+        return $query->whereHas(
+            'impuestoUsuario', function ($q) { return $q->where('retiene_impuestos', true); }
+        );
     }
 
 }

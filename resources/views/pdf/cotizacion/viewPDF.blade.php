@@ -155,7 +155,7 @@
 
 <htmlpagefooter name="footer">
     <div style="width: 100%; font-size: 11px; text-align: center; border-top: 1px solid #ccc; padding-top: 5px; color: #777;">
-        <a class="enlaces" href="https://www.instagram.com/botacura_cajondelmaipo/" target="_blank">@botacura_cajondelmaipo</a> • <a class="enlaces" href="https://api.whatsapp.com/send/?phone=56982720582&text=Hola%2C+quer%C3%ADa+consultar+por+&type=phone_number&app_absent=0" target="_blank">+569 8272 0582</a> • hola@botacura.cl • <a class="enlaces" href="www.botacura.cl" target="_blank">www.botacura.cl</a>
+        <a class="enlaces" href="https://www.instagram.com/botacura_cajondelmaipo/" target="_blank">@botacura_cajondelmaipo</a> • <a class="enlaces" href="https://api.whatsapp.com/send/?phone=56982720582&text=Hola%2C+quer%C3%ADa+consultar+por+&type=phone_number&app_absent=0" target="_blank">+569 7448 4112</a> • hola@botacura.cl • <a class="enlaces" href="www.botacura.cl" target="_blank">www.botacura.cl</a>
     </div>
 </htmlpagefooter>
 </body>

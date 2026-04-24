@@ -50,7 +50,7 @@
 
                   <select name="id_programa" id="id_programa">
                     <option value="" disabled selected>-- Seleccione un programa --</option>
-                    @foreach ($programas->sortBy('valor_programa') as $programa)
+                    @foreach ($programas->sortBy('nombre_programa') as $programa)
                     <option value="{{$programa->id}}" @if (old('id_programa')==$programa->id)
                       selected
                       @else

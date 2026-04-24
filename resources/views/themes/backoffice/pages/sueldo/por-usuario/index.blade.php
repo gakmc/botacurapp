@@ -73,6 +73,7 @@
                 <th>Sueldo por Rol</th>
                 <th>Sobrescrito</th>
                 <th>Sueldo Vigente</th>
+                <th>Retiene impuestos</th>
                 <th>Acciones</th>
             </tr>
         </thead>
@@ -106,6 +107,16 @@
                 </td>
                 <td class="green-text">
                     ${{ number_format($usuario->salario, 0, ',', '.') }}
+                </td>
+                <td>
+                    <form method="POST" action="{{route('backoffice.usuario-retencion.update', $usuario)}}" class="retencion-form">
+                        @csrf
+                        @method('PUT')
+                        <p>
+                        <input type="checkbox" id="retiene_impuestos_{{$usuario->id}}" name="retiene_impuestos" value="1" {{$usuario->retiene_impuestos ? 'checked' : ''}} onchange="this.form.submit()"/>
+                        <label for="retiene_impuestos_{{$usuario->id}}"></label>
+                        </p>
+                    </form>
                 </td>
                 <td>
                     @if($usuario->anularSueldo)
@@ -194,6 +205,53 @@
                 },
                 error: function () {
                     alert('Hubo un error al cargar los datos.');
+                }
+            });
+        });
+    });
+</script>
+
+
+<script>
+    document.addEventListener('DOMContentLoaded', () => {
+        document.querySelectorAll('.retencion-form input[type="checkbox"]').forEach(input => {
+            input.addEventListener('change', async (event) => {
+                const form = event.target.closest('form');
+                const formData = new FormData(form);
+
+                if (!event.target.checked) {
+                    formData.delete('retiene_impuestos');
+                    formData.append('retiene_impuestos', '0');
+                }
+
+                try {
+                    const response = await fetch(form.action, {
+                        method: 'POST',
+                        headers: { 'X-Requested-With': 'XMLHttpRequest' },
+                        body: formData
+                    });
+
+                    if (!response.ok) throw new Error('Error al actualizar retención');
+
+                    const data = await response.json();
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: data.retiene ? 'success' : 'info',
+                        title: data.retiene ? 'Retención activada' : 'Retención desactivada',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
+                } catch (error) {
+                    event.target.checked = !event.target.checked; // revertir
+                    Swal.fire({
+                        toast: true,
+                        position: 'top-end',
+                        icon: 'error',
+                        title: 'No se pudo actualizar',
+                        showConfirmButton: false,
+                        timer: 2500
+                    });
                 }
             });
         });

@@ -14,7 +14,7 @@ class ProgramaController extends Controller
     public function index()
     {
         return view('themes.backoffice.pages.programa.index', [
-            'programa' => Programa::all(),
+            'programa' => Programa::activos()->get(),
         ]);
     }
 
@@ -68,5 +68,27 @@ class ProgramaController extends Controller
     public function destroy(Programa $programa)
     {
         //
+    }
+
+    public function index_inactivos()
+    {
+        $programas = Programa::inactivos()->get();
+        return view('themes.backoffice.pages.programa.index_inactivos', compact('programas'));
+    }
+
+    public function cambiarEstado(Request $request, Programa $programa)
+    {
+        $data = $request->validate([
+            'estado' => 'nullable|in:activo,inactivo'
+        ]);
+
+        $programa->update(['estado' => $data['estado']]);
+
+        return response()->json([
+            'ok'     => true,
+            'estado' => $programa->estado,
+            'msg'    => $programa->estado === 'activo' ? 'Programa activado' : 'Programa desactivado',
+        ]);
+
     }
 }

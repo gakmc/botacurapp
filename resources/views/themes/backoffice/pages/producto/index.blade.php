@@ -99,41 +99,43 @@
 
 @section('foot')
 <script>
-// CSRF para jQuery (Laravel 6)
-$.ajaxSetup({
-  headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
-});
+    // CSRF para jQuery (Laravel 6)
+    $.ajaxSetup({
+    headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    });
 
-$(document).on('click', '.cambiar-estado', function(e){
-  e.preventDefault();
+    $(document).on('click', '.cambiar-estado', function(e){
+    e.preventDefault();
 
-  const $btn   = $(this);
-  const id     = $btn.data('id');
-  const estado = $btn.data('estado');
-  const url    = $btn.data('action'); // ya viene con el prefix backoffice
+    const $btn   = $(this);
+    const id     = $btn.data('id');
+    const estado = $btn.data('estado');
+    const url    = $btn.data('action'); // ya viene con el prefix backoffice
 
-  $.ajax({
-    url: url,
-    type: 'PATCH',
-    data: { estado: estado },
-    success: function(res){
-      // Quita la fila (si estás en vista de activos)
-      $btn.closest('tr').fadeOut(250, function(){ $(this).remove(); });
+    $.ajax({
+        url: url,
+        type: 'PATCH',
+        data: { estado: estado },
+        success: function(res){
+        // Quita la fila (si estás en vista de activos)
+        $btn.closest('tr').fadeOut(250, function(){ $(this).remove(); });
 
-      // Toast (elige uno: Materialize o SweetAlert)
-      if (window.M) M.toast({ html: res.msg ?? 'Estado actualizado', classes: 'green' });
-      if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'success',
-        title: res.msg ?? 'Estado actualizado', showConfirmButton:false, timer:2500 });
-    },
-    error: function(xhr){
-      const msg = xhr?.responseJSON?.message || 'Error al cambiar estado';
-      if (window.M) M.toast({ html: msg, classes:'red' });
-      if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'error',
-        title: msg, showConfirmButton:false, timer:2500 });
-    }
-  });
-});
+        // Toast (elige uno: Materialize o SweetAlert)
+        if (window.M) M.toast({ html: res.msg ?? 'Estado actualizado', classes: 'green' });
+        if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'success',
+            title: res.msg ?? 'Estado actualizado', showConfirmButton:false, timer:2500 });
+        },
+        error: function(xhr){
+        const msg = xhr?.responseJSON?.message || 'Error al cambiar estado';
+        if (window.M) M.toast({ html: msg, classes:'red' });
+        if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'error',
+            title: msg, showConfirmButton:false, timer:2500 });
+        }
+    });
+    });
 </script>
+
+
 <script>
     @if(session('status'))
         Swal.fire({

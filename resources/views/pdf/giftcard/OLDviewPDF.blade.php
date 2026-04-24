@@ -248,7 +248,7 @@
             <p><strong>Para:</strong> {{$gc->para}}</p>
             <p><strong>Válido hasta:</strong> {{$gc->valido}}</p>
             <p class="whatsapp">Programa tu horario al WhatsApp:</p>
-            <h6><strong>+56 9 8272 0582</strong></h6>
+            <h6><strong>+56 9 7448 4112</strong></h6>
 
                         <ul>
                     @php

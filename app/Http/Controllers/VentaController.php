@@ -290,17 +290,14 @@ class VentaController extends Controller
                 
                 //* Si la venta tiene consumo
                 if (!is_null($consumo)) {
-                    if ($consumo->detallesConsumos->isEmpty()) {
-                        throw new \Exception('No se puede generar propina porque no hay consumo registrado o equipo asignado en esta venta.');
-
-                    }
-
                     if ($request->has('propina')) {
+                        if ($consumo->detallesConsumos->isEmpty()) {
+                            throw new \Exception('No se puede generar propina porque no hay consumo registrado o equipo asignado en esta venta.');
+                        }
                         $totalPropinas = $this->asignarPropinas($consumo, $reserva, $request);
-                    } else {      
+                    } else {
                         DetalleConsumo::where('id_consumo', $consumo->id)->update(['genera_propina' => 0]);
                     }
-                    
                 }
 
 

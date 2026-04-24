@@ -621,7 +621,7 @@ class ReservaController extends Controller
     {
         $this->authorize('create', Reserva::class);
         $cliente   = Cliente::findOrFail($cliente);
-        $programas = Programa::with('servicios')->get();
+        $programas = Programa::activos()->with('servicios')->get();
         $tipos     = TipoTransaccion::all();
 
         $gc = GiftCard::where('para',$cliente->nombre_cliente)
@@ -1026,7 +1026,7 @@ class ReservaController extends Controller
         $cliente   = $reserva->cliente;
         $venta     = $reserva->venta;
         $visita    = $reserva->visitas->first();
-        $programas = Programa::with('servicios')->get();
+        $programas = Programa::activos()->with('servicios')->get();
         $tipos     = TipoTransaccion::all();
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
         return view('themes.backoffice.pages.reserva.edit', [
