@@ -515,6 +515,7 @@ class AdminController extends Controller
             'diasSemana'               => $diasSemana,
             'fechasDiasSemana'         => $fechasDiasSemana,
             'totalSemanas'             => $totalSemanas,
+            'bases'                    => $bases,
         ]);
     }
 

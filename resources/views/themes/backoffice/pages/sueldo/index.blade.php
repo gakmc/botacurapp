@@ -154,22 +154,10 @@
                         @endphp --}}
 
                         @php
-                            // Detectar si es masoterapeuta según los roles  guardados en $semanas
-                            $esMaso = is_array($usuario['role'])
-                                ? in_array('Masoterapeuta', $usuario['role'])
-                                : (stripos((string)$usuario['role'], 'Masoterapeuta') !== false);
-
-                            if ($esMaso) {
-                                // Para masoterapeutas: sumar el TOTAL sin el bono
-                                $bono = (int) ($usuario['bono'] ?? 0);
-                                $totalSueldoBruto += ($usuario['total'] - $bono);
-                            } else {
-                                // Para el resto: sumar solo sueldo base
-                                $totalSueldoBruto += $usuario['sueldos'];
-                            }
+                            $totalSueldoBruto += $usuario['sueldos'];
                         @endphp
-                        
-                        <td>${{ $esMaso ? number_format($usuario['total'] - $bono, 0, '', '.') : number_format($usuario['sueldos'], 0, '', '.') }}</td>
+
+                        <td>${{ number_format($usuario['sueldos'], 0, '', '.') }}</td>
 
                         <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
 

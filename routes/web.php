@@ -598,4 +598,6 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('/certificados/antiguedad/{user}', 'CertificadoController@create')->name('certificados.antiguedad.create');
     Route::post('/certificados/antiguedad/{user}', 'CertificadoController@store')->name('certificados.antiguedad.store');
 
+    Route::get('compras/botacura', 'WoocommerceController@index')->name('compras.botacura');
+
 });

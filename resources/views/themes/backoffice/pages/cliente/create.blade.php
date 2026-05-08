@@ -43,7 +43,7 @@
                                 </div>
 
                                 <div class="input-field col s12 m6">
-                                  <input id="correo" type="email" name="correo" value="{{ old('correo') }}">
+                                  <input id="correo" type="email" name="correo" value="{{ request('correo') ?? old('correo') }}">
                                   <label for="correo">Correo electrónico</label>
                                     @error('correo')
                                           <span class="invalid-feedback" role="alert">
@@ -57,7 +57,7 @@
                          
                           <div class="row">
                             <div class="input-field col s12 m6">
-                              <input id="whatsapp_cliente" type="text" name="whatsapp_cliente" class="form-control @error('nombre_cliente') is-invalid @enderror" value="{{ old('whatsapp_cliente') }}">
+                              <input id="whatsapp_cliente" type="text" name="whatsapp_cliente" class="form-control @error('nombre_cliente') is-invalid @enderror" value="{{ request('whatsapp') ?? old('whatsapp_cliente') }}">
                               <label for="whatsapp_cliente">Whatsapp Cliente</label>
                                 @error('whatsapp_cliente')
                                       <span class="invalid-feedback" role="alert">

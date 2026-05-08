@@ -28,3 +28,13 @@ Route::middleware('auth:api')->group(function () {
 
 });
 
+Route::prefix('woocommerce')->namespace('Api')->group(function(){
+
+    // Endpoint de prueba — no requiere auth, solo verifica que el servidor responde
+    Route::get('ping', 'WoocommerceWebhookController@ping')->name('woocommerce.ping');
+    
+    // Endpoint real del webhook (lo activaremos en el paso siguiente)
+    Route::post('webhook', 'WoocommerceWebhookController@handle')
+        ->name('woocommerce.webhook');
+});
+

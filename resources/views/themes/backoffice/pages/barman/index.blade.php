@@ -58,7 +58,7 @@
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_drink</i>
 
           <div>
-            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }} <small class="grey-text">| {{ \Carbon\Carbon::parse($first->creado)->format("H:i")  }}</small></div>
             <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
 
             {{-- LISTA INTERNA: productos --}}
@@ -93,7 +93,7 @@
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_bar</i>
 
           <div>
-            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }} <small class="grey-text">| {{ \Carbon\Carbon::parse($first->creado)->format("H:i")  }}</small></div>
             <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
 
             <ul class="productos">
@@ -125,7 +125,7 @@
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">done_all</i>
 
           <div>
-            <div style="font-weight:600;">{{ $first->nombre_cliente }}</div>
+            <div style="font-weight:600;">{{ $first->nombre_cliente }} <small class="grey-text">| {{ \Carbon\Carbon::parse($first->creado)->format("H:i")  }}</small></div>
             <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
 
             <ul class="productos">

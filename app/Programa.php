@@ -35,6 +35,11 @@ class Programa extends Model
         return $this->hasMany(GiftCard::class, 'id_programa');
     }
 
+    public function woocommerceOrders()
+    {
+        return $this->hasMany(WoocommerceOrder::class, 'wc_product_id', 'wc_product_id');
+    }
+
 
     
     //ALMACENAMIENTO

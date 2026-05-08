@@ -207,7 +207,7 @@ class SueldoController extends Controller
                 $semanas[$rango][$userId]['dias'] += 1;
             }
 
-            $semanas[$rango][$userId]['sueldos'] += $sueldo->valor_dia;
+            $semanas[$rango][$userId]['sueldos'] += $esMaso ? $sueldo->total_pagar : $sueldo->valor_dia;
             $semanas[$rango][$userId]['propinas'] += $esMaso ? 0 : ($sueldo->sub_sueldo - $sueldo->valor_dia);
             $semanas[$rango][$userId]['total'] += $sueldo->total_pagar;
         }

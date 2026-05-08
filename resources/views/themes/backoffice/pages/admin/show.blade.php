@@ -116,10 +116,29 @@
                                             </div>
                                         </a>
                                     </div>
-
-
+                                    
+                                    
                                     {{-- Incorporar nuevas tarjetas --}}
-@endif
+                                    <!-- Tarjeta para mostrar el número de Equipos de la semana -->
+                                    <div class="col s12 m6 l3">
+                                        <a href="{{route('backoffice.compras.botacura')}}">
+                                            <div class="animate__animated animate__backInLeft card gradient-45deg-indigo-light-blue gradient-shadow min-height-100 white-text"
+                                                style="--animate-delay: 1s; --animate-duration: 2s;">
+                                                <div class="padding-4">
+                                                    <div class="col s7 m7">
+                                                        <i class="material-icons background-round mt-5">
+                                                            <img style="max-width:25px" src="images/logo/logo.png" alt="logo"></i>
+                                                        <p>Ventas desde Botacura</p>
+                                                    </div>
+                                                    <div class="col s5 m5 right-align">
+                                                        <h5 id="clientes-count" class="mb-0">Ir</h5>
+                                                        <p class="no-margin">a ventas</p>
+                                                    </div>
+                                                </div>
+                                            </div>
+                                        </a>
+                                    </div>
+                                    @endif
 
 
 
