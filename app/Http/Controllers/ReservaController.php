@@ -648,9 +648,6 @@ class ReservaController extends Controller
             ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
             ->where('reservas.fecha_visita', $fechaSeleccionada)
             ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
             ->toArray();
 
         $ubicacionesAll = DB::table('ubicaciones')
@@ -661,7 +658,30 @@ class ReservaController extends Controller
             return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
 
-        return response()->json($ubicaciones);
+        // Horarios sauna disponibles (10:00–18:30 cada 30 min)
+        $horaInicio = new \DateTime('10:00');
+        $horaFin    = new \DateTime('18:30');
+        $intervalo  = new \DateInterval('PT30M');
+        $horariosTodos = [];
+        while ($horaInicio <= $horaFin) {
+            $horariosTodos[] = $horaInicio->format('H:i');
+            $horaInicio->add($intervalo);
+        }
+
+        $horariosOcupados = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->pluck('visitas.horario_sauna')
+            ->filter(function ($hora) { return ! is_null($hora) && $hora !== ''; })
+            ->map(function ($hora) { return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i'); })
+            ->toArray();
+
+        $horariosDisponibles = array_values(array_diff($horariosTodos, $horariosOcupados));
+
+        return response()->json([
+            'ubicaciones'    => $ubicaciones,
+            'horarios_sauna' => $horariosDisponibles,
+        ]);
     }
 
     public function store(StoreRequest $request, Reserva $reserva)

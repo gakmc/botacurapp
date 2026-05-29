@@ -249,7 +249,8 @@
     $('#fecha_visita').pickadate({
       format: 'dd-mm-yyyy',
       formatSubmit: 'yyyy-mm-dd',
-      hiddenName: true
+      hiddenName: true,
+      min: true
     })
 
   });
@@ -382,42 +383,50 @@ function formatCLP(number)
 
 <script>
   $(document).ready(function () {
-    $('#fecha_visita').on('change',function () { 
+    $('#fecha_visita').on('change', function () {
       const fechaSeleccionada = $(this).val();
+      const $picker = $('#fecha_visita');
 
-      // Hacer una solicitud AJAX para verificar la disponibilidad de ubicaciones
       $.ajax({
         url: '{{ route("backoffice.verificar.ubicaciones") }}',
         type: 'GET',
         data: { fecha: fechaSeleccionada },
         success: function (response) {
-          
-          if (response.length == 0) {
-            // Mostrar una alerta si no hay ubicaciones Disponibles
-            const Toast = Swal.mixin({
-                      toast: true,
-                      position: "center",
-                      showConfirmButton: false,
-                      timer: 3000,
-                      timerProgressBar: true,
-                      didOpen: (toast) => {
-                          toast.onmouseenter = Swal.stopTimer;
-                          toast.onmouseleave = Swal.resumeTimer;
-                      }
-                  });
-                  
-                  Toast.fire({
-                      icon: "error",
-                      title: "Este dia, no cuenta con ubicaciones disponibles"
-                  });
-                
-                  $('#fecha_visita').val('');
-          } 
+          const ubicaciones = response.ubicaciones || [];
+          const horarios    = response.horarios_sauna || [];
+
+          const sinUbicaciones = ubicaciones.length === 0;
+          const sinHorarios    = horarios.length === 0;
+
+          if (sinUbicaciones || sinHorarios) {
+            let mensaje = '';
+            if (sinUbicaciones && sinHorarios) {
+              mensaje = 'Este día no cuenta con ubicaciones ni horarios de sauna disponibles.';
+            } else if (sinUbicaciones) {
+              mensaje = 'Este día no cuenta con ubicaciones disponibles.';
+            } else {
+              mensaje = 'Este día no cuenta con horarios de SPA disponibles.';
+            }
+
+            Swal.fire({
+              icon: 'warning',
+              title: 'Sin disponibilidad',
+              text: mensaje,
+              showCancelButton: true,
+              confirmButtonText: 'Continuar de todas formas',
+              cancelButtonText: 'Seleccionar otra fecha',
+              confirmButtonColor: '#3085d6',
+              cancelButtonColor: '#aaa',
+            }).then(function (result) {
+              if (!result.isConfirmed) {
+                $picker.val('');
+                $picker.pickadate('picker').open();
+              }
+            });
+          }
         },
         error: function () {
-          // alert('Hubo un error al verificar la disponibilidad.');
-          console.log('Se produjo un error en la fecha');
-          
+          console.log('Se produjo un error al verificar la disponibilidad.');
         }
       });
 
