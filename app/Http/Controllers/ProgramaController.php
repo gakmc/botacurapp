@@ -40,7 +40,6 @@ class ProgramaController extends Controller
 
     public function store(StoreRequest $request, Programa $programa)
     {
-        dd($request->all());
         $programa = $programa->store($request);
 
         if (!$programa->solo_plataforma) {
