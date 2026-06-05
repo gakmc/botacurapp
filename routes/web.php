@@ -302,6 +302,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/programa/inactivos', 'ProgramaController@index_inactivos')->name('programa.inactivos');
     Route::patch('/programa/{programa}/estado', 'ProgramaController@cambiarEstado')->name('programa.estado');
+    Route::post('/programa/sync-unlinked', 'ProgramaController@syncUnlinked')->name('programa.sync-unlinked');
 
     Route::get('/barman/bebidas', 'BarmanController@bebidas')->name('barman.bebidas');
 

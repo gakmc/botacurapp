@@ -37,9 +37,12 @@ class GiftCardController extends Controller
      */
     public function create()
     {
-        $lista = ['botacura full', 'full day', 'Caviahue 2'];
+        // $lista = ['botacura full', 'full day', 'Caviahue 2'];
 
-        $programas = Programa::activos()->whereIn(strtolower('nombre_programa'), $lista)->get();
+        // $programas = Programa::activos()->whereIn(strtolower('nombre_programa'), $lista)->get();
+
+        $programas = Programa::permiteGc()->activos()->get();
+        // dd($programas);
 
         return view('themes.backoffice.pages.giftcard.create', compact('programas'));
     }

@@ -26,6 +26,13 @@
             class="btn {{ request()->routeIs('backoffice.programa.inactivos') ? 'pink-text text-darken-2' : '' }}" style="background-color: #039B7B">
             Inactivos
             </a>
+            <form method="POST" action="{{ route('backoffice.programa.sync-unlinked') }}" style="display:inline">
+                @csrf
+                <button type="submit" class="btn" style="background-color: #5C6BC0"
+                        title="Busca en WooCommerce programas sin vincular y los enlaza por nombre">
+                    <i class="material-icons left">sync</i>Vincular WC
+                </button>
+            </form>
         </div>
     </div>
               <p class="caption"><strong>Programas de Temporada</strong></p>
@@ -41,10 +48,11 @@
                       <table>
                             <thead>
                                 <tr>
-                                    <th>Nombre Programa	</th>
+                                    <th>Nombre Programa</th>
                                     <th>Valor Programa</th>
                                     <th>Descuento</th>
                                     <th>Valor Final</th>
+                                    <th>WC</th>
                                     <th colspan="2">Acciones</th>
                                 </tr>
                             </thead>
@@ -55,7 +63,15 @@
                                     <td>${{number_format($programa->valor_programa + $programa->descuento,0,'','.')}}</td>
                                     <td>${{number_format($programa->descuento,0,'','.')}}</td>
                                     <td><strong>${{number_format($programa->valor_programa,0,'','.')}}</strong></td>
-
+                                    <td>
+                                        @if($programa->wc_product_id)
+                                            <span class="green-text tooltipped" data-position="top" data-tooltip="ID WC: {{ $programa->wc_product_id }}">
+                                                <i class="material-icons">check_circle</i>
+                                            </span>
+                                        @else
+                                            <span class="grey-text"><i class="material-icons">radio_button_unchecked</i></span>
+                                        @endif
+                                    </td>
                                     <td><a class="btn-small cyan" href="{{ route('backoffice.programa.edit', $programa )}}"><i class="material-icons">mode_edit</i></a></td>
                                     <td>
                                       @if($programa->estado === 'activo' || $programa->estado === null)
@@ -65,9 +81,7 @@
                                                 data-action="{{ route('backoffice.programa.estado', $programa) }}">
                                         <i class="material-icons">block</i>
                                         </button>
-  
                                       @endif
-
                                     </td>
                                 </tr>
                                 @endforeach

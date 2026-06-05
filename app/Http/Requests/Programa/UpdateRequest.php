@@ -24,9 +24,15 @@ class UpdateRequest extends FormRequest
     public function rules()
     {
         return [
-            'nombre_programa' => ['required', 'string', 'max:255'. $this->route('programa')->id],
-            'valor_programa' => ['numeric'],
-            'descuento' => ['numeric']
+            'nombre_programa' => ['required', 'string', 'max:255'],
+            'valor_programa'  => ['numeric'],
+            'descuento'       => ['numeric'],
+            'espacio_tipo'    => ['nullable', 'in:estacion_economico,estacion_intermedio,estacion_full,terraza,reposera'],
+            'min_personas'    => ['nullable', 'integer', 'min:1'],
+            'permite_giftcard'=> ['nullable', 'boolean'],
+            'solo_plataforma' => ['nullable', 'boolean'],
+            'imagenes'        => ['nullable', 'array', 'max:5'],
+            'imagenes.*'      => ['image', 'mimes:jpeg,jpg,png,webp', 'max:5120'],
         ];
     }
 
