@@ -2,6 +2,7 @@
 
 use App\CategoriaCompra;
 use App\Events\EjemploEvento;
+use App\Http\Controllers\CalendarioController;
 use App\Http\Controllers\EmailPreviewController;
 use App\Reserva;
 use App\Sector;
@@ -601,4 +602,16 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('compras/botacura', 'WoocommerceController@index')->name('compras.botacura');
 
+    
+    
+    Route::get('/calendario',           [CalendarioController::class, 'index'])->name('calendario');
+    Route::get('/calendario/eventos',   [CalendarioController::class, 'eventos'])->name('calendario.eventos');
+    Route::patch('/calendario/{fecha}', [CalendarioController::class, 'toggle'])->name('calendario.toggle');
+    Route::post('/calendario/festivo',  [CalendarioController::class, 'agregarFestivo'])->name('calendario.festivo');
+    Route::delete('/calendario/{fecha}',[CalendarioController::class, 'eliminar'])->name('calendario.eliminar');
 });
+
+// // routes/web.php
+
+// Route::prefix('admin')->middleware('auth')->group(function () {
+// });
