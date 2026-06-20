@@ -248,4 +248,38 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bot-Acura Chatbot (WhatsApp + Instagram)
+    |--------------------------------------------------------------------------
+    */
+    'bot_api_token'         => env('BOT_API_TOKEN', ''),
+    'bot_system_user_id'    => (int) env('BOT_SYSTEM_USER_ID', 1),
+    'bot_cupos_maximos_dia' => (int) env('BOT_CUPOS_MAXIMOS_DIA', 20), // legado, usar bot_espacios
+
+    /*
+    |--------------------------------------------------------------------------
+    | Capacidades por tipo de espacio físico
+    |--------------------------------------------------------------------------
+    |
+    | Define cuántas reservas simultáneas acepta cada tipo de espacio en un
+    | mismo día. El endpoint /api/bot/disponibilidad usa estas capacidades
+    | cuando se pasa id_programa para consultar disponibilidad específica.
+    |
+    | Tipos:
+    |   estacion_economico  → 2 cupos   (estaciones económicas)
+    |   estacion_intermedio → 2 cupos   (estaciones intermedias)
+    |   estacion_full       → 5 cupos   (estaciones full)
+    |   terraza             → 5 cupos   (terrazas grupales)
+    |   reposera            → 4 cupos   (pares de reposeras)
+    |
+    */
+    'bot_espacios' => [
+        'estacion_economico'  => (int) env('BOT_CUPOS_ECONOMICO',   2),
+        'estacion_intermedio' => (int) env('BOT_CUPOS_INTERMEDIO',  2),
+        'estacion_full'       => (int) env('BOT_CUPOS_FULL',        5),
+        'terraza'             => (int) env('BOT_CUPOS_TERRAZA',     5),
+        'reposera'            => (int) env('BOT_CUPOS_REPOSERA',    4),
+    ],
+
 ];

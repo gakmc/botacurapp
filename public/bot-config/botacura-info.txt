@@ -1,0 +1,224 @@
+mes_actual = Junio; 
+
+
+Nombre del establecimiento: Botacura Cajón del Maipo
+____
+¿Qué servicios se ofrecen en Botacura?
+Botacura es una experiencia de bienestar integral para disfrutar por el día, rodeado de naturaleza en el corazón del Cajón del Maipo. Incluye:
+____
+✅ Tinajas de agua caliente con hidrojet (45 min)
+✅ Sauna seco (15 min)
+✅ Masajes: relajación, descontracturante y alivio
+✅ Camarines, duchas y espacios comunes
+✅ Piscina al aire libre (agua fría)
+✅ Programas para personas, parejas, familias y empresas
+✅ Alimentación saludable (opciones para veganos, celiacos, intolerancias)
+✅ Bebestibles variados (no alcohólicos y con alcohol)
+✅ Estacionamiento privado
+✅ Wi-Fi
+
+Importante: No contamos con alojamiento ni parrilla.
+_____
+PROGRAMAS
+✨ Wellnes Day 2 x $90.000
+✅Estadía de 10:00 a 19:00 hrs
+✅Reposera o terraza
+✅Almuerzo (Plato de fondo, ensalada o crema y postre)
+✅Sauna seco (15 min)
+✅Tinaja (45 min)
+
+Valor: CLP $45.000 por persona
+Desde 2 personas 
+_____
+PROGRAMAS PARA 2 o 3 PERSONAS VALORES POR PERSONA
+✨ Spa Day 2 x $110.000 
+✅Estadía de 10:00 a 19:00 hrs
+✅Estación de descanso 
+✅Desayuno u Once Buffet
+✅Almuerzo (Plato de fondo, ensalada o crema y postre)
+✅Sauna seco (15 min)
+✅Tinaja (45 min)
+
+Valor: CLP $55.000 por persona
+Desde 2 personas 
+_____
+✨Relax Day 2 x $140.000   
+✅Estadía de 10:00 a 19:00 hrs
+✅Estación de descanso
+✅Almuerzo (Plato de fondo, ensalada o crema y postre)
+✅Sauna seco(15 min)
+✅Tinaja (45 min)
+✅Masaje 30 min (relajación o descontracturante)
+Valor: CLP $70.000 por persona
+Desde 2 personas 
+
+_____
+✨Full Day 2 x $160.000 
+✅Estadía de 10:00 a 19:00 hrs
+✅Estación de descanso
+✅Desayuno u Once Buffet
+✅Almuerzo (Plato de fondo, ensalada o crema y postre)
+✅Sauna seco(15 min)
+✅Tinaja (45 min)
+✅Masaje 30 min (relajación o descontracturante)
+Valor: CLP $80.000 por persona
+Desde 2 personas 
+
+_____
+PROGRAMAS PARA 4 o más PERSONAS VALORES POR PERSONA 
+✨GRUPAL 1 4 x $160.000 
+✅Estadía de 10:00 a 19:00 hrs
+✅Terraza 
+✅Almuerzo (Plato de fondo, ensalada o crema y postre del día ) 
+✅Sauna (15 min)
+✅Tinaja (45 min)
+ 
+*Valor : $40.000 por persona
+Desde 2 personas 
+____
+✨GRUPAL 2 4 x $180.000 
+✅Estadía de 10:00 a 19:00 hrs
+✅Terraza
+✅Desayuno u once Buffet 
+✅Almuerzo (Plato de fondo, ensalada o crema y postre del día ) 
+✅Sauna (15 min)
+✅Tinaja (45 min) 
+*Valor : $45.000 por persona
+Desde 2 personas 
+____
+Puedes agregar servicios adicionales, cómo: 
+Desayuno u once $10.000 por persona 
+Masaje de relajación 30 minutos $25.000 por persona 
+Estación de descanso $20.000 ( para 2 o 3 personas ) 
+_____
+📅 AGENDA [mes_actual] 2026 ABIERTA
+
+[lista] = Fechas funcionando con disponibilidad de cupos en el mes de 
+
+[mes_actual] 2026 :
+Jueves a domingo y festivos.
+
+⏰ Horario: Jueves a domingo y festivos de 10:00 a 19:00 hrs
+
+⚠️ Nota importante:
+
+Actualmente la agenda está abierta solo para [mes_actual] 2026.
+
+Para cotizaciones de eventos para fin de años, favor enviar correo solicitando presupuesto a hola@botacura.cl.
+
+Si el cliente pregunta por otra fecha o mes, responder:
+👉 “En este momento solo tenemos agenda para [mes_actual] 2026. ¿Quieres que te muestre los días disponibles de este mes?”
+
+Si el día solicitado no está disponible, responder:
+👉 “Ese día no tenemos agenda, pero sí contamos con cupos en estas fechas: [lista]. ¿Quieres que te muestre los programas disponibles para ese día?”
+
+✨ Toda visita requiere confirmación previa y abono.
+____
+¿Cuáles son las instalaciones?
+Contamos con:
+Terraza techada con vista a la montaña y reposeras
+Baños para hombres, mujeres y personas con movilidad reducida
+Camarines con duchas de agua caliente y lockers. Duchas de agua fría junto a cada tinaja
+Salón de masajes 
+Comedor calefaccionado con juegos de mesa
+Estaciones de descanso techadas y exclusivas
+Amplias áreas verdes rodeadas por la cordillera
+
+¡Haz un recorrido virtual aquí!
+https://www.instagram.com/stories/highlights/18007387925566583/
+____
+Ubicación:
+Camino al Volcán 13274, El Manzano, San José de Maipo. A solo 1 hora de Santiago Centro y 15 minutos de Las Vizcachas.
+
+Google Maps:
+https://maps.app.goo.gl/SJSDKhBwi6Z5B1vB9
+____
+¿Se puede llegar en transporte público?
+Sí. Desde Metro Las Mercedes (Línea 4), salida Vicuña Mackenna Poniente, tomar Metrobus 72 o colectivo Cajón del Maipo hasta el paradero 27, frente a Botacura.
+____
+¿Botacura tiene alojamiento?
+No. Todos nuestros programas son de uso diario, sin alojamiento. Incluyen servicios como tinajas, masajes, sauna y gastronomía para disfrutar y regresar renovado/a el mismo día.
+____
+Horarios:
+Jueves a domingo (incluye festivos) de 10:00 a 19:00 hrs.
+____
+Programas para empresas:
+Sí, contamos con experiencias personalizadas para empresas: bienestar, team building y jornadas de relajación. Contacto: hola@botacura.cl
+
+Nota: Uso exclusivo del recinto para grupos de 40 o más personas.
+____
+Niños:
+
+Bienvenidos desde los 4 años pagando programa completo.
+Menores de 4 años: no pueden tomar servicios de spa (se recomienda no asistir).
+____
+Formas de pago:
+
+Transferencia bancaria: 50% al reservar / 50% el día de la visita
+Pago online con tarjeta: 100% anticipado con link seguro
+____
+¿Qué debo llevar?
+
+Traje de baño
+Toalla
+Ropa de cambio
+Sandalias
+En invierno: ropa abrigada para la mañana y tarde
+____
+Reagendamiento:
+Hasta 72 horas antes de la fecha agendada.
+____
+¿Cómo reservo?
+Coordinamos por chat la fecha, cantidad de personas y programa. Luego compartimos las políticas. Si están de acuerdo, un ejecutivo verificará disponibilidad.
+____
+Mascotas:
+No se aceptan mascotas. Los dueños no podrán disfrutar correctamente de los servicios como masajes o spa.
+____
+Estacionamiento:
+Contamos con estacionamiento privado para más de 30 vehículos.
+____
+¿Qué es una estación de descanso?
+Reposera techada, cerrada y acolchada con vistas a la cordillera. Incluye colchón, mantas y almohadas. Servicio extra sujeto a disponibilidad.
+____
+Instagram oficial: @botacura_cajondelmaipo
+____
+Gift Cards:
+Disponibles para programa "Full Day" 
+Vigencia: 45 días.
+____
+Alimentación:
+
+Desayuno: 10:30 a 12:00
+Almuerzo: 13:30 a 16:00
+Once: 17:00 a 18:15
+Carta online: www.botacura.cl/carta
+____
+Masajes adicionales:
+*No tienen descuento. 
+
+Relajación 30 min: $25.000
+Descontracturante 30 min: $30.000
+Relajación 60 min: $45.000
+Descontracturante 60 min: $48.000
+Alivio 30 min: $30.000
+Promos para 2 personas disponibles
+____
+Normas del recinto:
+
+No se permite: parlantes, pelotas, flotadores, mascotas, bebidas alcohólicas o sin alcohol, hervidores.
+
+Se permite: snacks envasados, termo con agua caliente.
+____
+Observaciones clave:
+
+Piscina no temperada (agua fría)
+Los planes no son modificables
+Verificar fechas y horarios según calendario 2026
+El circuito sauna y tinaja es privado, con horario coordinado
+Agenda abierta para [mes_actual] 2026
+*NO ENTREGAR INFORMACIÓN PARA OTROS MESES*
+En grupos de 10+ personas, se podría abrir agenda según disponibilidad
+
+📲 Enviar la información al Whatsapp +56974484112 y al correo hola@botacura.cl
+
+------
