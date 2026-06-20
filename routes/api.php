@@ -3,6 +3,7 @@
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
+use App\Http\Controllers\Api\FechasDisponiblesController;
 
 /*
 |--------------------------------------------------------------------------
@@ -70,3 +71,6 @@ Route::prefix('woocommerce')->namespace('Api')->group(function(){
         ->name('woocommerce.webhook');
 });
 
+Route::middleware('auth.apikey')->group(function () {
+    Route::get('/fechas-disponibles', [FechasDisponiblesController::class, 'index']);
+});

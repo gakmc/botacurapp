@@ -364,6 +364,8 @@
                                         'inicio'      => $m->horario_masaje,
                                         'fin'         => $fin,
                                         'cliente'     => $r->cliente->nombre_cliente,
+                                        'lugar'     => $m->lugarMasaje->nombre,
+                                        'tipo'     => $m->tipo_masaje,
                                         'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
                                         'programa'    => $r->programa->nombre_programa,
                                         'personas'    => [],
@@ -403,15 +405,17 @@
                                         {{ $row['ubicacion'] }} -
                                         {{ $row['programa'] }} -
                                         @if(count($row['personas'])>0)
-                                            persona {{ implode(' y ', $row['personas']) }} -
+                                        persona {{ implode(' y ', $row['personas']) }} -
                                         @else
-                                            Sin personas asignadas -
+                                        Sin personas asignadas -
                                         @endif
                                         @if (is_null($row['observacion']))
-                                            Sin Observaciones
+                                        Sin Observaciones
                                         @else
-                                            <strong style="color:#FF4081;">{{ $row['observacion'] }}</strong>
+                                        <strong style="color:#FF4081;">{{ $row['observacion'] }}</strong>
                                         @endif
+                                        <br>
+                                        <strong style="color: #039b7b"> {{$row['tipo']}} - {{ $row['lugar'] }}</strong>
                                     </a>
                                 </td>
                                 @if ($row['trago'] === "Si")
