@@ -28,6 +28,16 @@ Route::middleware('auth:api')->group(function () {
 
 });
 
+// -------------------------------------------------------------------------
+// IoT — Gas (Home Assistant)
+// POST /api/iot/gas/registrar
+//   tipo_operacion: pago_proveedor | instalacion_cilindro
+// No requiere auth: se recomienda validar por token de HA en el controlador
+// -------------------------------------------------------------------------
+Route::prefix('iot')->namespace('Api')->group(function () {
+    Route::post('gas/registrar', 'GasIotController@registrar')->name('iot.gas.registrar');
+});
+
 Route::prefix('woocommerce')->namespace('Api')->group(function(){
 
     // Endpoint de prueba — no requiere auth, solo verifica que el servidor responde
