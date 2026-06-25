@@ -333,6 +333,8 @@
                                     'inicio'      => null,
                                     'fin'         => null,
                                     'cliente'     => $r->cliente->nombre_cliente,
+                                    'lugar'       => null,
+                                    'tipo'        => null,
                                     'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
                                     'programa'    => $r->programa->nombre_programa,
                                     'personas'    => [],
@@ -415,7 +417,7 @@
                                         <strong style="color:#FF4081;">{{ $row['observacion'] }}</strong>
                                         @endif
                                         <br>
-                                        <strong style="color: #039b7b"> {{$row['tipo']}} - {{ $row['lugar'] }}</strong>
+                                        <strong style="color: #039b7b"> {{$row['tipo'] ?? ''}} - {{ $row['lugar'] ?? '' }}</strong>
                                     </a>
                                 </td>
                                 @if ($row['trago'] === "Si")
