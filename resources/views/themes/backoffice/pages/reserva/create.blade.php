@@ -250,7 +250,17 @@
       format: 'dd-mm-yyyy',
       formatSubmit: 'yyyy-mm-dd',
       hiddenName: true,
-      min: true
+      min: true,
+      disable: @json($fechasDeshabilitadas),
+      monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+      monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+      weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+      weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+      weekdaysLetter: ['D','L','M','M','J','V','S'],
+      today: 'Hoy',
+      clear: 'Limpiar',
+      close: 'Cerrar',
+      firstDay: 1,
     })
 
   });

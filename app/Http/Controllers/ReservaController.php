@@ -7,6 +7,7 @@ use App\Consumo;
 use App\DetalleServiciosExtra;
 use App\Events\Menu\AvisoCocinaEvent;
 use App\Events\Menu\MenuEntregadoEvent;
+use App\FechaDisponible;
 use App\GiftCard;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
@@ -631,11 +632,31 @@ class ReservaController extends Controller
                 ->first();
 
 
+        $habilitadas = FechaDisponible::where('habilitada', true)
+            ->where('fecha', '>=', today())
+            ->pluck('fecha')
+            ->map(function ($f) { return $f->format('Y-m-d'); })
+            ->toArray();
+
+        // Calcular qué fechas del rango deshabilitar en pickadate
+        // Formato requerido por pickadate: [year, month(0-indexed), day]
+        $fechasDeshabilitadas = [];
+        $cursor  = today()->addDay();
+        $maxDate = today()->addDays(120);
+
+        while ($cursor <= $maxDate) {
+            if (!in_array($cursor->format('Y-m-d'), $habilitadas)) {
+                $fechasDeshabilitadas[] = [(int) $cursor->year, (int) $cursor->month - 1, (int) $cursor->day];
+            }
+            $cursor->addDay();
+        }
+
         return view('themes.backoffice.pages.reserva.create', [
-            'cliente'   => $cliente,
-            'programas' => $programas,
-            'tipos'     => $tipos,
-            'gc'        => $gc
+            'cliente'              => $cliente,
+            'programas'            => $programas,
+            'tipos'                => $tipos,
+            'gc'                   => $gc,
+            'fechasDeshabilitadas' => $fechasDeshabilitadas,
         ]);
     }
 
