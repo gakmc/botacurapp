@@ -364,7 +364,7 @@
                                         'inicio'      => $m->horario_masaje,
                                         'fin'         => $fin,
                                         'cliente'     => $r->cliente->nombre_cliente,
-                                        'lugar'       => $m->lugarMasaje->nombre ?? 'No Registra lugar',
+                                        'lugar'       => $m->lugarMasaje?->nombre ?? 'No Registra lugar',
                                         'tipo'        => $m->tipo_masaje ?? 'No Registra tipo masaje',
                                         'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
                                         'programa'    => $r->programa->nombre_programa,
