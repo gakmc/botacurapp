@@ -1,0 +1,138 @@
+# ============================================================
+# Home Assistant – Card Formulario Compra Gas (Tarea #15)
+# ============================================================
+# Agregar en el dashboard de HA mediante el editor de UI.
+# Requiere los helpers de ha_gas_compra_helpers_automations.yaml
+# ============================================================
+
+type: vertical-stack
+cards:
+
+  - type: custom:mushroom-title-card
+    title: Registrar Compra de Gas
+    subtitle: Llena el formulario y presiona "Registrar"
+
+  # ── Resumen en tiempo real ──────────────────────────────────
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 20px
+        - padding: 18px 20px
+        - background: "rgba(3, 155, 123, 0.08)"
+        - border: 1px solid rgba(3,155,123,0.3)
+      grid:
+        - grid-template-areas: '"content"'
+        - grid-template-columns: 1fr
+      custom_fields:
+        content:
+          - width: 100%
+    custom_fields:
+      content: |
+        [[[
+          const n  = id => { const v = Number(states[id]?.state); return Number.isFinite(v) ? v : 0; };
+          const s  = id => states[id]?.state || '';
+          const clp = v => '$' + Math.round(v).toLocaleString('es-CL');
+
+          const valor  = n('input_number.gas_compra_valor_cilindro');
+          const cant   = n('input_number.gas_compra_cantidad_cilindros');
+          const kg     = n('input_number.gas_compra_kg_cilindro');
+          const total  = n('sensor.gas_compra_total_estimado');
+          const fecha  = s('input_datetime.gas_compra_fecha') || 'Sin fecha';
+          const prov   = s('input_text.gas_compra_proveedor') || '—';
+          const doc    = s('input_text.gas_compra_documento') || '—';
+
+          return `
+            <div style="display:grid;grid-template-columns:repeat(3,1fr);gap:10px;width:100%">
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;">Proveedor</div>
+                <div style="font-size:15px;font-weight:800;color:#f8fafc;margin-top:2px;">${prov}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;">Cilindros</div>
+                <div style="font-size:22px;font-weight:900;color:#38bdf8;margin-top:2px;">${cant}</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;">Kg c/u</div>
+                <div style="font-size:22px;font-weight:900;color:#c084fc;margin-top:2px;">${kg} kg</div>
+              </div>
+              <div style="text-align:center;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;">Valor c/u</div>
+                <div style="font-size:18px;font-weight:900;color:#86efac;margin-top:2px;">${clp(valor)}</div>
+              </div>
+              <div style="text-align:center;grid-column:span 2;">
+                <div style="font-size:11px;color:#94a3b8;font-weight:700;text-transform:uppercase;">Total compra</div>
+                <div style="font-size:26px;font-weight:900;color:#039B7B;margin-top:2px;">${clp(total)}</div>
+              </div>
+            </div>
+          `;
+        ]]]
+
+  # ── Campos del formulario ────────────────────────────────────
+
+  - type: entities
+    entities:
+      - entity: input_text.gas_compra_proveedor
+        name: Proveedor
+        icon: mdi:account-hard-hat
+
+      - entity: input_datetime.gas_compra_fecha
+        name: Fecha de compra
+        icon: mdi:calendar
+
+      - entity: input_number.gas_compra_valor_cilindro
+        name: Valor por cilindro ($)
+        icon: mdi:cash
+        type: custom:mushroom-number-card
+
+      - entity: input_number.gas_compra_cantidad_cilindros
+        name: Cantidad de cilindros
+        icon: mdi:propane-tank
+
+      - entity: input_number.gas_compra_kg_cilindro
+        name: Kg por cilindro
+        icon: mdi:weight-kilogram
+
+      - entity: input_text.gas_compra_documento
+        name: N° Documento / Boleta
+        icon: mdi:file-document-outline
+
+      - entity: input_text.gas_compra_observacion
+        name: Observación (opcional)
+        icon: mdi:note-text-outline
+
+  # ── Botón de registro ────────────────────────────────────────
+
+  - type: custom:mushroom-template-card
+    entity: input_button.gas_registrar_compra
+    primary: Registrar compra
+    secondary: >
+      Total: ${{ states('sensor.gas_compra_total_estimado') | int | string }}
+      · {{ states('input_number.gas_compra_cantidad_cilindros') | int }} cilindro(s)
+    icon: mdi:send-circle
+    icon_color: green
+    layout: horizontal
+    card_mod:
+      style: |
+        ha-card {
+          background: rgba(3,155,123,0.12);
+          border: 1px solid rgba(3,155,123,0.4);
+        }
+    tap_action:
+      action: call-service
+      service: input_button.press
+      target:
+        entity_id: input_button.gas_registrar_compra
+
+  # ── Indicador del último registro ───────────────────────────
+
+  - type: custom:mushroom-template-card
+    primary: "Sensor: total estimado"
+    secondary: >
+      ${{ states('sensor.gas_compra_total_estimado') | int | string }}
+    entity: sensor.gas_compra_total_estimado
+    icon: mdi:calculator
+    icon_color: blue
+    layout: horizontal
