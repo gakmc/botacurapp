@@ -316,6 +316,14 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('complemento', 'ComplementoController');
     Route::resource('cotizacion', 'CotizacionController');
     Route::resource('egreso', 'EgresoController');
+
+    // SII – Importación de documentos de compra
+    Route::prefix('sii')->name('sii.')->group(function () {
+        Route::get('/',             'SiiController@index')->name('index');
+        Route::get('/listar',       'SiiController@listar')->name('listar');
+        Route::post('/importar',    'SiiController@importar')->name('importar');
+        Route::get('/contribuyente','SiiController@contribuyente')->name('contribuyente');
+    });
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');

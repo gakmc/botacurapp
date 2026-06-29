@@ -1,0 +1,120 @@
+# ============================================================
+# Home Assistant – Contadores diarios y totales de gas
+# ============================================================
+# ARQUITECTURA DE CONTADORES (tinajas):
+#
+#   input_number.horas_gas_tinaja_X_dia
+#     → Horas de encendido calefont HOY
+#     → Se resetea a 0 cada medianoche
+#     → Se muestra en dashboard como "Horas hoy"
+#
+#   input_number.horas_gas_tinaja_X  (ya existente)
+#     → Acumulado TOTAL desde el último cambio de cilindro
+#     → Solo se resetea cuando se cambia el cilindro
+#     → Usado para calcular porcentaje de gas restante
+#
+# FLUJO MEDIANOCHE (23:59):
+#   1. Guardar horas_dia en BD IoT (gas_uso_diario)
+#   2. Resetear horas_dia → 0
+#   3. horas_total sigue acumulando
+#
+# FLUJO CAMBIO DE CILINDRO:
+#   1. Guardar horas_total → horas_ultimo_galon
+#   2. Guardar día actual en BD IoT
+#   3. Llamar API instalacion_cilindro
+#   4. Resetear horas_total → 0
+#   5. Resetear horas_dia → 0
+# ============================================================
+
+# ── NUEVOS HELPERS: contador diario ──────────────────────────
+
+input_number:
+  horas_gas_tinaja_1_dia:
+    name: "Tinaja 1 – Horas calefont hoy"
+    min: 0
+    max: 24
+    step: 0.01
+    unit_of_measurement: "h"
+    icon: mdi:clock-outline
+
+  horas_gas_tinaja_2_dia:
+    name: "Tinaja 2 – Horas calefont hoy"
+    min: 0
+    max: 24
+    step: 0.01
+    unit_of_measurement: "h"
+    icon: mdi:clock-outline
+
+# ── REST COMMAND: registrar uso diario ───────────────────────
+
+rest_command:
+  registrar_uso_diario_gas:
+    url: "https://app.botacura.cl/api/iot/gas/registrar"
+    method: POST
+    headers:
+      Content-Type: "application/json"
+    payload: >
+      {
+        "tipo_operacion": "uso_diario",
+        "lugar": "{{ lugar }}",
+        "fecha": "{{ fecha }}",
+        "horas_uso": {{ horas_uso }},
+        "gas_instalacion_id": {{ gas_instalacion_id | default(0) | int }}
+      }
+
+# ── AUTOMATIONS ───────────────────────────────────────────────
+
+automation:
+
+  # ── TINAJA 1: cierre diario a las 23:59 ──────────────────────
+  - alias: "Gas Tinaja 1 – Cierre diario y reset contador"
+    id: gas_tinaja_1_cierre_diario
+    description: >
+      Cada día a las 23:59 guarda las horas de hoy en la BD,
+      resetea el contador diario. El total del cilindro sigue acumulando.
+    trigger:
+      - platform: time
+        at: "23:59:00"
+    action:
+      # Guardar uso del día en API (solo si hubo uso)
+      - condition: template
+        value_template: "{{ states('input_number.horas_gas_tinaja_1_dia') | float(0) > 0 }}"
+
+      - service: rest_command.registrar_uso_diario_gas
+        data:
+          lugar: "tinaja_1"
+          fecha: "{{ now().strftime('%Y-%m-%d') }}"
+          horas_uso: "{{ states('input_number.horas_gas_tinaja_1_dia') | float(0) | round(4) }}"
+          gas_instalacion_id: 0
+
+      # Resetear contador diario
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.horas_gas_tinaja_1_dia
+        data:
+          value: 0
+
+  # ── TINAJA 2: cierre diario a las 23:59 ──────────────────────
+  - alias: "Gas Tinaja 2 – Cierre diario y reset contador"
+    id: gas_tinaja_2_cierre_diario
+    description: >
+      Cada día a las 23:59 guarda las horas de hoy en la BD y resetea el diario.
+    trigger:
+      - platform: time
+        at: "23:59:00"
+    action:
+      - condition: template
+        value_template: "{{ states('input_number.horas_gas_tinaja_2_dia') | float(0) > 0 }}"
+
+      - service: rest_command.registrar_uso_diario_gas
+        data:
+          lugar: "tinaja_2"
+          fecha: "{{ now().strftime('%Y-%m-%d') }}"
+          horas_uso: "{{ states('input_number.horas_gas_tinaja_2_dia') | float(0) | round(4) }}"
+          gas_instalacion_id: 0
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.horas_gas_tinaja_2_dia
+        data:
+          value: 0

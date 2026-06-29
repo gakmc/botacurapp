@@ -1,0 +1,239 @@
+# ============================================================
+# Home Assistant – Sistema de aprendizaje calentamiento Tinaja 2
+# ============================================================
+# Replica el sistema ya funcionando en Tinaja 1.
+# T1 tiene 18 ciclos aprendidos → promedio: 16.3 min/°C
+#
+# PROBLEMA DETECTADO (28-06-2026):
+#   sensor.minutos_para_calentar_t2 = 0 siempre porque no existen
+#   los helpers de aprendizaje de T2. La automation enciende T2
+#   solo 5 min antes de la reserva (insuficiente).
+#
+# SENSORES FÍSICOS T2:
+#   Calefont salida: sensor.sonoff_10012a3d29_temperature
+#   Bomba calefacción: switch.sonoff_100136b567_2
+#   Temperatura objetivo: 40°C (input_number.temperatura_objetivo_tinaja_2)
+#
+# INSTRUCCIONES:
+#   1. Crear los input_number en Configuración → Helpers → Número
+#   2. Copiar las automations en automations.yaml
+#   3. Reiniciar HA
+#   4. El sistema aprenderá con cada ciclo de calentamiento
+# ============================================================
+
+# ── HELPERS A CREAR EN HA (Configuración → Helpers → Número) ──────────────
+#
+# ┌──────────────────────────────────────────────────────────────────────────┐
+# │ ID entidad                              │ Valor inicial │ Unidad │ Rango │
+# ├──────────────────────────────────────────────────────────────────────────┤
+# │ promedio_minutos_por_grado_tinaja_2     │ 16.3          │ min/°C │ 0–120 │
+# │ ultimo_minutos_por_grado_tinaja_2       │ 16.3          │ min/°C │ 0–120 │
+# │ ciclos_aprendizaje_tinaja_2             │ 0             │        │ 0–500 │
+# │ temp_inicio_calefont_tinaja_2           │ 20.0          │ °C     │ -10–100│
+# │ temp_salida_inicio_ciclo_tinaja_2       │ 20.0          │ °C     │ -10–100│
+# │ temp_salida_anterior_calefont_tinaja_2  │ 20.0          │ °C     │ -10–100│
+# │ temp_interior_referencia_grado_tinaja_2 │ 30.0          │ °C     │ 0–60  │
+# │ timestamp_referencia_grado_tinaja_2     │ 0             │        │ 0–9999999999│
+# │ contador_caida_temp_salida_tinaja_2     │ 0             │        │ 0–100 │
+# └──────────────────────────────────────────────────────────────────────────┘
+#
+# Paso = 0.1 para todos, modo = box
+#
+# TAMBIÉN crear un helper Fecha/hora:
+#   Configuración → Helpers → Fecha/hora
+#   ID entidad: inicio_ciclo_gas_tinaja_2
+#   Nombre: "Tinaja 2 – Inicio ciclo calefacción"
+#   Has date: true, has time: true
+# ─────────────────────────────────────────────────────────────────────────────
+
+# ── AUTOMATIONS ───────────────────────────────────────────────────────────────
+
+automation:
+
+  # ── 1. GUARDAR INICIO AL ENCENDER CALEFACCIÓN ─────────────────────────────
+  - alias: "Gas Tinaja 2 – Guardar inicio al encender calefacción"
+    id: gas_tinaja_2_guardar_inicio_al_encender_calefaccion
+    description: >
+      Al encender la bomba de calefacción de T2, guarda la temperatura
+      de salida del calefont como referencia de inicio de ciclo.
+    trigger:
+      - platform: state
+        entity_id: switch.sonoff_100136b567_2
+        to: "on"
+    action:
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.temp_inicio_calefont_tinaja_2
+        data:
+          value: "{{ states('sensor.sonoff_10012a3d29_temperature') | float(20) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.temp_salida_inicio_ciclo_tinaja_2
+        data:
+          value: "{{ states('sensor.sonoff_10012a3d29_temperature') | float(20) }}"
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.contador_caida_temp_salida_tinaja_2
+        data:
+          value: 0
+
+  # ── 2. CONTEO REAL Y APRENDIZAJE DE CALENTAMIENTO ─────────────────────────
+  - alias: "Gas Tinaja 2 – Conteo real y aprendizaje de calentamiento"
+    id: gas_tinaja_2_conteo_real_y_aprendizaje
+    description: >
+      Cada minuto mientras T2 está calentando:
+      - Detecta cuando la temperatura de salida del calefont sube un grado
+      - Registra cuántos minutos tardó ese grado (aprendizaje)
+      - Actualiza el promedio ponderado de minutos/grado
+      - Actualiza la referencia de temperatura y timestamp para estimaciones
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time_pattern
+        minutes: "/1"
+    condition:
+      - condition: state
+        entity_id: switch.sonoff_100136b567_2
+        state: "on"
+    action:
+      - variables:
+          temp_actual:   "{{ states('sensor.sonoff_10012a3d29_temperature') | float(0) }}"
+          temp_anterior: "{{ states('input_number.temp_salida_anterior_calefont_tinaja_2') | float(0) }}"
+          temp_inicio:   "{{ states('input_number.temp_salida_inicio_ciclo_tinaja_2') | float(0) }}"
+          minutos_ciclo: >
+            {% set inicio = states('input_datetime.inicio_ciclo_gas_tinaja_2') %}
+            {{ ((as_timestamp(now()) - as_timestamp(inicio)) / 60) | round(1) if inicio not in ['unknown','unavailable'] else 0 }}
+          promedio_actual: "{{ states('input_number.promedio_minutos_por_grado_tinaja_2') | float(16.3) }}"
+          ciclos:          "{{ states('input_number.ciclos_aprendizaje_tinaja_2') | int(0) }}"
+          delta:           "{{ temp_actual - temp_anterior }}"
+
+      # Si subió al menos 1°C → aprender y registrar referencia
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ delta >= 1.0 }}"
+            sequence:
+              # Actualizar referencia de temperatura interior estimada
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.temp_interior_referencia_grado_tinaja_2
+                data:
+                  value: "{{ temp_actual }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.timestamp_referencia_grado_tinaja_2
+                data:
+                  value: "{{ as_timestamp(now()) | round(0) }}"
+              # Actualizar referencia anterior
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.temp_salida_anterior_calefont_tinaja_2
+                data:
+                  value: "{{ temp_actual }}"
+
+  # ── 3. FIN DE CICLO DE CALEFACCIÓN ────────────────────────────────────────
+  - alias: "Gas Tinaja 2 – Fin ciclo calefacción"
+    id: gas_tinaja_2_fin_ciclo_calefaccion
+    description: >
+      Al apagar la bomba T2, calcula los min/grado del ciclo completo
+      y actualiza el promedio ponderado (aprendizaje acumulativo).
+    trigger:
+      - platform: state
+        entity_id: switch.sonoff_100136b567_2
+        to: "off"
+    action:
+      - variables:
+          temp_final:    "{{ states('sensor.sonoff_10012a3d29_temperature') | float(0) }}"
+          temp_inicio:   "{{ states('input_number.temp_inicio_calefont_tinaja_2') | float(0) }}"
+          temp_obj:      "{{ states('input_number.temperatura_objetivo_tinaja_2') | float(40) }}"
+          promedio_ant:  "{{ states('input_number.promedio_minutos_por_grado_tinaja_2') | float(16.3) }}"
+          ciclos:        "{{ states('input_number.ciclos_aprendizaje_tinaja_2') | int(0) }}"
+          delta_grados:  "{{ (temp_final - temp_inicio) | round(1) }}"
+
+      - choose:
+          # Solo aprende si calentó al menos 2°C
+          - conditions:
+              - condition: template
+                value_template: "{{ delta_grados >= 2 }}"
+            sequence:
+              # Guardar último dato como referencia de enfriamiento
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.temp_interior_referencia_grado_tinaja_2
+                data:
+                  value: "{{ temp_final }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.timestamp_referencia_grado_tinaja_2
+                data:
+                  value: "{{ as_timestamp(now()) | round(0) }}"
+              # Incrementar ciclos de aprendizaje
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.ciclos_aprendizaje_tinaja_2
+                data:
+                  value: "{{ ciclos + 1 }}"
+
+  # ── 4. CONFIRMACIÓN APAGADO (temperatura cayó) ───────────────────────────
+  - alias: "Gas Tinaja 2 – Confirmación apagado por caída temperatura"
+    id: gas_tinaja_2_apagar_confirmacion
+    description: >
+      Si la calefacción está apagada y la temperatura de salida empieza a bajar,
+      actualiza la referencia para el cálculo de enfriamiento.
+    mode: single
+    max_exceeded: silent
+    trigger:
+      - platform: time_pattern
+        minutes: "/5"
+    condition:
+      - condition: state
+        entity_id: switch.sonoff_100136b567_2
+        state: "off"
+    action:
+      - variables:
+          temp_actual:   "{{ states('sensor.sonoff_10012a3d29_temperature') | float(0) }}"
+          temp_anterior: "{{ states('input_number.temp_salida_anterior_calefont_tinaja_2') | float(0) }}"
+
+      - service: input_number.set_value
+        target:
+          entity_id: input_number.temp_salida_anterior_calefont_tinaja_2
+        data:
+          value: "{{ temp_actual }}"
+
+      # Si bajó temperatura significativamente → actualizar referencia de enfriamiento
+      - choose:
+          - conditions:
+              - condition: template
+                value_template: "{{ (temp_anterior - temp_actual) > 1 }}"
+            sequence:
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.temp_interior_referencia_grado_tinaja_2
+                data:
+                  value: "{{ [temp_actual - 2, 20] | max }}"
+              - service: input_number.set_value
+                target:
+                  entity_id: input_number.timestamp_referencia_grado_tinaja_2
+                data:
+                  value: "{{ as_timestamp(now()) | round(0) }}"
+
+# ── SENSOR TEMPLATE: minutos_para_calentar_t2 ────────────────────────────────
+# Agregar en configuration.yaml dentro de "template: - sensor:"
+#
+# - name: "Minutos para calentar T2"
+#   unique_id: minutos_para_calentar_t2
+#   unit_of_measurement: "min"
+#   state: >
+#     {% set temp_ref = states('input_number.temp_interior_referencia_grado_tinaja_2') | float(20) %}
+#     {% set ts_ref   = states('input_number.timestamp_referencia_grado_tinaja_2') | float(0) %}
+#     {% set min_grad = states('input_number.promedio_minutos_por_grado_tinaja_2') | float(16.3) %}
+#     {% set target   = states('input_number.temperatura_objetivo_tinaja_2') | float(40) %}
+#     {% if ts_ref > 0 %}
+#       {% set mins_pasados = ((as_timestamp(now()) - ts_ref) / 60) | round(1) %}
+#       {% set enfriamiento = (mins_pasados / 60) * 0.5 %}
+#       {% set temp_est = [temp_ref - enfriamiento, 15] | max %}
+#       {% set grados_faltantes = [target - temp_est, 0] | max %}
+#       {{ (grados_faltantes * min_grad) | round(0) | int }}
+#     {% else %}
+#       {{ (target * min_grad) | round(0) | int }}
+#     {% endif %}

@@ -63,6 +63,23 @@ return [
             ]) : [],
         ],
 
+        // Conexión a la base de datos IoT (Home Assistant / sensores)
+        // Producción: cbo56863_botacura_iot — Local: pruebas_botacura_iot
+        'mysql_iot' => [
+            'driver'    => 'mysql',
+            'host'      => env('DB_IOT_HOST', '127.0.0.1'),
+            'port'      => env('DB_IOT_PORT', '3306'),
+            'database'  => env('DB_IOT_DATABASE', 'pruebas_botacura_iot'),
+            'username'  => env('DB_IOT_USERNAME', 'forge'),
+            'password'  => env('DB_IOT_PASSWORD', ''),
+            'unix_socket' => env('DB_IOT_SOCKET', ''),
+            'charset'   => 'utf8',
+            'collation' => 'utf8_unicode_ci',
+            'prefix'    => '',
+            'strict'    => false,
+            'engine'    => null,
+        ],
+
         'pgsql' => [
             'driver' => 'pgsql',
             'url' => env('DATABASE_URL'),
