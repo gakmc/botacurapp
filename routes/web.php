@@ -323,6 +323,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/sincronizar',  'SiiController@sincronizar')->name('sincronizar');
         Route::get('/listar',        'SiiController@listar')->name('listar');
         Route::post('/importar',     'SiiController@importar')->name('importar');
+        Route::post('/importar-todo','SiiController@importarTodo')->name('importarTodo');
         Route::get('/resumen',       'SiiController@resumen')->name('resumen');
         Route::get('/contribuyente', 'SiiController@contribuyente')->name('contribuyente');
     });
@@ -617,7 +618,3 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/certificados/antiguedad/{user}', 'CertificadoController@create')->name('certificados.antiguedad.create');
     Route::post('/certificados/antiguedad/{user}', 'CertificadoController@store')->name('certificados.antiguedad.store');
-
-    Route::get('compras/botacura', 'WoocommerceController@index')->name('compras.botacura');
-
-});
