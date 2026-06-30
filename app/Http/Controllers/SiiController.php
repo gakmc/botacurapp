@@ -66,13 +66,13 @@ class SiiController extends Controller
 
         $resultado = $this->sii->listarCompras($anio, $mes);
 
-        if (!$resultado['ok']) {
+        if (!$resultado['ok'] && empty($resultado['data'])) {
             return back()->with('error', 'Error al consultar SII: ' . $resultado['error']);
         }
 
         $documentos = collect($resultado['data']);
 
-        // Marcar cuáles ya están importados (mismo folio + rut_emisor en egresos)
+        // Folios ya importados este período (para deduplicación)
         $yaImportados = DB::table('egresos')
             ->where('fuente', 'sii')
             ->whereYear('fecha_egreso', $anio)
@@ -85,7 +85,23 @@ class SiiController extends Controller
             return $doc;
         });
 
-        // Datos para los selects del formulario de importación
+        // Resumen por proveedor (todos los docs del período)
+        $totalesPorProveedor = $documentos
+            ->groupBy('rut_emisor')
+            ->map(function ($docs) {
+                return [
+                    'razon_social' => $docs->first()['razon_social'] ?? '—',
+                    'rut_emisor'   => $docs->first()['rut_emisor'],
+                    'cant'         => $docs->count(),
+                    'pendientes'   => $docs->where('ya_importado', false)->count(),
+                    'neto'         => $docs->sum('monto_neto'),
+                    'iva'          => $docs->sum('monto_iva'),
+                    'total'        => $docs->sum('monto_total'),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
         $categorias     = CategoriaCompra::all();
         $tipoDocumentos = TipoDocumento::all();
 
@@ -93,8 +109,99 @@ class SiiController extends Controller
 
         return view('themes.backoffice.pages.sii.listar', compact(
             'documentos', 'anio', 'mes', 'nombreMes',
-            'categorias', 'tipoDocumentos', 'yaImportados'
+            'categorias', 'tipoDocumentos', 'yaImportados',
+            'totalesPorProveedor'
         ));
+    }
+
+    // -------------------------------------------------------------------------
+    // 3b. IMPORTAR TODO: importa todos los DTEs pendientes del período
+    // -------------------------------------------------------------------------
+
+    public function importarTodo(Request $request)
+    {
+        $request->validate([
+            'anio'            => 'required|integer|min:2020|max:2099',
+            'mes'             => 'required|integer|min:1|max:12',
+            'categoria_id'    => 'required|exists:categorias_compras,id',
+            'subcategoria_id' => 'required|exists:subcategorias_compras,id',
+        ]);
+
+        $anio     = (int) $request->anio;
+        $mes      = (int) $request->mes;
+        $catId    = (int) $request->categoria_id;
+        $subCatId = (int) $request->subcategoria_id;
+
+        $resultado = $this->sii->listarCompras($anio, $mes);
+
+        if (!$resultado['ok'] && empty($resultado['data'])) {
+            return redirect()->route('backoffice.sii.listar', ['anio' => $anio, 'mes' => $mes])
+                ->with('error', 'Error al consultar SII: ' . ($resultado['error'] ?? 'Sin datos'));
+        }
+
+        $importados = 0;
+        $omitidos   = 0;
+        $totalNeto  = 0;
+        $totalIva   = 0;
+        $totalTotal = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($resultado['data'] as $doc) {
+                // Deduplicar por fuente + numero_documento (folio)
+                $existe = Egreso::where('fuente', 'sii')
+                    ->where('numero_documento', $doc['folio'])
+                    ->exists();
+
+                if ($existe) {
+                    $omitidos++;
+                    continue;
+                }
+
+                $proveedor = $this->resolverProveedor(
+                    $doc['rut_emisor'],
+                    $doc['razon_social'] ?? null
+                );
+                $tipoDocId = $this->resolverTipoDocumento($doc['tipo_documento']);
+
+                Egreso::create([
+                    'tipo_documento_id' => $tipoDocId,
+                    'categoria_id'      => $catId,
+                    'subcategoria_id'   => $subCatId,
+                    'proveedor_id'      => $proveedor ? $proveedor->id : null,
+                    'descripcion'       => trim(($doc['razon_social'] ?? '') . ' – Folio ' . $doc['folio']),
+                    'fecha_egreso'      => $doc['fecha_documento'],
+                    'numero_documento'  => $doc['folio'],
+                    'neto'              => $doc['monto_neto'] ?: null,
+                    'iva'               => $doc['monto_iva']  ?: null,
+                    'total'             => $doc['monto_total'],
+                    'fuente'            => 'sii',
+                    'estado'            => 'pendiente',
+                    'observaciones'     => 'Importado SII RCV – RUT: ' . $doc['rut_emisor'],
+                ]);
+
+                $importados++;
+                $totalNeto  += (int) ($doc['monto_neto']  ?? 0);
+                $totalIva   += (int) ($doc['monto_iva']   ?? 0);
+                $totalTotal += (int) ($doc['monto_total'] ?? 0);
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return redirect()->route('backoffice.sii.listar', ['anio' => $anio, 'mes' => $mes])
+                ->with('error', 'Error al importar: ' . $e->getMessage());
+        }
+
+        $msg = "{$importados} factura(s) importadas · Neto $"
+             . number_format($totalNeto,  0, ',', '.')
+             . " · Total $"
+             . number_format($totalTotal, 0, ',', '.');
+        if ($omitidos > 0) {
+            $msg .= " · {$omitidos} omitida(s) (ya existían).";
+        }
+
+        return redirect()->route('backoffice.sii.listar', ['anio' => $anio, 'mes' => $mes])
+            ->with('success', $msg);
     }
 
     // -------------------------------------------------------------------------
@@ -110,127 +217,4 @@ class SiiController extends Controller
             'documentos.*.razon_social'     => 'nullable|string',
             'documentos.*.fecha_documento'  => 'required|date',
             'documentos.*.monto_neto'       => 'nullable|integer',
-            'documentos.*.monto_iva'        => 'nullable|integer',
-            'documentos.*.monto_total'      => 'required|integer|min:1',
-            'documentos.*.tipo_documento'   => 'required|integer',
-            'documentos.*.categoria_id'     => 'required|exists:categorias_compras,id',
-            'documentos.*.subcategoria_id'  => 'required|exists:subcategorias_compras,id',
-        ]);
-
-        $importados = 0;
-        $omitidos   = 0;
-        $errores    = [];
-
-        DB::beginTransaction();
-        try {
-            foreach ($request->documentos as $doc) {
-
-                // Evitar duplicados (mismo folio ya importado)
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
-
-                if ($existe) {
-                    $omitidos++;
-                    continue;
-                }
-
-                // Buscar o crear proveedor por RUT
-                $proveedor = $this->resolverProveedor(
-                    $doc['rut_emisor'],
-                    $doc['razon_social'] ?? null
-                );
-
-                // Determinar tipo_documento_id según código SII
-                $tipoDocId = $this->resolverTipoDocumento($doc['tipo_documento']);
-
-                Egreso::create([
-                    'tipo_documento_id' => $tipoDocId,
-                    'categoria_id'      => $doc['categoria_id'],
-                    'subcategoria_id'   => $doc['subcategoria_id'],
-                    'proveedor_id'      => $proveedor ? $proveedor->id : null,
-                    'descripcion'       => trim(($doc['razon_social'] ?? '') . ' – Folio ' . $doc['folio']),
-                    'fecha_egreso'      => $doc['fecha_documento'],
-                    'numero_documento'  => $doc['folio'],
-                    'neto'              => $doc['monto_neto'] ?: null,
-                    'iva'               => $doc['monto_iva']  ?: null,
-                    'total'             => $doc['monto_total'],
-                    'fuente'            => 'sii',
-                    'estado'            => 'pendiente',
-                    'observaciones'     => 'Importado desde SII RCV – RUT emisor: ' . $doc['rut_emisor'],
-                ]);
-
-                $importados++;
-            }
-
-            DB::commit();
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            return back()->with('error', 'Error al importar: ' . $e->getMessage());
-        }
-
-        $msg = "{$importados} documento(s) importado(s) correctamente.";
-        if ($omitidos > 0) {
-            $msg .= " {$omitidos} omitido(s) porque ya existían.";
-        }
-
-        return redirect()->route('backoffice.sii.index')->with('success', $msg);
-    }
-
-    // -------------------------------------------------------------------------
-    // 4. CONTRIBUYENTE: búsqueda AJAX por RUT
-    // -------------------------------------------------------------------------
-
-    public function contribuyente(Request $request)
-    {
-        $request->validate(['rut' => 'required|string']);
-
-        $resultado = $this->sii->buscarContribuyente($request->rut);
-
-        return response()->json($resultado);
-    }
-
-    // -------------------------------------------------------------------------
-    // PRIVADO: helpers
-    // -------------------------------------------------------------------------
-
-    /**
-     * Busca un proveedor por RUT. Si no existe y tiene razón social, lo crea.
-     */
-    private function resolverProveedor(string $rut, ?string $razonSocial): ?Proveedor
-    {
-        $proveedor = Proveedor::where('rut', $rut)->first();
-
-        if (!$proveedor && $razonSocial) {
-            $proveedor = Proveedor::create([
-                'nombre' => $razonSocial,
-                'rut'    => $rut,
-            ]);
-        }
-
-        return $proveedor;
-    }
-
-    /**
-     * Resuelve el tipo_documento_id interno según el código SII.
-     * Factura (33) → tipo_documento_id = 2 (según seed existente en tipos_documentos).
-     * Si no hay match, retorna null.
-     */
-    private function resolverTipoDocumento(int $codigoSii): ?int
-    {
-        // Códigos SII → nombre a buscar en tipos_documentos
-        $mapa = [
-            33 => 'Factura',
-            34 => 'Factura',
-            39 => 'Boleta',
-            46 => 'Liquidación',
-            56 => 'Nota de Débito',
-            61 => 'Nota de Crédito',
-        ];
-
-        $nombre = $mapa[$codigoSii] ?? null;
-        if (!$nombre) return null;
-
-        $tipo = TipoDocumento::where('nombre', 'like', "%{$nombre}%")->first();
-        return $tipo ? $tipo->
+            'documentos.*.monto_iva'        => 'n
