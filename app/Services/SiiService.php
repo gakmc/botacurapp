@@ -6,64 +6,88 @@ use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
 
 /**
- * SiiService
+ * SiiService (V2)
  *
- * Cliente HTTP hacia API Gateway Chile para consultas al SII.
- * Documentación: https://apigateway.cl/docs
- * Compatible Laravel 6 / PHP 7.2 (usa Guzzle, no Http facade).
+ * Cliente HTTP hacia API Gateway Chile — API V2.
+ * Documentación: https://www.apigateway.cl/products/sii/rcv
+ * Base URL:  https://apigateway.cl/api/v2/sii
+ * Auth:      Authorization: Token {TOKEN_CONEXION}
+ * Método:    POST con body {"auth": {"pass": {"rut": "...", "clave": "..."}}}
+ *
+ * Compatible Laravel 6 / PHP 7.2 (sin arrow fn, sin typed props, sin nullsafe).
  */
 class SiiService
 {
+    /** @var string */
     private $baseUrl;
-    private $apiKey;
+
+    /** @var string */
+    private $token;
+
+    /** @var string */
     private $rut;
-    private $dv;
+
+    /** @var string */
+    private $clave;
+
+    /** @var int */
     private $timeout;
 
     public function __construct()
     {
-        $this->baseUrl = rtrim(config('sii.api_url', ''), '/');
-        $this->apiKey  = config('sii.api_key', '');
-        $this->rut     = config('sii.rut_empresa', '');
-        $this->dv      = config('sii.dv_empresa', '');
-        $this->timeout = (int) config('sii.timeout', 30);
+        $this->baseUrl  = rtrim(config('sii.api_url', 'https://apigateway.cl/api/v2/sii'), '/');
+        $this->token    = config('sii.api_key', '');
+        $this->rut      = config('sii.rut_empresa', '');      // ej: "77848621-0"
+        $this->clave    = config('sii.clave_tributaria', ''); // clave SII
+        $this->timeout  = (int) config('sii.timeout', 30);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // PÚBLICO: RCV Compras
+    // PÚBLICO: RCV Compras — devuelve documentos del período
     // ─────────────────────────────────────────────────────────────────────────
 
     public function listarCompras($anio, $mes)
     {
-        $periodo = sprintf('%04d%02d', $anio, $mes);
+        $periodo  = sprintf('%04d%02d', $anio, $mes);
+        $rutPath  = $this->rut; // ej: "77848621-0"
 
-        try {
-            $resp = $this->get('/rcv/listado-compras-periodo', [
-                'rut'     => $this->rutCompleto(),
-                'periodo' => $periodo,
-                'tipo'    => 'COMPRAS',
-            ]);
+        // Tipos de DTE que importamos (ver config/sii.php)
+        $tiposImportar = array_keys(config('sii.tipos_importar', [33 => null]));
 
-            $documentos = $resp['data'] ?? $resp['documentos'] ?? $resp ?? [];
+        $documentos = [];
+        $errores    = [];
 
-            return [
-                'ok'      => true,
-                'data'    => $this->normalizarDocumentos(is_array($documentos) ? $documentos : []),
-                'total'   => count($documentos),
-                'periodo' => $periodo,
-                'error'   => null,
-            ];
-
-        } catch (\Throwable $e) {
-            return ['ok' => false, 'data' => [], 'total' => 0, 'periodo' => $periodo, 'error' => $e->getMessage()];
+        foreach ($tiposImportar as $tipo) {
+            try {
+                $resp = $this->postRcv(
+                    "/rcv/compras/detalle/{$rutPath}/{$periodo}/{$tipo}/REGISTRO"
+                );
+                $data = $resp['data'] ?? [];
+                foreach ($data as $doc) {
+                    $documentos[] = $this->normalizarDocumento($doc, $tipo);
+                }
+            } catch (\Throwable $e) {
+                // Si un tipo no tiene registros, la API puede devolver 404 o array vacío.
+                // Continuamos con los demás tipos.
+                $errores[] = "tipo {$tipo}: " . $e->getMessage();
+            }
         }
+
+        $ok = empty($errores) || count($documentos) > 0;
+
+        return [
+            'ok'      => $ok,
+            'data'    => $documentos,
+            'total'   => count($documentos),
+            'periodo' => $periodo,
+            'error'   => $ok ? null : implode('; ', $errores),
+        ];
     }
 
     public function buscarContribuyente($rut)
     {
-        $rutLimpio = $this->limpiarRut($rut);
         try {
-            $resp = $this->get("/contribuyentes/{$rutLimpio}");
+            $resp = $this->postJson("/contribuyentes/{$rut}", []);
             return ['ok' => true, 'data' => $resp, 'error' => null];
         } catch (\Throwable $e) {
             return ['ok' => false, 'data' => null, 'error' => $e->getMessage()];
@@ -72,70 +96,78 @@ class SiiService
 
     public function credencialesConfiguradas()
     {
-        return !empty($this->apiKey) && !empty($this->rut);
+        return !empty($this->token) && !empty($this->rut) && !empty($this->clave);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
     // PRIVADO: HTTP con Guzzle
     // ─────────────────────────────────────────────────────────────────────────
 
-    private function get($path, $query = [])
+    /**
+     * POST a un endpoint del RCV.
+     * El body incluye siempre las credenciales SII (auth.pass).
+     */
+    private function postRcv($path, $extra = [])
+    {
+        $body = array_merge([
+            'auth' => [
+                'pass' => [
+                    'rut'   => $this->rut,
+                    'clave' => $this->clave,
+                ],
+            ],
+        ], $extra);
+
+        return $this->postJson($path, $body);
+    }
+
+    private function postJson($path, $body)
     {
         $client = new Client([
             'base_uri' => $this->baseUrl,
             'timeout'  => $this->timeout,
             'headers'  => [
-                'x-api-key'    => $this->apiKey,
-                'Accept'       => 'application/json',
-                'Content-Type' => 'application/json',
+                'Authorization' => 'Token ' . $this->token,
+                'Content-Type'  => 'application/json',
+                'Accept'        => 'application/json',
             ],
             'verify' => false,
         ]);
 
-        $response = $client->get($path, ['query' => $query]);
-        $body     = (string) $response->getBody();
-        $decoded  = json_decode($body, true);
+        $response = $client->post($path, ['json' => $body]);
+        $body_str = (string) $response->getBody();
+        $decoded  = json_decode($body_str, true);
 
         if (json_last_error() !== JSON_ERROR_NONE) {
-            throw new \Exception('Respuesta SII no es JSON válido');
+            throw new \Exception('Respuesta SII no es JSON válido: ' . substr($body_str, 0, 200));
         }
 
         return $decoded;
     }
 
-    private function rutCompleto()
-    {
-        return "{$this->rut}-{$this->dv}";
-    }
+    // ─────────────────────────────────────────────────────────────────────────
+    // PRIVADO: normalizar documento V2 → formato interno
+    // ─────────────────────────────────────────────────────────────────────────
 
-    private function limpiarRut($rut)
+    private function normalizarDocumento($doc, $tipoNum)
     {
-        $rut = preg_replace('/[^0-9kK]/', '', $rut);
-        if (strlen($rut) > 1) {
-            $dv   = strtoupper(substr($rut, -1));
-            $body = substr($rut, 0, -1);
-            return "{$body}-{$dv}";
-        }
-        return $rut;
-    }
+        $tipoNombre = config('sii.tipos_importar')[$tipoNum] ?? 'Desconocido';
+        $dv         = $doc['detDvDoc'] ?? '';
+        $rutEmisor  = isset($doc['detRutDoc'])
+            ? $doc['detRutDoc'] . ($dv ? '-' . $dv : '')
+            : null;
 
-    private function normalizarDocumentos($docs)
-    {
-        $result = [];
-        foreach ($docs as $doc) {
-            $result[] = [
-                'tipo_documento'  => $doc['tipoDocumento']   ?? $doc['tipo_documento']  ?? null,
-                'tipo_nombre'     => config('sii.tipos_importar')[$doc['tipoDocumento'] ?? $doc['tipo_documento'] ?? 0] ?? 'Desconocido',
-                'folio'           => (string) ($doc['folio'] ?? ''),
-                'fecha_documento' => $doc['fechaDocumento']  ?? $doc['fecha_documento'] ?? null,
-                'rut_emisor'      => $doc['rutEmisor']       ?? $doc['rut_emisor']      ?? null,
-                'razon_social'    => $doc['razonSocial']     ?? $doc['razon_social']    ?? null,
-                'monto_neto'      => (int) ($doc['montoNeto']  ?? $doc['monto_neto']  ?? 0),
-                'monto_iva'       => (int) ($doc['montoIva']   ?? $doc['monto_iva']   ?? 0),
-                'monto_total'     => (int) ($doc['montoTotal'] ?? $doc['monto_total'] ?? 0),
-                'estado_acuse'    => $doc['estadoAcuse']     ?? $doc['estado_acuse']    ?? null,
-            ];
-        }
-        return $result;
+        return [
+            'tipo_documento'  => $tipoNum,
+            'tipo_nombre'     => $tipoNombre,
+            'folio'           => (string) ($doc['detNroDoc'] ?? ''),
+            'fecha_documento' => $doc['detFchDoc'] ?? null,
+            'rut_emisor'      => $rutEmisor,
+            'razon_social'    => $doc['detRznSoc'] ?? null,
+            'monto_neto'      => (int) ($doc['detMntNeto']  ?? 0),
+            'monto_iva'       => (int) ($doc['detMntIVA']   ?? 0),
+            'monto_total'     => (int) ($doc['detMntTotal'] ?? 0),
+            'estado_acuse'    => $doc['detEventoReceptor']  ?? null,
+        ];
     }
 }
