@@ -28,11 +28,11 @@ class ReporteFinancieroController extends Controller
         $anio = (int) ($anio ?? $request->input('anio', now()->year));
         $mes  = (int) ($mes  ?? $request->input('mes',  now()->month));
 
-        $inicio   = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
-        $fin      = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
+        $inicio    = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $fin       = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
         $mesNombre = Carbon::create($anio, $mes, 1)->locale('es')->isoFormat('MMMM');
 
-        // ── Egresos del período con categoría/subcategoría/proveedor ──────────
+        // ── Egresos del período con categoría/subcategoría/proveedor ─────────
         $filas = DB::table('egresos')
             ->leftJoin('categorias_compras',    'egresos.categoria_id',    '=', 'categorias_compras.id')
             ->leftJoin('subcategorias_compras', 'egresos.subcategoria_id', '=', 'subcategorias_compras.id')
@@ -77,24 +77,21 @@ class ReporteFinancieroController extends Controller
             $agrupado[$cat]['subcategorias'][$sub]['filas'][] = $fila;
         }
 
-        // Ordenar categorías por total desc
-        uasort($agrupado, function($a, $b) { return $b['total'] - $a['total']; });
+        uasort($agrupado, function ($a, $b) { return $b['total'] - $a['total']; });
 
-        // ── Total general de egresos ──────────────────────────────────────────
+        // ── Totales ───────────────────────────────────────────────────────────
         $totalGeneral = array_sum(array_column($agrupado, 'total'));
 
-        // ── Honorarios BTE del mes ────────────────────────────────────────────
         $periodo  = sprintf('%04d%02d', $anio, $mes);
         $totalBte = (int) HonorarioBte::where('periodo', $periodo)
             ->where('estado', '!=', 'Anulada')
             ->sum('monto_pagado');
 
-        // ── Sueldos del mes ───────────────────────────────────────────────────
         $totalSueldos = (int) DB::table('sueldos_pagados')
             ->whereBetween('fecha_pago', [$inicio, $fin])
             ->sum('monto');
 
-        // ── Mes anterior (para comparación) ──────────────────────────────────
+        // ── Mes anterior ──────────────────────────────────────────────────────
         $antInicio = Carbon::create($anio, $mes, 1)->subMonth()->startOfMonth()->toDateString();
         $antFin    = Carbon::create($anio, $mes, 1)->subMonth()->endOfMonth()->toDateString();
 
@@ -103,7 +100,6 @@ class ReporteFinancieroController extends Controller
             ->where('estado', '!=', 'anulado')
             ->sum(DB::raw('COALESCE(total, neto, 0)'));
 
-        // Totales por categoría del mes anterior (para mostrar variación)
         $anterioresRaw = DB::table('egresos')
             ->leftJoin('categorias_compras', 'egresos.categoria_id', '=', 'categorias_compras.id')
             ->selectRaw('COALESCE(categorias_compras.nombre, "Sin categoría") as cat, SUM(COALESCE(egresos.total, egresos.neto, 0)) as total')
@@ -117,7 +113,7 @@ class ReporteFinancieroController extends Controller
             $anteriores[$r->cat] = (int) $r->total;
         }
 
-        // ── Resumen anual (total por mes) ─────────────────────────────────────
+        // ── Resumen anual ─────────────────────────────────────────────────────
         $anualRaw = DB::table('egresos')
             ->selectRaw('MONTH(fecha_egreso) as mn, SUM(COALESCE(total, neto, 0)) as total')
             ->whereYear('fecha_egreso', $anio)
@@ -129,7 +125,7 @@ class ReporteFinancieroController extends Controller
             return [$m => (int) ($anualRaw[$m] ?? 0)];
         });
 
-        // ── Datos para gráfico de dona ────────────────────────────────────────
+        // ── Chart ─────────────────────────────────────────────────────────────
         $chartLabels = [];
         $chartData   = [];
         foreach ($agrupado as $cat => $datos) {
@@ -147,13 +143,14 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // RESUMEN ANUAL
+    // ──────────────────────────────────────────────────────────────────────────
+
     public function resumenAnual(Request $request)
     {
-
         $anio = $request->anio ?? now()->year;
 
-
-        // Ingresos
         $abonos = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->selectRaw('MONTH(reservas.fecha_visita) as mes, SUM(ventas.abono_programa) as total')
@@ -186,23 +183,12 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mes')
             ->get();
 
-
-        // $egresos = Egreso::selectRaw('MONTH(fecha) as mes, SUM(COALESCE(total, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total')
-        //     ->whereYear('fecha', $anio)
-        //     ->groupBy('mes')
-        //     ->get();
-
         $egresos = DB::table('pagos_egresos')
-        ->selectRaw('
-            MONTH(fecha_pago) as mes,
-            SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total
-        ')
-        ->whereYear('fecha_pago', $anio)
-        ->groupBy('mes')
-        ->orderBy('mes')
-        ->get();
-
-
+            ->selectRaw('MONTH(fecha_pago) as mes, SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total')
+            ->whereYear('fecha_pago', $anio)
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->get();
 
         $ventasDirectas = DB::table('ventas_directas')
             ->selectRaw('MONTH(fecha) as mes, SUM(subtotal) as total')
@@ -216,33 +202,18 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mes')
             ->get();
 
-                // BONOS
         $bonos = DB::table('sueldos_pagados')
             ->selectRaw('MONTH(fecha_pago) as mes, SUM(bono) as total')
             ->whereYear('fecha_pago', $anio)
             ->groupBy('mes')
             ->get();
 
-        // $impuestos = DB::table('egresos')
-        //     ->selectRaw('MONTH(fecha) as mes, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
-        //     ->whereYear('fecha', $anio)
-        //     ->groupBy('mes')
-        //     ->get();
-
         $impuestos = DB::table('pagos_egresos')
-        ->selectRaw('
-            MONTH(fecha_pago) AS mes,
-            SUM(COALESCE(iva, 0))                 AS total_iva,
-            SUM(COALESCE(impuesto_incluido, 0))   AS total_imp_adic,
-            SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) AS total
-        ')
-        ->whereYear('fecha_pago', $anio)
-        ->groupBy('mes')
-        ->orderBy('mes')
-        ->get();
-
-
-        // dd($impuestos, $egresos);
+            ->selectRaw('MONTH(fecha_pago) AS mes, SUM(COALESCE(iva, 0)) AS total_iva, SUM(COALESCE(impuesto_incluido, 0)) AS total_imp_adic, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) AS total')
+            ->whereYear('fecha_pago', $anio)
+            ->groupBy('mes')
+            ->orderBy('mes')
+            ->get();
 
         return view('themes.backoffice.pages.reporte.financiero.anual', compact(
             'abonos', 'diferencias', 'consumos', 'servicios',
@@ -250,9 +221,12 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
-    public function resumenMensual($anio,$mes)
+    // ──────────────────────────────────────────────────────────────────────────
+    // RESUMEN MENSUAL
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function resumenMensual($anio, $mes)
     {
-        // ABONOS
         $abonos = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->selectRaw('YEARWEEK(reservas.fecha_visita, 1) as yearweek, DATE(reservas.fecha_visita) as fecha, SUM(ventas.abono_programa) as total')
@@ -262,8 +236,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-
-        // DIFERENCIAS
         $diferencias = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->selectRaw('YEARWEEK(reservas.fecha_visita, 1) as yearweek, DATE(reservas.fecha_visita) as fecha, SUM(ventas.diferencia_programa) as total')
@@ -273,7 +245,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // CONSUMOS
         $consumos = DB::table('detalles_consumos')
             ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
@@ -285,8 +256,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-            
-            // SERVICIOS
         $servicios = DB::table('detalle_servicios_extra')
             ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
@@ -297,17 +266,16 @@ class ReporteFinancieroController extends Controller
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
-            
-            $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
-            $finMes = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
-            
+
+        $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $finMes    = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
+
         $egresos = DB::table('pagos_egresos')
             ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total')
             ->whereBetween('fecha_pago', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
-
 
         $ventasDirectas = DB::table('ventas_directas')
             ->selectRaw('YEARWEEK(fecha, 1) as yearweek, DATE(fecha) as fecha, SUM(subtotal) as total')
@@ -316,7 +284,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // SUELDOS
         $sueldos = DB::table('sueldos_pagados')
             ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(monto) as total')
             ->whereBetween('fecha_pago', [$inicioMes, $finMes])
@@ -324,7 +291,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // BONOS
         $bonos = DB::table('sueldos_pagados')
             ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(bono) as total')
             ->whereBetween('fecha_pago', [$inicioMes, $finMes])
@@ -332,7 +298,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // IMPUESTOS
         $impuestos = DB::table('pagos_egresos')
             ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
             ->whereBetween('fecha_pago', [$inicioMes, $finMes])
@@ -340,11 +305,9 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // Para mostrar nombre del mes
         setlocale(LC_TIME, 'es_ES.UTF-8');
         $mesNombre = Carbon::createFromDate($anio, $mes, 1)->translatedFormat('F');
 
-        // dd($impuestos);
         return view('themes.backoffice.pages.reporte.financiero.mensual', compact(
             'anio', 'mes', 'mesNombre',
             'abonos', 'diferencias', 'consumos', 'servicios',
@@ -352,14 +315,15 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
+    // ──────────────────────────────────────────────────────────────────────────
+    // INGRESOS PERCIBIDOS
+    // ──────────────────────────────────────────────────────────────────────────
+
     public function ingresosPercibidos(Request $request)
     {
+        $anio = $request->input('anio', now()->year);
+        $mes  = $request->input('mes',  now()->month);
 
-        $anio = $request->input('anio',now()->year);
-        $mes = $request->input('mes',now()->month);
-
-        // dd($anio, $mes);
-        // ABONOS
         $abonos = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(ventas.abono_programa) as total')
@@ -369,7 +333,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // DIFERENCIAS
         $diferencias = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(ventas.diferencia_programa) as total')
@@ -379,7 +342,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // CONSUMOS
         $consumos = DB::table('detalles_consumos')
             ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
@@ -391,8 +353,6 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-            
-        // SERVICIOS
         $servicios = DB::table('detalle_servicios_extra')
             ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
@@ -403,11 +363,9 @@ class ReporteFinancieroController extends Controller
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
-            
-            $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
-            $finMes = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
-            
 
+        $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $finMes    = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
 
         $ventasDirectas = DB::table('ventas_directas')
             ->selectRaw('YEARWEEK(created_at, 1) as yearweek, DATE(created_at) as fecha, SUM(subtotal) as total')
@@ -416,15 +374,8 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-
-        // Para mostrar nombre del mes
         setlocale(LC_TIME, 'es_ES.UTF-8');
         $mesNombre = Carbon::createFromDate($anio, $mes, 1)->translatedFormat('F');
-
-
-
-
-
 
         $ingresosVentas   = 0;
         $ventasPendientes = 0;
@@ -438,21 +389,18 @@ class ReporteFinancieroController extends Controller
             $totalGc += $gc->monto;
         }
 
-        $cantidadGc = COUNT($gcs) ?? 0;
+        $cantidadGc = count($gcs);
 
         $ventas = Venta::whereHas('reserva', function ($query) use ($mes, $anio) {
             $query->whereMonth('created_at', $mes)
-                ->whereYear('created_at', $anio);
-
+                  ->whereYear('created_at',  $anio);
         })->with('reserva.cliente', 'reserva.programa', 'consumo.detallesConsumos', 'consumo.detalleServiciosExtra')->paginate(20);
 
-        // Marcar si cada venta fue pagada con GiftCard
         foreach ($ventas as $venta) {
             $venta->pagado_con_giftcard = GiftCard::where('id_venta', $venta->id)->exists();
-            // Evitar sumar abono/diferencia si es con giftcard
-            if (! $venta->pagado_con_giftcard) {
-                $ingresosVentas += $venta->abono_programa;
-                $ingresosVentas += $venta->diferencia_programa;
+            if (!$venta->pagado_con_giftcard) {
+                $ingresosVentas   += $venta->abono_programa;
+                $ingresosVentas   += $venta->diferencia_programa;
                 $ventasPendientes += $venta->total_pagar;
             }
         }
@@ -460,17 +408,19 @@ class ReporteFinancieroController extends Controller
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
                 ->whereHas('reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
+                    $query->whereYear('created_at',  $anio)
+                          ->whereMonth('created_at', $mes);
                 })
                 ->sum('abono_programa');
 
             $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
                 ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
+                    $query->whereYear('created_at',  $anio)
+                          ->whereMonth('created_at', $mes);
                 })
                 ->sum('pago1');
 
             $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
-              
+                ->whereNotNull('pago2')
+                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
+      
