@@ -317,12 +317,21 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('cotizacion', 'CotizacionController');
     Route::resource('egreso', 'EgresoController');
 
-    // SII – Importación de documentos de compra
+    // SII – Integración tributaria (RCV compras/ventas)
     Route::prefix('sii')->name('sii.')->group(function () {
-        Route::get('/',             'SiiController@index')->name('index');
-        Route::get('/listar',       'SiiController@listar')->name('listar');
-        Route::post('/importar',    'SiiController@importar')->name('importar');
-        Route::get('/contribuyente','SiiController@contribuyente')->name('contribuyente');
+        Route::get('/',              'SiiController@index')->name('index');
+        Route::post('/sincronizar',  'SiiController@sincronizar')->name('sincronizar');
+        Route::get('/listar',        'SiiController@listar')->name('listar');
+        Route::post('/importar',     'SiiController@importar')->name('importar');
+        Route::get('/resumen',       'SiiController@resumen')->name('resumen');
+        Route::get('/contribuyente', 'SiiController@contribuyente')->name('contribuyente');
+    });
+
+    // Honorarios BTE – Boletas de prestación de servicios de terceros recibidas
+    Route::prefix('honorarios')->name('honorarios.')->group(function () {
+        Route::get('/',             'HonorarioController@index')->name('index');
+        Route::post('/sincronizar', 'HonorarioController@sincronizar')->name('sincronizar');
+        Route::get('/resumen',      'HonorarioController@resumen')->name('resumen');
     });
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
@@ -595,6 +604,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
     Route::get('finanzas/ingresos/comparar', 'ReporteFinancieroController@comparar')->name('finanzas.comparar');
+
+    Route::get('finanzas/egresos', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.acumulado');
+    Route::get('finanzas/egresos/{anio}/{mes}', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.mes');
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
     Route::get('giftcards/{gc}/reservar', 'GiftCardController@byPassReserva')->name('giftcards.reservar');
