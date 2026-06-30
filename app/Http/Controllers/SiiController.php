@@ -25,7 +25,7 @@ use Illuminate\Support\Facades\DB;
  */
 class SiiController extends Controller
 {
-    private SiiService $sii;
+    private $sii;
 
     public function __construct(SiiService $sii)
     {
@@ -148,7 +148,7 @@ class SiiController extends Controller
                     'tipo_documento_id' => $tipoDocId,
                     'categoria_id'      => $doc['categoria_id'],
                     'subcategoria_id'   => $doc['subcategoria_id'],
-                    'proveedor_id'      => $proveedor?->id,
+                    'proveedor_id'      => $proveedor ? $proveedor->id : null,
                     'descripcion'       => trim(($doc['razon_social'] ?? '') . ' – Folio ' . $doc['folio']),
                     'fecha_egreso'      => $doc['fecha_documento'],
                     'numero_documento'  => $doc['folio'],
@@ -233,6 +233,4 @@ class SiiController extends Controller
         if (!$nombre) return null;
 
         $tipo = TipoDocumento::where('nombre', 'like', "%{$nombre}%")->first();
-        return $tipo?->id;
-    }
-}
+        return $tipo ? $tipo->

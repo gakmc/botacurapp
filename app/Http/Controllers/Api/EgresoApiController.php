@@ -130,7 +130,7 @@ class EgresoApiController extends Controller
 
             // Guardar ítems
             if ($request->items && count($request->items) > 0) {
-                $items = array_map(fn($item) => [
+                $items = array_map(function($item) use ($egresoId) { return [
                     'egreso_id'       => $egresoId,
                     'descripcion'     => $item['descripcion'],
                     'unidad'          => $item['unidad'] ?? null,
@@ -140,7 +140,7 @@ class EgresoApiController extends Controller
                     'subtotal'        => (int) ($item['subtotal'] ?? 0),
                     'created_at'      => now(),
                     'updated_at'      => now(),
-                ], $request->items);
+                ]; }, $request->items);
                 DB::table('egreso_items')->insert($items);
             }
 
@@ -226,7 +226,4 @@ class EgresoApiController extends Controller
             'ok'     => true,
             'egreso' => $egreso,
             'items'  => $items,
-            'docs'   => $docs,
-        ]);
-    }
-}
+            'docs'   => 
