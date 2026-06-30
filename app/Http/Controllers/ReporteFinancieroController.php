@@ -125,10 +125,9 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mn')
             ->pluck('total', 'mn');
 
-        $resumenAnual = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $resumenAnual[$m] = (int) ($anualRaw[$m] ?? 0);
-        }
+        $resumenAnual = collect(range(1, 12))->mapWithKeys(function ($m) use ($anualRaw) {
+            return [$m => (int) ($anualRaw[$m] ?? 0)];
+        });
 
         // ── Datos para gráfico de dona ────────────────────────────────────────
         $chartLabels = [];
@@ -474,4 +473,4 @@ class ReporteFinancieroController extends Controller
                 ->sum('pago1');
 
             $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
-                ->whereNotNull('pa
+              
