@@ -24,11 +24,12 @@ return [
     |
     */
 
-    'api_url'       => env('SII_API_URL', 'https://apigateway.cl/api/v1/cl-sii'),
-    'api_key'       => env('SII_API_KEY', ''),
-    'rut_empresa'   => env('SII_RUT_EMPRESA', ''),
-    'dv_empresa'    => env('SII_DV_EMPRESA', ''),
-    'ambiente'      => env('SII_AMBIENTE', 'certificacion'),
+    'api_url'         => env('SII_API_URL', 'https://apigateway.cl/api/v1/cl-sii'),
+    'api_key'         => env('SII_API_KEY', ''),
+    'rut_empresa'     => env('SII_RUT_EMPRESA', ''),
+    'dv_empresa'      => env('SII_DV_EMPRESA', ''),
+    'clave_tributaria'=> env('SII_CLAVE_TRIBUTARIA', ''),
+    'ambiente'        => env('SII_AMBIENTE', 'certificacion'),
 
     /*
     |--------------------------------------------------------------------------
@@ -41,15 +42,4 @@ return [
     /*
     |--------------------------------------------------------------------------
     | Tipos de documento SII que importamos
-    |--------------------------------------------------------------------------
-    | Solo facturas de compra recibidas. Valores numéricos según tabla SII.
-    */
-    'tipos_importar' => [
-        33  => 'Factura Electrónica',
-        34  => 'Factura No Afecta o Exenta Electrónica',
-        46  => 'Liquidación Factura Electrónica',
-        56  => 'Nota de Débito Electrónica',
-        61  => 'Nota de Crédito Electrónica',
-    ],
-
-];
+    |-------------------

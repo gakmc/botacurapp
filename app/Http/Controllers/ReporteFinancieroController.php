@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Egreso;
 use App\GiftCard;
+use App\HonorarioBte;
 use App\PagoEgreso;
 use App\PoroPoroVenta;
 use App\Programa;
@@ -18,6 +19,135 @@ use Illuminate\Support\Facades\Log;
 
 class ReporteFinancieroController extends Controller
 {
+    // ──────────────────────────────────────────────────────────────────────────
+    // EGRESOS: acumulado por categoría/subcategoría
+    // ──────────────────────────────────────────────────────────────────────────
+
+    public function acumuladoEgresos(Request $request, $anio = null, $mes = null)
+    {
+        $anio = (int) ($anio ?? $request->input('anio', now()->year));
+        $mes  = (int) ($mes  ?? $request->input('mes',  now()->month));
+
+        $inicio   = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $fin      = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
+        $mesNombre = Carbon::create($anio, $mes, 1)->locale('es')->isoFormat('MMMM');
+
+        // ── Egresos del período con categoría/subcategoría/proveedor ──────────
+        $filas = DB::table('egresos')
+            ->leftJoin('categorias_compras',    'egresos.categoria_id',    '=', 'categorias_compras.id')
+            ->leftJoin('subcategorias_compras', 'egresos.subcategoria_id', '=', 'subcategorias_compras.id')
+            ->leftJoin('proveedores',           'egresos.proveedor_id',    '=', 'proveedores.id')
+            ->select(
+                'egresos.id',
+                'egresos.fecha_egreso',
+                'egresos.descripcion',
+                'egresos.numero_documento',
+                'egresos.neto',
+                'egresos.iva',
+                'egresos.total',
+                'egresos.fuente',
+                'egresos.estado',
+                DB::raw('COALESCE(categorias_compras.nombre, "Sin categoría") as categoria_nombre'),
+                DB::raw('COALESCE(subcategorias_compras.nombre, "Sin subcategoría") as subcategoria_nombre'),
+                DB::raw('proveedores.nombre as proveedor_nombre')
+            )
+            ->whereBetween('egresos.fecha_egreso', [$inicio, $fin])
+            ->where('egresos.estado', '!=', 'anulado')
+            ->orderBy('categorias_compras.nombre')
+            ->orderBy('subcategorias_compras.nombre')
+            ->orderBy('egresos.fecha_egreso')
+            ->get();
+
+        // ── Agrupar por categoría → subcategoría ─────────────────────────────
+        $agrupado = [];
+        foreach ($filas as $fila) {
+            $cat = $fila->categoria_nombre;
+            $sub = $fila->subcategoria_nombre;
+            $tot = (int) ($fila->total ?? $fila->neto ?? 0);
+
+            if (!isset($agrupado[$cat])) {
+                $agrupado[$cat] = ['total' => 0, 'subcategorias' => []];
+            }
+            if (!isset($agrupado[$cat]['subcategorias'][$sub])) {
+                $agrupado[$cat]['subcategorias'][$sub] = ['total' => 0, 'filas' => []];
+            }
+
+            $agrupado[$cat]['total']                        += $tot;
+            $agrupado[$cat]['subcategorias'][$sub]['total'] += $tot;
+            $agrupado[$cat]['subcategorias'][$sub]['filas'][] = $fila;
+        }
+
+        // Ordenar categorías por total desc
+        uasort($agrupado, function($a, $b) { return $b['total'] - $a['total']; });
+
+        // ── Total general de egresos ──────────────────────────────────────────
+        $totalGeneral = array_sum(array_column($agrupado, 'total'));
+
+        // ── Honorarios BTE del mes ────────────────────────────────────────────
+        $periodo  = sprintf('%04d%02d', $anio, $mes);
+        $totalBte = (int) HonorarioBte::where('periodo', $periodo)
+            ->where('estado', '!=', 'Anulada')
+            ->sum('monto_pagado');
+
+        // ── Sueldos del mes ───────────────────────────────────────────────────
+        $totalSueldos = (int) DB::table('sueldos_pagados')
+            ->whereBetween('fecha_pago', [$inicio, $fin])
+            ->sum('monto');
+
+        // ── Mes anterior (para comparación) ──────────────────────────────────
+        $antInicio = Carbon::create($anio, $mes, 1)->subMonth()->startOfMonth()->toDateString();
+        $antFin    = Carbon::create($anio, $mes, 1)->subMonth()->endOfMonth()->toDateString();
+
+        $totalAnterior = (int) DB::table('egresos')
+            ->whereBetween('fecha_egreso', [$antInicio, $antFin])
+            ->where('estado', '!=', 'anulado')
+            ->sum(DB::raw('COALESCE(total, neto, 0)'));
+
+        // Totales por categoría del mes anterior (para mostrar variación)
+        $anterioresRaw = DB::table('egresos')
+            ->leftJoin('categorias_compras', 'egresos.categoria_id', '=', 'categorias_compras.id')
+            ->selectRaw('COALESCE(categorias_compras.nombre, "Sin categoría") as cat, SUM(COALESCE(egresos.total, egresos.neto, 0)) as total')
+            ->whereBetween('egresos.fecha_egreso', [$antInicio, $antFin])
+            ->where('egresos.estado', '!=', 'anulado')
+            ->groupBy('cat')
+            ->get();
+
+        $anteriores = [];
+        foreach ($anterioresRaw as $r) {
+            $anteriores[$r->cat] = (int) $r->total;
+        }
+
+        // ── Resumen anual (total por mes) ─────────────────────────────────────
+        $anualRaw = DB::table('egresos')
+            ->selectRaw('MONTH(fecha_egreso) as mn, SUM(COALESCE(total, neto, 0)) as total')
+            ->whereYear('fecha_egreso', $anio)
+            ->where('estado', '!=', 'anulado')
+            ->groupBy('mn')
+            ->pluck('total', 'mn');
+
+        $resumenAnual = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $resumenAnual[$m] = (int) ($anualRaw[$m] ?? 0);
+        }
+
+        // ── Datos para gráfico de dona ────────────────────────────────────────
+        $chartLabels = [];
+        $chartData   = [];
+        foreach ($agrupado as $cat => $datos) {
+            if ($datos['total'] > 0) {
+                $chartLabels[] = $cat;
+                $chartData[]   = $datos['total'];
+            }
+        }
+
+        return view('themes.backoffice.pages.reporte.egresos.acumulado', compact(
+            'anio', 'mes', 'mesNombre',
+            'agrupado', 'totalGeneral', 'totalBte', 'totalSueldos',
+            'totalAnterior', 'anteriores',
+            'resumenAnual', 'chartLabels', 'chartData'
+        ));
+    }
+
     public function resumenAnual(Request $request)
     {
 
@@ -344,197 +474,4 @@ class ReporteFinancieroController extends Controller
                 ->sum('pago1');
 
             $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
-                ->whereNotNull('pago2')
-                ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
-                })
-                ->sum('pago2');
-
-            $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
-                ->whereYear('created_at', $anio)
-                ->whereMonth('created_at', $mes)
-                ->sum('subtotal');
-
-            $poroPoro = PoroPoroVenta::where('id_tipo_transaccion', $tipo->id)
-                ->whereYear('created_at', $anio)
-                ->whereMonth('created_at', $mes)
-                ->sum('total');
-
-            $tipo->total_abonos      = $abono;
-            $tipo->total_diferencias = $total_pago1 + $total_pago2;
-            $tipo->venta_directa     = $ventaDirecta;
-            $tipo->poro              = $poroPoro;
-
-            return $tipo;
-        });
-
-        $programas = Programa::all()->map(function ($programa) use ($mes, $anio) {
-            $cuenta = Reserva::where('id_programa', $programa->id)
-                ->whereMonth('created_at', $mes)
-                ->whereYear('created_at', $anio)
-                ->count();
-
-            $programa->total_programas = $cuenta;
-            return $programa;
-        });
-
-
-
-        // $fechasDisponibles = Reserva::selectRaw('MONTH(created_at) as mes, YEAR(created_at) as anio')
-        //     ->groupBy('mes', 'anio')
-        //     ->orderBy('anio', 'desc')
-        //     ->orderBy('mes', 'desc')
-        //     ->get();
-
-
-
-
-        
-        $fuentes = collect([]);
-
-        // Reservas (ingresos vía ventas/consumos/servicios)
-        $fuentes = $fuentes->merge(
-            DB::table('reservas')
-                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
-                ->groupBy('anio','mes')
-                ->get()
-        );
-
-        // Ventas directas
-        $fuentes = $fuentes->merge(
-            DB::table('ventas_directas')
-                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
-                ->groupBy('anio','mes')
-                ->get()
-        );
-
-        // GiftCards (si quieres mostrarlas como mes seleccionable)
-        $fuentes = $fuentes->merge(
-            DB::table('gift_cards')
-                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
-                ->groupBy('anio','mes')
-                ->get()
-        );
-
-        // Poro Poro (si corresponde)
-        $fuentes = $fuentes->merge(
-            DB::table('poro_poro_ventas')
-                ->selectRaw('YEAR(created_at) as anio, MONTH(created_at) as mes')
-                ->groupBy('anio','mes')
-                ->get()
-        );
-
-        // Unificar, quitar duplicados y ordenar desc por año-mes
-        $fechasDisponibles = $fuentes
-            ->unique(function($r){ return sprintf('%04d-%02d', $r->anio, $r->mes); })
-            ->sortByDesc(function($r){ return $r->anio * 100 + $r->mes; })
-            ->values();
-
-
-
-        // dd($impuestos);
-        return view('themes.backoffice.pages.reporte.ingreso.percibido', compact(
-            'anio', 'mes', 'mesNombre',
-            'abonos', 'diferencias', 'consumos', 'servicios'
-            , 'ventasDirectas', 'programas', 'tiposTransacciones', 'ventas', 'fechasDisponibles'
-        ));
-    }
-
-
-    public function comparar(Request $request)
-    {
-        try {
-            $raw = $request->input('meses', []); // puede venir como meses[] en query
-            $meses = collect(is_array($raw) ? $raw : [$raw])
-                ->filter()
-                ->map(function($s){ return trim((string)$s); })
-                ->unique()
-                ->values()
-                ->take(4);
-
-            if ($meses->isEmpty()) {
-                return response('Faltan meses', 422);
-            }
-
-            $rows = $meses->map(function($mmYYYY){
-                $parts = explode('-', $mmYYYY);
-                if (count($parts) !== 2) {
-                    return null;
-                }
-                $mm = (int)$parts[0];
-                $yy = (int)$parts[1];
-                if ($mm < 1 || $mm > 12 || $yy < 2000) {
-                    return null;
-                }
-
-                $desde = Carbon::create($yy, $mm, 1)->startOfMonth();
-                $hasta = Carbon::create($yy, $mm, 1)->endOfMonth();
-
-                $total = $this->totalIngresosPeriodo($desde, $hasta);
-
-                return [
-                    'label' => ucfirst(Carbon::create()->month($mm)->locale('es')->isoFormat('MMMM')).' '.$yy,
-                    'mes'   => $mm,
-                    'anio'  => $yy,
-                    'total' => (int)$total,
-                ];
-            })->filter()->values();
-
-            $rows = $rows->sortBy(function($r){
-                return ($r['anio'] * 100) + $r['mes'];
-            })->values();
-
-            // Incluso con totales = 0, renderizamos la tabla
-            $viewPath = 'themes.backoffice.pages.reporte.ingreso.partials._comparativa_ingresos';
-            if (!view()->exists($viewPath)) {
-                Log::error('Vista parcial no existe', ['view' => $viewPath]);
-                return response('Parcial no encontrado: '.$viewPath, 500);
-            }
-
-            $html = view($viewPath, compact('rows'))->render();
-            return response($html, 200)->header('Content-Type', 'text/html');
-
-        } catch (\Throwable $e) {
-            Log::error('FinanzasCompararError', [
-                'msg' => $e->getMessage(),
-                'file'=> $e->getFile(),
-                'line'=> $e->getLine(),
-            ]);
-            return response('Error interno', 500);
-        }
-    }
-
-    protected function totalIngresosPeriodo(Carbon $desde, Carbon $hasta)
-    {
-        // Ventas (abono + diferencia)
-        $ingresosVentas = DB::table('ventas')
-            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->whereBetween('reservas.created_at', [$desde, $hasta])
-            ->sum(DB::raw('COALESCE(ventas.abono_programa,0) + COALESCE(ventas.diferencia_programa,0)'));
-
-        // Consumos: detalles_consumos -> consumos -> ventas -> reservas
-        $consumos = DB::table('detalles_consumos')
-            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
-            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->whereBetween('reservas.created_at', [$desde, $hasta])
-            ->sum(DB::raw('COALESCE(detalles_consumos.subtotal,0)'));
-
-        // Servicios extra: detalles_servicios_extra -> consumos -> ventas -> reservas
-        $serviciosExtra = DB::table('detalle_servicios_extra')
-            ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
-            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->whereBetween('reservas.created_at', [$desde, $hasta])
-            ->sum(DB::raw('COALESCE(detalle_servicios_extra.subtotal,0)'));
-
-            
-        $ventaDirecta = DB::table('ventas_directas')
-            ->whereBetween('ventas_directas.created_at', [$desde, $hasta])
-            ->sum(DB::raw('COALESCE(ventas_directas.subtotal,0)'));
-
-        return (int) ($ingresosVentas + $consumos + $serviciosExtra + $ventaDirecta);
-    }
-    
-}
+                ->whereNotNull('pa
