@@ -30994,7 +30994,7 @@ __webpack_require__.r(__webpack_exports__);
 window.Pusher = __webpack_require__(/*! pusher-js */ "./node_modules/pusher-js/dist/web/pusher.js");
 window.Echo = new laravel_echo__WEBPACK_IMPORTED_MODULE_0__["default"]({
   broadcaster: 'pusher',
-  key: "68aef4ee48c3c5e866a1",
+  key: "5ac39ceb6b291fdc9fef",
   cluster: "sa1",
   forceTLS: true
   /**encrypted: true */
