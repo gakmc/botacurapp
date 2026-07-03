@@ -3,11 +3,18 @@
 namespace App\Http\Controllers;
 
 use App\FechaDisponible;
-
+use App\Services\WpCacheService;
 use Illuminate\Http\Request;
 
 class CalendarioController extends Controller
 {
+    /** @var WpCacheService */
+    private $wpCache;
+
+    public function __construct(WpCacheService $wpCache)
+    {
+        $this->wpCache = $wpCache;
+    }
     public function index()
     {
         FechaDisponible::sincronizarRegulares(120);
@@ -51,6 +58,7 @@ class CalendarioController extends Controller
     public function toggle(Request $request, FechaDisponible $fecha)
     {
         $fecha->update(['habilitada' => !$fecha->habilitada]);
+        $this->wpCache->clearFechasCache();
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true, 'habilitada' => $fecha->fresh()->habilitada]);
@@ -75,6 +83,8 @@ class CalendarioController extends Controller
             ]
         );
 
+        $this->wpCache->clearFechasCache();
+
         if ($request->wantsJson()) {
             return response()->json(['success' => true]);
         }
@@ -85,6 +95,7 @@ class CalendarioController extends Controller
     public function eliminar(Request $request, FechaDisponible $fecha)
     {
         $fecha->delete();
+        $this->wpCache->clearFechasCache();
 
         if ($request->wantsJson()) {
             return response()->json(['success' => true]);

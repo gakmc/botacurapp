@@ -17,6 +17,10 @@ return [
     // Al subir nuevas imágenes por FTP se detectan automáticamente (cache 1h).
     'service_image_base_url' => env('WP_SERVICE_IMAGE_BASE_URL', 'https://botacura.cl/wp-content/uploads/2026/05'),
 
+    // Endpoint WP para limpiar caché de fechas disponibles (llamado desde CalendarioController)
+    'wp_cache_clear_url'   => env('WP_CACHE_CLEAR_URL', ''),
+    'wp_cache_clear_token' => env('WP_CACHE_CLEAR_TOKEN', ''),
+
     // Slugs de programas que SÍ están disponibles para Gift Card
     'gift_card_slugs' => ['full-day', 'botacura-full', 'caviahue-2'],
 ];

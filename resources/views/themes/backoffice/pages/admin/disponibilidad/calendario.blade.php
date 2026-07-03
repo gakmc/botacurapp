@@ -144,7 +144,7 @@
                 cuerpo += '<div class="col s12 m6">';
 
                 cuerpo += '<p>';
-                cuerpo += '<label for="festivo"><input class="with-gap" name="tipo" type="radio" id="festivo" /><span class="black-text">Festivo</span></label>';
+                cuerpo += '<label for="festivo"><input class="with-gap" name="tipo" type="radio" id="festivo" checked /><span class="black-text">Festivo</span></label>';
                 cuerpo += '</p>';
  
                 cuerpo += '<p>';
@@ -174,10 +174,15 @@
 
         window.agregarFestivo = function (fecha) {
             var inputNota = document.getElementById('input-nota-nueva');
-            var inputTipo = document.getElementsByName('tipo');
+            var radiosTipo = document.getElementsByName('tipo');
             var nota = inputNota ? inputNota.value : '';
-            var tipo = inputTipo ? inputTipo.value : 'festivo';
-            console.log(tipo);
+            var tipo = 'festivo';
+            for (var i = 0; i < radiosTipo.length; i++) {
+                if (radiosTipo[i].checked) {
+                    tipo = radiosTipo[i].id;
+                    break;
+                }
+            }
             fetch('/calendario/festivo', {
                 method: 'POST',
                 headers: { 'X-CSRF-TOKEN': csrf, 'Content-Type': 'application/json', 'Accept': 'application/json' },
@@ -195,14 +200,24 @@
         };
 
         window.eliminarFecha = function (id) {
-            if (!confirm('¿Eliminar este festivo?')) return;
-            fetch('/calendario/' + id, {
-                method: 'DELETE',
-                headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
-            })
-            .then(function (r) { return r.json(); })
-            .then(function () { $('#modal-fecha').modal('close'); calendar.refetchEvents(); })
-            .catch(function () { Swal.fire({ icon: 'error', title: 'Error al eliminar', toast: true, timer: 3000, showConfirmButton: false }); });
+            Swal.fire({
+                icon: 'warning',
+                title: '¿Eliminar este festivo?',
+                showCancelButton: true,
+                confirmButtonText: 'Eliminar',
+                cancelButtonText: 'Cancelar',
+                reverseButtons: true,
+            }).then(function (result) {
+                if (!result.isConfirmed) return;
+
+                fetch('/calendario/' + id, {
+                    method: 'DELETE',
+                    headers: { 'X-CSRF-TOKEN': csrf, 'Accept': 'application/json' },
+                })
+                .then(function (r) { return r.json(); })
+                .then(function () { $('#modal-fecha').modal('close'); calendar.refetchEvents(); })
+                .catch(function () { Swal.fire({ icon: 'error', title: 'Error al eliminar', toast: true, position: 'top', timer: 3000, showConfirmButton: false }); });
+            });
         };
 
     });
