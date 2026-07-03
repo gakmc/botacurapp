@@ -63,6 +63,7 @@ class Kernel extends HttpKernel
         'verified' => \Illuminate\Auth\Middleware\EnsureEmailIsVerified::class,
         'role'      => \App\Http\Middleware\Role::class,
         'bot.token' => \App\Http\Middleware\BotTokenMiddleware::class,
+        'auth.apikey' => \App\Http\Middleware\ApiKeyMiddleware::class,
     ];
 
     /**

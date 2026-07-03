@@ -16,6 +16,7 @@ return [
     'mantencion_role'=>env('MANTENCION_ROLE','mantencion'),
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'visit_role' => env('VISIT_ROLE', 'visitante'),
+    'laravel_api_key' => env('LARAVEL_API_KEY'),
     /*
     |--------------------------------------------------------------------------
     | Application Name
