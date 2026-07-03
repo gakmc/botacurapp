@@ -28,3 +28,4 @@ phpunit.xml*
 **/database/temp
 **/database/factories
 /wordpress-plugins
+/public/js/app.js
