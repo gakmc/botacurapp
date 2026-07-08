@@ -3,6 +3,8 @@
 @section('title', 'Generar nueva Gift Card')
 
 @section('head')
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
 @endsection
 
 
@@ -118,12 +120,30 @@
                                     @enderror
                                 </div>
                             </div>
-                         
-                        
-                         
 
-                         
+                            @if($fechaManual)
+                            <div class="row">
+                                <div class="input-field col s12 m6 l3">
+                                    <input id="fecha_uso" type="text" name="fecha_uso" value="{{old('fecha_uso')}}">
+                                    <label for="fecha_uso">Fecha de uso:</label>
+                                    @error('fecha_uso')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
 
+                                <div class="input-field col s12 m6 l3">
+                                    <input id="validez_hasta" type="text" name="validez_hasta" value="{{old('validez_hasta')}}">
+                                    <label for="validez_hasta">Válido hasta:</label>
+                                    @error('validez_hasta')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
+                            </div>
+                            @endif
 
                           <div class="row">
                               <div class="input-field col s12">
@@ -145,9 +165,13 @@
 @endsection
 
 @section('foot')
+@if($fechaManual)
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
+@endif
 <script>
-    
-    
+
+
     $(document).ready(function () {
         let valor = 0;
         let personas = parseInt($('#cantidad_personas').val()) || 0;
@@ -175,6 +199,51 @@
             personas = parseInt($(this).val()) || 0;
             actualizarMonto(valor, personas);
         });
+
+        @if($fechaManual)
+        // validez_hasta sigue a fecha_uso hasta que el usuario la edite manualmente
+        let validezTocadaManualmente = false;
+
+        const pickerFechaUso = $('#fecha_uso').pickadate({
+            format: 'dd-mm-yyyy',
+            formatSubmit: 'yyyy-mm-dd',
+            hiddenName: true,
+            monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+            monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+            weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+            weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+            today: 'Hoy',
+            clear: 'Limpiar',
+            close: 'Cerrar',
+            firstDay: 1,
+        }).pickadate('picker');
+
+        const pickerValidezHasta = $('#validez_hasta').pickadate({
+            format: 'dd-mm-yyyy',
+            formatSubmit: 'yyyy-mm-dd',
+            hiddenName: true,
+            monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+            monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+            weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+            weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+            today: 'Hoy',
+            clear: 'Limpiar',
+            close: 'Cerrar',
+            firstDay: 1,
+        }).pickadate('picker');
+
+        pickerFechaUso.on('set', function (context) {
+            if (context.select && !validezTocadaManualmente) {
+                pickerValidezHasta.set('select', pickerFechaUso.get('select'), { muted: true });
+            }
+        });
+
+        pickerValidezHasta.on('set', function (context) {
+            if (context.select) {
+                validezTocadaManualmente = true;
+            }
+        });
+        @endif
     });
 
     function actualizarMonto(valor, personas) {

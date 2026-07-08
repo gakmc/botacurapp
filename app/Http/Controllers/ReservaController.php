@@ -627,7 +627,6 @@ class ReservaController extends Controller
 
         $gc = GiftCard::where('para',$cliente->nombre_cliente)
                 ->where('usada', false)
-                ->whereNull('fecha_uso')
                 ->whereNull('id_venta')
                 ->first();
 

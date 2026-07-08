@@ -130,12 +130,28 @@
                                     @enderror
                                 </div>
                             </div>
-                         
-                        
-                         
 
-                         
+                            <div class="row">
+                                <div class="input-field col s12 m6 l3">
+                                    <input id="fecha_uso" type="text" name="fecha_uso" value="{{ old('fecha_uso') ?? ($gc->fecha_uso ? \Carbon\Carbon::parse($gc->fecha_uso)->format('d-m-Y') : '') }}">
+                                    <label for="fecha_uso" class="{{ $gc->fecha_uso ? 'active' : '' }}">Fecha de uso:</label>
+                                    @error('fecha_uso')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
 
+                                <div class="input-field col s12 m6 l3">
+                                    <input id="validez_hasta" type="text" name="validez_hasta" value="{{ old('validez_hasta') ?? ($gc->validez_hasta ? \Carbon\Carbon::parse($gc->validez_hasta)->format('d-m-Y') : '') }}">
+                                    <label for="validez_hasta" class="{{ $gc->validez_hasta ? 'active' : '' }}">Válido hasta:</label>
+                                    @error('validez_hasta')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                    @enderror
+                                </div>
+                            </div>
 
                           <div class="row">
                               <div class="input-field col s12">
@@ -157,9 +173,11 @@
 @endsection
 
 @section('foot')
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
 <script>
-    
-    
+
+
     $(document).ready(function () {
         let valor = 0;
         let personas = parseInt($('#cantidad_personas').val()) || 0;
@@ -187,6 +205,23 @@
             personas = parseInt($(this).val()) || 0;
             actualizarMonto(valor, personas);
         });
+
+        const pickadateOpts = {
+            format: 'dd-mm-yyyy',
+            formatSubmit: 'yyyy-mm-dd',
+            hiddenName: true,
+            monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+            monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+            weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+            weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+            today: 'Hoy',
+            clear: 'Limpiar',
+            close: 'Cerrar',
+            firstDay: 1,
+        };
+
+        $('#fecha_uso').pickadate(pickadateOpts);
+        $('#validez_hasta').pickadate(pickadateOpts);
     });
 
     function actualizarMonto(valor, personas) {
