@@ -49,7 +49,10 @@ Gift Card solicitada por {{$gc->de}}
                                             @foreach ($programa->servicios as $servicio)
                                             <li>✔️ {{$servicio->nombre_servicio}} @if (in_array(strtolower($servicio->nombre_servicio),$lista))
                                                 - ({{$servicio->duracion}} mins)
-                                            @endif</li>
+                                                @endif
+                                                @if (strtolower($servicio->nombre_servicio) == 'piscina')
+                                                    (agua fría)
+                                                @endif</li>
                                                 
                                             @endforeach
 

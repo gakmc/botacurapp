@@ -23,4 +23,8 @@ return [
 
     // Slugs de programas que SÍ están disponibles para Gift Card
     'gift_card_slugs' => ['full-day', 'botacura-full', 'caviahue-2'],
+
+    // Temporada invierno (temporal): permite ingresar fecha_uso/validez_hasta a mano
+    // al crear/editar una Gift Card. En false vuelve al cálculo automático de siempre.
+    'gift_card_fecha_manual' => env('GIFTCARD_FECHA_MANUAL', false),
 ];

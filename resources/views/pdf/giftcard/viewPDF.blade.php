@@ -139,6 +139,9 @@
                         @if (in_array(strtolower($servicio->nombre_servicio), $lista))
                             - ({{ $servicio->duracion }} mins)
                         @endif
+                        @if (strtolower($servicio->nombre_servicio) == 'piscina')
+                                                    (agua fría)
+                        @endif
                     </li>
                 @endforeach
             </ul>

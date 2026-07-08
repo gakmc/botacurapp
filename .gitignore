@@ -29,3 +29,4 @@ phpunit.xml*
 **/database/factories
 /wordpress-plugins
 /public/js/app.js
+/public/mix-manifest.json
