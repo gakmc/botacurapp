@@ -30,3 +30,4 @@ phpunit.xml*
 /wordpress-plugins
 /public/js/app.js
 /public/mix-manifest.json
+backups_api_iot/
