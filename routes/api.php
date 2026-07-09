@@ -74,3 +74,6 @@ Route::prefix('woocommerce')->namespace('Api')->group(function(){
 Route::middleware('auth.apikey')->group(function () {
     Route::get('/fechas-disponibles', [FechasDisponiblesController::class, 'index']);
 });
+Route::get('/iot/ping', 'Api\IotController@ping');
+Route::get('/iot/proxima-tinaja', 'Api\IotController@proximaTinaja');
+Route::get('/iot/tinajas/proxima-reserva', 'Api\TinajaController@proximaReserva');
