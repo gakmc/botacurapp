@@ -63,9 +63,39 @@ Route::prefix('woocommerce')->namespace('Api')->group(function(){
 
     // Endpoint de prueba — no requiere auth, solo verifica que el servidor responde
     Route::get('ping', 'WoocommerceWebhookController@ping')->name('woocommerce.ping');
-    
+
     // Endpoint real del webhook (lo activaremos en el paso siguiente)
     Route::post('webhook', 'WoocommerceWebhookController@handle')
         ->name('woocommerce.webhook');
+});
+
+// -------------------------------------------------------------------------
+// Bot WhatsApp / Instagram — Claude AI
+// Protegido por X-Bot-Secret header (validado dentro del controlador)
+// -------------------------------------------------------------------------
+Route::prefix('bot')->namespace('Api')->group(function () {
+    // Health check
+    Route::get('ping', 'BotController@ping')->name('bot.ping');
+
+    // Programas disponibles
+    Route::get('programas', 'BotProgramasController@index')->name('bot.programas');
+
+    // Disponibilidad por fecha
+    Route::get('disponibilidad', 'BotController@disponibilidad')->name('bot.disponibilidad');
+
+    // Cliente: buscar o crear
+    Route::post('clientes/buscar-o-crear', 'BotController@buscarOCrearCliente')->name('bot.clientes.buscarOCrear');
+
+    // Reservas
+    Route::post('reservas',          'BotController@crearReserva')->name('bot.reservas.store');
+    Route::post('reservas/{id}/pago', 'BotController@registrarPago')->name('bot.reservas.pago');
+    Route::post('reserva',           'BotReservaController@store')->name('bot.reserva');
+
+    // Conversación (estado/historial)
+    Route::get('conversacion/{usuario_id}', 'BotController@getConversacion')->name('bot.conversacion.get');
+    Route::post('conversacion',             'BotController@upsertConversacion')->name('bot.conversacion.upsert');
+
+    // ── Endpoint principal para n8n (Claude AI) ──
+    Route::post('message', 'BotController@message')->name('bot.message');
 });
 
