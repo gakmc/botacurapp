@@ -38,8 +38,8 @@
                                 <input id="id_reserva" type="hidden" class="form-control" name="id_reserva" value="{{$reserva->id}}" required>
 
                                 <p>Fecha Nueva Visita: </p>
-                                
-                                  <input id="nueva_fecha" type="date" name="nueva_fecha" class="" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
+
+                                  <input id="nueva_fecha" type="text" name="nueva_fecha" class="" value="{{ old('nueva_fecha') }}" placeholder="fecha Visita">
                                     @error('nueva_fecha')
                                           <span class="invalid-feedback" role="alert">
                                               <strong style="color:red">{{ $message }}</strong>
@@ -87,6 +87,17 @@
 
     $('#nueva_fecha').pickadate({
       format: 'dd-mm-yyyy',
+      min: true,
+      disable: @json($fechasDeshabilitadas),
+      monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+      monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+      weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+      weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+      weekdaysLetter: ['D','L','M','M','J','V','S'],
+      today: 'Hoy',
+      clear: 'Limpiar',
+      close: 'Cerrar',
+      firstDay: 1,
     })
 
   });

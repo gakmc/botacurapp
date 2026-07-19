@@ -1,0 +1,742 @@
+type: vertical-stack
+cards:
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 28px
+        - padding: 26px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.07)
+        - text-align: center
+      grid:
+        - grid-template-areas: "\"header header\" \"tank info\""
+        - grid-template-columns: 280px 1fr
+        - row-gap: 22px
+        - column-gap: 28px
+        - justify-items: center
+        - align-items: center
+      custom_fields:
+        header:
+          - width: 100%
+          - text-align: center
+        tank:
+          - justify-self: center
+          - align-self: center
+        info:
+          - width: 100%
+          - text-align: center
+    custom_fields:
+      header: |
+        [[[
+          const estado = states['sensor.estado_estanque_botacura_corregido']?.state || 'Sin dato';
+          const operativo = states['sensor.estado_operacional_llenado_estanque_botacura']?.state || 'Reposo';
+
+          let color = '#22c55e';
+          if (estado === 'Alerta') color = '#ef4444';
+          else if (estado === 'Por acabarse') color = '#f97316';
+          else if (estado === 'Medio') color = '#38bdf8';
+          else if (estado === '3/4') color = '#22c55e';
+          else if (estado === 'Lleno') color = '#22c55e';
+          else color = '#94a3b8';
+
+          return `
+            <div style="width:100%; display:flex; justify-content:space-between; align-items:flex-start;">
+              <div style="text-align:left;">
+                <div style="font-size:30px; font-weight:900; color:#f8fafc;">
+                  Agua Potable Botacura
+                </div>
+                <div style="font-size:15px; color:#94a3b8; margin-top:5px;">
+                  Estanque · entrada · salida · autollenado · comparación
+                </div>
+                <div style="font-size:13px; color:#cbd5e1; margin-top:8px;">
+                  Estado operacional: <b>${operativo}</b>
+                </div>
+              </div>
+
+              <div style="
+                padding:8px 14px;
+                border-radius:999px;
+                background:${color}22;
+                color:${color};
+                font-size:14px;
+                font-weight:900;
+                min-width:90px;
+                text-align:center;
+              ">
+                ${estado}
+              </div>
+            </div>
+          `;
+        ]]]
+      tank: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const nivel = n('sensor.nivel_estanque_botacura_corregido');
+
+          let color1 = '#0284c7';
+          let color2 = '#38bdf8';
+          let glow = 'rgba(56,189,248,0.35)';
+
+          if (nivel < 20) {
+            color1 = '#991b1b';
+            color2 = '#ef4444';
+            glow = 'rgba(239,68,68,0.35)';
+          } else if (nivel < 40) {
+            color1 = '#c2410c';
+            color2 = '#fb923c';
+            glow = 'rgba(251,146,60,0.35)';
+          } else if (nivel >= 70) {
+            color1 = '#15803d';
+            color2 = '#22c55e';
+            glow = 'rgba(34,197,94,0.35)';
+          }
+
+          return `
+            <div style="
+              width:230px;
+              height:230px;
+              border-radius:34px;
+              background:#0b1120;
+              border:1px solid rgba(255,255,255,0.13);
+              box-shadow:0 0 35px ${glow};
+              position:relative;
+              overflow:hidden;
+              margin:auto;
+            ">
+              <div style="
+                position:absolute;
+                bottom:0;
+                left:0;
+                right:0;
+                height:${nivel}%;
+                background:linear-gradient(180deg, ${color2}, ${color1});
+                transition:height .8s ease;
+              "></div>
+
+              <div style="
+                position:absolute;
+                left:-20%;
+                right:-20%;
+                top:${100 - nivel}%;
+                height:28px;
+                background:rgba(255,255,255,0.25);
+                border-radius:50%;
+                transform:translateY(-50%);
+              "></div>
+
+              <div style="
+                position:absolute;
+                inset:0;
+                display:flex;
+                flex-direction:column;
+                justify-content:center;
+                align-items:center;
+                color:white;
+                text-shadow:0 2px 8px rgba(0,0,0,0.45);
+                text-align:center;
+              ">
+                <div style="font-size:46px; font-weight:900;">${nivel.toFixed(1)}%</div>
+                <div style="font-size:15px;">Nivel real calculado</div>
+              </div>
+            </div>
+          `;
+        ]]]
+      info: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const nivel = n('sensor.nivel_estanque_botacura_corregido');
+          const litros = n('sensor.litros_estanque_botacura_corregido');
+          const profundidad = n('sensor.profundidad_liquido_estanque_botacura');
+          const linea = n('sensor.sensor_linea_completa_estanque_botacura');
+          const estado = states['sensor.estado_estanque_botacura_corregido']?.state || 'Sin dato';
+
+          return `
+            <div style="width:100%; text-align:center;">
+              <div style="font-size:30px; color:#f8fafc; font-weight:900; margin-bottom:24px;">
+                💧 Estanque
+              </div>
+
+              <div style="display:grid; grid-template-columns:1fr 1fr; gap:22px; width:100%;">
+                <div style="border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:16px; text-align:center;">
+                  <div style="font-size:14px; color:#94a3b8;">Nivel real calculado</div>
+                  <div style="font-size:42px; color:#f8fafc; font-weight:900;">${nivel.toFixed(1)}%</div>
+                </div>
+
+                <div style="border-bottom:1px solid rgba(255,255,255,0.08); padding-bottom:16px; text-align:center;">
+                  <div style="font-size:14px; color:#94a3b8;">Litros disponibles</div>
+                  <div style="font-size:42px; color:#f8fafc; font-weight:900;">${litros.toLocaleString('es-CL')} L</div>
+                </div>
+
+                <div style="text-align:center;">
+                  <div style="font-size:14px; color:#94a3b8;">Profundidad líquido</div>
+                  <div style="font-size:36px; color:#e2e8f0; font-weight:900;">${profundidad.toFixed(2)} m</div>
+                  <div style="font-size:12px; color:#94a3b8; margin-top:4px;">Línea completa: ${linea.toFixed(2)} m</div>
+                </div>
+
+                <div style="text-align:center;">
+                  <div style="font-size:14px; color:#94a3b8;">Estado</div>
+                  <div style="font-size:36px; color:#e2e8f0; font-weight:900;">${estado}</div>
+                </div>
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: custom:mushroom-template-card
+        entity: switch.sonoff_a44002dc84_switch
+        primary: Llave agua potable
+        secondary: |
+          {% if is_state('switch.sonoff_a44002dc84_switch', 'on') %}
+            Abierta / llenando
+          {% else %}
+            Cerrada
+          {% endif %}
+        icon: |
+          {% if is_state('switch.sonoff_a44002dc84_switch', 'on') %}
+            mdi:valve-open
+          {% else %}
+            mdi:valve-closed
+          {% endif %}
+        icon_color: |
+          {% if is_state('switch.sonoff_a44002dc84_switch', 'on') %}
+            blue
+          {% else %}
+            grey
+          {% endif %}
+        layout: horizontal
+        tap_action:
+          action: toggle
+      - type: custom:mushroom-template-card
+        entity: sensor.sonoff_a44002dc84_battery
+        primary: Batería sensor
+        secondary: "{{ states('sensor.sonoff_a44002dc84_battery') }} %"
+        icon: mdi:battery
+        icon_color: green
+        layout: horizontal
+      - type: custom:mushroom-template-card
+        entity: sensor.sonoff_a44002dc84_water
+        primary: Litros acumulados SONOFF
+        secondary: "{{ states('sensor.sonoff_a44002dc84_water') | float(0) | round(0) }} L"
+        icon: mdi:counter
+        icon_color: blue
+        layout: horizontal
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 24px
+        - padding: 22px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.07)
+        - text-align: center
+      grid:
+        - grid-template-areas: "\"content\""
+        - grid-template-columns: 1fr
+        - justify-items: center
+        - align-items: center
+      custom_fields:
+        content:
+          - width: 100%
+          - text-align: center
+    custom_fields:
+      content: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const actual = n('sensor.litros_estanque_botacura_corregido');
+          const inicio = n('input_number.litros_inicio_dia_estanque_botacura');
+          const anterior = n('input_number.litros_lectura_anterior_estanque_botacura');
+          const ingreso = n('sensor.agua_ingresada_ultima_hora_estanque_botacura');
+          const aumento = n('sensor.aumento_neto_ultima_hora_estanque_botacura');
+          const consumoHora = n('sensor.consumo_ultima_hora_estanque_botacura');
+          const totalDia = n('sensor.consumo_diario_estanque_botacura');
+
+          const item = (titulo, valor, color) => `
+            <div style="
+              background:rgba(255,255,255,0.045);
+              border:1px solid rgba(255,255,255,0.07);
+              border-radius:18px;
+              padding:16px;
+              min-height:88px;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;
+              align-items:center;
+              text-align:center;
+            ">
+              <div style="font-size:13px; color:#94a3b8; font-weight:700;">${titulo}</div>
+              <div style="font-size:24px; color:${color}; font-weight:900; line-height:1.1; margin-top:4px;">
+                ${valor}
+              </div>
+            </div>
+          `;
+
+          return `
+            <div style="width:100%; text-align:center;">
+              <div style="font-size:27px; font-weight:900; color:#f8fafc;">
+                Contador por nivel del estanque
+              </div>
+              <div style="font-size:15px; color:#94a3b8; margin-top:5px; margin-bottom:18px;">
+                Guarda nivel a las 00:00 y compara litros cada 60 minutos
+              </div>
+
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(7, 1fr);
+                gap:12px;
+                width:100%;
+              ">
+                ${item('Litros actuales', actual.toLocaleString('es-CL') + ' L', '#38bdf8')}
+                ${item('Inicio del día', inicio.toLocaleString('es-CL') + ' L', '#60a5fa')}
+                ${item('Lectura anterior', anterior.toLocaleString('es-CL') + ' L', '#c084fc')}
+                ${item('Ingreso 1h', ingreso.toLocaleString('es-CL') + ' L', '#38bdf8')}
+                ${item('Aumento neto', aumento.toLocaleString('es-CL') + ' L', '#86efac')}
+                ${item('Consumo 1h', consumoHora.toLocaleString('es-CL') + ' L', '#f97316')}
+                ${item('Total día', totalDia.toLocaleString('es-CL') + ' L', '#c084fc')}
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: grid
+    columns: 2
+    square: false
+    cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        styles:
+          card:
+            - border-radius: 22px
+            - padding: 22px
+            - background: "linear-gradient(145deg, #111827, #020617)"
+            - border: 1px solid rgba(255,255,255,0.07)
+            - text-align: center
+          grid:
+            - grid-template-areas: "\"content\""
+            - grid-template-columns: 1fr
+            - justify-items: center
+            - align-items: center
+          custom_fields:
+            content:
+              - width: 100%
+              - text-align: center
+        custom_fields:
+          content: |
+            [[[
+              const n = (id) => {
+                const v = Number(states[id]?.state);
+                return Number.isFinite(v) ? v : 0;
+              };
+
+              const clp = (v) => '$' + v.toLocaleString('es-CL');
+
+              const hoy = n('sensor.consumo_agua_potable_diario');
+              const semana = n('sensor.consumo_agua_potable_semanal');
+              const mes = n('sensor.consumo_agua_potable_mensual');
+
+              const costoHoy = n('sensor.costo_agua_potable_diario');
+              const costoSemana = n('sensor.costo_agua_potable_semanal');
+              const costoMes = n('sensor.costo_agua_potable_mensual_total');
+
+              const item = (titulo, litros, costo, color) => `
+                <div style="
+                  background:rgba(255,255,255,0.045);
+                  border:1px solid rgba(255,255,255,0.07);
+                  border-radius:18px;
+                  padding:18px;
+                  min-height:105px;
+                  display:flex;
+                  flex-direction:column;
+                  justify-content:center;
+                  align-items:center;
+                  text-align:center;
+                ">
+                  <div style="font-size:15px; color:#cbd5e1; font-weight:800;">${titulo}</div>
+                  <div style="font-size:28px; color:#f8fafc; font-weight:900; line-height:1.1;">
+                    ${litros.toLocaleString('es-CL')} L
+                  </div>
+                  <div style="font-size:18px; color:${color}; font-weight:900; margin-top:4px;">
+                    ${clp(costo)}
+                  </div>
+                </div>
+              `;
+
+              return `
+                <div style="width:100%; text-align:center;">
+                  <div style="font-size:26px; font-weight:900; color:#f8fafc;">
+                    Entrada al estanque
+                  </div>
+                  <div style="font-size:15px; color:#94a3b8; margin-top:5px; margin-bottom:18px;">
+                    Agua que ingresa desde el medidor SONOFF
+                  </div>
+
+                  <div style="
+                    display:grid;
+                    grid-template-columns:repeat(3, 1fr);
+                    gap:14px;
+                    width:100%;
+                  ">
+                    ${item('Hoy', hoy, costoHoy, '#38bdf8')}
+                    ${item('Semana', semana, costoSemana, '#c084fc')}
+                    ${item('Mes', mes, costoMes, '#86efac')}
+                  </div>
+                </div>
+              `;
+            ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        styles:
+          card:
+            - border-radius: 22px
+            - padding: 22px
+            - background: "linear-gradient(145deg, #111827, #020617)"
+            - border: 1px solid rgba(255,255,255,0.07)
+            - text-align: center
+          grid:
+            - grid-template-areas: "\"content\""
+            - grid-template-columns: 1fr
+            - justify-items: center
+            - align-items: center
+          custom_fields:
+            content:
+              - width: 100%
+              - text-align: center
+        custom_fields:
+          content: |
+            [[[
+              const n = (id) => {
+                const v = Number(states[id]?.state);
+                return Number.isFinite(v) ? v : 0;
+              };
+
+              const clp = (v) => '$' + v.toLocaleString('es-CL');
+
+              const hoy = n('sensor.consumo_diario_estanque_botacura');
+              const semana = n('sensor.consumo_semanal_estanque_botacura');
+              const mes = n('sensor.consumo_mensual_estanque_botacura');
+
+              const costoHoy = n('sensor.costo_salida_estanque_diario');
+              const costoSemana = n('sensor.costo_salida_estanque_semanal');
+              const costoMes = n('sensor.costo_salida_estanque_mensual');
+
+              const item = (titulo, litros, costo, color) => `
+                <div style="
+                  background:rgba(255,255,255,0.045);
+                  border:1px solid rgba(255,255,255,0.07);
+                  border-radius:18px;
+                  padding:18px;
+                  min-height:105px;
+                  display:flex;
+                  flex-direction:column;
+                  justify-content:center;
+                  align-items:center;
+                  text-align:center;
+                ">
+                  <div style="font-size:15px; color:#cbd5e1; font-weight:800;">${titulo}</div>
+                  <div style="font-size:28px; color:#f8fafc; font-weight:900; line-height:1.1;">
+                    ${litros.toLocaleString('es-CL')} L
+                  </div>
+                  <div style="font-size:18px; color:${color}; font-weight:900; margin-top:4px;">
+                    ${clp(costo)}
+                  </div>
+                </div>
+              `;
+
+              return `
+                <div style="width:100%; text-align:center;">
+                  <div style="font-size:26px; font-weight:900; color:#f8fafc;">
+                    Salida / consumo del estanque
+                  </div>
+                  <div style="font-size:15px; color:#94a3b8; margin-top:5px; margin-bottom:18px;">
+                    Agua que sale, calculada según nivel real
+                  </div>
+
+                  <div style="
+                    display:grid;
+                    grid-template-columns:repeat(3, 1fr);
+                    gap:14px;
+                    width:100%;
+                  ">
+                    ${item('Hoy', hoy, costoHoy, '#38bdf8')}
+                    ${item('Semana', semana, costoSemana, '#c084fc')}
+                    ${item('Mes', mes, costoMes, '#86efac')}
+                  </div>
+                </div>
+              `;
+            ]]]
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 24px
+        - padding: 24px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.07)
+        - text-align: center
+      grid:
+        - grid-template-areas: "\"content\""
+        - grid-template-columns: 1fr
+        - justify-items: center
+        - align-items: center
+      custom_fields:
+        content:
+          - width: 100%
+          - text-align: center
+    custom_fields:
+      content: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const ingreso = n('sensor.agua_ingresada_ultima_hora_estanque_botacura');
+          const aumento = n('sensor.aumento_neto_ultima_hora_estanque_botacura');
+          const diferencia = n('sensor.diferencia_sonoff_vs_nivel_estanque_botacura');
+          const pct = n('sensor.diferencia_porcentual_sonoff_vs_nivel_estanque_botacura');
+          const simultaneo = n('sensor.consumo_simultaneo_estimado_estanque_botacura');
+          const estado = states['sensor.estado_comparacion_sonoff_nivel_estanque_botacura']?.state || 'Sin dato';
+
+          const item = (titulo, valor, color) => `
+            <div style="
+              background:rgba(255,255,255,0.045);
+              border:1px solid rgba(255,255,255,0.07);
+              border-radius:18px;
+              padding:18px;
+              min-height:90px;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;
+              align-items:center;
+              text-align:center;
+            ">
+              <div style="font-size:14px; color:#94a3b8; font-weight:700;">${titulo}</div>
+              <div style="font-size:25px; color:${color}; font-weight:900; line-height:1.1; margin-top:4px;">
+                ${valor}
+              </div>
+            </div>
+          `;
+
+          return `
+            <div style="width:100%; text-align:center;">
+              <div style="font-size:27px; font-weight:900; color:#f8fafc;">
+                Comparador SONOFF vs nivel
+              </div>
+              <div style="font-size:15px; color:#94a3b8; margin-top:5px; margin-bottom:18px;">
+                Ingreso medido vs aumento real del estanque
+              </div>
+
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(6, 1fr);
+                gap:12px;
+                width:100%;
+              ">
+                ${item('Ingreso', ingreso.toLocaleString('es-CL') + ' L', '#38bdf8')}
+                ${item('Aumento', aumento.toLocaleString('es-CL') + ' L', '#86efac')}
+                ${item('Diferencia', diferencia.toLocaleString('es-CL') + ' L', '#c084fc')}
+                ${item('Diferencia %', pct.toFixed(1) + '%', '#facc15')}
+                ${item('Consumo simultáneo', simultaneo.toLocaleString('es-CL') + ' L', '#f97316')}
+                ${item('Estado', estado, '#e2e8f0')}
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 22px
+        - padding: 20px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.07)
+        - text-align: center
+      grid:
+        - grid-template-areas: "\"content\""
+        - grid-template-columns: 1fr
+        - justify-items: center
+        - align-items: center
+      custom_fields:
+        content:
+          - width: 100%
+          - text-align: center
+    custom_fields:
+      content: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const min = n('number.nivel_del_tanque_a_alarma_minima');
+          const max = n('number.nivel_del_tanque_a_alarma_maxima');
+          const tiempo = n('sensor.tiempo_estimado_llenado_hasta_maximo');
+          const nivel = n('sensor.nivel_estanque_botacura_corregido');
+
+          const item = (titulo, valor, color) => `
+            <div style="
+              background:rgba(255,255,255,0.045);
+              border:1px solid rgba(255,255,255,0.07);
+              border-radius:16px;
+              padding:14px;
+              min-height:76px;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;
+              align-items:center;
+              text-align:center;
+            ">
+              <div style="font-size:13px; color:#94a3b8;">${titulo}</div>
+              <div style="font-size:25px; color:${color}; font-weight:900;">${valor}</div>
+            </div>
+          `;
+
+          return `
+            <div style="width:100%; text-align:center;">
+              <div style="font-size:26px; font-weight:900; color:#f8fafc; margin-bottom:4px;">
+                ⚙️ Autollenado
+              </div>
+              <div style="font-size:14px; color:#94a3b8; margin-bottom:16px;">
+                Parámetros principales
+              </div>
+
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(4, 1fr);
+                gap:14px;
+                width:100%;
+              ">
+                ${item('Nivel mínimo', min.toFixed(0) + '%', '#c084fc')}
+                ${item('Nivel máximo', max.toFixed(0) + '%', '#c084fc')}
+                ${item('Tiempo estimado', tiempo.toFixed(0) + ' min', '#38bdf8')}
+                ${item('Nivel real', nivel.toFixed(1) + '%', '#c084fc')}
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: grid
+    columns: 3
+    square: false
+    cards:
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Agua ingresada por hora
+          show_states: true
+        graph_span: 24h
+        span:
+          end: hour
+        apex_config:
+          chart:
+            height: 300
+            toolbar:
+              show: false
+            background: transparent
+          theme:
+            mode: dark
+          legend:
+            position: bottom
+            horizontalAlign: center
+          dataLabels:
+            enabled: false
+          grid:
+            borderColor: rgba(148,163,184,0.18)
+        series:
+          - entity: sensor.agua_ingresada_ultima_hora_estanque_botacura
+            name: Ingreso por hora
+            type: column
+            color: "#38bdf8"
+            unit: L
+            group_by:
+              duration: 1h
+              func: max
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Consumo del estanque por hora
+          show_states: true
+        graph_span: 24h
+        span:
+          end: hour
+        apex_config:
+          chart:
+            height: 300
+            toolbar:
+              show: false
+            background: transparent
+          theme:
+            mode: dark
+          legend:
+            position: bottom
+            horizontalAlign: center
+          dataLabels:
+            enabled: false
+          grid:
+            borderColor: rgba(148,163,184,0.18)
+        series:
+          - entity: sensor.consumo_ultima_hora_estanque_botacura
+            name: Consumo por hora
+            type: column
+            color: "#f97316"
+            unit: L
+            group_by:
+              duration: 1h
+              func: max
+      - type: custom:apexcharts-card
+        header:
+          show: true
+          title: Consumo diario del estanque
+          show_states: true
+        graph_span: 14d
+        span:
+          end: day
+        apex_config:
+          chart:
+            height: 300
+            toolbar:
+              show: false
+            background: transparent
+          theme:
+            mode: dark
+          legend:
+            position: bottom
+            horizontalAlign: center
+          dataLabels:
+            enabled: false
+          grid:
+            borderColor: rgba(148,163,184,0.18)
+        series:
+          - entity: sensor.consumo_diario_estanque_botacura
+            name: Consumo diario
+            type: column
+            color: "#c084fc"
+            unit: L
+            group_by:
+              duration: 1d
+              func: max

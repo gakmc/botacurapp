@@ -1,13 +1,19 @@
 <?php
-
 namespace App;
-use Illuminate\Support\Str;
+
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Support\Str;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class Programa extends Model
 {
-    protected $guarded = [];  
+    protected $guarded = [];
+
+    protected $casts = [
+        'wc_main_image_ids' => 'array',
+        'permite_giftcard'  => 'boolean',
+        'solo_plataforma'   => 'boolean',
+    ];
 
 //RELACIONES
     // public function servicios()
@@ -40,8 +46,6 @@ class Programa extends Model
         return $this->hasMany(WoocommerceOrder::class, 'wc_product_id', 'wc_product_id');
     }
 
-
-    
     //ALMACENAMIENTO
 
     public function store($request)
@@ -49,12 +53,15 @@ class Programa extends Model
 
         $slug = Str::slug($request->nombre_programa, '-');
 
-
         $programa = self::create([
-            'nombre_programa' => $request->input('nombre_programa'),
-            'valor_programa' => $request->input('valor_programa'),
-            'descuento' => $request->input('descuento'),
-            'slug' => $slug,
+            'nombre_programa'  => $request->input('nombre_programa'),
+            'valor_programa'   => $request->input('valor_programa'),
+            'descuento'        => $request->input('descuento'),
+            'espacio_tipo'     => $request->input('espacio_tipo'),
+            'min_personas'     => $request->input('min_personas', 1),
+            'permite_giftcard' => $request->has('permite_giftcard') ? 1 : 0,
+            'solo_plataforma'  => $request->has('solo_plataforma') ? 1 : 0,
+            'slug'             => $slug,
         ]);
 
         if ($request->has('servicios')) {
@@ -65,14 +72,14 @@ class Programa extends Model
         return $programa;
     }
 
-
-
     public function my_update($request)
     {
         $slug = Str::slug($request->nombre_programa, '-');
 
-        $this->update($request->except('servicios') + [
-            'slug' => $slug
+        $this->update($request->except(['servicios', 'imagenes', 'solo_plataforma', 'permite_giftcard']) + [
+            'slug'             => $slug,
+            'solo_plataforma'  => $request->has('solo_plataforma') ? 1 : 0,
+            'permite_giftcard' => $request->has('permite_giftcard') ? 1 : 0,
         ]);
 
         if ($request->has('servicios')) {
@@ -80,17 +87,16 @@ class Programa extends Model
         } else {
             $this->servicios()->sync([]);
         }
-        
 
         Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
         return $this;
-        
+
     }
 
     //VALIDACION
     public function getIncluyeMasajesAttribute()
     {
-        return $this->servicios->contains(function($servicio){
+        return $this->servicios->contains(function ($servicio) {
             return in_array($servicio->nombre_servicio, ['Masaje', 'masaje', 'Masajes', 'masajes']);
         });
     }
@@ -102,10 +108,22 @@ class Programa extends Model
         });
     }
 
+    public function scopePermiteGc($q)
+    {
+        return $q->where('permite_giftcard', true);
+    }
+
     //RECUPERACION DE INFORMACION
 
     //OTRAS OPERACIONES
-    public function scopeActivos($q){ return $q->where('estado', 'activo')->orWhereNull('estado'); }
-    public function scopeInactivos($q){ return $q->where('estado', 'inactivo'); }
+    public function scopeActivos($q)
+    {
+        return $q->where('estado', 'activo')->orWhereNull('estado');
+    }
+    public function scopeInactivos($q)
+    {
+        return $q->where('estado', 'inactivo');
+    }
+
 
 }

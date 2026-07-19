@@ -1,0 +1,70 @@
+
+- id: auto_calefaccion_tinaja_1
+  alias: "Auto Calefacción Tinaja 1"
+  description: "Enciende T1 con anticipación según próxima reserva y tiempo estimado de calentamiento"
+  trigger:
+    - platform: time_pattern
+      minutes: "/1"
+  condition:
+    - condition: template
+      value_template: >
+        {% set t1 = state_attr('sensor.reservas_tinajas', 'tinaja_1') %}
+        {% if t1 and t1.datetime_reserva %}
+          {% set reserva = strptime(t1.datetime_reserva, '%Y-%m-%d %H:%M:%S') | as_datetime %}
+          {% set minutos = states('sensor.minutos_para_calentar_t1') | int(0) + 5 %}
+          {% set inicio = reserva - timedelta(minutes=minutos) %}
+          {{ now() >= inicio and now() < reserva }}
+        {% else %}
+          false
+        {% endif %}
+    - condition: state
+      entity_id: switch.sonoff_100136bad0_2
+      state: "off"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sonoff_100136bad0_2
+    - service: persistent_notification.create
+      data:
+        title: "🔥 Tinaja 1 — Calefacción automática"
+        message: >
+          {% set t1 = state_attr('sensor.reservas_tinajas', 'tinaja_1') %}
+          Encendida para {{ t1.cliente }}. Reserva {{ t1.horario }}.
+          Tiempo estimado: {{ states('sensor.minutos_para_calentar_t1') }} min.
+        notification_id: auto_calefaccion_t1
+  mode: single
+
+- id: auto_calefaccion_tinaja_2
+  alias: "Auto Calefacción Tinaja 2"
+  description: "Enciende T2 con anticipación según próxima reserva y tiempo estimado de calentamiento"
+  trigger:
+    - platform: time_pattern
+      minutes: "/1"
+  condition:
+    - condition: template
+      value_template: >
+        {% set t2 = state_attr('sensor.reservas_tinajas', 'tinaja_2') %}
+        {% if t2 and t2.datetime_reserva %}
+          {% set reserva = strptime(t2.datetime_reserva, '%Y-%m-%d %H:%M:%S') | as_datetime %}
+          {% set minutos = states('sensor.minutos_para_calentar_t2') | int(0) + 5 %}
+          {% set inicio = reserva - timedelta(minutes=minutos) %}
+          {{ now() >= inicio and now() < reserva }}
+        {% else %}
+          false
+        {% endif %}
+    - condition: state
+      entity_id: switch.sonoff_100136b567_2
+      state: "off"
+  action:
+    - service: switch.turn_on
+      target:
+        entity_id: switch.sonoff_100136b567_2
+    - service: persistent_notification.create
+      data:
+        title: "🔥 Tinaja 2 — Calefacción automática"
+        message: >
+          {% set t2 = state_attr('sensor.reservas_tinajas', 'tinaja_2') %}
+          Encendida para {{ t2.cliente }}. Reserva {{ t2.horario }}.
+          Tiempo estimado: {{ states('sensor.minutos_para_calentar_t2') }} min.
+        notification_id: auto_calefaccion_t2
+  mode: single

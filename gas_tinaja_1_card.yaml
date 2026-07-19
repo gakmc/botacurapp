@@ -1,0 +1,276 @@
+type: vertical-stack
+cards:
+  - type: tile
+    entity: input_number.costo_galon_gas_tinaja_1
+    name: Valor cilindro gas Tinaja 1
+    icon: mdi:cash
+    color: green
+    vertical: false
+    features:
+      - type: numeric-input
+    features_position: bottom
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 28px
+        - padding: 24px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.08)
+        - box-shadow: 0px 10px 28px rgba(0,0,0,0.35)
+        - text-align: center
+        - overflow: hidden
+      grid:
+        - grid-template-areas: "\"content\""
+        - grid-template-columns: 1fr
+        - justify-items: stretch
+        - align-items: center
+      custom_fields:
+        content:
+          - width: 100%
+    custom_fields:
+      content: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const clp = (v) => '$' + Math.round(v).toLocaleString('es-CL');
+
+          const estado = states['sensor.estado_galon_gas_tinaja_1']?.state || 'Sin dato';
+          const gas = states['sensor.estado_gas_tinaja_1']?.state || 'Sin dato';
+          const diagnostico = states['sensor.diagnostico_calefont_tinaja_1']?.state || 'Sin dato';
+
+          const restante = n('sensor.porcentaje_gas_restante_tinaja_1');
+          const usado = n('sensor.porcentaje_gas_usado_tinaja_1');
+
+          const costoCilindro = n('input_number.costo_galon_gas_tinaja_1');
+          const kgTotal = n('input_number.kg_gas_galon_tinaja_1');
+          const consumoM3H = n('input_number.consumo_gas_m3_h_tinaja_1');
+          const kgPorM3 = n('input_number.kg_por_m3_glp_tinaja_1');
+          const caudal = n('input_number.caudal_promedio_calefont_tinaja_1');
+          const costoHora = n('sensor.costo_hora_gas_tinaja_1');
+
+          const horas = n('input_number.horas_gas_tinaja_1');
+          const restantes = n('sensor.horas_restantes_gas_tinaja_1');
+          const estimadas = n('input_number.horas_estimadas_galon_tinaja_1');
+          const ultimo = n('input_number.horas_ultimo_galon_tinaja_1');
+
+          const costoUsado = n('sensor.costo_gas_usado_tinaja_1');
+          const m3 = n('sensor.gas_consumido_m3_tinaja_1');
+          const kg = n('sensor.kg_gas_consumidos_tinaja_1');
+          const fecha = states['input_datetime.fecha_cambio_gas_tinaja_1']?.state || 'Sin dato';
+
+          let estadoColor = '#22c55e';
+          if (estado === 'Crítico') estadoColor = '#ef4444';
+          else if (estado === 'Pedir gas') estadoColor = '#f97316';
+          else if (estado === 'Bajo') estadoColor = '#facc15';
+          else if (estado === 'Medio') estadoColor = '#38bdf8';
+          else if (estado === 'Sin dato') estadoColor = '#94a3b8';
+
+          let color1 = '#22c55e';
+          let color2 = '#16a34a';
+          let glow = 'rgba(34,197,94,0.35)';
+
+          if (restante <= 5) {
+            color1 = '#ef4444';
+            color2 = '#991b1b';
+            glow = 'rgba(239,68,68,0.35)';
+          } else if (restante <= 15) {
+            color1 = '#f97316';
+            color2 = '#c2410c';
+            glow = 'rgba(249,115,22,0.35)';
+          } else if (restante <= 30) {
+            color1 = '#facc15';
+            color2 = '#ca8a04';
+            glow = 'rgba(250,204,21,0.35)';
+          } else if (restante <= 60) {
+            color1 = '#38bdf8';
+            color2 = '#0284c7';
+            glow = 'rgba(56,189,248,0.35)';
+          }
+
+          const item = (label, value, color) => `
+            <div style="
+              background:rgba(255,255,255,0.045);
+              border:1px solid rgba(255,255,255,0.07);
+              border-radius:16px;
+              min-height:86px;
+              padding:12px;
+              display:flex;
+              flex-direction:column;
+              justify-content:center;
+              align-items:center;
+              text-align:center;
+              overflow:hidden;
+            ">
+              <div style="
+                font-size:13px;
+                color:#94a3b8;
+                font-weight:700;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                max-width:100%;
+              ">${label}</div>
+
+              <div style="
+                font-size:24px;
+                font-weight:900;
+                color:${color};
+                line-height:1.1;
+                margin-top:4px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+                max-width:100%;
+              ">${value}</div>
+            </div>
+          `;
+
+          return `
+            <style>
+              .gas-main-wrap {
+                width:100%;
+                display:grid;
+                grid-template-columns:minmax(190px,240px) minmax(0,1fr);
+                gap:22px;
+                align-items:center;
+              }
+
+              .gas-data-grid {
+                display:grid;
+                grid-template-columns:repeat(auto-fit, minmax(135px, 1fr));
+                gap:12px;
+                width:100%;
+              }
+
+              @media (max-width: 760px) {
+                .gas-main-wrap {
+                  grid-template-columns:1fr;
+                }
+
+                .gas-gauge-box {
+                  margin:auto;
+                }
+              }
+            </style>
+
+            <div style="width:100%;">
+              <div style="
+                display:flex;
+                justify-content:space-between;
+                align-items:flex-start;
+                gap:12px;
+                margin-bottom:20px;
+              ">
+                <div style="text-align:left;min-width:0;">
+                  <div style="
+                    font-size:28px;
+                    font-weight:900;
+                    color:#f8fafc;
+                    white-space:nowrap;
+                    overflow:hidden;
+                    text-overflow:ellipsis;
+                  ">Gas Tinaja 1</div>
+
+                  <div style="font-size:14px;color:#94a3b8;margin-top:5px;">
+                    Consumo real · calefont · aprendizaje automático
+                  </div>
+
+                  <div style="font-size:13px;color:#cbd5e1;margin-top:8px;line-height:1.35;">
+                    Estado gas: <b>${gas}</b> · Diagnóstico: <b>${diagnostico}</b>
+                  </div>
+                </div>
+
+                <div style="
+                  padding:8px 14px;
+                  border-radius:999px;
+                  background:${estadoColor}22;
+                  color:${estadoColor};
+                  font-size:13px;
+                  font-weight:900;
+                  min-width:96px;
+                  text-align:center;
+                  white-space:nowrap;
+                ">${estado}</div>
+              </div>
+
+              <div class="gas-main-wrap">
+                <div class="gas-gauge-box" style="
+                  width:220px;
+                  height:220px;
+                  border-radius:36px;
+                  background:#020617;
+                  border:1px solid rgba(255,255,255,0.12);
+                  box-shadow:0 0 35px ${glow};
+                  position:relative;
+                  overflow:hidden;
+                ">
+                  <div style="
+                    position:absolute;
+                    bottom:0;
+                    left:0;
+                    right:0;
+                    height:${restante}%;
+                    background:linear-gradient(180deg, ${color1}, ${color2});
+                    transition:height .8s ease;
+                  "></div>
+
+                  <div style="
+                    position:absolute;
+                    inset:0;
+                    display:flex;
+                    flex-direction:column;
+                    align-items:center;
+                    justify-content:center;
+                    text-align:center;
+                    text-shadow:0 3px 8px rgba(0,0,0,0.45);
+                  ">
+                    <ha-icon icon="mdi:gas-cylinder" style="width:44px;height:44px;color:white;margin-bottom:8px;"></ha-icon>
+                    <div style="font-size:42px;font-weight:900;color:white;line-height:1;">${restante.toFixed(1)}%</div>
+                    <div style="font-size:14px;color:white;margin-top:5px;">Gas restante</div>
+                    <div style="font-size:12px;color:#e2e8f0;margin-top:5px;">Usado ${usado.toFixed(1)}%</div>
+                  </div>
+                </div>
+
+                <div class="gas-data-grid">
+                  ${item('Valor cilindro', clp(costoCilindro), '#86efac')}
+                  ${item('Cilindro', kgTotal.toFixed(0) + ' kg', '#e2e8f0')}
+                  ${item('Consumo calefont', consumoM3H.toFixed(1) + ' m³/h', '#fb923c')}
+                  ${item('Costo/hora', clp(costoHora), '#86efac')}
+
+                  ${item('Horas usadas', horas.toFixed(2) + ' h', '#f8fafc')}
+                  ${item('Horas restantes', restantes.toFixed(2) + ' h', '#38bdf8')}
+                  ${item('Horas estimadas', estimadas.toFixed(1) + ' h', '#c084fc')}
+                  ${item('Costo usado', clp(costoUsado), '#facc15')}
+
+                  ${item('Gas usado', m3.toFixed(2) + ' m³', '#fb923c')}
+                  ${item('Kg usados', kg.toFixed(1) + ' kg', '#f97316')}
+                  ${item('Último cilindro', ultimo.toFixed(2) + ' h', '#60a5fa')}
+                  ${item('Último cambio', fecha, '#e2e8f0')}
+
+                  ${item('Kg por m³', kgPorM3.toFixed(1) + ' kg/m³', '#a78bfa')}
+                  ${item('Caudal agua', caudal.toFixed(1) + ' L/min', '#38bdf8')}
+                  ${item('Litros/h calefont', (caudal * 60).toFixed(0) + ' L/h', '#60a5fa')}
+                  ${item('Modelo cálculo', 'Automático', '#22c55e')}
+                </div>
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:mushroom-template-card
+    entity: input_button.gas_nuevo_tinaja_1
+    primary: Registrar gas nuevo
+    secondary: Actualiza fecha, reinicia contador y guarda evento en MySQL
+    icon: mdi:gas-cylinder
+    icon_color: orange
+    layout: horizontal
+    tap_action:
+      action: call-service
+      service: input_button.press
+      target:
+        entity_id: input_button.gas_nuevo_tinaja_1

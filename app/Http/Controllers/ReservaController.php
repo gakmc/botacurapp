@@ -7,6 +7,7 @@ use App\Consumo;
 use App\DetalleServiciosExtra;
 use App\Events\Menu\AvisoCocinaEvent;
 use App\Events\Menu\MenuEntregadoEvent;
+use App\FechaDisponible;
 use App\GiftCard;
 use App\Http\Requests\Reserva\StoreRequest;
 use App\Http\Requests\Reserva\UpdateRequest;
@@ -626,16 +627,35 @@ class ReservaController extends Controller
 
         $gc = GiftCard::where('para',$cliente->nombre_cliente)
                 ->where('usada', false)
-                ->whereNull('fecha_uso')
                 ->whereNull('id_venta')
                 ->first();
 
 
+        $habilitadas = FechaDisponible::where('habilitada', true)
+            ->where('fecha', '>=', today())
+            ->pluck('fecha')
+            ->map(function ($f) { return $f->format('Y-m-d'); })
+            ->toArray();
+
+        // Calcular qué fechas del rango deshabilitar en pickadate
+        // Formato requerido por pickadate: [year, month(0-indexed), day]
+        $fechasDeshabilitadas = [];
+        $cursor  = today()->addDay();
+        $maxDate = today()->addDays(120);
+
+        while ($cursor <= $maxDate) {
+            if (!in_array($cursor->format('Y-m-d'), $habilitadas)) {
+                $fechasDeshabilitadas[] = [(int) $cursor->year, (int) $cursor->month - 1, (int) $cursor->day];
+            }
+            $cursor->addDay();
+        }
+
         return view('themes.backoffice.pages.reserva.create', [
-            'cliente'   => $cliente,
-            'programas' => $programas,
-            'tipos'     => $tipos,
-            'gc'        => $gc
+            'cliente'              => $cliente,
+            'programas'            => $programas,
+            'tipos'                => $tipos,
+            'gc'                   => $gc,
+            'fechasDeshabilitadas' => $fechasDeshabilitadas,
         ]);
     }
 
@@ -648,9 +668,6 @@ class ReservaController extends Controller
             ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
             ->where('reservas.fecha_visita', $fechaSeleccionada)
             ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
             ->toArray();
 
         $ubicacionesAll = DB::table('ubicaciones')
@@ -661,7 +678,30 @@ class ReservaController extends Controller
             return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
         })->values();
 
-        return response()->json($ubicaciones);
+        // Horarios sauna disponibles (10:00–18:30 cada 30 min)
+        $horaInicio = new \DateTime('10:00');
+        $horaFin    = new \DateTime('18:30');
+        $intervalo  = new \DateInterval('PT30M');
+        $horariosTodos = [];
+        while ($horaInicio <= $horaFin) {
+            $horariosTodos[] = $horaInicio->format('H:i');
+            $horaInicio->add($intervalo);
+        }
+
+        $horariosOcupados = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->pluck('visitas.horario_sauna')
+            ->filter(function ($hora) { return ! is_null($hora) && $hora !== ''; })
+            ->map(function ($hora) { return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i'); })
+            ->toArray();
+
+        $horariosDisponibles = array_values(array_diff($horariosTodos, $horariosOcupados));
+
+        return response()->json([
+            'ubicaciones'    => $ubicaciones,
+            'horarios_sauna' => $horariosDisponibles,
+        ]);
     }
 
     public function store(StoreRequest $request, Reserva $reserva)

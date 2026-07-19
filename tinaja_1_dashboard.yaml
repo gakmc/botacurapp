@@ -1,0 +1,751 @@
+type: vertical-stack
+cards:
+  - type: custom:mushroom-title-card
+    title: Tinaja 1
+    subtitle: Temperatura interior · calefont · filtrado · gas · reserva
+  - type: custom:button-card
+    entity: sensor.sonoff_a440041249_temperature
+    show_icon: false
+    show_name: false
+    show_state: false
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      grid:
+        - grid-template-areas: "\"icon info right\""
+        - grid-template-columns: 58px minmax(0,1fr) 170px
+        - align-items: center
+        - column-gap: 14px
+      card:
+        - border-radius: 20px
+        - padding: 16px
+        - box-shadow: none
+        - overflow: hidden
+        - background: |
+            [[[
+              const temp = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+
+              if (temp >= 41) return '#f4c7c7';
+              if (temp >= 40) return '#c7f0d2';
+              if (temp >= 36) return '#fde7a9';
+              if (temp >= 34) return '#cfe3ff';
+
+              return '#c9ecff';
+            ]]]
+      custom_fields:
+        icon:
+          - justify-self: center
+          - align-self: center
+        info:
+          - justify-self: start
+          - align-self: center
+          - min-width: 0
+        right:
+          - justify-self: end
+          - align-self: center
+    custom_fields:
+      icon: |
+        [[[
+          const temp = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+
+          let icon = 'mdi:snowflake-thermometer';
+          let color = '#0284c7';
+
+          if (temp >= 34 && temp < 36) {
+            icon = 'mdi:thermometer';
+            color = '#2563eb';
+          } else if (temp >= 36 && temp < 40) {
+            icon = 'mdi:fire';
+            color = '#d97706';
+          } else if (temp >= 40 && temp < 41) {
+            icon = 'mdi:hot-tub';
+            color = '#16a34a';
+          } else if (temp >= 41) {
+            icon = 'mdi:thermometer-alert';
+            color = '#dc2626';
+          }
+
+          return `
+            <div style="
+              width:46px;
+              height:46px;
+              border-radius:50%;
+              background:${color};
+              display:flex;
+              align-items:center;
+              justify-content:center;
+              color:white;
+            ">
+              <ha-icon icon="${icon}" style="width:24px;height:24px;"></ha-icon>
+            </div>
+          `;
+        ]]]
+      info: |
+        [[[
+          const temp = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+
+          let estado = 'FRÍA';
+          let subtitulo = 'Temperatura baja para uso';
+          let color = '#0284c7';
+
+          if (temp >= 34 && temp < 36) {
+            estado = 'TEMPLADA';
+            subtitulo = 'Comenzando a tomar temperatura';
+            color = '#2563eb';
+          } else if (temp >= 36 && temp < 40) {
+            estado = 'CALENTANDO';
+            subtitulo = 'Acercándose al rango ideal';
+            color = '#d97706';
+          } else if (temp >= 40 && temp < 41) {
+            estado = 'OBJETIVO';
+            subtitulo = 'En rango de uso';
+            color = '#16a34a';
+          } else if (temp >= 41) {
+            estado = 'CALIENTE';
+            subtitulo = 'Sobre 41°C · revisar temperatura';
+            color = '#dc2626';
+          }
+
+          return `
+            <div style="text-align:left;min-width:0;">
+              <div style="
+                font-size:18px;
+                font-weight:900;
+                color:#1f2933;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                T° Interior T1
+              </div>
+
+              <div style="
+                font-size:14px;
+                font-weight:900;
+                color:${color};
+                margin-top:2px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${estado}
+              </div>
+
+              <div style="
+                font-size:12px;
+                font-weight:600;
+                color:#4b5563;
+                margin-top:4px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${subtitulo}
+              </div>
+            </div>
+          `;
+        ]]]
+      right: |
+        [[[
+          const interior = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+
+          const promedioRaw = Number(states['input_number.promedio_minutos_por_grado_tinaja_1']?.state || 0);
+          const minPorGrado = promedioRaw > 0 ? promedioRaw : 12;
+
+          const faltanGrados = Math.max(40 - interior, 0);
+          const totalMin = Math.round(faltanGrados * minPorGrado);
+
+          const horas = Math.floor(totalMin / 60);
+          const minutos = totalMin % 60;
+
+          let tiempo = '0m';
+          if (totalMin >= 60) tiempo = `${horas}h ${minutos}m`;
+          else if (totalMin > 0) tiempo = `${minutos}m`;
+
+          return `
+            <div style="
+              width:100%;
+              text-align:right;
+              border-left:1px solid rgba(31,41,55,0.15);
+              padding-left:14px;
+              box-sizing:border-box;
+            ">
+              <div style="
+                font-size:26px;
+                font-weight:900;
+                color:#1f2933;
+                line-height:1.05;
+                white-space:nowrap;
+              ">
+                ${interior.toFixed(1)}°C
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:700;
+                color:#4b5563;
+                margin-top:4px;
+                white-space:nowrap;
+              ">
+                Interior T1
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:900;
+                color:#1f2933;
+                margin-top:3px;
+                white-space:nowrap;
+              ">
+                Faltan ${tiempo} para 40°C
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      grid:
+        - grid-template-areas: "\"icon_btn info right\""
+        - grid-template-columns: 58px minmax(0,1fr) 170px
+        - align-items: center
+        - column-gap: 14px
+      card:
+        - border-radius: 20px
+        - padding: 16px
+        - box-shadow: none
+        - overflow: hidden
+        - background: |
+            [[[
+              const sw = states['switch.sonoff_100136bad0_2']?.state;
+              const salida = Number(states['sensor.sonoff_10012a25d8_temperature']?.state || 0);
+              const anterior = Number(states['input_number.temp_salida_anterior_calefont_tinaja_1']?.state || 0);
+              const interior = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+              const subiendo = salida > (anterior + 0.2);
+
+              if (interior >= 40 && sw === 'on') return '#c7f0d2';
+              if (sw === 'on' && subiendo) return '#f8caca';
+              if (sw === 'on') return '#fde2b8';
+
+              return '#e5e7eb';
+            ]]]
+      custom_fields:
+        icon_btn:
+          - justify-self: center
+          - align-self: center
+        info:
+          - justify-self: start
+          - align-self: center
+          - min-width: 0
+        right:
+          - justify-self: end
+          - align-self: center
+    custom_fields:
+      icon_btn:
+        card:
+          type: custom:button-card
+          entity: switch.sonoff_100136bad0_2
+          show_icon: false
+          show_name: false
+          show_state: false
+          tap_action:
+            action: toggle
+          hold_action:
+            action: more-info
+          styles:
+            card:
+              - width: 46px
+              - height: 46px
+              - border-radius: 50%
+              - padding: 0
+              - box-shadow: none
+              - background: |
+                  [[[
+                    const sw = states['switch.sonoff_100136bad0_2']?.state;
+                    const salida = Number(states['sensor.sonoff_10012a25d8_temperature']?.state || 0);
+                    const anterior = Number(states['input_number.temp_salida_anterior_calefont_tinaja_1']?.state || 0);
+                    const interior = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+                    const subiendo = salida > (anterior + 0.2);
+
+                    if (interior >= 40 && sw === 'on') return '#16a34a';
+                    if (sw === 'on' && subiendo) return '#dc2626';
+                    if (sw === 'on') return '#f97316';
+
+                    return '#6b7280';
+                  ]]]
+            grid:
+              - grid-template-areas: "\"i\""
+          custom_fields:
+            i: |
+              [[[
+                const sw = states['switch.sonoff_100136bad0_2']?.state;
+                const icon = sw === 'on' ? 'mdi:fire' : 'mdi:fire-off';
+
+                return `
+                  <div style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    width:100%;
+                    height:100%;
+                    color:white;
+                  ">
+                    <ha-icon icon="${icon}" style="width:24px;height:24px;"></ha-icon>
+                  </div>
+                `;
+              ]]]
+      info: |
+        [[[
+          const sw = states['switch.sonoff_100136bad0_2']?.state;
+          const salida = Number(states['sensor.sonoff_10012a25d8_temperature']?.state || 0);
+          const anterior = Number(states['input_number.temp_salida_anterior_calefont_tinaja_1']?.state || 0);
+          const interior = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+          const subiendo = salida > (anterior + 0.2);
+
+          const gasRestante = Number(states['sensor.porcentaje_gas_restante_tinaja_1']?.state || 0);
+
+          let gasColor = '#16a34a';
+          if (gasRestante <= 5) gasColor = '#dc2626';
+          else if (gasRestante <= 15) gasColor = '#f97316';
+          else if (gasRestante <= 30) gasColor = '#ca8a04';
+          else if (gasRestante <= 60) gasColor = '#0891b2';
+
+          let estado = 'CALEFACCIÓN APAGADA';
+          let color = '#6b7280';
+
+          if (sw === 'on' && !subiendo) {
+            estado = 'CALEFACCIÓN ENCENDIDA';
+            color = '#f97316';
+          }
+
+          if (sw === 'on' && subiendo) {
+            estado = 'CALEFONT ENCENDIDO';
+            color = '#dc2626';
+          }
+
+          if (interior >= 40 && sw === 'on') {
+            estado = 'OBJETIVO ALCANZADO';
+            color = '#16a34a';
+          }
+
+          return `
+            <div style="text-align:left;min-width:0;">
+              <div style="
+                font-size:18px;
+                font-weight:900;
+                color:#1f2933;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                Calefacción Tinaja 1
+              </div>
+
+              <div style="
+                font-size:14px;
+                font-weight:900;
+                color:${color};
+                margin-top:2px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${estado}
+              </div>
+
+              <div style="
+                font-size:13px;
+                font-weight:900;
+                color:#374151;
+                margin-top:6px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                Gas: <span style="font-weight:900;color:${gasColor};">${gasRestante.toFixed(0)}%</span>
+              </div>
+            </div>
+          `;
+        ]]]
+      right: |
+        [[[
+          const salida = Number(states['sensor.sonoff_10012a25d8_temperature']?.state || 0);
+
+          return `
+            <div style="
+              width:100%;
+              text-align:right;
+              border-left:1px solid rgba(31,41,55,0.15);
+              padding-left:14px;
+              box-sizing:border-box;
+            ">
+              <div style="
+                font-size:26px;
+                font-weight:900;
+                color:#1f2933;
+                line-height:1.05;
+                white-space:nowrap;
+              ">
+                ${salida.toFixed(1)}°C
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:700;
+                color:#4b5563;
+                margin-top:4px;
+                white-space:nowrap;
+              ">
+                Salida calefont T1
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    tap_action:
+      action: more-info
+    hold_action:
+      action: more-info
+    styles:
+      grid:
+        - grid-template-areas: "\"icon_btn info right\""
+        - grid-template-columns: 58px minmax(0,1fr) 170px
+        - align-items: center
+        - column-gap: 14px
+      card:
+        - border-radius: 20px
+        - padding: 16px
+        - box-shadow: none
+        - overflow: hidden
+        - background: |
+            [[[
+              const sw = states['switch.sonoff_100136bad0_1']?.state;
+              if (sw === 'on') return '#d8f4dc';
+
+              return '#e5e7eb';
+            ]]]
+      custom_fields:
+        icon_btn:
+          - justify-self: center
+          - align-self: center
+        info:
+          - justify-self: start
+          - align-self: center
+          - min-width: 0
+        right:
+          - justify-self: end
+          - align-self: center
+    custom_fields:
+      icon_btn:
+        card:
+          type: custom:button-card
+          entity: switch.sonoff_100136bad0_1
+          show_icon: false
+          show_name: false
+          show_state: false
+          tap_action:
+            action: toggle
+          hold_action:
+            action: more-info
+          styles:
+            card:
+              - width: 46px
+              - height: 46px
+              - border-radius: 50%
+              - padding: 0
+              - box-shadow: none
+              - background: |
+                  [[[
+                    return states['switch.sonoff_100136bad0_1']?.state === 'on' ? '#16a34a' : '#6b7280';
+                  ]]]
+            grid:
+              - grid-template-areas: "\"i\""
+          custom_fields:
+            i: |
+              [[[
+                const sw = states['switch.sonoff_100136bad0_1']?.state;
+                const icon = sw === 'on' ? 'mdi:water-pump' : 'mdi:water-pump-off';
+
+                return `
+                  <div style="
+                    display:flex;
+                    align-items:center;
+                    justify-content:center;
+                    width:100%;
+                    height:100%;
+                    color:white;
+                  ">
+                    <ha-icon icon="${icon}" style="width:24px;height:24px;"></ha-icon>
+                  </div>
+                `;
+              ]]]
+      info: |
+        [[[
+          const sw = states['switch.sonoff_100136bad0_1']?.state;
+
+          let estado = 'FILTRADO APAGADO';
+          let subtitulo = 'Circulación detenida';
+          let color = '#6b7280';
+
+          if (sw === 'on') {
+            estado = 'FILTRADO ENCENDIDO';
+            subtitulo = 'Circulación de agua activa';
+            color = '#16a34a';
+          }
+
+          return `
+            <div style="text-align:left;min-width:0;">
+              <div style="
+                font-size:18px;
+                font-weight:900;
+                color:#1f2933;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                Filtrado Tinaja 1
+              </div>
+
+              <div style="
+                font-size:14px;
+                font-weight:900;
+                color:${color};
+                margin-top:2px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${estado}
+              </div>
+
+              <div style="
+                font-size:12px;
+                font-weight:600;
+                color:#4b5563;
+                margin-top:2px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${subtitulo}
+              </div>
+            </div>
+          `;
+        ]]]
+      right: |
+        [[[
+          const sw = states['switch.sonoff_100136bad0_1']?.state;
+          const color = sw === 'on' ? '#16a34a' : '#6b7280';
+          const texto = sw === 'on' ? 'ON' : 'OFF';
+
+          return `
+            <div style="
+              width:100%;
+              text-align:right;
+              border-left:1px solid rgba(31,41,55,0.15);
+              padding-left:14px;
+              box-sizing:border-box;
+            ">
+              <div style="
+                font-size:26px;
+                font-weight:900;
+                color:${color};
+                line-height:1.05;
+                white-space:nowrap;
+              ">
+                ${texto}
+              </div>
+
+              <div style="
+                font-size:11px;
+                font-weight:700;
+                color:#4b5563;
+                margin-top:4px;
+                white-space:nowrap;
+              ">
+                Estado filtrado
+              </div>
+            </div>
+          `;
+        ]]]
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    tap_action:
+      action: more-info
+    styles:
+      grid:
+        - grid-template-areas: "\"info\""
+      card:
+        - border-radius: 20px
+        - padding: 14px
+        - box-shadow: none
+        - background: "#1f2f45"
+        - overflow: hidden
+    custom_fields:
+      info: |
+        [[[
+          const interior = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+          const calefont = Number(states['sensor.sonoff_10012a25d8_temperature']?.state || 0);
+          const gas = Number(states['sensor.porcentaje_gas_restante_tinaja_1']?.state || 0);
+
+          const calefaccionOn = states['switch.sonoff_100136bad0_2']?.state === 'on';
+
+          const promedioRaw = Number(states['input_number.promedio_minutos_por_grado_tinaja_1']?.state || 0);
+          const minPorGrado = promedioRaw > 0 ? promedioRaw : 12;
+
+          const faltanGrados = Math.max(40 - interior, 0);
+          const totalMin = Math.round(faltanGrados * minPorGrado);
+
+          const horas = Math.floor(totalMin / 60);
+          const minutos = totalMin % 60;
+
+          let tiempo = '0m';
+          if (totalMin >= 60) tiempo = `${horas}h ${minutos}m`;
+          else if (totalMin > 0) tiempo = `${minutos}m`;
+
+          let estadoInterior = 'Fría';
+          if (interior >= 34 && interior < 36) estadoInterior = 'Templada';
+          else if (interior >= 36 && interior < 40) estadoInterior = 'Calentando';
+          else if (interior >= 40 && interior < 41) estadoInterior = 'Objetivo';
+          else if (interior >= 41) estadoInterior = 'Caliente';
+
+          let estadoGas = 'Normal';
+          if (gas <= 5) estadoGas = 'Crítico';
+          else if (gas <= 15) estadoGas = 'Bajo';
+          else if (gas <= 30) estadoGas = 'Medio bajo';
+
+          const reserva = states['sensor.proxima_reserva_tinaja_api'];
+          const attr = reserva?.attributes || {};
+
+          const nombreReserva =
+            attr.nombre ||
+            attr.nombre_reserva ||
+            attr.programa ||
+            attr.programa_nombre ||
+            attr.cliente ||
+            'Reserva tinaja';
+
+          const fechaHoraTxt = attr.fecha_hora_tinaja || null;
+
+          const formatHora = (txt) => {
+            if (!txt) return 'Sin hora';
+            const d = new Date(String(txt).replace(' ', 'T'));
+            if (isNaN(d.getTime())) return 'Sin hora';
+            const hh = String(d.getHours()).padStart(2, '0');
+            const mm = String(d.getMinutes()).padStart(2, '0');
+            return `${hh}:${mm}`;
+          };
+
+          const formatDia = (txt) => {
+            if (!txt) return 'Sin día';
+            const d = new Date(String(txt).replace(' ', 'T'));
+            if (isNaN(d.getTime())) return 'Sin día';
+
+            const dias = ['Dom', 'Lun', 'Mar', 'Mié', 'Jue', 'Vie', 'Sáb'];
+            const dd = String(d.getDate()).padStart(2, '0');
+            const mo = String(d.getMonth() + 1).padStart(2, '0');
+
+            return `${dias[d.getDay()]} ${dd}-${mo}`;
+          };
+
+          const horaReserva = formatHora(fechaHoraTxt);
+          const diaReserva = formatDia(fechaHoraTxt);
+
+          const miniCard = (titulo, valor, sub, borde=true) => `
+            <div style="
+              min-width:0;
+              ${borde ? 'border-right:1px solid rgba(255,255,255,0.12);' : ''}
+              padding:5px 10px;
+              text-align:center;
+            ">
+              <div style="
+                font-size:12px;
+                font-weight:800;
+                color:#cbd5e1;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${titulo}
+              </div>
+
+              <div style="
+                font-size:21px;
+                font-weight:900;
+                color:#ffffff;
+                line-height:1.1;
+                margin-top:3px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${valor}
+              </div>
+
+              <div style="
+                font-size:12px;
+                font-weight:800;
+                color:#e2e8f0;
+                margin-top:3px;
+                white-space:nowrap;
+                overflow:hidden;
+                text-overflow:ellipsis;
+              ">
+                ${sub}
+              </div>
+            </div>
+          `;
+
+          return `
+            <div style="
+              display:flex;
+              flex-direction:column;
+              gap:12px;
+              width:100%;
+            ">
+
+              <!-- FILA 1: DATOS FÍSICOS -->
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(3,minmax(0,1fr));
+                gap:0;
+                width:100%;
+              ">
+                ${miniCard('Interior', `${interior.toFixed(1)}°C`, estadoInterior)}
+                ${miniCard('Calefont', `${calefont.toFixed(1)}°C`, 'Salida T1')}
+                ${miniCard('Gas', `${gas.toFixed(0)}%`, estadoGas, false)}
+              </div>
+
+              <div style="
+                height:1px;
+                background:rgba(255,255,255,0.12);
+                width:100%;
+              "></div>
+
+              <!-- FILA 2: OPERACIÓN Y RESERVA -->
+              <div style="
+                display:grid;
+                grid-template-columns:repeat(3,minmax(0,1fr));
+                gap:0;
+                width:100%;
+              ">
+                ${miniCard('Calefacción', calefaccionOn ? 'ON' : 'OFF', calefaccionOn ? 'Encendida' : 'Apagada')}
+                ${miniCard('A 40°C', tiempo, `Faltan ${faltanGrados.toFixed(1)}°C`)}
+                ${miniCard('Próxima reserva', horaReserva, `${nombreReserva} · ${diaReserva}`, false)}
+              </div>
+            </div>
+          `;
+        ]]]

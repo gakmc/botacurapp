@@ -126,52 +126,97 @@
         </div>
 
 
-        <table class="">
+        <table class="" style="font-size:13px;">
             <thead>
-                <tr>
+                <tr style="background:#eceff1;">
                     <th>Funcionario</th>
-                    <th>Días / Masajes</th>
-                    <th>Sueldo Base</th>
-                    <th>Propinas</th>
-                    <th>Bono</th>
+                    <th class="center">Días / Masajes</th>
+                    <th class="right-align">Sueldo Base</th>
+                    <th class="right-align" style="color:#c62828;">Retención</th>
+                    <th class="right-align">Neto</th>
+                    <th class="right-align">Propinas</th>
+                    <th class="right-align">Bono</th>
                     <th>Motivo</th>
-                    <th>Total</th>
-                    <th>Pagar</th>
+                    <th class="right-align">Total</th>
+                    <th class="center">Boleta</th>
+                    <th class="center">Pagar</th>
                 </tr>
             </thead>
             <tbody>
                 @php $totalSemana = 0; @endphp
                 @foreach ($usuariosSemana as $usuario)
-                    <tr>
-                        <td style="width: 264.22px;">
+                @php
+                    $boletea   = $usuario['boletea'] ?? false;
+                    $bteNeto   = $usuario['bte_neto']      ?? 0;
+                    $bteReten  = $usuario['bte_retencion'] ?? 0;
+                    $bteBruto  = $usuario['bte_bruto']     ?? 0;
+                    $bteEstado = $usuario['bte_estado']    ?? null;
+                    $btesFolio = $usuario['bte_folio']     ?? null;
+                    // Sueldo base a mostrar: bruto de BTE si boletea, sueldos si no
+                    $sueldoDisplay = $boletea ? ($bteBruto ?: $usuario['sueldos']) : $usuario['sueldos'];
+                    $totalSueldoBruto += $sueldoDisplay;
+                @endphp
+                    <tr style="{{ $boletea ? 'border-left: 3px solid #039B7B;' : '' }}">
+                        <td>
                             <a href="{{ route('backoffice.sueldo.view.admin', ['user' => $usuario['user_id'], $anio, $mes]) }}">
                                 {{ $usuario['name'] }}
                             </a>
+                            @if($boletea)
+                                <span style="font-size:10px; color:#039B7B; font-weight:600; margin-left:4px;">BTE</span>
+                            @endif
                         </td>
-                        <td>{{ $usuario['dias'] }}</td>
-                        {{-- @php
-                            $totalSueldoBruto += $usuario['sueldos'];
-                        @endphp --}}
+                        <td class="center">{{ $usuario['dias'] }}</td>
 
-                        @php
-                            $totalSueldoBruto += $usuario['sueldos'];
-                        @endphp
+                        {{-- Sueldo Base (bruto boleta si boletea) --}}
+                        <td class="right-align">${{ number_format($sueldoDisplay, 0, '', '.') }}</td>
 
-                        <td>${{ number_format($usuario['sueldos'], 0, '', '.') }}</td>
+                        {{-- Retención: solo para quienes boletean --}}
+                        <td class="right-align">
+                            @if($boletea && $bteBruto > 0)
+                                <span style="color:#c62828;">-${{ number_format($bteReten, 0, '', '.') }}</span>
+                            @else
+                                <span class="grey-text">—</span>
+                            @endif
+                        </td>
 
-                        <td>${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
+                        {{-- Neto: sueldo_base - retención (o igual si no boletea) --}}
+                        <td class="right-align">
+                            @if($boletea && $bteBruto > 0)
+                                ${{ number_format($bteNeto, 0, '', '.') }}
+                            @elseif($boletea)
+                                <span class="grey-text">—</span>
+                            @else
+                                ${{ number_format($usuario['sueldos'], 0, '', '.') }}
+                            @endif
+                        </td>
 
-                        <td>${{ number_format($usuario['bono'], 0, '', '.') ?? '-' }}</td>
+                        <td class="right-align">${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
+                        <td class="right-align">${{ number_format($usuario['bono'], 0, '', '.') }}</td>
+                        <td>{{ $usuario['motivo'] ?: '—' }}</td>
 
-                        <td>{{ $usuario['motivo'] ?? '-' }}</td>
+                        <td class="right-align"><strong>${{ number_format($usuario['total'], 0, '', '.') }}</strong></td>
+                        @php $sueldoMes += $usuario['total']; @endphp
 
+                        {{-- Estado boleta --}}
+                        <td class="center">
+                            @if(!$boletea)
+                                <span class="grey-text" style="font-size:11px;">Sin boleta</span>
+                            @elseif($bteEstado === 'emitida')
+                                <span style="color:#039B7B; font-size:11px; font-weight:600;"
+                                      title="Folio #{{ $btesFolio }}">
+                                    <i class="material-icons tiny" style="vertical-align:middle;">check_circle</i>
+                                    N°{{ $btesFolio }}
+                                </span>
+                            @else
+                                <span style="color:#e65100; font-size:11px; font-weight:600;">
+                                    <i class="material-icons tiny" style="vertical-align:middle;">warning</i>
+                                    Pendiente
+                                </span>
+                            @endif
+                        </td>
 
-
-                        <td>${{ number_format($usuario['total'], 0, '', '.') }}</td>
-                        @php
-                            $sueldoMes += $usuario['total'];
-                        @endphp
-                        <td>
+                        {{-- Pagar --}}
+                        <td class="center">
                             @php
                                 $yaPagado = $pagosRealizados->contains(function ($pago) use ($usuario) {
                                     return $pago->user_id == $usuario['user_id']
@@ -190,7 +235,8 @@
 
                             @if ($yaPagado)
                                 <span class="tooltipped" data-position="bottom" data-delay="50"
-                                    data-tooltip="Pagado el {{ \Carbon\Carbon::parse($pago->fecha_pago)->locale('es')->isoFormat('D [de] MMMM') }}" style="color: #039B7B;">
+                                    data-tooltip="Pagado el {{ \Carbon\Carbon::parse($pago->fecha_pago)->locale('es')->isoFormat('D [de] MMMM') }}"
+                                    style="color:#039B7B; font-size:12px;">
                                     <i class="material-icons tiny">monetization_on</i> Pagado
                                 </span>
                             @else
@@ -199,27 +245,27 @@
                                         <input type="checkbox"
                                             name="sueldos_seleccionados[]"
                                             class="checkbox-sueldo"
-                                            data-semana="{{$semanaId}}"
-                                            data-total="{{$usuario['total']}}"
+                                            data-semana="{{ $semanaId }}"
+                                            data-total="{{ $usuario['total'] }}"
                                             value="{{ json_encode([
-                                                    'user_id' => $usuario['user_id'],
-                                                    'total'   => $usuario['total'],
-                                                    'inicio'  => $usuario['inicio'],
-                                                    'fin'     => $usuario['fin'],
-                                                ]) }}">
+                                                'user_id' => $usuario['user_id'],
+                                                'total'   => $usuario['total'],
+                                                'inicio'  => $usuario['inicio'],
+                                                'fin'     => $usuario['fin'],
+                                            ]) }}">
                                         <span>Pagar</span>
                                     </label>
                                 @endif
                             @endif
                         </td>
                     </tr>
-                    @php 
-                        $totalSemana += $usuario['total'];
-                    @endphp
+                    @php $totalSemana += $usuario['total']; @endphp
                 @endforeach
-                <tr>
-                    <td colspan="4" class="right-align"><strong>Total semana</strong></td>
-                    <td><strong>${{ number_format($totalSemana, 0, '', '.') }}</strong></td>
+                <tr style="background:#f0faf7; font-weight:700;">
+                    <td colspan="7" class="right-align">Total semana</td>
+                    <td></td>
+                    <td class="right-align">${{ number_format($totalSemana, 0, '', '.') }}</td>
+                    <td colspan="2"></td>
                 </tr>
             </tbody>
         </table>

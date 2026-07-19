@@ -37,11 +37,16 @@ class GiftCardController extends Controller
      */
     public function create()
     {
-        $lista = ['botacura full', 'full day', 'Caviahue 2'];
+        // $lista = ['botacura full', 'full day', 'Caviahue 2'];
 
-        $programas = Programa::activos()->whereIn(strtolower('nombre_programa'), $lista)->get();
+        // $programas = Programa::activos()->whereIn(strtolower('nombre_programa'), $lista)->get();
 
-        return view('themes.backoffice.pages.giftcard.create', compact('programas'));
+        $programas = Programa::permiteGc()->activos()->get();
+        // dd($programas);
+
+        $fechaManual = config('woocommerce.gift_card_fecha_manual');
+
+        return view('themes.backoffice.pages.giftcard.create', compact('programas', 'fechaManual'));
     }
 
     /**
@@ -67,16 +72,30 @@ class GiftCardController extends Controller
             'telefono' => $numero,
         ]);
 
+        $fechaManual = config('woocommerce.gift_card_fecha_manual');
+
+        if ($fechaManual) {
+            $request->validate([
+                'fecha_uso'     => 'required|date',
+                'validez_hasta' => 'nullable|date',
+            ]);
+        }
+
         $codigo = GiftCard::generarCodigoUnicoGiftCard();
+
+        $fechaUso     = $fechaManual ? $request->fecha_uso : null;
+        $validezHasta = $fechaManual
+            ? ($request->validez_hasta ?: $request->fecha_uso)
+            : Carbon::now()->addDays(45)->toDateString();
 
         $gc = GiftCard::create([
             'codigo'            => $codigo,
             'monto'             => $request->monto,
             'usada'             => false,
-            'fecha_uso'         => null,
+            'fecha_uso'         => $fechaUso,
             'id_programa'       => $request->id_programa,
             'id_venta'          => null,
-            'validez_hasta'     => Carbon::now()->addDays(45)->toDateString(),
+            'validez_hasta'     => $validezHasta,
             'de'                => $request->de,
             'para'              => $request->para,
             'correo'            => $request->correo,
@@ -156,10 +175,10 @@ class GiftCardController extends Controller
             'codigo'            => $request->codigo,
             'monto'             => $request->monto,
             'usada'             => $gc->usada,
-            'fecha_uso'         => $gc->fecha_uso,
+            'fecha_uso'         => $request->filled('fecha_uso') ? $request->fecha_uso : $gc->fecha_uso,
             'id_programa'       => $request->id_programa,
             'id_venta'          => $gc->id_venta,
-            'validez_hasta'     => $gc->validez_hasta,
+            'validez_hasta'     => $request->filled('validez_hasta') ? $request->validez_hasta : $gc->validez_hasta,
             'de'                => $request->de,
             'para'              => $request->para,
             'correo'            => $request->correo,
@@ -237,7 +256,6 @@ class GiftCardController extends Controller
 
         $gc = GiftCard::where('codigo', $codigo)
             ->where('usada', false)
-            ->whereNull('fecha_uso')
             ->whereNull('id_venta')
             ->first();
 
@@ -260,7 +278,6 @@ class GiftCardController extends Controller
     public function listaCodigos()
     {
         $codigos = GiftCard::where('usada', false)
-            ->whereNull('fecha_uso')
             ->whereNull('id_venta')
             ->pluck('codigo');
 

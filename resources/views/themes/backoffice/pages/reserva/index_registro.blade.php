@@ -202,7 +202,7 @@
                                                         Falta informacion
                                                     </a>
                                                 @else
-                                                    {{$ultimaVisita->ubicacion->nombre}}
+                                                    {{optional($ultimaVisita->ubicacion)->nombre ?? 'Sin ubicación'}}
                                                 @endif
 
                                             @else

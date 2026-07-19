@@ -113,34 +113,18 @@ class BarmanController extends Controller
             'estado' => 'required|in:por-procesar,en-preparacion,completado,entregado'
         ]);
 
-        // Detectamos si el ID corresponde a un detalle o a un consumo completo
-        $detalle = DetalleConsumo::find($id);
+        // $id siempre corresponde a un id_consumo (pedido completo), nunca a un detalle individual.
+        $idConsumo = $id;
 
-        if ($detalle) {
-            // 👉 Caso antiguo: actualizar 1 detalle
-            $detalle->estado = $request->estado;
-            $detalle->save();
+        if ($request->filled('pedido_creado')) {
+            $pedidoCreado = Carbon::parse($request->pedido_creado)->format('Y-m-d H:i:s');
 
-            $idConsumo = $detalle->id_consumo;
-
+            DetalleConsumo::where('id_consumo', $idConsumo)
+                ->whereRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') = ?", [$pedidoCreado])
+                ->update(['estado' => $request->estado]);
         } else {
-            // 👉 Caso nuevo: actualizar pedido completo (id_consumo)
-            $idConsumo = $id;
-
-            // DetalleConsumo::where('id_consumo', $idConsumo)
-            //     ->update(['estado' => $request->estado]);
-
-            if ($request->filled('pedido_creado')) {
-                $pedidoCreado = Carbon::parse($request->pedido_creado)->format('Y-m-d H:i:s');
-
-                DetalleConsumo::where('id_consumo', $idConsumo)
-                    ->whereRaw("DATE_FORMAT(created_at, '%Y-%m-%d %H:%i:%s') = ?", [$pedidoCreado])
-                    ->update(['estado' => $request->estado]);
-            } else {
-                // fallback antiguo (NO recomendado para tu caso)
-                DetalleConsumo::where('id_consumo', $idConsumo)
-                    ->update(['estado' => $request->estado]);
-            }
+            DetalleConsumo::where('id_consumo', $idConsumo)
+                ->update(['estado' => $request->estado]);
         }
 
         // Tomamos un detalle para obtener datos del cliente

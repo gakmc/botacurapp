@@ -1,0 +1,82 @@
+type: vertical-stack
+cards:
+  - type: custom:mushroom-title-card
+    title: Sensores establecimiento
+    subtitle: Sauna · Salón · Container · Palmeras · temperatura y humedad
+
+  - type: custom:button-card
+    show_icon: false
+    show_name: false
+    show_state: false
+    styles:
+      card:
+        - border-radius: 24px
+        - padding: 18px
+        - background: "linear-gradient(145deg, #111827, #020617)"
+        - border: 1px solid rgba(255,255,255,0.08)
+        - box-shadow: 0px 10px 28px rgba(0,0,0,0.35)
+        - overflow: hidden
+      grid:
+        - grid-template-areas: '"content"'
+    custom_fields:
+      content: |
+        [[[
+          const n = (id) => {
+            const v = Number(states[id]?.state);
+            return Number.isFinite(v) ? v : 0;
+          };
+
+          const estadoTemp = (t) => {
+            if (t < 14) return ['MUY FRÍO', '#0284c7', '#cdefff'];
+            if (t < 18) return ['FRESCO', '#0891b2', '#d9f7ff'];
+            if (t < 23) return ['IDEAL', '#16a34a', '#d7f5d8'];
+            if (t < 27) return ['CÁLIDO', '#d97706', '#ffe8b3'];
+            return ['CALIENTE', '#dc2626', '#f7c7c7'];
+          };
+
+          const bloque = (titulo, icono, tempId, humId, extraHtml='') => {
+            const t = n(tempId);
+            const h = humId ? n(humId) : null;
+            const [estado, color] = estadoTemp(t);
+            return `
+              <div style="
+                background:rgba(255,255,255,0.045);
+                border:1px solid rgba(255,255,255,0.08);
+                border-radius:18px;
+                padding:14px;
+                display:grid;
+                grid-template-columns:48px minmax(0,1fr) auto;
+                gap:12px;
+                align-items:center;
+                min-width:0;
+              ">
+                <div style="width:44px;height:44px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;">
+                  <ha-icon icon="${icono}" style="width:24px;height:24px;"></ha-icon>
+                </div>
+                <div style="text-align:left;min-width:0;">
+                  <div style="font-size:18px;font-weight:900;color:#f8fafc;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">${titulo}</div>
+                  <div style="font-size:13px;font-weight:900;color:${color};margin-top:2px;">${estado}</div>
+                  <div style="font-size:12px;font-weight:700;color:#94a3b8;margin-top:2px;white-space:nowrap;overflow:hidden;text-overflow:ellipsis;">
+                    ${h === null ? 'Temperatura sauna' : 'Temperatura y humedad'} ${extraHtml}
+                  </div>
+                </div>
+                <div style="text-align:right;line-height:1.2;min-width:92px;">
+                  <div style="font-size:24px;font-weight:900;color:#f8fafc;white-space:nowrap;">${t.toFixed(1)}°C</div>
+                  <div style="font-size:13px;font-weight:900;color:#38bdf8;white-space:nowrap;">${h === null ? '' : h.toFixed(0) + '% HR'}</div>
+                </div>
+              </div>
+            `;
+          };
+
+          const luzSauna = states['switch.sonoff_100262ced8']?.state === 'on';
+          const saunaExtra = luzSauna ? '· luz encendida' : '· luz apagada';
+
+          return `
+            <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(260px,1fr));gap:12px;width:100%;">
+              ${bloque('Sauna', 'mdi:sauna', 'sensor.sonoff_100262ced8_temperature', null, saunaExtra)}
+              ${bloque('Salón', 'mdi:sofa', 'sensor.sonoff_a440041199_temperature', 'sensor.sonoff_a440041199_humidity')}
+              ${bloque('Container', 'mdi:office-building', 'sensor.sonoff_a44004119d_temperature', 'sensor.sonoff_a44004119d_humidity')}
+              ${bloque('Palmeras', 'mdi:palm-tree', 'sensor.sonoff_a44004119e_temperature', 'sensor.sonoff_a44004119e_humidity')}
+            </div>
+          `;
+        ]]]
