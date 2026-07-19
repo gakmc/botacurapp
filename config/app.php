@@ -248,4 +248,13 @@ return [
 
     ],
 
+    /*
+    |--------------------------------------------------------------------------
+    | Bot-Acura Chatbot (WhatsApp + Instagram)
+    |--------------------------------------------------------------------------
+    */
+    'bot_api_token'         => env('BOT_API_TOKEN', ''),
+    'bot_system_user_id'    => (int) env('BOT_SYSTEM_USER_ID', 1),
+    'bot_cupos_maximos_dia' => (int) env('BOT_CUPOS_MAXIMOS_DIA', 20),
+
 ];

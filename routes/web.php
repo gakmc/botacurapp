@@ -324,8 +324,13 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::get('/listar',        'SiiController@listar')->name('listar');
         Route::post('/importar',     'SiiController@importar')->name('importar');
         Route::post('/importar-todo','SiiController@importarTodo')->name('importarTodo');
-        Route::get('/resumen',       'SiiController@resumen')->name('resumen');
-        Route::get('/contribuyente', 'SiiController@contribuyente')->name('contribuyente');
+        Route::get('/resumen',        'SiiController@resumen')->name('resumen');
+        Route::get('/gastos-semana', 'SiiController@gastosSemana')->name('gastosSemana');
+        Route::get('/detalle-mes',      'SiiController@detalleMes')->name('detalleMes');
+        Route::post('/importar-directo','SiiController@importarDirecto')->name('importarDirecto');
+        Route::get('/contribuyente',    'SiiController@contribuyente')->name('contribuyente');
+        // DEBUG TEMPORAL — remover antes de subir a producción
+        Route::get('/debug-raw',     'SiiController@debugRaw')->name('debugRaw');
     });
 
     // Honorarios BTE – Boletas de prestación de servicios de terceros recibidas
@@ -334,6 +339,12 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/sincronizar', 'HonorarioController@sincronizar')->name('sincronizar');
         Route::get('/resumen',      'HonorarioController@resumen')->name('resumen');
     });
+    // F29 / Impuestos — estimación mensual desde datos SII
+    Route::prefix('impuesto')->name('impuesto.')->group(function () {
+        Route::get('/',             'ImpuestoController@index')->name('index');
+        Route::post('/sincronizar', 'ImpuestoController@sincronizar')->name('sincronizar');
+    });
+
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');
@@ -598,6 +609,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::match(['put', 'patch'], '/egreso/{egreso}/update_variable', 'EgresoController@update_variable')->name('egreso.update_variable');
 
+    Route::get('finanzas/utilidad',      'ReporteFinancieroController@utilidad')->name('finanzas.utilidad');
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
 
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
@@ -618,3 +630,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/certificados/antiguedad/{user}', 'CertificadoController@create')->name('certificados.antiguedad.create');
     Route::post('/certificados/antiguedad/{user}', 'CertificadoController@store')->name('certificados.antiguedad.store');
+
+    Route::get('compras/botacura', 'WoocommerceController@index')->name('compras.botacura');
+
+});
