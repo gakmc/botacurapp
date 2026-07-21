@@ -16,18 +16,23 @@
   <div class="section">
     <div class="card-panel">
 
-      <div class="row" style="margin-bottom: 0;">
-        <div class="col s12 m6">
+      <div class="row" style="margin-bottom: 0; align-items: center;">
+        <div class="col s12 m3">
           <a class="btn" id="btn-prev">
             <i class="material-icons left">chevron_left</i> Día anterior
           </a>
 
-          <a class="btn" id="btn-next">
+          <a class="btn" id="btn-next" style="margin-top:6px;">
             Día siguiente <i class="material-icons right">chevron_right</i>
           </a>
         </div>
 
-        <div class="col s12 m6 right-align">
+        {{-- Conteo desayuno/once del día --}}
+        <div class="col s12 m5" id="alim-counter" style="padding: 6px 12px;">
+          {{-- Se rellena por JS tras cargar el día --}}
+        </div>
+
+        <div class="col s12 m4 right-align">
           <div class="input-field" style="margin:0;">
             <input type="text" id="fecha-input" value="{{ $fechaInicial }}" placeholder="dd-mm-aaaa">
             <label for="fecha-input" class="active">Ir a fecha</label>
@@ -215,6 +220,35 @@
     fetch(url)
       .then(function(r) { if (!r.ok) throw new Error('HTTP ' + r.status); return r.json(); })
       .then(function(data) {
+
+        // Contador desayuno/once en el header
+        var desayunoCount = data.desayuno_count || 0;
+        var onceCount     = data.once_count || 0;
+        var counterEl     = document.getElementById('alim-counter');
+        if (counterEl) {
+          if (desayunoCount > 0 || onceCount > 0) {
+            var secondaryHtml = '';
+            if (desayunoCount > 0) {
+              secondaryHtml += '<span style="display:block;font-size:15px;">☕ Desayuno: <strong style="font-size:18px;">' + desayunoCount + '</strong></span>';
+            }
+            if (onceCount > 0) {
+              secondaryHtml += '<span style="display:block;font-size:15px;">🫖 Once: <strong style="font-size:18px;">' + onceCount + '</strong></span>';
+            }
+            counterEl.innerHTML =
+              '<ul class="collection" style="margin:0;">' +
+                '<li class="collection-item avatar" style="min-height:unset;padding:10px 20px 10px 72px;">' +
+                  '<i class="material-icons circle blue" style="top:50%;transform:translateY(-50%);">free_breakfast</i>' +
+                  '<span class="title"><strong>Desayuno / Once</strong></span>' +
+                  '<p style="margin:0;">Conteo del día</p>' +
+                  '<span class="secondary-content" style="line-height:2;text-align:right;top:50%;transform:translateY(-50%);">' +
+                    secondaryHtml +
+                  '</span>' +
+                '</li>' +
+              '</ul>';
+          } else {
+            counterEl.innerHTML = '<span style="color:#aaa;font-size:13px;">Sin desayunos ni onces registrados</span>';
+          }
+        }
 
         // Cabecera día
         var tituloDia = data.hoy ? 'Hoy' : data.fecha;

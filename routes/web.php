@@ -27,6 +27,20 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
+// ─────────────────────────────────────────────────────────────────────────────
+// Pago público — bot WhatsApp (sin auth)
+// ─────────────────────────────────────────────────────────────────────────────
+Route::prefix('pago')->name('pago.')->group(function () {
+    // Página de opciones de pago (transferencia + Webpay)
+    Route::get('/{reserva_id}', 'PagoController@opciones')->name('opciones');
+
+    // Iniciar pago Webpay Plus
+    Route::post('/{reserva_id}/webpay', 'PagoController@webpayInit')->name('webpay.init');
+
+    // Retorno de Transbank tras el pago (GET o POST)
+    Route::match(['get', 'post'], '/webpay/retorno', 'PagoController@webpayReturn')->name('webpay.retorno');
+});
+
 Route::get('/test-mail', function () {
     $data = [
         'pdfPath' => storage_path('app/temp_pdfs/test.pdf'), // crea un archivo dummy si quieres

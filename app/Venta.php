@@ -16,6 +16,14 @@ class Venta extends Model
         'id_reserva',
         'id_tipo_transaccion_abono',
         'id_tipo_transaccion_diferencia',
+        // Campos de pago bot WhatsApp
+        'referencia_transferencia',
+        'webpay_token',
+        'webpay_orden',
+        'metodo_pago',
+        'monto_pagado',
+        'estado_pago',
+        'confirmado_en',
     ];
 
     public function reserva()

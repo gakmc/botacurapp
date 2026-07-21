@@ -16,6 +16,8 @@ class CreateBotConversacionesTable extends Migration
             return;
         }
         Schema::create('bot_conversaciones', function (Blueprint $table) {
+            $table->charset   = 'utf8mb4';
+            $table->collation = 'utf8mb4_unicode_ci';
             $table->increments('id');
             $table->string('usuario_id');
             $table->enum('canal', ['whatsapp', 'instagram'])->default('whatsapp');

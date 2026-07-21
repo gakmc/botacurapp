@@ -108,6 +108,12 @@
                     <i class="material-icons left">verified_user</i> Reserva Generada por: <a
                       href="{{route('backoffice.user.show', $reserva->user_id)}}">{{$reserva->user->name}}</a>
 
+                    @if($reserva->fuente === 'bot_whatsapp')
+                      <span class="new badge green" data-badge-caption="" style="position:static; margin-left:8px; border-radius:4px; padding:0 8px; font-size:11px;">
+                        <i class="material-icons tiny" style="vertical-align:middle">chat</i> Bot WhatsApp
+                      </span>
+                    @endif
+
                   </p>
                 </div>
 

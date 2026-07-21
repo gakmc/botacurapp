@@ -19,8 +19,10 @@ class AddPeriodoSiiToEgresosTable extends Migration
     public function up()
     {
         Schema::table('egresos', function (Blueprint $table) {
-            $table->string('periodo_sii', 7)->nullable()->after('fuente')
-                  ->comment('Período SII de importación en formato YYYY-MM (ej: 2026-01)');
+            if (!Schema::hasColumn('egresos', 'periodo_sii')) {
+                $table->string('periodo_sii', 7)->nullable()
+                      ->comment('Período SII de importación en formato YYYY-MM (ej: 2026-01)');
+            }
         });
     }
 

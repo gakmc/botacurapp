@@ -89,11 +89,28 @@ class DisponibilidadController extends Controller
             ], 404);
         }
 
+        // Según el flujograma: si no tiene espacio_tipo, solo verificar tinaja
         if (empty($programa->espacio_tipo)) {
+            $slotsUsados = $this->contarSlotsUsados($fecha);
+            $slotsNuevos = $personas >= 5 ? 2 : 1;
+            $tinajaOk    = ($slotsUsados + $slotsNuevos) <= $this->maxSlotsTinaja;
             return response()->json([
-                'ok'    => false,
-                'error' => 'El programa no tiene espacio_tipo configurado.',
-            ], 422);
+                'ok'          => true,
+                'disponible'  => $tinajaOk,
+                'fecha'       => $fecha,
+                'programa'    => $programa->nombre_programa,
+                'espacio_tipo'=> null,
+                'personas'    => $personas,
+                'tinaja'      => [
+                    'slots_usados' => $slotsUsados,
+                    'slots_nuevos' => $slotsNuevos,
+                    'slots_max'    => $this->maxSlotsTinaja,
+                    'slots_libres' => max(0, $this->maxSlotsTinaja - $slotsUsados),
+                    'ok'           => $tinajaOk,
+                ],
+                'espacio'     => ['tipo' => null, 'nota' => 'Sin espacio_tipo configurado — solo se verifica tinaja'],
+                'motivo_no_disponible' => !$tinajaOk ? 'Los horarios de tinaja están completos para ese día.' : null,
+            ]);
         }
 
         // ── 1. Verificar slots de tinaja ──────────────────────────────────────
@@ -101,6 +118,25 @@ class DisponibilidadController extends Controller
         $slotsNuevos  = $personas >= 5 ? 2 : 1;
         $slotsLibres  = $this->maxSlotsTinaja - $slotsUsados;
         $tinajaOk     = ($slotsUsados + $slotsNuevos) <= $this->maxSlotsTinaja;
+
+        // Early return si tinaja está llena (flujograma: NO → disponible:false sin revisar espacio)
+        if (!$tinajaOk) {
+            return response()->json([
+                'ok'         => true,
+                'disponible' => false,
+                'fecha'      => $fecha,
+                'programa'   => $programa->nombre_programa,
+                'personas'   => $personas,
+                'tinaja'     => [
+                    'slots_usados' => $slotsUsados,
+                    'slots_nuevos' => $slotsNuevos,
+                    'slots_max'    => $this->maxSlotsTinaja,
+                    'slots_libres' => 0,
+                    'ok'           => false,
+                ],
+                'motivo_no_disponible' => 'Los horarios de tinaja están completos para ese día.',
+            ]);
+        }
 
         // ── 2. Verificar disponibilidad de espacio ────────────────────────────
         $espacioTipo = $programa->espacio_tipo;
@@ -161,13 +197,21 @@ class DisponibilidadController extends Controller
     // -------------------------------------------------------------------------
 
     /**
-     * Suma los slots de tinaja consumidos por las reservas del día.
-     * Grupos >= 5 personas consumen 2 slots, los demás 1.
+     * Estados de reserva que efectivamente ocupan slot de tinaja.
+     * Canceladas/abandonadas NO consumen cupo.
+     */
+    // 'pendiente' = estado legacy de producción; 'pendiente_pago' = bot WhatsApp
+    private $estadosOcupados = ['pendiente', 'pendiente_pago', 'pago_parcial', 'pagado', 'confirmado'];
+
+    /**
+     * Suma los slots de tinaja consumidos por las reservas activas del día.
+     * Grupos >= 5 personas → 2 slots, resto → 1 slot.
      */
     private function contarSlotsUsados(string $fecha): int
     {
         $reservas = DB::table('reservas')
             ->where('fecha_visita', $fecha)
+            ->whereIn('estado', $this->estadosOcupados)
             ->select('cantidad_personas')
             ->get();
 
@@ -180,14 +224,14 @@ class DisponibilidadController extends Controller
     }
 
     /**
-     * Cuenta cuántas reservas del día usan un espacio de los tipos indicados.
-     * Une reservas con programas para saber el espacio_tipo.
+     * Cuenta cuántas reservas activas del día usan un espacio de los tipos indicados.
      */
     private function contarEspaciosUsados(string $fecha, array $tipos): int
     {
         return (int) DB::table('reservas as r')
             ->join('programas as p', 'r.id_programa', '=', 'p.id')
             ->where('r.fecha_visita', $fecha)
+            ->whereIn('r.estado', $this->estadosOcupados)
             ->whereIn('p.espacio_tipo', $tipos)
             ->count();
     }

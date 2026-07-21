@@ -37,23 +37,51 @@
         <div class="card-panel ">
 
             @foreach ($reservasPaginadas as $fecha => $reservas)
+            @php
+                // Conteo desayuno/once del día (agrupado de todos los menús de todas las reservas)
+                $totalDesayunoDia = $reservas->sum(function($r) {
+                    return $r->menus->whereIn('tipo_servicio', ['desayuno', 'desayuno_y_once'])->count();
+                });
+                $totalOnceDia = $reservas->sum(function($r) {
+                    return $r->menus->whereIn('tipo_servicio', ['once', 'desayuno_y_once'])->count();
+                });
+            @endphp
             <div id="work-collections">
                 <div class="row">
-        
+
                   <div class="col s12 m4 l4">
                     <ul class="collection">
                         <li class="collection-item avatar">
                           <i class="material-icons circle red">group_add</i>
                           <span class="title">Cantidad de Asistentes</span>
                           <p>Total:</p>
-                          {{-- <a href="#!" class="secondary-content"><i class="material-icons">group_add</i></a> --}}
                           <span class="secondary-content" style="color: #039B7B">
                             {{$reservas->sum('cantidad_personas')}} {{$reservas->sum('cantidad_personas') > 1 ? "Personas" : "Persona"}}
                           </span>
                         </li>
                       </ul>
-
                   </div>
+
+                  @if($totalDesayunoDia > 0 || $totalOnceDia > 0)
+                  <div class="col s12 m4 l4">
+                    <ul class="collection">
+                        <li class="collection-item avatar">
+                          <i class="material-icons circle blue">free_breakfast</i>
+                          <span class="title">Desayuno / Once</span>
+                          <p>Conteo del día</p>
+                          <span class="secondary-content" style="line-height:2; text-align:right;">
+                              @if($totalDesayunoDia > 0)
+                                  <span style="display:block; font-size:15px;">☕ Desayuno: <strong style="font-size:18px;">{{$totalDesayunoDia}}</strong></span>
+                              @endif
+                              @if($totalOnceDia > 0)
+                                  <span style="display:block; font-size:15px;">🫖 Once: <strong style="font-size:18px;">{{$totalOnceDia}}</strong></span>
+                              @endif
+                          </span>
+                        </li>
+                    </ul>
+                  </div>
+                  @endif
+
                 </div>
                                 <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
                                 <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
@@ -73,6 +101,7 @@
                                     <th>Nombre</th>
                                     <th>WhatsApp</th>
                                     <th>Cant. Personas</th>
+                                    <th>Desayuno / Once</th>
                                     <th>Programa</th>
                                     <th>Ubicación</th>
                                     <th>Menus</th>
@@ -98,9 +127,12 @@
                                         $totalMasajes = optional($masajes)->count();
                                         $totalVisitas = optional($visitas)->count();
 
-                                        $menusConProducto = $menus->filter(function($menu){ 
+                                        $menusConProducto = $menus->filter(function($menu){
                                             return $menu->id_producto_entrada !== null || $menu->id_producto_fondo !== null;
                                         })->count();
+
+                                        $cntDesayuno = $menus->where('tipo_servicio', 'desayuno')->count();
+                                        $cntOnce     = $menus->where('tipo_servicio', 'once')->count();
 
                                         $masajesConHorario = $masajes->filter(function($masaje){ 
                                             return $masaje->horario_masaje !== null;
@@ -176,8 +208,13 @@
 
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                {{($reserva->venta->tiene_gc) ? '🎁' : ''}} {{$reserva->cliente->nombre_cliente}} 
+                                                {{($reserva->venta->tiene_gc) ? '🎁' : ''}} {{$reserva->cliente->nombre_cliente}}
                                             </a>
+                                            @if($reserva->fuente === 'bot_whatsapp')
+                                              <span class="new badge green" data-badge-caption="" style="position:static; border-radius:4px; padding:0 6px; font-size:10px; margin-left:4px;">
+                                                <i class="material-icons tiny" style="vertical-align:middle">chat</i> Bot
+                                              </span>
+                                            @endif
                                         </td>
                                         <td>
                                             @if(is_null($reserva->cliente->whatsapp_cliente)) 
@@ -186,14 +223,20 @@
                                                 <a href="https://api.whatsapp.com/send?phone={{$reserva->cliente->whatsapp_cliente}}" target="_blank">+{{$reserva->cliente->whatsapp_cliente}}</a>
                                             @endif
                                         </td>
+                                        <td>{{$reserva->cantidad_personas}}</td>
                                         <td>
-                                            {{$reserva->cantidad_personas}}
+                                            @php $tipoServicio = $menus->first()->tipo_servicio ?? null; @endphp
+                                            @if($tipoServicio === 'desayuno')
+                                                <span style="color:#1565c0; font-weight:600;">☕ Desayuno</span>
+                                            @elseif($tipoServicio === 'once')
+                                                <span style="color:#e65100; font-weight:600;">🫖 Once</span>
+                                            @elseif($tipoServicio === 'desayuno_y_once')
+                                                <span style="color:#6a1b9a; font-weight:600;">☕🫖 Ambos</span>
+                                            @else
+                                                <span class="grey-text">—</span>
+                                            @endif
                                         </td>
-                                        <td>
-
-                                            {{$reserva->programa->nombre_programa}}
-
-                                        </td>
+                                        <td>{{$reserva->programa->nombre_programa}}</td>
                                         <td>
                                             @if(isset($ultimaVisita))
                                                 @if (is_null($ultimaVisita->id_ubicacion) && is_null($ultimaVisita->horario_sauna))

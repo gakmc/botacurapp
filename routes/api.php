@@ -71,9 +71,27 @@ Route::prefix('woocommerce')->namespace('Api')->group(function(){
 });
 
 // -------------------------------------------------------------------------
+// WhatsApp Webhook (Meta Cloud API)
+// GET  /api/whatsapp/webhook  → verificación del webhook
+// POST /api/whatsapp/webhook  → mensajes entrantes
+// Sin middleware bot.token — Meta tiene su propio sistema de verificación
+// -------------------------------------------------------------------------
+Route::prefix('whatsapp')->namespace('Api')->group(function () {
+    Route::get('webhook',  'WhatsAppWebhookController@verify')->name('whatsapp.webhook.verify');
+    Route::post('webhook', 'WhatsAppWebhookController@receive')->name('whatsapp.webhook.receive');
+});
+
+// -------------------------------------------------------------------------
 // Bot WhatsApp / Instagram — Claude AI
 // Protegido por X-Bot-Secret header (validado dentro del controlador)
 // -------------------------------------------------------------------------
+// ─────────────────────────────────────────────────────────────────────────────
+// Fintoc Webhook — verificación transferencias BancoEstado
+// POST /api/fintoc/webhook
+// Sin auth: validación por firma HMAC X-Fintoc-Signature
+// ─────────────────────────────────────────────────────────────────────────────
+Route::post('fintoc/webhook', 'PagoController@fintocWebhook')->name('fintoc.webhook');
+
 Route::prefix('bot')->namespace('Api')->group(function () {
     // Health check
     Route::get('ping', 'BotController@ping')->name('bot.ping');
@@ -90,7 +108,10 @@ Route::prefix('bot')->namespace('Api')->group(function () {
     // Reservas
     Route::post('reservas',          'BotController@crearReserva')->name('bot.reservas.store');
     Route::post('reservas/{id}/pago', 'BotController@registrarPago')->name('bot.reservas.pago');
-    Route::post('reserva',           'BotReservaController@store')->name('bot.reserva');
+    Route::post('reserva',                                    'BotReservaController@store')->name('bot.reserva');
+    Route::patch('reserva/{id}/tipo-servicio',               'BotReservaController@updateTipoServicio')->name('bot.reserva.tipo_servicio');
+    Route::patch('reserva/{id}/menu',                        'BotReservaController@updateMenu')->name('bot.reserva.menu');
+    Route::get('menu-opciones',                              'BotReservaController@menuOpciones')->name('bot.menu.opciones');
 
     // Conversación (estado/historial)
     Route::get('conversacion/{usuario_id}', 'BotController@getConversacion')->name('bot.conversacion.get');
@@ -98,5 +119,10 @@ Route::prefix('bot')->namespace('Api')->group(function () {
 
     // ── Endpoint principal para n8n (Claude AI) ──
     Route::post('message', 'BotController@message')->name('bot.message');
+
+    // ── Diagnóstico (solo dev) ──
+    Route::get('diag',      'BotDiagController@index')->name('bot.diag');
+    Route::get('slots',     'BotDiagController@slots')->name('bot.slots');
+    Route::get('reset-qa',  'BotDiagController@resetQa')->name('bot.reset-qa');
 });
 

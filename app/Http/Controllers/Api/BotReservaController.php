@@ -3,6 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\FintocService;
+use App\Services\WebpayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -11,140 +13,368 @@ use Illuminate\Support\Facades\Log;
  * BotReservaController
  *
  * POST /api/bot/reserva
- * Crea (o actualiza) un cliente y una reserva a partir de los datos
- * recopilados por el bot de WhatsApp.
- *
- * Flujo:
- * 1. Verificar disponibilidad (reutiliza lógica de DisponibilidadController)
- * 2. Find-or-create cliente por whatsapp_cliente o correo
- * 3. Crear reserva con estado='pendiente_pago', fuente='bot_whatsapp'
- * 4. Retornar ID de reserva + instrucciones de pago
+ * Crea el conjunto completo de registros que genera una reserva manual:
+ *   reservas + ventas + visitas + masajes + menus
  *
  * Body JSON:
  * {
- *   "nombre":     "Juan Pérez",
- *   "telefono":   "56912345678",
- *   "email":      "juan@example.com",
- *   "programa_id": 3,
- *   "fecha":      "2026-08-02",
- *   "personas":    2
+ *   "nombre":        "Juan Pérez",
+ *   "telefono":      "56912345678",
+ *   "email":         "juan@example.com",
+ *   "programa_id":   3,
+ *   "fecha":         "2026-08-02",
+ *   "personas":      2,
+ *   "masajes_extra": 0,   (opcional)
+ *   "menus_extra":   0    (opcional)
  * }
- *
- * Compatible Laravel 6 / PHP 7.2
  */
 class BotReservaController extends Controller
 {
-    /** ID del usuario sistema (creado por BotUserSeeder). Configurable en .env */
-    private function getBotUserId()
+    // 'pendiente' = estado legacy de producción; 'pendiente_pago' = bot WhatsApp
+    private $estadosOcupados = ['pendiente', 'pendiente_pago', 'pago_parcial', 'pagado', 'confirmado'];
+
+    private function getBotUserId(): int
     {
-        return (int) (env('BOT_SYSTEM_USER_ID', 1));
+        return (int) env('BOT_SYSTEM_USER_ID', 1);
     }
 
-    // -------------------------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
 
     public function store(Request $request)
     {
-        // ── Validar payload ───────────────────────────────────────────────────
         $request->validate([
-            'nombre'      => 'required|string|max:200',
-            'telefono'    => 'required|string|max:20',
-            'email'       => 'required|email|max:200',
-            'programa_id' => 'required|integer|exists:programas,id',
-            'fecha'       => 'required|date|after_or_equal:today',
-            'personas'    => 'required|integer|min:1|max:50',
+            'nombre'         => 'required|string|max:200',
+            'telefono'       => 'required|string|max:20',
+            'email'          => 'required|email|max:200',
+            'programa_id'    => 'required|integer|exists:programas,id',
+            'fecha'          => 'required|date|after_or_equal:today',
+            'personas'       => 'required|integer|min:1|max:50',
+            'masajes_extra'       => 'nullable|integer|min:0|max:10',
+            'menus_extra'         => 'nullable|integer|min:0|max:20',
+            'tipo_servicio'       => 'nullable|string|in:desayuno,once,desayuno_y_once',
+            'alimentacion_extra'  => 'nullable|boolean',
+            'almuerzo_extra'      => 'nullable|boolean',
+            'estacion_extra'      => 'nullable|boolean',
+            'sauna_extra'         => 'nullable|boolean',
+            'tinaja_extra'        => 'nullable|boolean',
         ]);
 
-        $telefono   = $this->normalizarTelefono($request->telefono);
-        $programaId = (int) $request->programa_id;
-        $fecha      = $request->fecha;
-        $personas   = (int) $request->personas;
-        $nombre     = trim($request->nombre);
-        $email      = strtolower(trim($request->email));
+        $telefono     = $this->normalizarTelefono($request->telefono);
+        $programaId   = (int) $request->programa_id;
+        $fecha        = $request->fecha;
+        $personas     = (int) $request->personas;
+        $nombre       = trim($request->nombre);
+        $email        = strtolower(trim($request->email));
+        $masajesExtra       = (int)  ($request->masajes_extra     ?? 0);
+        $menusExtra         = (int)  ($request->menus_extra       ?? 0);
+        $tipoServicio       =         $request->tipo_servicio      ?? null;
+        $alimentacionExtra  = (bool) ($request->alimentacion_extra ?? false);
+        $almuerzoExtra      = (bool) ($request->almuerzo_extra     ?? false);
+        $estacionExtra      = (bool) ($request->estacion_extra     ?? false);
+        $saunaExtra         = (bool) ($request->sauna_extra        ?? false);
+        $tinajaExtra        = (bool) ($request->tinaja_extra       ?? false);
+        $botUserId          = $this->getBotUserId();
 
         // ── 1. Verificar disponibilidad ───────────────────────────────────────
         $dispCheck = $this->verificarDisponibilidad($fecha, $programaId, $personas);
 
         if (!$dispCheck['disponible']) {
             return response()->json([
-                'ok'      => false,
-                'error'   => 'sin_disponibilidad',
-                'motivo'  => $dispCheck['motivo'] ?? 'No hay cupo para esa fecha y programa.',
-                'espacio' => $dispCheck['espacio'] ?? null,
-                'tinaja'  => $dispCheck['tinaja']  ?? null,
+                'ok'     => false,
+                'error'  => 'sin_disponibilidad',
+                'motivo' => $dispCheck['motivo'] ?? 'No hay cupo para esa fecha y programa.',
+                'tinaja' => $dispCheck['tinaja'] ?? null,
+                'espacio'=> $dispCheck['espacio'] ?? null,
             ], 409);
         }
 
-        // ── 2. Find-or-create cliente ─────────────────────────────────────────
+        // ── 2. Cargar programa ────────────────────────────────────────────────
+        $programa = \App\Programa::with('servicios')->findOrFail($programaId);
+        $valorTotal    = (int) $programa->valor_programa * $personas;
+        $incluyeMasaje = $programa->incluye_masajes;
+        $incluyeMenu   = $programa->incluye_almuerzos;
+
+        // Extras (precios desde servicios BD)
+        if ($masajesExtra > 0)                   { $valorTotal += $masajesExtra * 25000; } // $25.000/persona
+        if ($almuerzoExtra)                      { $valorTotal += $personas * 23800; }     // $23.800/persona
+        if ($alimentacionExtra && $tipoServicio) { $valorTotal += $personas * 10000; }     // $10.000/persona
+        if ($estacionExtra)                      { $valorTotal += 20000; }                 // $20.000 plano grupo
+        if ($saunaExtra)                         { $valorTotal += $personas * 7500; }      // $7.500/persona
+        if ($tinajaExtra)                        { $valorTotal += $personas * 11000; }     // $11.000/persona
+
+        // ── 3. Find-or-create cliente (no compromete disponibilidad) ─────────
         $clienteId = $this->obtenerOCrearCliente($nombre, $telefono, $email);
 
-        // ── 3. Crear reserva ──────────────────────────────────────────────────
-        $reservaId = DB::table('reservas')->insertGetId([
-            'cliente_id'        => $clienteId,
-            'cantidad_personas' => $personas,
-            'cantidad_masajes'  => 0,
-            'fecha_visita'      => $fecha,
-            'observacion'       => 'Reserva creada por bot WhatsApp',
-            'id_programa'       => $programaId,
-            'user_id'           => $this->getBotUserId(),
-            'estado'            => 'pendiente_pago',
-            'fuente'            => 'bot_whatsapp',
-            'menu_recibido'     => 0,
-            'created_at'        => now(),
-            'updated_at'        => now(),
+        $appUrl = rtrim(env('APP_URL', 'http://localhost'), '/');
+
+        // ── 4. Iniciar Webpay y guardar datos en webpay_pendientes ────────────
+        //      NO se crea reserva/venta/visita — eso ocurre al confirmar el pago.
+        $webpayUrl   = null;
+        $webpayError = null;
+
+        try {
+            $webpay    = new WebpayService();
+            $buyOrder  = 'BTC-' . time() . '-' . substr(md5($telefono), 0, 4);
+            $sessionId = 'bot-' . $clienteId . '-' . date('His');
+            $returnUrl = $appUrl . '/pago/webpay/retorno';
+
+            $wpResult = $webpay->initTransaction($valorTotal, $buyOrder, $sessionId, $returnUrl);
+
+            if ($wpResult['ok']) {
+                $webpayUrl = $wpResult['url'] . '?token_ws=' . $wpResult['token'];
+
+                // Guardar todos los datos necesarios para crear la reserva post-pago
+                DB::table('webpay_pendientes')->insert([
+                    'webpay_token' => $wpResult['token'],
+                    'webpay_orden' => $buyOrder,
+                    'monto'        => $valorTotal,
+                    'datos_json'   => json_encode([
+                        'cliente_id'    => $clienteId,
+                        'nombre'        => $nombre,
+                        'telefono'      => $telefono,
+                        'email'         => $email,
+                        'programa_id'   => $programaId,
+                        'fecha'         => $fecha,
+                        'personas'      => $personas,
+                        'masajes_extra'      => $masajesExtra,
+                        'menus_extra'        => $menusExtra,
+                        'tipo_servicio'      => $tipoServicio,
+                        'alimentacion_extra' => $alimentacionExtra,
+                        'almuerzo_extra'     => $almuerzoExtra,
+                        'estacion_extra'     => $estacionExtra,
+                        'sauna_extra'        => $saunaExtra,
+                        'tinaja_extra'       => $tinajaExtra,
+                        'incluye_masaje'     => $incluyeMasaje,
+                        'incluye_menu'  => $incluyeMenu,
+                        'bot_user_id'   => $botUserId,
+                    ]),
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+
+                Log::info('[BotReserva] Webpay iniciado (sin reserva aún)', [
+                    'token'    => $wpResult['token'],
+                    'cliente'  => $nombre,
+                    'programa' => $programa->nombre_programa,
+                    'fecha'    => $fecha,
+                    'monto'    => $valorTotal,
+                ]);
+            } else {
+                $webpayError = $wpResult['error'] ?? 'Error Webpay';
+                Log::error('[BotReserva] Webpay initTransaction falló', ['error' => $webpayError]);
+            }
+        } catch (\Exception $e) {
+            $webpayError = $e->getMessage();
+            Log::error('[BotReserva] Excepción Webpay: ' . $e->getMessage());
+        }
+
+        if (!$webpayUrl) {
+            return response()->json([
+                'ok'           => false,
+                'error'        => 'No se pudo generar el link de pago. Inténtalo de nuevo.',
+                'webpay_error' => $webpayError,
+            ], 500);
+        }
+
+        $ppp = $personas > 0 ? (int) ($valorTotal / $personas) : $valorTotal;
+
+        return response()->json([
+            'ok'                  => true,
+            'reserva_id'          => null, // Se asigna recién al confirmar el pago
+            'programa'            => $programa->nombre_programa,
+            'fecha'               => $fecha,
+            'personas'            => $personas,
+            'incluye_masaje'      => $incluyeMasaje,
+            'incluye_menu'        => $incluyeMenu,
+            'masajes_extra'       => $masajesExtra,
+            'menus_extra'         => $menusExtra,
+            'valor_total'         => $valorTotal,
+            'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
+            'precio_por_persona'  => '$' . number_format($ppp, 0, ',', '.'),
+            'enlace_pago'         => $webpayUrl,
+            'webpay_ok'           => true,
+            'webpay_error'        => null,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // OPCIONES DE MENÚ
+    // GET /api/bot/menu-opciones
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Retorna entradas, fondos y acompañamientos activos desde productos.
+     * El bot los inyecta al cliente para que elija.
+     */
+    public function menuOpciones()
+    {
+        try {
+            $productos = DB::table('productos as p')
+                ->join('tipos_productos as t', 't.id', '=', 'p.id_tipo_producto')
+                ->where('p.estado', 'activo')
+                ->select('p.id', 'p.nombre', 't.nombre as tipo')
+                ->orderBy('t.nombre')
+                ->orderBy('p.nombre')
+                ->get();
+
+            $entradas        = [];
+            $fondos          = [];
+            $acompañamientos = [];
+
+            foreach ($productos as $p) {
+                $item = ['id' => $p->id, 'nombre' => $p->nombre];
+                switch (strtolower($p->tipo)) {
+                    case 'entrada':        $entradas[]        = $item; break;
+                    case 'fondo':          $fondos[]          = $item; break;
+                    case 'acompañamiento': $acompañamientos[] = $item; break;
+                }
+            }
+
+            return response()->json([
+                'ok'              => true,
+                'entradas'        => $entradas,
+                'fondos'          => $fondos,
+                'acompañamientos' => $acompañamientos,
+            ]);
+        } catch (\Exception $e) {
+            Log::error('[BotReserva] menuOpciones error: ' . $e->getMessage());
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // GUARDAR ELECCIONES DE MENÚ
+    // PATCH /api/bot/reserva/{id}/menu
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Guarda las elecciones de menú por persona.
+     *
+     * Body: {
+     *   "todos_igual": true,                   // si todos comen lo mismo
+     *   "entrada_id": 5,                       // usado si todos_igual=true
+     *   "fondo_id": 12,
+     *   "acompanamiento_id": 3,                // nullable
+     *   "alergias": "sin gluten",              // nullable, aplica a todos
+     *   "menus": [                             // usado si todos_igual=false
+     *     { "entrada_id": 5, "fondo_id": 12, "acompanamiento_id": 3, "alergias": "" },
+     *     { "entrada_id": 6, "fondo_id": 11, "acompanamiento_id": null, "alergias": "" }
+     *   ]
+     * }
+     */
+    public function updateMenu(Request $request, int $reservaId)
+    {
+        $reserva = DB::table('reservas')->where('id', $reservaId)->first();
+        if (!$reserva) {
+            return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
+        }
+
+        $menus = DB::table('menus')->where('id_reserva', $reservaId)->orderBy('id')->get();
+        if ($menus->isEmpty()) {
+            return response()->json(['ok' => false, 'error' => 'No hay registros de menú para esta reserva'], 422);
+        }
+
+        $todosIgual = (bool) ($request->input('todos_igual', false));
+
+        if ($todosIgual) {
+            $request->validate([
+                'entrada_id'       => 'required|integer|exists:productos,id',
+                'fondo_id'         => 'required|integer|exists:productos,id',
+                'acompanamiento_id'=> 'nullable|integer|exists:productos,id',
+                'alergias'         => 'nullable|string|max:500',
+            ]);
+            // Aplicar misma elección a todos los menús
+            DB::table('menus')
+                ->where('id_reserva', $reservaId)
+                ->update([
+                    'id_producto_entrada'         => $request->input('entrada_id'),
+                    'id_producto_fondo'           => $request->input('fondo_id'),
+                    'id_producto_acompanamiento'  => $request->input('acompanamiento_id'),
+                    'alergias'                    => $request->input('alergias'),
+                    'updated_at'                  => now(),
+                ]);
+        } else {
+            // Elecciones por persona
+            $choices = $request->input('menus', []);
+            foreach ($menus as $i => $menu) {
+                if (!isset($choices[$i])) {
+                    continue;
+                }
+                $c = $choices[$i];
+                DB::table('menus')->where('id', $menu->id)->update([
+                    'id_producto_entrada'        => $c['entrada_id']        ?? null,
+                    'id_producto_fondo'          => $c['fondo_id']          ?? null,
+                    'id_producto_acompanamiento' => $c['acompanamiento_id'] ?? null,
+                    'alergias'                   => $c['alergias']          ?? null,
+                    'updated_at'                 => now(),
+                ]);
+            }
+        }
+
+        // Marcar reserva como menú recibido
+        DB::table('reservas')->where('id', $reservaId)->update([
+            'menu_recibido' => 1,
+            'updated_at'    => now(),
         ]);
 
-        Log::info('BotReservaController: reserva creada', [
+        Log::info('[BotReserva] Menú actualizado post-pago', [
             'reserva_id'  => $reservaId,
-            'cliente_id'  => $clienteId,
-            'telefono'    => $telefono,
-            'programa_id' => $programaId,
-            'fecha'       => $fecha,
-            'personas'    => $personas,
+            'todos_igual' => $todosIgual,
         ]);
-
-        // ── 4. Obtener nombre del programa ────────────────────────────────────
-        $programa = DB::table('programas')->where('id', $programaId)->first();
-        $valorTotal = ($programa ? (int) $programa->valor_programa : 0) * $personas;
-        $abono50    = (int) ceil($valorTotal / 2);
 
         return response()->json([
             'ok'         => true,
             'reserva_id' => $reservaId,
-            'programa'   => $programa ? $programa->nombre_programa : 'Programa',
-            'fecha'      => $fecha,
-            'personas'   => $personas,
-            'valor_total' => $valorTotal,
-            'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
-            'abono_50'   => $abono50,
-            'abono_50_formato' => '$' . number_format($abono50, 0, ',', '.'),
-            'instrucciones_pago' => [
-                'transferencia' => [
-                    'abono'    => '50% al reservar: ' . '$' . number_format($abono50, 0, ',', '.'),
-                    'saldo'    => '50% el día de visita: ' . '$' . number_format($abono50, 0, ',', '.'),
-                    'enviar_comprobante_a' => '+56974484112 o hola@botacura.cl',
-                ],
-                'link_pago' => [
-                    'monto'    => '100% anticipado: ' . '$' . number_format($valorTotal, 0, ',', '.'),
-                    'nota'     => 'Solicita el link de pago al equipo de Botacura',
-                ],
-            ],
-            'mensaje_siguiente' => 'Para confirmar tu reserva, envía el comprobante de pago al +56974484112 o a hola@botacura.cl indicando tu nombre y fecha de visita.',
+            'mensaje'    => 'Menú guardado correctamente',
         ]);
     }
 
-    // -------------------------------------------------------------------------
-    // HELPERS
-    // -------------------------------------------------------------------------
+    // ─────────────────────────────────────────────────────────────────────────
+    // ACTUALIZAR TIPO_SERVICIO (post-pago, respuesta del cliente)
+    // ─────────────────────────────────────────────────────────────────────────
 
     /**
-     * Verifica disponibilidad reutilizando la misma lógica que DisponibilidadController.
-     *
-     * @param  string $fecha
-     * @param  int    $programaId
-     * @param  int    $personas
-     * @return array  ['disponible' => bool, 'motivo' => string|null, ...]
+     * PATCH /api/bot/reserva/{id}/tipo-servicio
+     * Actualiza tipo_servicio en todos los menús de la reserva.
+     * El bot llama esto cuando el cliente responde "Desayuno" u "Once" post-pago.
      */
-    private function verificarDisponibilidad(string $fecha, int $programaId, int $personas)
+    public function updateTipoServicio(Request $request, int $reservaId)
+    {
+        $request->validate([
+            'tipo_servicio' => 'required|string|in:desayuno,once,desayuno_y_once',
+        ]);
+
+        $reserva = DB::table('reservas')->where('id', $reservaId)->first();
+        if (!$reserva) {
+            return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
+        }
+
+        $updated = DB::table('menus')
+            ->where('id_reserva', $reservaId)
+            ->update([
+                'tipo_servicio' => $request->tipo_servicio,
+                'updated_at'    => now(),
+            ]);
+
+        Log::info('[BotReserva] tipo_servicio actualizado post-pago', [
+            'reserva_id'    => $reservaId,
+            'tipo_servicio' => $request->tipo_servicio,
+            'menus_updated' => $updated,
+        ]);
+
+        return response()->json([
+            'ok'            => true,
+            'reserva_id'    => $reservaId,
+            'tipo_servicio' => $request->tipo_servicio,
+            'menus_updated' => $updated,
+        ]);
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function verificarDisponibilidad(string $fecha, int $programaId, int $personas): array
     {
         $capacidad = [
             'estacion_economico'  => 2,
@@ -153,22 +383,34 @@ class BotReservaController extends Controller
             'terraza'             => 6,
             'reposera'            => 4,
         ];
-        $poolFlexible    = ['terraza', 'reposera'];
-        $maxSlotsTinaja  = 16;
+        $poolFlexible   = ['terraza', 'reposera'];
+        $maxSlotsTinaja = 16;
 
         $programa = DB::table('programas')->where('id', $programaId)->first();
         if (!$programa) {
             return ['disponible' => false, 'motivo' => 'Programa no encontrado.'];
         }
 
-        // Slots tinaja
-        $reservas    = DB::table('reservas')->where('fecha_visita', $fecha)->pluck('cantidad_personas');
+        // Tinaja — solo reservas activas
+        $reservas    = DB::table('reservas')
+            ->where('fecha_visita', $fecha)
+            ->whereIn('estado', $this->estadosOcupados)
+            ->pluck('cantidad_personas');
         $slotsUsados = 0;
         foreach ($reservas as $cp) {
             $slotsUsados += ((int) $cp >= 5) ? 2 : 1;
         }
         $slotsNuevos = ($personas >= 5) ? 2 : 1;
         $tinajaOk    = ($slotsUsados + $slotsNuevos) <= $maxSlotsTinaja;
+
+        if (!$tinajaOk) {
+            return [
+                'disponible' => false,
+                'motivo'     => 'Los horarios de tinaja están completos para ese día.',
+                'tinaja'     => ['slots_usados' => $slotsUsados, 'slots_max' => $maxSlotsTinaja],
+                'espacio'    => [],
+            ];
+        }
 
         // Espacio
         $espacioTipo = $programa->espacio_tipo ?? null;
@@ -181,15 +423,17 @@ class BotReservaController extends Controller
                 $usadosPool = DB::table('reservas as r')
                     ->join('programas as p', 'r.id_programa', '=', 'p.id')
                     ->where('r.fecha_visita', $fecha)
+                    ->whereIn('r.estado', $this->estadosOcupados)
                     ->whereIn('p.espacio_tipo', $poolFlexible)
                     ->count();
-                $maxPool   = ($capacidad['terraza'] ?? 6) + ($capacidad['reposera'] ?? 4);
-                $espacioOk = $usadosPool < $maxPool;
+                $maxPool    = $capacidad['terraza'] + $capacidad['reposera'];
+                $espacioOk  = $usadosPool < $maxPool;
                 $espacioInfo = ['tipo' => 'terraza+reposera', 'usados' => $usadosPool, 'max' => $maxPool];
             } else {
                 $usados    = DB::table('reservas as r')
                     ->join('programas as p', 'r.id_programa', '=', 'p.id')
                     ->where('r.fecha_visita', $fecha)
+                    ->whereIn('r.estado', $this->estadosOcupados)
                     ->where('p.espacio_tipo', $espacioTipo)
                     ->count();
                 $max       = $capacidad[$espacioTipo] ?? 0;
@@ -200,11 +444,7 @@ class BotReservaController extends Controller
 
         $disponible = $tinajaOk && $espacioOk;
         $motivo     = null;
-        if (!$tinajaOk && !$espacioOk) {
-            $motivo = 'Sin cupo de tinaja ni de espacio para ese día.';
-        } elseif (!$tinajaOk) {
-            $motivo = 'Los horarios de tinaja están completos para ese día.';
-        } elseif (!$espacioOk) {
+        if (!$espacioOk) {
             $motivo = 'No hay espacios disponibles para ese programa en ese día.';
         }
 
@@ -216,35 +456,21 @@ class BotReservaController extends Controller
         ];
     }
 
-    /**
-     * Busca el cliente por WhatsApp o correo. Si no existe, lo crea.
-     *
-     * @param  string $nombre
-     * @param  string $telefono
-     * @param  string $email
-     * @return int    cliente_id
-     */
-    private function obtenerOCrearCliente(string $nombre, string $telefono, string $email)
+    private function obtenerOCrearCliente(string $nombre, string $telefono, string $email): int
     {
-        // Buscar por WhatsApp primero (más confiable en contexto bot)
-        $cliente = DB::table('clientes')->where('whatsapp_cliente', $telefono)->first();
-
-        if (!$cliente) {
-            // Intentar por correo
-            $cliente = DB::table('clientes')->where('correo', $email)->first();
-        }
+        $cliente = DB::table('clientes')->where('whatsapp_cliente', $telefono)->first()
+                ?? DB::table('clientes')->where('correo', $email)->first();
 
         if ($cliente) {
-            // Actualizar datos que puedan haber cambiado
             DB::table('clientes')->where('id', $cliente->id)->update([
-                'nombre_cliente'    => $nombre,
-                'whatsapp_cliente'  => $telefono,
-                'updated_at'        => now(),
+                'nombre_cliente'   => $nombre,
+                'whatsapp_cliente' => $telefono,
+                'correo'           => $email,
+                'updated_at'       => now(),
             ]);
             return $cliente->id;
         }
 
-        // Crear nuevo cliente
         return DB::table('clientes')->insertGetId([
             'nombre_cliente'    => $nombre,
             'whatsapp_cliente'  => $telefono,
@@ -256,17 +482,10 @@ class BotReservaController extends Controller
         ]);
     }
 
-    /**
-     * Normaliza el teléfono a formato numérico sin +.
-     * "+56 9 1234 5678" → "56912345678"
-     *
-     * @param  string $telefono
-     * @return string
-     */
-    private function normalizarTelefono(string $telefono)
+    private function normalizarTelefono(string $telefono): string
     {
         $limpio = preg_replace('/[^0-9]/', '', $telefono);
-        if (strlen($limpio) === 9 && substr($limpio, 0, 1) === '9') {
+        if (strlen($limpio) === 9 && $limpio[0] === '9') {
             $limpio = '56' . $limpio;
         }
         return $limpio;

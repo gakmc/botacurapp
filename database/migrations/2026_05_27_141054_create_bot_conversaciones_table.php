@@ -21,6 +21,8 @@ class CreateBotConversacionesTable extends Migration
     public function up()
     {
         Schema::create('bot_conversaciones', function (Blueprint $table) {
+            $table->charset   = 'utf8mb4';
+            $table->collation = 'utf8mb4_unicode_ci';
             $table->increments('id');
 
             // Identificador del usuario en el canal (número WA o user ID de IG)

@@ -46,6 +46,7 @@ class BotProgramasController extends Controller
                 'p.espacio_tipo',
                 's.nombre_servicio'
             )
+            ->where('p.estado', 'activo')
             ->orderBy('p.valor_programa', 'asc')
             ->orderBy('s.nombre_servicio', 'asc')
             ->get();

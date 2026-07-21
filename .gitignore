@@ -31,3 +31,17 @@ phpunit.xml*
 /public/js/app.js
 /public/mix-manifest.json
 backups_api_iot/
+
+# Dev/debug utilities (no subir a git)
+/public/check_*.php
+/public/reset_conv.php
+/public/limpiar_pendientes.php
+/public/check_disp.php
+/dbexport.php
+/produccion_dump.sql
+/analisis-whatsapp-botacura.md
+/qa-bot.py
+/qa-bot.sh
+/sync-db*.bat
+/sync-db.sh
+/migrate_tipo_servicio.bat

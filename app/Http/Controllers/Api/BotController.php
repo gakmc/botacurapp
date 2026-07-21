@@ -10,8 +10,8 @@ use App\Services\BotPromptService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Validator;
 
 /**
  * BotController
@@ -56,6 +56,7 @@ class BotController extends Controller
             ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
             ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
             ->select('p.id', 'p.nombre_programa', 'p.slug', 'p.valor_programa', 'p.descuento', 's.nombre_servicio', 's.duracion')
+            ->where('p.estado', 'activo')
             ->orderBy('p.valor_programa')
             ->get();
 
@@ -362,13 +363,16 @@ class BotController extends Controller
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
         }
 
-        $request->validate([
+        $validator = Validator::make($request->all(), [
             'telefono' => 'required|string',
             'mensaje'  => 'required|string|max:4000',
             'nombre'   => 'nullable|string|max:100',
         ]);
+        if ($validator->fails()) {
+            return response()->json(['ok' => false, 'errors' => $validator->errors()], 422);
+        }
 
-        $usuarioId = $this->normalizarTelefono($request->telefono);
+        $usuarioId = $this->normalizarTelefono($request->input('telefono', ''));
         $mensaje   = trim($request->mensaje);
         $nombre    = $request->nombre ?? 'Cliente';
 
@@ -379,10 +383,74 @@ class BotController extends Controller
         $historial   = json_decode($conv->historial_json ?? '[]', true) ?: [];
         $historial[] = ['role' => 'user', 'content' => $mensaje];
 
-        // System prompt con programas dinámicos desde BD
+        // System prompt con programas + opciones de menú desde BD
         $programas    = $this->cargarProgramasBd();
+        $menuOpciones = $this->cargarMenuOpciones();
         $promptSvc    = new BotPromptService();
-        $systemPrompt = $promptSvc->getSystemPrompt($programas);
+        $systemPrompt = $promptSvc->getSystemPrompt($programas, $menuOpciones);
+
+        // ── Cliente recurrente: inyectar datos ya conocidos ───────────────────
+        $clienteExistente = DB::table('clientes')
+            ->where('whatsapp_cliente', $usuarioId)
+            ->whereNotNull('nombre_cliente')
+            ->orderBy('id', 'desc')
+            ->first(['nombre_cliente', 'correo', 'whatsapp_cliente']);
+
+        if ($clienteExistente) {
+            $systemPrompt .= "\n\n"
+                . "════════════════════════════════════════════\n"
+                . "CLIENTE REGISTRADO — DATOS YA CONOCIDOS\n"
+                . "════════════════════════════════════════════\n"
+                . "Este cliente ya tiene reservas anteriores. Sus datos están en el sistema:\n"
+                . "  nombre:   {$clienteExistente->nombre_cliente}\n"
+                . "  correo:   {$clienteExistente->correo}\n"
+                . "  teléfono: {$clienteExistente->whatsapp_cliente}\n\n"
+                . "REGLAS:\n"
+                . "- NO pidas nombre, correo ni teléfono — ya los tenemos.\n"
+                . "- Puedes saludarlo por su nombre directamente.\n"
+                . "- Al crear la reserva, usa SIEMPRE estos datos exactos.\n"
+                . "- Si el cliente quiere corregir algún dato, actualízalo y úsalo.";
+        }
+
+        // Precomputar próximos días operativos para evitar que Claude use su calendario erróneo
+        $fechaHoy = \Carbon\Carbon::now(); // timezone ya configurado en config/app.php (APP_TIMEZONE=America/Santiago)
+        // Días operativos: jue=4, vie=5, sab=6, dom=0
+        $diasOperativos = [0, 4, 5, 6];
+        $lineasCal = [];
+
+        // Incluir HOY si es día operativo (alguien puede reservar de madrugada o en la mañana para hoy mismo)
+        $cursor = $fechaHoy->copy();
+        if (in_array($cursor->dayOfWeek, $diasOperativos)) {
+            $lineasCal[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\" (HOY)  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
+        }
+        $cursor->addDay(); // avanzar a mañana
+
+        while (count($lineasCal) < 14) {
+            $dow = $cursor->dayOfWeek;
+            if (in_array($dow, $diasOperativos)) {
+                $esMañana = $cursor->format('Y-m-d') === $fechaHoy->copy()->addDay()->format('Y-m-d') ? ' (MAÑANA)' : '';
+                $lineasCal[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\"{$esMañana}  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
+            }
+            $cursor->addDay();
+        }
+
+        $systemPrompt .= "\n\n"
+            . "════════════════════════════════════════════\n"
+            . "CALENDARIO OPERATIVO — ÚNICA FUENTE DE VERDAD\n"
+            . "════════════════════════════════════════════\n"
+            . "HOY ES: " . $fechaHoy->format('Y-m-d') . " ("
+            . $fechaHoy->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ")\n\n"
+            . "⚠️  TU CONOCIMIENTO DEL CALENDARIO PARA 2026 TIENE ERRORES.\n"
+            . "NO uses tu propio cálculo de días de la semana.\n"
+            . "Usa EXCLUSIVAMENTE la siguiente tabla generada por el servidor:\n\n"
+            . implode("\n", $lineasCal) . "\n\n"
+            . "REGLAS DE MATCHING (obligatorias):\n"
+            . "- Cliente dice 'jueves'     → primera fila que empiece con 'jueves'\n"
+            . "- Cliente dice 'el 23'      → fila que tenga el número 23\n"
+            . "- Cliente dice 'jueves 23'  → fila 'jueves 23 de julio' → 2026-07-23\n"
+            . "- Si la fecha ya pasó, ofrece la siguiente disponible de la lista\n"
+            . "- NUNCA uses una fecha fuera de esta tabla\n"
+            . "- NUNCA confíes en tu propio conocimiento del día de la semana para 2026";
 
         // Llamar a Claude
         $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
@@ -430,28 +498,46 @@ class BotController extends Controller
         $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
 
         try {
-            $response = Http::withHeaders([
-                'x-api-key'         => $apiKey,
-                'anthropic-version' => '2023-06-01',
-                'content-type'      => 'application/json',
-            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-                'model'      => $model,
-                'max_tokens' => 1024,
-                'system'     => $systemPrompt . "\n\nNombre del cliente: {$nombre}",
-                'messages'   => $historial,
+            $client = new \GuzzleHttp\Client(['timeout' => 30]);
+            $response = $client->post('https://api.anthropic.com/v1/messages', [
+                'headers' => [
+                    'x-api-key'         => $apiKey,
+                    'anthropic-version' => '2023-06-01',
+                    'content-type'      => 'application/json',
+                ],
+                'json' => [
+                    'model'      => $model,
+                    'max_tokens' => 1024,
+                    'system'     => $systemPrompt . "\n\nNombre del cliente: {$nombre}",
+                    'messages'   => $historial,
+                ],
             ]);
 
-            if (!$response->successful()) {
-                Log::error('[Bot] Claude error', ['status' => $response->status()]);
-                return null;
+            $body    = json_decode($response->getBody()->getContents(), true);
+            $content = $body['content'][0]['text'] ?? '';
+
+            // 1) Quitar bloques de código markdown si los hay
+            $content = trim(preg_replace(['/^```json\s*/i', '/\s*```$/'], '', trim($content)));
+
+            // 2) Intentar parsear directamente
+            $parsed = json_decode($content, true);
+
+            // 3) Si falla (Claude añadió texto antes/después del JSON), extraer el objeto
+            if (!$parsed) {
+                if (preg_match('/\{.*\}/s', $content, $m)) {
+                    $parsed = json_decode($m[0], true);
+                }
             }
 
-            $content = $response->json()['content'][0]['text'] ?? '';
-            $content = trim(preg_replace(['/^```json\s*/i', '/\s*```$/'], '', trim($content)));
-            $parsed  = json_decode($content, true);
-
             if (!$parsed || !isset($parsed['accion'], $parsed['mensaje'])) {
-                return ['accion' => 'responder', 'mensaje' => $content, 'datos' => []];
+                // Limpiar cualquier JSON que pudiera estar en el texto antes de enviarlo al usuario
+                $textoLimpio = is_array($parsed) ? json_encode($parsed, JSON_UNESCAPED_UNICODE) : $content;
+                return ['accion' => 'responder', 'mensaje' => $textoLimpio, 'datos' => []];
+            }
+
+            // 4) Asegurar que mensaje sea string limpio (no JSON anidado)
+            if (is_array($parsed['mensaje'])) {
+                $parsed['mensaje'] = implode("\n", $parsed['mensaje']);
             }
             return $parsed;
 
@@ -464,16 +550,37 @@ class BotController extends Controller
     private function procesarDisponibilidad(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
     {
         $datos = $respuesta['datos'] ?? [];
-        if (empty($datos['fecha']) || empty($datos['programa_id'])) {
+
+        if (empty($datos['fecha'])) {
             return $respuesta;
         }
+
+        // Resolver programa_id: Claude puede enviarlo como número o como nombre
+        $programaId = $datos['programa_id'] ?? null;
+        if (!$programaId && !empty($datos['programa'])) {
+            $prog = DB::table('programas')
+                ->where('nombre_programa', 'like', '%' . $datos['programa'] . '%')
+                ->where('estado', 'activo')
+                ->first(['id']);
+            $programaId = $prog ? $prog->id : null;
+        }
+
         try {
-            $disp = Http::timeout(10)->get(url('/api/disponibilidad'), [
-                'fecha'       => $datos['fecha'],
-                'programa_id' => $datos['programa_id'],
-                'personas'    => $datos['personas'] ?? 1,
-            ]);
-            $ctx      = '[Sistema-disponibilidad: ' . json_encode($disp->json(), JSON_UNESCAPED_UNICODE) . ']';
+            // Llamada directa (evita deadlock HTTP self-referencial en XAMPP)
+            $queryParams = [
+                'fecha'    => $datos['fecha'],
+                'personas' => $datos['personas'] ?? 1,
+            ];
+            if ($programaId) {
+                $queryParams['programa_id'] = $programaId;
+            } else {
+                // Sin programa aún: verificar disponibilidad general del día
+                Log::info('[Bot] procesarDisponibilidad: sin programa_id, verificando disponibilidad general', $datos);
+            }
+            $fakeDispRequest = \Illuminate\Http\Request::create('/api/bot/disponibilidad', 'GET', $queryParams);
+            $dispResponse = $this->disponibilidad($fakeDispRequest);
+            $dispData     = json_decode($dispResponse->getContent(), true);
+            $ctx      = '[Sistema-disponibilidad: ' . json_encode($dispData, JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
             return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
         } catch (\Exception $e) {
@@ -485,27 +592,59 @@ class BotController extends Controller
     private function procesarCrearReservaClaude(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre, string $usuarioId)
     {
         $datos = $respuesta['datos'] ?? [];
+
+        // Para cliente existente, completar nombre/email desde DB si Claude no los tiene
+        if (empty($datos['nombre']) || empty($datos['email'])) {
+            $clienteDb = DB::table('clientes')
+                ->where('whatsapp_cliente', $usuarioId)
+                ->whereNotNull('nombre_cliente')
+                ->orderBy('id', 'desc')
+                ->first(['nombre_cliente', 'correo']);
+            if ($clienteDb) {
+                $datos['nombre'] = $datos['nombre'] ?? $clienteDb->nombre_cliente;
+                $datos['email']  = $datos['email']  ?? $clienteDb->correo;
+            }
+        }
+
         foreach (['nombre', 'email', 'programa_id', 'fecha', 'personas'] as $campo) {
             if (empty($datos[$campo])) {
                 return $respuesta;
             }
         }
         try {
-            $secret = config('services.bot.secret');
-            $res = Http::withHeaders([
-                self::BOT_SECRET_HEADER => $secret,
-                'content-type'          => 'application/json',
-            ])->timeout(15)->post(url('/api/bot/reserva'), [
-                'nombre'      => $datos['nombre'],
-                'telefono'    => $datos['telefono'] ?? $usuarioId,
-                'email'       => $datos['email'],
-                'programa_id' => $datos['programa_id'],
-                'fecha'       => $datos['fecha'],
-                'personas'    => $datos['personas'],
+            // Llamada directa (evita deadlock HTTP self-referencial en XAMPP)
+            $reservaController = new \App\Http\Controllers\Api\BotReservaController();
+            $fakeRequest = \Illuminate\Http\Request::create('/api/bot/reserva', 'POST', [
+                'nombre'             => $datos['nombre'],
+                'telefono'           => $datos['telefono'] ?? $usuarioId,
+                'email'              => $datos['email'],
+                'programa_id'        => $datos['programa_id'],
+                'fecha'              => $datos['fecha'],
+                'personas'           => $datos['personas'],
+                'masajes_extra'      => (int)  ($datos['masajes_extra']      ?? 0),
+                'menus_extra'        => (int)  ($datos['menus_extra']        ?? 0),
+                'tipo_servicio'      =>         $datos['tipo_servicio']      ?? null,
+                'alimentacion_extra' => (bool) ($datos['alimentacion_extra'] ?? false),
+                'almuerzo_extra'     => (bool) ($datos['almuerzo_extra']     ?? false),
+                'estacion_extra'     => (bool) ($datos['estacion_extra']     ?? false),
+                'sauna_extra'        => (bool) ($datos['sauna_extra']        ?? false),
+                'tinaja_extra'       => (bool) ($datos['tinaja_extra']       ?? false),
             ]);
-            $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $response = $reservaController->store($fakeRequest);
+            $resData  = json_decode($response->getContent(), true);
+            // Inyectar el teléfono capturado de WhatsApp para que Claude lo incluya en la confirmación
+            $resData['telefono_cliente'] = $usuarioId;
+            $ctx      = '[Sistema-reserva: ' . json_encode($resData, JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
-            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
+            $finalResp = $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
+            // Pasar enlace_pago siempre que exista (reserva_id es null hasta confirmar pago)
+            if (!empty($resData['enlace_pago'])) {
+                $finalResp['datos'] = array_merge($finalResp['datos'] ?? [], [
+                    'reserva_id'  => $resData['reserva_id']  ?? null,
+                    'enlace_pago' => $resData['enlace_pago'],
+                ]);
+            }
+            return $finalResp;
         } catch (\Exception $e) {
             Log::error('[Bot] Error creando reserva: ' . $e->getMessage());
             return $respuesta;
@@ -527,6 +666,7 @@ class BotController extends Controller
         if (!$conv) {
             $id = DB::table('bot_conversaciones')->insertGetId([
                 'usuario_id'     => $usuarioId,
+                'telefono'       => $usuarioId,
                 'canal'          => 'whatsapp',
                 'paso'           => 0,
                 'nombre_cliente' => $nombre !== 'Cliente' ? $nombre : null,
@@ -558,6 +698,15 @@ class BotController extends Controller
         ];
         foreach ($mapeo as $clave => $col) {
             if (!empty($datos[$clave])) {
+                // fecha_visita debe ser YYYY-MM-DD válida — nunca texto descriptivo
+                if ($col === 'fecha_visita') {
+                    $val = $datos[$clave];
+                    $d   = \DateTime::createFromFormat('Y-m-d', $val);
+                    if (!$d || $d->format('Y-m-d') !== $val) {
+                        Log::warning("[Bot] fecha_visita inválida ignorada: '{$val}'");
+                        continue;
+                    }
+                }
                 $update[$col] = $datos[$clave];
             }
         }
@@ -580,6 +729,7 @@ class BotController extends Controller
                 ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
                 ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
                 ->select('p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo', 's.nombre_servicio')
+                ->where('p.estado', 'activo')
                 ->orderBy('p.valor_programa')
                 ->orderBy('s.nombre_servicio')
                 ->get();
@@ -604,6 +754,33 @@ class BotController extends Controller
             return array_values($agrupados);
         } catch (\Exception $e) {
             Log::error('[Bot] Error cargando programas: ' . $e->getMessage());
+            return [];
+        }
+    }
+
+    private function cargarMenuOpciones(): array
+    {
+        try {
+            $productos = DB::table('productos as p')
+                ->join('tipos_productos as t', 't.id', '=', 'p.id_tipo_producto')
+                ->where('p.estado', 'activo')
+                ->select('p.id', 'p.nombre', 't.nombre as tipo')
+                ->orderBy('t.nombre')
+                ->orderBy('p.nombre')
+                ->get();
+
+            $entradas = $fondos = $acompañamientos = [];
+            foreach ($productos as $p) {
+                $item = ['id' => $p->id, 'nombre' => $p->nombre];
+                switch (strtolower($p->tipo)) {
+                    case 'entrada':        $entradas[]        = $item; break;
+                    case 'fondo':          $fondos[]          = $item; break;
+                    case 'acompañamiento': $acompañamientos[] = $item; break;
+                }
+            }
+            return compact('entradas', 'fondos', 'acompañamientos');
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error cargando menú opciones: ' . $e->getMessage());
             return [];
         }
     }
