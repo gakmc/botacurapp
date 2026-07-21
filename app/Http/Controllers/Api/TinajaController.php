@@ -7,14 +7,6 @@ use Illuminate\Support\Facades\DB;
 
 /**
  * TinajaController
- *
- * Consulta la base de datos para obtener la próxima reserva de cada tinaja.
- * - Tinaja 1: horario_tinaja termina en :45 (ej: 11:45, 12:45, 15:45...)
- * - Tinaja 2: horario_tinaja termina en :15 (ej: 11:15, 12:15, 15:15...)
- *
- * Consumido por Home Assistant vía sensor REST para mostrar en el dashboard
- * y calcular el encendido automático de la calefacción.
- *
  * GET /api/iot/tinajas/proxima-reserva
  */
 class TinajaController extends Controller
@@ -32,9 +24,6 @@ class TinajaController extends Controller
         ]);
     }
 
-    /**
-     * Próxima visita con sauna agendado (visitas.horario_sauna).
-     */
     private function getProximaSauna(): ?array
     {
         $row = DB::table('visitas as v')
@@ -62,8 +51,62 @@ class TinajaController extends Controller
         ];
     }
 
-    /**
-     * Próximo masaje por lugar (masajes.horario_masaje JOIN lugares_masajes).
-     */
     private function getProximaMasaje(string $lugarKeyword): ?array
     {
+        $row = DB::table('masajes as m')
+            ->join('reservas as r', 'm.id_reserva', '=', 'r.id')
+            ->join('lugares_masajes as lm', 'm.id_lugar_masaje', '=', 'lm.id')
+            ->leftJoin('clientes as c', 'r.cliente_id', '=', 'c.id')
+            ->select(
+                'r.fecha_visita',
+                'm.horario_masaje',
+                'lm.nombre AS lugar',
+                DB::raw("CONCAT(r.fecha_visita, ' ', m.horario_masaje) AS datetime_reserva"),
+                'c.nombre_cliente AS cliente'
+            )
+            ->whereNotNull('m.horario_masaje')
+            ->where('lm.nombre', 'LIKE', "%{$lugarKeyword}%")
+            ->whereRaw("CONCAT(r.fecha_visita, ' ', m.horario_masaje) > NOW()")
+            ->orderBy('r.fecha_visita', 'ASC')
+            ->orderBy('m.horario_masaje', 'ASC')
+            ->first();
+
+        if (!$row) return null;
+
+        return [
+            'fecha_visita'     => $row->fecha_visita,
+            'horario'          => substr($row->horario_masaje, 0, 5),
+            'datetime_reserva' => $row->datetime_reserva,
+            'cliente'          => $row->cliente ?? 'Sin nombre',
+            'lugar'            => $row->lugar,
+        ];
+    }
+
+    private function getProximaReserva(string $minutos): ?array
+    {
+        $row = DB::table('visitas as v')
+            ->join('reservas as r', 'v.id_reserva', '=', 'r.id')
+            ->leftJoin('clientes as c', 'r.cliente_id', '=', 'c.id')
+            ->select(
+                'r.fecha_visita',
+                'v.horario_tinaja',
+                DB::raw("CONCAT(r.fecha_visita, ' ', v.horario_tinaja) AS datetime_reserva"),
+                'c.nombre_cliente AS cliente'
+            )
+            ->whereNotNull('v.horario_tinaja')
+            ->whereRaw("TIME_FORMAT(v.horario_tinaja, '%i') = ?", [$minutos])
+            ->whereRaw("CONCAT(r.fecha_visita, ' ', v.horario_tinaja) > NOW()")
+            ->orderBy('r.fecha_visita', 'ASC')
+            ->orderBy('v.horario_tinaja', 'ASC')
+            ->first();
+
+        if (!$row) return null;
+
+        return [
+            'fecha_visita'     => $row->fecha_visita,
+            'horario'          => substr($row->horario_tinaja, 0, 5),
+            'datetime_reserva' => $row->datetime_reserva,
+            'cliente'          => $row->cliente ?? 'Sin nombre',
+        ];
+    }
+}

@@ -1620,29 +1620,44 @@ class ReservaController extends Controller
             $almuerzosExtra = isset($menus);
         }
 
-                // Obtener productos de tipo "entrada"
-                $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
-                    $query->where('nombre', 'entrada');
-                })->get();
-        
-                // Obtener productos de tipo "fondo"
-                $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
-                    $query->where('nombre', 'fondo');
-                })->get();
-        
-                // Obtener productos de tipo "acompañamiento"
-                $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
-                    $query->where('nombre', 'acompañamiento');
-                })->get();
+        // Detectar si el programa incluye servicio de alimentación extra
+        // "Desayuno u Once" → staff elige cuál por persona (dropdown)
+        // "Desayuno y Once" → cada persona recibe ambos (se muestra badge, sin dropdown)
+        $incluyeDesayunoUOnce      = in_array('Desayuno u Once', $servicios);
+        $incluyeAmbos              = in_array('Desayuno y Once', $servicios);
+        $mostrarSelectTipoServicio = $incluyeDesayunoUOnce; // dropdown solo para "Desayuno u Once"
+        $tieneServicioAlim         = $incluyeDesayunoUOnce || $incluyeAmbos;
+
+        // El select siempre muestra solo las dos opciones básicas
+        $opcionesTipoServicio = ['desayuno' => 'Desayuno', 'once' => 'Once'];
+
+        // Obtener productos de tipo "entrada"
+        $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'entrada');
+        })->get();
+
+        // Obtener productos de tipo "fondo"
+        $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'fondo');
+        })->get();
+
+        // Obtener productos de tipo "acompañamiento"
+        $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'acompañamiento');
+        })->get();
 
         return view('themes.backoffice.pages.reserva.menu.edit', [
-            'reserva'           => $reserva,
-            'servicios'         => $servicios,
-            'menus'             => $menus,
-            'entradas'          => $entradas,
-            'fondos'            => $fondos,
-            'acompañamientos'   => $acompañamientos,
-            'almuerzosExtra'    => $almuerzosExtra,
+            'reserva'                  => $reserva,
+            'servicios'                => $servicios,
+            'menus'                    => $menus,
+            'entradas'                 => $entradas,
+            'fondos'                   => $fondos,
+            'acompañamientos'          => $acompañamientos,
+            'almuerzosExtra'           => $almuerzosExtra,
+            'tieneServicioAlim'        => $tieneServicioAlim,
+            'incluyeAmbos'             => $incluyeAmbos,
+            'mostrarSelectTipoServicio'=> $mostrarSelectTipoServicio,
+            'opcionesTipoServicio'     => $opcionesTipoServicio,
         ]);
     }
 
@@ -1654,6 +1669,7 @@ class ReservaController extends Controller
             'menus.*.id_producto_acompanamiento' => 'nullable|integer|exists:productos,id',
             'menus.*.alergias' => 'nullable|string',
             'menus.*.observacion' => 'nullable|string',
+            'tipo_servicio' => 'nullable|string|in:desayuno,once,desayuno_y_once',
         ],[
             // Entrada
             'menus.*.id_producto_entrada.required' => 'Debes seleccionar una entrada.',
@@ -1679,8 +1695,11 @@ class ReservaController extends Controller
             dd($id);
         }**/
 
+        // tipo_servicio se envía una sola vez para toda la reserva
+        $tipoServicioGlobal = $request->input('tipo_servicio');
+
         try {
-            
+
             foreach ($request->menus as $id => $datos) {
                 $menu = Menu::findOrFail($id);
 
@@ -1690,6 +1709,7 @@ class ReservaController extends Controller
                     'id_producto_acompanamiento'    => $datos['id_producto_acompanamiento'],
                     'alergias'                      => $datos['alergias'],
                     'observacion'                   => $datos['observacion'],
+                    'tipo_servicio'                 => $tipoServicioGlobal,
                 ]);
             }
 

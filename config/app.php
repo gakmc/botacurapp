@@ -82,7 +82,7 @@ return [
     |
     */
 
-    'timezone' => 'America/Santiago',
+    'timezone' => env('APP_TIMEZONE', 'America/Santiago'),
 
     /*
     |--------------------------------------------------------------------------

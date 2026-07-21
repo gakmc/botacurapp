@@ -147,7 +147,7 @@ class MenuController extends Controller
             ->with([
                 'cliente:id,nombre_cliente,whatsapp_cliente,correo',
                 'programa:id,nombre_programa',
-                'menus:id,id_reserva,id_producto_entrada,id_producto_fondo,id_producto_acompanamiento,alergias,observacion',
+                'menus:id,id_reserva,id_producto_entrada,id_producto_fondo,id_producto_acompanamiento,alergias,observacion,tipo_servicio',
                 'menus.productoEntrada:id,nombre',
                 'menus.productoFondo:id,nombre',
                 'menus.productoAcompanamiento:id,nombre',
@@ -162,6 +162,8 @@ class MenuController extends Controller
         $entradas = [];
         $fondos = [];
         $acomps = [];
+        $desayunoCount = 0;
+        $onceCount     = 0;
 
         foreach ($reservas as $reserva) {
             foreach ($reserva->menus as $menu) {
@@ -177,6 +179,13 @@ class MenuController extends Controller
                     $n = $menu->productoAcompanamiento->nombre;
                     $acomps[$n] = ($acomps[$n] ?? 0) + 1;
                 }
+                // Conteo desayuno/once
+                if (in_array($menu->tipo_servicio, ['desayuno', 'desayuno_y_once'])) {
+                    $desayunoCount++;
+                }
+                if (in_array($menu->tipo_servicio, ['once', 'desayuno_y_once'])) {
+                    $onceCount++;
+                }
             }
         }
 
@@ -188,7 +197,7 @@ class MenuController extends Controller
                 'programa' => $r->programa ? $r->programa->nombre_programa : 'Sin programa',
                 'observacion_reserva' => $r->observacion ?? 'Sin Observaciones',
                 'avisado_en_cocina' => $r->avisado_en_cocina,
-                'avisar_url' => route('backoffice.reserva.avisar', $r->id), // (sin backoffice, por tu prefix)
+                'avisar_url' => route('backoffice.reserva.avisar', $r->id),
                 'menus' => $r->menus->map(function ($m) {
                     return [
                         'entrada' => ($m->id_producto_entrada && $m->productoEntrada) ? $m->productoEntrada->nombre : null,
@@ -196,6 +205,7 @@ class MenuController extends Controller
                         'acompanamiento' => $m->productoAcompanamiento ? $m->productoAcompanamiento->nombre : null,
                         'alergias' => $m->alergias,
                         'observacion' => $m->observacion,
+                        'tipo_servicio' => $m->tipo_servicio,
                     ];
                 })->values(),
             ];
@@ -207,6 +217,8 @@ class MenuController extends Controller
             'entradas' => $entradas,
             'fondos' => $fondos,
             'acompanamientos' => $acomps,
+            'desayuno_count' => $desayunoCount,
+            'once_count'     => $onceCount,
             'reservas' => $reservasPayload,
         ]);
     }
