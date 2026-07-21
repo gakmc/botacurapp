@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\DetalleVentaDirecta;
 use App\Events\Consumos\NuevoConsumoAgregado;
+use App\Events\Consumos\ProductoEliminado;
 use App\Producto;
 use App\TipoProducto;
 use App\TipoTransaccion;
@@ -161,38 +162,42 @@ class VentaDirectaController extends Controller
 
 
 
-            $productosEvento = array_map(function ($detalle_venta_directa) use ($request) {
-                $producto = Producto::find($detalle_venta_directa->producto_id);
-                return [
-                    'id' => $detalle_venta_directa->id,
-                    'nombre' => $producto->nombre,
-                    'cantidad' => $detalle_venta_directa->cantidad,
-                    'cliente' => 'Venta Directa',
+            $productoIdsBarra = Producto::whereIn('id', collect($detallesVentas)->pluck('producto_id'))
+                ->whereHas('tipoProducto.sector', function ($q) {
+                    $q->where('nombre', 'barra');
+                })
+                ->pluck('id');
+
+            $detallesBarra = array_filter($detallesVentas, function ($detalle) use ($productoIdsBarra) {
+                return $productoIdsBarra->contains($detalle->producto_id);
+            });
+
+            if (! empty($detallesBarra)) {
+                $pedidoCreado = Carbon::parse($venta_directa->created_at)->format('Y-m-d H:i:s');
+
+                $productosEvento = array_map(function ($detalle_venta_directa) use ($venta_directa, $pedidoCreado) {
+                    $producto = Producto::find($detalle_venta_directa->producto_id);
+                    return [
+                        'id'               => $detalle_venta_directa->id,
+                        'origen'           => 'venta_directa',
+                        'venta_directa_id' => $venta_directa->id,
+                        'pedido_creado'    => $pedidoCreado,
+                        'nombre'           => $producto->nombre,
+                        'cantidad'         => $detalle_venta_directa->cantidad,
+                        'cliente'          => 'Venta Directa',
+                        'ubicacion'        => 'Venta Directa',
+                    ];
+                }, $detallesBarra);
+
+                event(new NuevoConsumoAgregado([
+                    'mensaje'   => 'Nuevo consumo agregado ' . $nombres,
+                    'pedido_id' => $venta_directa->id,
+                    'cliente'   => 'Venta Directa',
                     'ubicacion' => 'Venta Directa',
-                ];
-            }, $detallesVentas);
-    
-    
-            // event(new NuevoConsumoAgregado([
-            //     'mensaje'=>'Nuevo consumo agregado '.$nombres,
-            //     'productos' => $productosEvento,
-            //     'estado' => 'por-procesar'
-            // ]));
-
-            event(new NuevoConsumoAgregado([
-                'mensaje'   => 'Nuevo consumo agregado ' . $nombres,
-                'pedido_id' => $venta_directa->id,
-                'cliente'   => 'Venta Directa',
-                'ubicacion' => 'Venta Directa',
-                'productos' => $productosEvento,
-                'estado'    => 'por-procesar',
-            ]));
-
-            // broadcast(new NuevoConsumoAgregado([
-            //     'mensaje'=>'Nuevo consumo agregado '.$nombres,
-            //     'productos' => $productosEvento,
-            //     'estado' => 'por-procesar'
-            // ]));
+                    'productos' => $productosEvento,
+                    'estado'    => 'por-procesar',
+                ]));
+            }
         });
 
         
@@ -286,7 +291,9 @@ class VentaDirectaController extends Controller
         $nombres = Producto::activos()->whereIn('id', $productos)->pluck('nombre')->implode(', ');
 
 
-        DB::transaction(function () use ($request, $ventaDirecta, &$productos, &$detallesVentas, $poseePropina, $nombres) {
+        $detallesNuevos = [];
+
+        DB::transaction(function () use ($request, $ventaDirecta, &$productos, &$detallesVentas, &$detallesNuevos, $poseePropina, $nombres) {
 
             $fecha = Carbon::now()->toDateString();
             // Crear la venta directa
@@ -319,53 +326,107 @@ class VentaDirectaController extends Controller
                 }
 
             // Crear los detalles de venta
-            
+
             // Filtrar los productos del request con cantidad válida (mayor que 0)
             $productosValidos = array_filter($request->productos, function ($producto) {
                 return isset($producto['cantidad']) && $producto['cantidad'] > 0;
             });
 
-            $ventaDirecta->detalles()->delete();
+            // Productos ya existentes en esta venta directa, indexados por producto_id.
+            $detallesExistentes = $ventaDirecta->detalles()->get()->keyBy('producto_id');
 
-            // Recorrer los productos válidos y crear los detalles de la venta directa
+            // Productos que fueron quitados en esta edición (para avisar al Barman si eran de barra).
+            $detallesEliminados = $detallesExistentes->whereNotIn('producto_id', array_keys($productosValidos));
+
+            $productoIdsBarraEliminados = Producto::whereIn('id', $detallesEliminados->pluck('producto_id'))
+                ->whereHas('tipoProducto.sector', function ($q) {
+                    $q->where('nombre', 'barra');
+                })
+                ->pluck('id');
+
+            // Eliminar solo los productos que fueron quitados en esta edición.
+            // Los que se mantienen conservan su fila (y por lo tanto su `estado`).
+            $ventaDirecta->detalles()
+                ->whereNotIn('producto_id', array_keys($productosValidos))
+                ->delete();
+
+            $pedidoKeyVentaDirecta = 'vd-' . $ventaDirecta->id;
+
+            foreach ($detallesEliminados as $detalleEliminado) {
+                if ($productoIdsBarraEliminados->contains($detalleEliminado->producto_id)) {
+                    event(new ProductoEliminado($pedidoKeyVentaDirecta, $detalleEliminado->id));
+                }
+            }
+
+            // Recorrer los productos válidos: actualizar los que ya existían (preservando
+            // su estado) y crear los que se agregaron nuevos en esta edición.
             foreach ($productosValidos as $producto_id => $producto) {
-                $detalle_venta_directa = DetalleVentaDirecta::create([
-                    'venta_directa_id' => $ventaDirecta->id,
-                    'producto_id' => $producto_id,
-                    'cantidad' => $producto['cantidad'],
-                    'precio_unitario' => $producto['valor'],
-                    'subtotal' => $producto['valor'] * $producto['cantidad'],
-                ]);
+                $subtotalProducto = $producto['valor'] * $producto['cantidad'];
+                $detalleExistente = $detallesExistentes->get($producto_id);
 
-                $detallesVentas[] = $detalle_venta_directa;
+                if ($detalleExistente) {
+                    $detalleExistente->update([
+                        'cantidad'        => $producto['cantidad'],
+                        'precio_unitario' => $producto['valor'],
+                        'subtotal'        => $subtotalProducto,
+                    ]);
+
+                    $detallesVentas[] = $detalleExistente;
+                } else {
+                    $detalleNuevo = DetalleVentaDirecta::create([
+                        'venta_directa_id' => $ventaDirecta->id,
+                        'producto_id' => $producto_id,
+                        'cantidad' => $producto['cantidad'],
+                        'precio_unitario' => $producto['valor'],
+                        'subtotal' => $subtotalProducto,
+                    ]);
+
+                    $detallesVentas[] = $detalleNuevo;
+                    $detallesNuevos[] = $detalleNuevo;
+                }
             }
 
 
 
 
-            $productosEvento = array_map(function ($detalle_venta_directa) use ($request) {
-                $producto = Producto::find($detalle_venta_directa->producto_id);
-                return [
-                    'id' => $detalle_venta_directa->id,
-                    'nombre' => $producto->nombre,
-                    'cantidad' => $detalle_venta_directa->cantidad,
-                    'cliente' => 'Venta Directa',
-                    'ubicacion' => 'Venta Directa',
-                ];
-            }, $detallesVentas);
-    
-    
-            event(new NuevoConsumoAgregado([
-                'mensaje'=>'Consumo actualizado '.$nombres,
-                'productos' => $productosEvento,
-                'estado' => 'por-procesar'
-            ]));
+            $productoIdsBarra = Producto::whereIn('id', collect($detallesNuevos)->pluck('producto_id'))
+                ->whereHas('tipoProducto.sector', function ($q) {
+                    $q->where('nombre', 'barra');
+                })
+                ->pluck('id');
 
-            // broadcast(new NuevoConsumoAgregado([
-            //     'mensaje'=>'Consumo actualizado '.$nombres,
-            //     'productos' => $productosEvento,
-            //     'estado' => 'por-procesar'
-            // ]));
+            // Solo notificamos al Barman por productos NUEVOS: los que ya estaban en la
+            // venta directa pueden estar en preparación/completados y no deben "reaparecer".
+            $detallesBarra = array_filter($detallesNuevos, function ($detalle) use ($productoIdsBarra) {
+                return $productoIdsBarra->contains($detalle->producto_id);
+            });
+
+            if (! empty($detallesBarra)) {
+                $pedidoCreado = Carbon::parse($ventaDirecta->created_at)->format('Y-m-d H:i:s');
+
+                $productosEvento = array_map(function ($detalle_venta_directa) use ($ventaDirecta, $pedidoCreado) {
+                    $producto = Producto::find($detalle_venta_directa->producto_id);
+                    return [
+                        'id'               => $detalle_venta_directa->id,
+                        'origen'           => 'venta_directa',
+                        'venta_directa_id' => $ventaDirecta->id,
+                        'pedido_creado'    => $pedidoCreado,
+                        'nombre'           => $producto->nombre,
+                        'cantidad'         => $detalle_venta_directa->cantidad,
+                        'cliente'          => 'Venta Directa',
+                        'ubicacion'        => 'Venta Directa',
+                    ];
+                }, $detallesBarra);
+
+                event(new NuevoConsumoAgregado([
+                    'mensaje'   => 'Consumo actualizado ' . $nombres,
+                    'pedido_id' => $ventaDirecta->id,
+                    'cliente'   => 'Venta Directa',
+                    'ubicacion' => 'Venta Directa',
+                    'productos' => $productosEvento,
+                    'estado'    => 'por-procesar',
+                ]));
+            }
         });
 
 

@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\DetalleConsumo;
+use App\DetalleVentaDirecta;
 use App\Events\Consumos\EstadoConsumoActualizado;
 use App\Producto;
 use App\Services\WebPushService;
@@ -55,9 +56,12 @@ class BarmanController extends Controller
         //     ->groupBy(['estado', 'id_consumo']);
 
         $productos = $productos->map(function($row){
+            $row->origen = 'consumo';
             $row->pedido_key = $row->id_consumo.'|'.Carbon::parse($row->creado)->format('Y-m-d H:i:s');
             return $row;
         });
+
+        $productos = $productos->concat($this->productosVentaDirectaBarra());
 
         $pedidos = $productos
             ->groupBy('estado')
@@ -70,6 +74,43 @@ class BarmanController extends Controller
             'pedidos' => $pedidos,
         ]);
 
+    }
+
+    /**
+     * Productos de barra vendidos vía Venta Directa (sin reserva asociada),
+     * normalizados con la misma forma que usan las filas de Consumo.
+     */
+    private function productosVentaDirectaBarra()
+    {
+        $fechaActual = Carbon::now()->startOfDay();
+
+        return DB::table('detalles_ventas_directas')
+            ->join('ventas_directas', 'ventas_directas.id', '=', 'detalles_ventas_directas.venta_directa_id')
+            ->join('productos', 'detalles_ventas_directas.producto_id', '=', 'productos.id')
+            ->join('tipos_productos', 'productos.id_tipo_producto', '=', 'tipos_productos.id')
+            ->join('sectores', 'tipos_productos.id_sector', '=', 'sectores.id')
+            ->where('ventas_directas.fecha', '>=', $fechaActual->toDateString())
+            ->where('sectores.nombre', 'barra')
+            ->select(
+                'detalles_ventas_directas.id as id',
+                'detalles_ventas_directas.cantidad as cantidad_producto',
+                'detalles_ventas_directas.estado as estado',
+                'detalles_ventas_directas.subtotal',
+                'detalles_ventas_directas.created_at as creado',
+                'productos.nombre as producto',
+                'tipos_productos.nombre as categoria',
+                'ventas_directas.id as venta_directa_id'
+            )
+            ->orderBy('ventas_directas.created_at', 'asc')
+            ->get()
+            ->map(function ($row) {
+                $row->origen        = 'venta_directa';
+                $row->id_consumo    = null;
+                $row->nombre_cliente = 'Venta Directa';
+                $row->ubicacion     = 'Venta Directa';
+                $row->pedido_key    = 'vd-' . $row->venta_directa_id;
+                return $row;
+            });
     }
 
     public function OLDactualizarEstado(Request $request, $id)
@@ -110,8 +151,13 @@ class BarmanController extends Controller
     public function actualizarEstado(Request $request, $id)
     {
         $request->validate([
-            'estado' => 'required|in:por-procesar,en-preparacion,completado,entregado'
+            'estado' => 'required|in:por-procesar,en-preparacion,completado,entregado',
+            'origen' => 'nullable|in:consumo,venta_directa',
         ]);
+
+        if ($request->input('origen') === 'venta_directa') {
+            return $this->actualizarEstadoVentaDirecta($request, $id);
+        }
 
         // $id siempre corresponde a un id_consumo (pedido completo), nunca a un detalle individual.
         $idConsumo = $id;
@@ -147,6 +193,7 @@ class BarmanController extends Controller
             : null;
 
         $producto = [
+            'origen'    => 'consumo',
             'pedido_id' => $idConsumo,
             'cliente'   => $detalleBase->consumo->venta->reserva->cliente->nombre_cliente,
             'ubicacion' => $visita ? $visita->ubicacion->nombre : '',
@@ -172,34 +219,9 @@ class BarmanController extends Controller
 
         $producto['items'] = $items;
 
-
-
-
         if ($request->estado === 'completado') {
-
-            $fechaHoy = Carbon::now()->toDateString();
-
-            $usuarios = User::query()
-                ->join('asignacion_user', 'users.id', '=', 'asignacion_user.user_id')
-                ->join('asignaciones', 'asignacion_user.asignacion_id', '=', 'asignaciones.id')
-                ->join('role_user', 'users.id', '=', 'role_user.user_id')
-                ->join('roles', 'role_user.role_id', '=', 'roles.id')
-                ->whereDate('asignaciones.fecha', $fechaHoy)
-                ->whereIn('roles.name', ['garzon', 'anfitrion'])
-                ->select('users.*')
-                ->distinct()
-                ->get();
-
-            if ($usuarios->isNotEmpty()) {
-
-                app(WebPushService::class)->sendToUsers($usuarios, [
-                    'title' => 'Pedido listo',
-                    'body'  => 'Cliente: '.$producto['cliente'].' - Ubicación: '.$producto['ubicacion'],
-                    'url'   => url('/barman/bebidas'),
-                ]);
-            }
+            $this->notificarPedidoListo($producto['cliente'], $producto['ubicacion']);
         }
-
 
         // Reutilizamos tu evento actual
         event(new EstadoConsumoActualizado(
@@ -212,6 +234,79 @@ class BarmanController extends Controller
             'success' => true,
             'estado'  => $request->estado
         ]);
+    }
+
+    private function actualizarEstadoVentaDirecta(Request $request, $ventaDirectaId)
+    {
+        DetalleVentaDirecta::where('venta_directa_id', $ventaDirectaId)
+            ->update(['estado' => $request->estado]);
+
+        $tieneDetalles = DetalleVentaDirecta::where('venta_directa_id', $ventaDirectaId)->exists();
+
+        if (!$tieneDetalles) {
+            return response()->json(['error' => 'Pedido no encontrado'], 404);
+        }
+
+        $items = DetalleVentaDirecta::where('venta_directa_id', $ventaDirectaId)
+            ->with('producto:id,nombre')
+            ->get()
+            ->map(function ($d) {
+                return [
+                    'id_detalle' => $d->id,
+                    'nombre'     => $d->producto->nombre,
+                    'cantidad'   => $d->cantidad,
+                ];
+            })
+            ->values()
+            ->all();
+
+        $producto = [
+            'origen'     => 'venta_directa',
+            'pedido_id'  => $ventaDirectaId,
+            'cliente'    => 'Venta Directa',
+            'ubicacion'  => 'Venta Directa',
+            'pedido_key' => 'vd-' . $ventaDirectaId,
+            'items'      => $items,
+        ];
+
+        if ($request->estado === 'completado') {
+            $this->notificarPedidoListo($producto['cliente'], $producto['ubicacion']);
+        }
+
+        event(new EstadoConsumoActualizado(
+            $producto['pedido_key'],
+            $request->estado,
+            $producto
+        ));
+
+        return response()->json([
+            'success' => true,
+            'estado'  => $request->estado
+        ]);
+    }
+
+    private function notificarPedidoListo(string $cliente, string $ubicacion)
+    {
+        $fechaHoy = Carbon::now()->toDateString();
+
+        $usuarios = User::query()
+            ->join('asignacion_user', 'users.id', '=', 'asignacion_user.user_id')
+            ->join('asignaciones', 'asignacion_user.asignacion_id', '=', 'asignaciones.id')
+            ->join('role_user', 'users.id', '=', 'role_user.user_id')
+            ->join('roles', 'role_user.role_id', '=', 'roles.id')
+            ->whereDate('asignaciones.fecha', $fechaHoy)
+            ->whereIn('roles.name', ['garzon', 'anfitrion'])
+            ->select('users.*')
+            ->distinct()
+            ->get();
+
+        if ($usuarios->isNotEmpty()) {
+            app(WebPushService::class)->sendToUsers($usuarios, [
+                'title' => 'Pedido listo',
+                'body'  => 'Cliente: '.$cliente.' - Ubicación: '.$ubicacion,
+                'url'   => url('/barman/bebidas'),
+            ]);
+        }
     }
 
     public function bebidas()
@@ -258,9 +353,12 @@ class BarmanController extends Controller
         //     });
 
         $productos = $productos->map(function($row){
+            $row->origen = 'consumo';
             $row->pedido_key = $row->id_consumo.'|'.Carbon::parse($row->creado)->format('Y-m-d H:i:s');
             return $row;
         });
+
+        $productos = $productos->concat($this->productosVentaDirectaBarra());
 
         $pedidos = $productos
             ->groupBy('estado')

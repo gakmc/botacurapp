@@ -49,9 +49,10 @@ class WoocommerceWebhookController extends Controller
      *              paymentType, transactionStatus, buyOrder,
      *              installmentsNumber, amount, transactionDate
      */
+
+
     public function handle(Request $request)
     {
-        // ── 1. Validar firma HMAC ────────────────────────────────
         if (!$this->validarFirma($request)) {
             Log::warning('[WC-Webhook] Firma inválida. IP: ' . $request->ip());
             return response()->json(['error' => 'Firma inválida'], 401);
@@ -63,19 +64,18 @@ class WoocommerceWebhookController extends Controller
 
         Log::info("[WC-Webhook] ← Recibido | Orden #{$wcOrderId} | Estado: {$status}");
 
-        // ── 2. Solo procesar pedidos completados ─────────────────
         if ($status !== 'completed') {
             Log::info("[WC-Webhook] Ignorado (estado: {$status})");
             return response()->json(['message' => 'Estado ignorado: ' . $status], 200);
         }
 
-        // ── 3. Idempotencia ──────────────────────────────────────
+
         if (WoocommerceOrder::where('wc_order_id', $wcOrderId)->exists()) {
             Log::info("[WC-Webhook] Orden #{$wcOrderId} ya recibida. Duplicado ignorado.");
             return response()->json(['message' => 'Orden ya procesada'], 200);
         }
 
-        // ── 4. Parsear datos para el log ─────────────────────────
+  
         $billing   = $payload['billing']    ?? [];
         $lineItems = $payload['line_items'] ?? [];
         $meta      = $this->parsearMetaData($payload['meta_data'] ?? []);
@@ -84,12 +84,19 @@ class WoocommerceWebhookController extends Controller
         $fechaVisitaRaw     = $meta['billing_fecha_visita'] ?? $billing['billing_fecha_visita'] ?? null;
         $fechaReservRaw     = $meta['billing_fecha_reservacion'] ?? null;
 
+        // Cantidad de personas = suma de quantities en line_items
+        $cantidadPersonas = 0;
+        foreach ($lineItems as $item) {
+            $cantidadPersonas += (int) ($item['quantity'] ?? 0);
+        }
+
         // ── 5. Guardar log completo ──────────────────────────────
         WoocommerceOrder::create([
             // Identificadores
             'wc_order_id'           => $wcOrderId,
             'wc_order_key'          => $payload['order_key']               ?? null,
             'wc_product_id'         => $lineItems[0]['product_id']         ?? null,
+            'cantidad_personas'     => $cantidadPersonas ?: null,
 
             // Cliente
             'billing_email'         => strtolower(trim($billing['email']   ?? '')),
@@ -120,7 +127,6 @@ class WoocommerceWebhookController extends Controller
             'payload_raw'           => $payload,
         ]);
 
-        // ── 6. Despachar Job ─────────────────────────────────────
         ProcesarOrdenWoocommerce::dispatch($payload);
 
         Log::info(
@@ -128,13 +134,11 @@ class WoocommerceWebhookController extends Controller
             "Fecha visita: {$fechaVisitaRaw} | Auth: " . ($meta['authorizationCode'] ?? 'n/a')
         );
 
-        // ── 7. Responder 200 inmediatamente a WC ─────────────────
+
         return response()->json(['message' => 'Recibido'], 200);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  GET /api/woocommerce/ping
-    // ─────────────────────────────────────────────────────────────
+
     public function ping()
     {
         return response()->json([
@@ -144,9 +148,7 @@ class WoocommerceWebhookController extends Controller
         ]);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  Validación firma HMAC
-    // ─────────────────────────────────────────────────────────────
+
     private function validarFirma(Request $request): bool
     {
         $secret    = config('woocommerce.webhook_secret');
@@ -172,14 +174,7 @@ class WoocommerceWebhookController extends Controller
         return hash_equals($hash, $signature);
     }
 
-    // ─────────────────────────────────────────────────────────────
-    //  Helpers
-    // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Convierte meta_data de WC en array key → value.
-     * Ignora keys internas de WordPress (empiezan con _).
-     */
     private function parsearMetaData(array $metaData): array
     {
         $meta = [];
@@ -197,7 +192,6 @@ class WoocommerceWebhookController extends Controller
             return null;
         }
         try {
-            // Formato confirmado: "2024-10-27" → ya es Y-m-d
             if (preg_match('/^\d{4}-\d{2}-\d{2}$/', trim($fecha))) {
                 return $fecha;
             }

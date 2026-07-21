@@ -52,7 +52,8 @@
             $pedidoKey = $first->pedido_key; 
         @endphp
 
-      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-origen="{{ $first->origen }}"
+    data-pedido-id="{{ $first->origen === 'venta_directa' ? $first->venta_directa_id : $first->id_consumo }}"
     data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
         <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_drink</i>
@@ -62,9 +63,9 @@
             <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
 
             {{-- LISTA INTERNA: productos --}}
-            <ul class="" style="">
+            <ul class="productos">
               @foreach($items as $p)
-                <li class="" data-id="{{ $p->id }}">
+                <li data-detalle-id="{{ $p->id }}">
                   - {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span>
                 </li>
               @endforeach
@@ -87,7 +88,8 @@
             $pedidoKey = $first->pedido_key; 
         @endphp
 
-      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-origen="{{ $first->origen }}"
+    data-pedido-id="{{ $first->origen === 'venta_directa' ? $first->venta_directa_id : $first->id_consumo }}"
     data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
         <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_bar</i>
@@ -98,7 +100,7 @@
 
             <ul class="productos">
               @foreach($items as $p)
-                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
               @endforeach
             </ul>
           </div>
@@ -119,7 +121,8 @@
             $pedidoKey = $first->pedido_key; 
         @endphp
 
-      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-origen="{{ $first->origen }}"
+    data-pedido-id="{{ $first->origen === 'venta_directa' ? $first->venta_directa_id : $first->id_consumo }}"
     data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
         <div class="pedido-header" style="display:flex; gap:10px; align-items:flex-start;">
           <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">done_all</i>
@@ -130,7 +133,7 @@
 
             <ul class="productos">
               @foreach($items as $p)
-                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
               @endforeach
             </ul>
           </div>
@@ -198,17 +201,18 @@
                 filter: '.productos, .productos *',
                 onEnd: function(evt){
 
-                const idConsumo   = evt.item.getAttribute('data-id-consumo');
+                const pedidoId     = evt.item.getAttribute('data-pedido-id');
+                const origen       = evt.item.getAttribute('data-origen') || 'consumo';
                 const pedidoCreado = evt.item.getAttribute('data-pedido-creado');
                 const nuevoEstado = evt.to.closest('[id]').id;
 
-                fetch(`barman/consumos/${idConsumo}/actualizar-estado`, {
+                fetch(`barman/consumos/${pedidoId}/actualizar-estado`, {
                     method: 'POST',
                     headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                     },
-                    body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado })
+                    body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado, origen: origen })
                 }).catch(console.error);
                 }
             });
@@ -257,9 +261,12 @@
                 const first = e.productos && e.productos.length ? e.productos[0] : null;
                 if (!first) return;
 
-                // Estos 2 campos DEBEN venir desde el backend en el evento NuevoConsumoAgregado:
-                // first.id_consumo y first.pedido_creado (te digo abajo qué agregar)
-                const pedidoKey = `${first.id_consumo}|${first.pedido_creado}`;
+                // origen distingue si el pedido viene de una reserva (consumo) o de Venta Directa.
+                const origen   = first.origen || 'consumo';
+                const pedidoId = origen === 'venta_directa' ? first.venta_directa_id : first.id_consumo;
+                const pedidoKey = origen === 'venta_directa'
+                    ? `vd-${first.venta_directa_id}`
+                    : `${first.id_consumo}|${first.pedido_creado}`;
 
                 let pedidoEl = listaPorProcesar.querySelector(`[data-pedido-key="${pedidoKey}"]`);
 
@@ -267,14 +274,18 @@
                     pedidoEl = document.createElement('li');
                     pedidoEl.className = 'collection-item pedido';
                     pedidoEl.setAttribute('data-pedido-key', pedidoKey);
-                    pedidoEl.setAttribute('data-id-consumo', first.id_consumo);
+                    pedidoEl.setAttribute('data-origen', origen);
+                    pedidoEl.setAttribute('data-pedido-id', pedidoId);
                     pedidoEl.setAttribute('data-pedido-creado', first.pedido_creado);
+
+                    // pedido_creado viaja como 'Y-m-d H:i:s' desde el backend.
+                    const horaPedido = first.pedido_creado ? first.pedido_creado.substring(11, 16) : '';
 
                     pedidoEl.innerHTML = `
                         <div style="display:flex; gap:10px; align-items:flex-start;">
                         <i class="material-icons circle red" style="color:white; padding:8px; border-radius:50%;">local_drink</i>
                         <div>
-                            <div style="font-weight:600;">${first.cliente}</div>
+                            <div style="font-weight:600;">${first.cliente} <small class="grey-text">| ${horaPedido}</small></div>
                             <div class="grey-text text-darken-1">Ubicación: ${first.ubicacion}</div>
                             <ul class="productos"></ul>
                         </div>
@@ -363,6 +374,39 @@
                     });
 
 
+            });
+
+            // Un producto fue eliminado de un pedido ya creado (edición de venta directa
+            // o borrado de un ítem de consumo): quitar solo ese producto de la tarjeta.
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.ProductoEliminado', (e) => {
+                const pedidoEl = document.querySelector(`[data-pedido-key="${e.pedido_key}"]`);
+                if (!pedidoEl) return;
+
+                const productoEl = pedidoEl.querySelector(`[data-detalle-id="${e.id_detalle}"]`);
+                if (productoEl) productoEl.remove();
+
+                const quedanProductos = pedidoEl.querySelectorAll('.productos > li').length;
+                if (quedanProductos === 0) {
+                    pedidoEl.remove();
+                }
+
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: "top-right",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+
+                Toast.fire({
+                    icon: "warning",
+                    title: "Se eliminó un producto del pedido"
+                });
             });
 
 

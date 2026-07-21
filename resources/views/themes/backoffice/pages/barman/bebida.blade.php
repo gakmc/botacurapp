@@ -55,7 +55,8 @@
             $pedidoKey = $first->pedido_key; 
         @endphp
 
-      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-origen="{{ $first->origen }}"
+    data-pedido-id="{{ $first->origen === 'venta_directa' ? $first->venta_directa_id : $first->id_consumo }}"
     data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
                             <div style="display:flex; gap:10px; align-items:flex-start;">
                             <i class="material-icons circle green" style="color:white; padding:8px; border-radius:50%;">done_all</i>
@@ -66,7 +67,7 @@
 
                                 <ul class="productos">
                                 @foreach($items as $p)
-                                    <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                                    <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
                                 @endforeach
                                 </ul>
                             </div>
@@ -87,7 +88,8 @@
             $pedidoKey = $first->pedido_key; 
         @endphp
 
-      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-id-consumo="{{ $first->id_consumo }}"
+      <li class="collection-item pedido" data-pedido-key="{{ $pedidoKey }}" data-origen="{{ $first->origen }}"
+    data-pedido-id="{{ $first->origen === 'venta_directa' ? $first->venta_directa_id : $first->id_consumo }}"
     data-pedido-creado="{{ \Carbon\Carbon::parse($first->creado)->format('Y-m-d H:i:s') }}">
         <div style="display:flex; gap:10px; align-items:flex-start;">
           <i class="material-icons circle green" style="color:white; padding:8px; border-radius:50%;">local_bar</i>
@@ -98,7 +100,7 @@
 
             <ul class="productos">
               @foreach($items as $p)
-                <li data-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
               @endforeach
             </ul>
           </div>
@@ -136,17 +138,18 @@
         filter: '.productos, .productos *',
         onEnd: function (evt) {
 
-            const idConsumo   = evt.item.getAttribute('data-id-consumo');
+            const pedidoId     = evt.item.getAttribute('data-pedido-id');
+            const origen       = evt.item.getAttribute('data-origen') || 'consumo';
             const pedidoCreado = evt.item.getAttribute('data-pedido-creado');
             const nuevoEstado = evt.to.closest('[id]').id;
 
-            fetch(`/barman/consumos/${idConsumo}/actualizar-estado`, {
+            fetch(`/barman/consumos/${pedidoId}/actualizar-estado`, {
                 method: 'POST',
                 headers: {
                     'Content-Type': 'application/json',
                     'X-CSRF-TOKEN': '{{ csrf_token() }}'
                 },
-                body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado })
+                body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado, origen: origen })
             }).catch(console.error);
         }
     });
@@ -175,7 +178,8 @@
                     pedidoEl = document.createElement('li');
                     pedidoEl.className = 'collection-item pedido';
                     pedidoEl.setAttribute('data-pedido-key', data.pedido_key || pedidoKey);
-                    pedidoEl.setAttribute('data-id-consumo', data.pedido_id || data.id_consumo || '');
+                    pedidoEl.setAttribute('data-origen', data.origen || 'consumo');
+                    pedidoEl.setAttribute('data-pedido-id', data.pedido_id || '');
                     pedidoEl.setAttribute('data-pedido-creado', data.pedido_creado || '');
 
                     const icon = (nuevoEstado === 'completado') ? 'done_all' : 'playlist_add_check';
@@ -238,6 +242,38 @@
                         title: estado
                     });
 
+            });
+
+            // Un producto fue eliminado de un pedido ya creado: quitarlo de la tarjeta.
+            window.Echo.channel('consumo-canal-actualizar')
+            .listen('Consumos.ProductoEliminado', (e) => {
+                const pedidoEl = document.querySelector(`[data-pedido-key="${e.pedido_key}"]`);
+                if (!pedidoEl) return;
+
+                const productoEl = pedidoEl.querySelector(`[data-detalle-id="${e.id_detalle}"]`);
+                if (productoEl) productoEl.remove();
+
+                const quedanProductos = pedidoEl.querySelectorAll('.productos > li').length;
+                if (quedanProductos === 0) {
+                    pedidoEl.remove();
+                }
+
+                const Toast = Swal.mixin({
+                    toast: true,
+                    position: "top-right",
+                    showConfirmButton: false,
+                    timer: 3000,
+                    timerProgressBar: true,
+                    didOpen: (toast) => {
+                        toast.onmouseenter = Swal.stopTimer;
+                        toast.onmouseleave = Swal.resumeTimer;
+                    }
+                });
+
+                Toast.fire({
+                    icon: "warning",
+                    title: "Se eliminó un producto del pedido"
+                });
             });
         }
     });

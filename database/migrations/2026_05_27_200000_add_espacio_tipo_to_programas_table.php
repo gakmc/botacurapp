@@ -24,17 +24,19 @@ class AddEspacioTipoToProgramasTable extends Migration
      */
     public function up()
     {
-        Schema::table('programas', function (Blueprint $table) {
-            $table->enum('espacio_tipo', [
-                'estacion_economico',
-                'estacion_intermedio',
-                'estacion_full',
-                'terraza',
-                'reposera',
-            ])->nullable()->after('descuento')->comment('Tipo de espacio físico que ocupa el programa');
+        if (!Schema::hasColumn('programas', 'espacio_tipo')) {
+            Schema::table('programas', function (Blueprint $table) {
+                $table->enum('espacio_tipo', [
+                    'estacion_economico',
+                    'estacion_intermedio',
+                    'estacion_full',
+                    'terraza',
+                    'reposera',
+                ])->nullable()->after('descuento')->comment('Tipo de espacio físico que ocupa el programa');
 
-            $table->index('espacio_tipo', 'idx_programas_espacio_tipo');
-        });
+                $table->index('espacio_tipo', 'idx_programas_espacio_tipo');
+            });
+        }
     }
 
     /**

@@ -13,6 +13,7 @@ class WoocommerceOrder extends Model
         'wc_order_id',
         'wc_order_key',
         'wc_product_id',
+        'cantidad_personas',
         // Cliente
         'billing_email',
         'billing_first_name',
@@ -47,6 +48,7 @@ class WoocommerceOrder extends Model
         'fecha_reservacion_wc' => 'date',
         'installments_number'  => 'integer',
         'total'                => 'integer',
+        'cantidad_personas'    => 'integer',
     ];
 
     protected $dates = [

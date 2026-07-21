@@ -6,6 +6,7 @@ use App\Consumo;
 use App\DetalleConsumo;
 use App\DetalleServiciosExtra;
 use App\Events\Consumos\NuevoConsumoAgregado;
+use App\Events\Consumos\ProductoEliminado;
 use App\Masaje;
 use App\Menu;
 use App\PrecioTipoMasaje;
@@ -1124,7 +1125,7 @@ class ConsumoController extends Controller
         $servicioAlmuerzo = ['almuerzos', 'almuerzo', 'Almuerzos', 'Almuerzo'];
 
         if ($tipo === 'consumo') {
-            $detalle = DetalleConsumo::with('consumo')->findOrFail($id);
+            $detalle = DetalleConsumo::with(['consumo', 'producto.tipoProducto.sector'])->findOrFail($id);
             $consumo = $detalle->consumo;
             $consumo->subtotal -= $detalle->subtotal;
             $consumo->total_consumo -= $detalle->subtotal * 1.1;
@@ -1132,7 +1133,17 @@ class ConsumoController extends Controller
             $consumo->subtotal      = max($consumo->subtotal, 0);
             $consumo->total_consumo = max($consumo->total_consumo, 0);
             $consumo->save();
+
+            $tipoProducto = optional($detalle->producto)->tipoProducto;
+            $esDeBarra    = optional(optional($tipoProducto)->sector)->nombre === 'barra';
+            $pedidoKey = $detalle->id_consumo . '|' . Carbon::parse($detalle->created_at)->format('Y-m-d H:i:s');
+            $idDetalleEliminado = $detalle->id;
+
             $detalle->delete();
+
+            if ($esDeBarra) {
+                event(new ProductoEliminado($pedidoKey, $idDetalleEliminado));
+            }
 
         } else if ($tipo === 'servicio') {
             $detalle = DetalleServiciosExtra::with('consumo')->findOrFail($id);

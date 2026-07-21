@@ -4,6 +4,7 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Route;
 use App\Http\Controllers\Api\FechasDisponiblesController;
+use App\Http\Controllers\Api\VerificarDisponibilidadController;
 
 /*
 |--------------------------------------------------------------------------
@@ -72,7 +73,8 @@ Route::prefix('woocommerce')->namespace('Api')->group(function(){
 });
 
 Route::middleware('auth.apikey')->group(function () {
-    Route::get('/fechas-disponibles', [FechasDisponiblesController::class, 'index']);
+    Route::get('/fechas-disponibles',       [FechasDisponiblesController::class,        'index']);
+    Route::get('/verificar-disponibilidad', [VerificarDisponibilidadController::class, 'verificar']);
 });
 Route::get('/iot/ping', 'Api\IotController@ping');
 Route::get('/iot/proxima-tinaja', 'Api\IotController@proximaTinaja');

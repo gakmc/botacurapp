@@ -21,6 +21,25 @@ return [
     'wp_cache_clear_url'   => env('WP_CACHE_CLEAR_URL', ''),
     'wp_cache_clear_token' => env('WP_CACHE_CLEAR_TOKEN', ''),
 
+    // Cupos máximos de ubicaciones por espacio_tipo para WooCommerce.
+    // Distribución real: 9 estaciones (3+3+3) + 6 terrazas + 4 reposeras = 19 ubicaciones.
+    'wc_espacios' => [
+        'estacion_economico'  => (int) env('WC_CUPO_ESTACION_ECONOMICO', 3),
+        'estacion_intermedio' => (int) env('WC_CUPO_ESTACION_INTERMEDIO', 3),
+        'estacion_full'       => (int) env('WC_CUPO_ESTACION_FULL', 3),
+        'terraza'             => (int) env('WC_CUPO_TERRAZA', 6),
+        'reposera'            => (int) env('WC_CUPO_REPOSERA', 4),
+    ],
+
+    // Personas que caben en una sola ubicación de este tipo.
+    // Tipos sin entrada aquí usan COUNT simple (1 reserva = 1 ubicación).
+    //   terraza : ceil(personas/6) terrazas por reserva   (max 6 personas/terraza)
+    //   reposera: ceil(personas/2) pares por reserva      (2 reposeras/ubicación, min 2 personas)
+    'wc_personas_por_ubicacion' => [
+        'terraza'  => (int) env('WC_PERSONAS_TERRAZA', 6),
+        'reposera' => (int) env('WC_PERSONAS_REPOSERA', 2),
+    ],
+
     // Slugs de programas que SÍ están disponibles para Gift Card
     'gift_card_slugs' => ['full-day', 'botacura-full', 'caviahue-2'],
 

@@ -507,6 +507,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('/verificar-ubicaciones', 'ReservaController@verificarUbicaciones')->name('verificar.ubicaciones');
 
+    Route::get('/disponibilidad/{fecha}', 'DisponibilidadController@resumen')->name('disponibilidad.resumen');
+
     // Borrar en caso de no utilizar
     // Route::post('/verificar-horarios', 'VisitaController@obtenerHorariosDisponibles')->name('verificar.horarios');
 

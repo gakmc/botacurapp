@@ -39,7 +39,7 @@
             @foreach ($reservasPaginadas as $fecha => $reservas)
             <div id="work-collections">
                 <div class="row">
-        
+
                   <div class="col s12 m4 l4">
                     <ul class="collection">
                         <li class="collection-item avatar">
@@ -52,8 +52,13 @@
                           </span>
                         </li>
                       </ul>
-
                   </div>
+
+                  <div class="col s12 m8 l8">
+                    @php $fechaApi = \Carbon\Carbon::createFromFormat('d-m-Y', $fecha)->format('Y-m-d'); @endphp
+                    @include('themes.backoffice.partials.disponibilidad-resumen', ['fecha' => $fechaApi])
+                  </div>
+
                 </div>
                                 <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
                                 <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
