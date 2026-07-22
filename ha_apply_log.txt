@@ -1,0 +1,21 @@
+Conectando a HA por SSH...
+Buscando ruta de configuracion de HA...
+Rutas encontradas para configuration.yaml:
+/home/botacura/homeassistant/config/configuration.yaml
+
+Procesos HA:
+root        2155  0.0  0.0    208    76 ?        S    11:15   0:00 s6-supervise home-assistant
+
+Usando: /home/botacura/homeassistant/config/configuration.yaml
+Automations: /home/botacura/homeassistant/config/automations.yaml
+=== OK ===
+###############################################################################
+
+shell_command:
+  iot_mysql_state: >
+    /usr/local/bin/python3 /config/scripts/iot_mysql_insert.py state '{{ payload }}'
+
+La configuracion ya existe en configuration.yaml. Saltando.
+Las automatizaciones ya existen. Saltando.
+
+Listo. Ve a HA -> Configuracion -> Servidor -> Reiniciar para aplicar.

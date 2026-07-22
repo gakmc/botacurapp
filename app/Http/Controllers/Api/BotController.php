@@ -6,18 +6,37 @@ use App\Cliente;
 use App\Http\Controllers\Controller;
 use App\Programa;
 use App\Reserva;
-use App\Venta;
-use App\TipoTransaccion;
+use App\Services\BotPromptService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
+/**
+ * BotController
+ *
+ * Endpoints del chatbot Bot-Acura (WhatsApp + Instagram)
+ * Compatible Laravel 6 / PHP 7.2
+ *
+ * Rutas (prefijo /api/bot, middleware bot.token):
+ *   GET  ping
+ *   GET  programas
+ *   GET  disponibilidad?fecha=YYYY-MM-DD
+ *   POST clientes/buscar-o-crear
+ *   POST reservas
+ *   POST reservas/{id}/pago
+ *   GET  conversacion/{usuario_id}
+ *   POST conversacion
+ *   POST message           ← nuevo: endpoint Claude para n8n
+ */
 class BotController extends Controller
 {
+    const BOT_SECRET_HEADER = 'X-Bot-Secret';
+    const MAX_HISTORY_TURNS = 12;
+
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot/ping
-    // Verifica que el endpoint está activo (útil para n8n)
     // ─────────────────────────────────────────────────────────────
     public function ping()
     {
@@ -30,65 +49,57 @@ class BotController extends Controller
 
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot/programas
-    // Devuelve los programas activos con nombre, valor y servicios
     // ─────────────────────────────────────────────────────────────
     public function programas()
     {
-        $programas = Programa::activos()
-            ->with('servicios:id,nombre_servicio,duracion')
-            ->get(['id', 'nombre_programa', 'slug', 'valor_programa', 'descuento'])
-            ->map(function ($p) {
-                $valor    = $p->valor_programa;
-                $descuento = $p->descuento ?? 0;
-                return [
-                    'id'              => $p->id,
-                    'nombre'          => $p->nombre_programa,
-                    'slug'            => $p->slug,
-                    'valor'           => $valor,
-                    'descuento'       => $descuento,
-                    'valor_final'     => $valor - $descuento,
-                    'valor_formateado'=> '$' . number_format($valor - $descuento, 0, ',', '.'),
-                    'servicios'       => $p->servicios->map(function ($s) {
-                        return [
-                            'nombre'   => $s->nombre_servicio,
-                            'duracion' => $s->duracion,
-                        ];
-                    }),
-                ];
-            });
+        $rows = DB::table('programas as p')
+            ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
+            ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
+            ->select('p.id', 'p.nombre_programa', 'p.slug', 'p.valor_programa', 'p.descuento', 's.nombre_servicio', 's.duracion')
+            ->orderBy('p.valor_programa')
+            ->get();
 
-        return response()->json(['programas' => $programas]);
+        $agrupados = [];
+        foreach ($rows as $row) {
+            $id = $row->id;
+            if (!isset($agrupados[$id])) {
+                $descuento  = (int) ($row->descuento ?? 0);
+                $valor      = (int) $row->valor_programa;
+                $valorFinal = $valor - $descuento;
+                $agrupados[$id] = [
+                    'id'               => $id,
+                    'nombre'           => $row->nombre_programa,
+                    'slug'             => $row->slug,
+                    'valor'            => $valor,
+                    'descuento'        => $descuento,
+                    'valor_final'      => $valorFinal,
+                    'valor_formateado' => '$' . number_format($valorFinal, 0, ',', '.'),
+                    'servicios'        => [],
+                ];
+            }
+            if ($row->nombre_servicio) {
+                $agrupados[$id]['servicios'][] = [
+                    'nombre'   => $row->nombre_servicio,
+                    'duracion' => $row->duracion,
+                ];
+            }
+        }
+
+        return response()->json(['programas' => array_values($agrupados)]);
     }
 
     // ─────────────────────────────────────────────────────────────
-    // GET /api/bot/disponibilidad?fecha=YYYY-MM-DD[&id_programa=N]
-    //
-    // Sin id_programa → resumen general de todos los espacios.
-    // Con id_programa → verifica disponibilidad del espacio específico
-    //   del programa (estacion_economico, estacion_intermedio,
-    //   estacion_full, terraza, reposera).
-    //
-    // Capacidades por espacio:
-    //   estacion_economico  → 2 cupos
-    //   estacion_intermedio → 2 cupos
-    //   estacion_full       → 5 cupos  (compartido entre Relax y Full Day)
-    //   terraza             → 5 cupos  (compartido entre Grupal 1 y Grupal 2)
-    //   reposera            → 4 cupos  (pares de reposeras)
+    // GET /api/bot/disponibilidad?fecha=YYYY-MM-DD[&programa_id=N&personas=N]
     // ─────────────────────────────────────────────────────────────
     public function disponibilidad(Request $request)
     {
-        $fecha      = $request->query('fecha');
-        $idPrograma = $request->query('id_programa');
+        $fecha = $request->query('fecha');
 
         if (!$fecha || !$this->esFechaValida($fecha)) {
-            return response()->json([
-                'error' => 'Fecha inválida. Formato requerido: YYYY-MM-DD',
-            ], 422);
+            return response()->json(['error' => 'Fecha inválida. Formato: YYYY-MM-DD'], 422);
         }
 
         $fechaCarbon = Carbon::parse($fecha);
-
-        // Botacura opera jueves a domingo y festivos
         $diaSemana   = $fechaCarbon->dayOfWeek; // 0=Dom, 4=Jue, 5=Vie, 6=Sáb
         $esOperativo = in_array($diaSemana, [0, 4, 5, 6]);
 
@@ -103,7 +114,6 @@ class BotController extends Controller
             ]);
         }
 
-        // No permitir fechas pasadas
         if ($fechaCarbon->isPast() && !$fechaCarbon->isToday()) {
             return response()->json([
                 'disponible'        => false,
@@ -114,114 +124,29 @@ class BotController extends Controller
             ]);
         }
 
-        $diaFormateado = $fechaCarbon->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY');
-        $capacidades   = config('app.bot_espacios', [
-            'estacion_economico'  => 2,
-            'estacion_intermedio' => 2,
-            'estacion_full'       => 5,
-            'terraza'             => 5,
-            'reposera'            => 4,
-        ]);
-
-        // ── Consulta con programa específico ───────────────────────
-        if ($idPrograma) {
-            $programa = DB::table('programas')
-                ->where('id', $idPrograma)
-                ->select('id', 'nombre_programa', 'espacio_tipo')
-                ->first();
-
-            if (!$programa) {
-                return response()->json(['error' => 'Programa no encontrado'], 404);
-            }
-
-            $espacioTipo = $programa->espacio_tipo;
-
-            if (!$espacioTipo || !isset($capacidades[$espacioTipo])) {
-                // Programa sin espacio asignado → usar capacidad legada
-                $cuposMax       = config('app.bot_cupos_maximos_dia', 20);
-                $reservasActual = Reserva::whereDate('fecha_visita', $fecha)->count();
-                $cuposDisp      = max(0, $cuposMax - $reservasActual);
-
-                return response()->json([
-                    'disponible'        => $cuposDisp > 0,
-                    'fecha'             => $fecha,
-                    'dia'               => $diaFormateado,
-                    'programa'          => $programa->nombre_programa,
-                    'espacio_tipo'      => null,
-                    'cupos_maximos'     => $cuposMax,
-                    'reservas_actuales' => $reservasActual,
-                    'cupos_disponibles' => $cuposDisp,
-                    'aviso'             => 'Programa sin espacio_tipo asignado; se usó capacidad global.',
-                ]);
-            }
-
-            // Contar reservas de la misma fecha para programas del mismo tipo de espacio
-            $idsDelMismoTipo = DB::table('programas')
-                ->where('espacio_tipo', $espacioTipo)
-                ->pluck('id')
-                ->toArray();
-
-            $reservasActual = Reserva::whereDate('fecha_visita', $fecha)
-                ->whereIn('id_programa', $idsDelMismoTipo)
-                ->count();
-
-            $cuposMax  = $capacidades[$espacioTipo];
-            $cuposDisp = max(0, $cuposMax - $reservasActual);
-
-            return response()->json([
-                'disponible'        => $cuposDisp > 0,
-                'fecha'             => $fecha,
-                'dia'               => $diaFormateado,
-                'programa'          => $programa->nombre_programa,
-                'espacio_tipo'      => $espacioTipo,
-                'cupos_maximos'     => $cuposMax,
-                'reservas_actuales' => $reservasActual,
-                'cupos_disponibles' => $cuposDisp,
-            ]);
+        // Si viene programa_id, usar la lógica de DisponibilidadController
+        if ($request->filled('programa_id')) {
+            return app(DisponibilidadController::class)->check($request);
         }
 
-        // ── Resumen general de todos los espacios ──────────────────
-        $resumen = [];
-        $hayDisponibilidad = false;
-
-        foreach ($capacidades as $tipo => $cuposMax) {
-            $idsDelTipo = DB::table('programas')
-                ->where('espacio_tipo', $tipo)
-                ->pluck('id')
-                ->toArray();
-
-            $reservasActual = 0;
-            if (!empty($idsDelTipo)) {
-                $reservasActual = Reserva::whereDate('fecha_visita', $fecha)
-                    ->whereIn('id_programa', $idsDelTipo)
-                    ->count();
-            }
-
-            $cuposDisp = max(0, $cuposMax - $reservasActual);
-            if ($cuposDisp > 0) {
-                $hayDisponibilidad = true;
-            }
-
-            $resumen[$tipo] = [
-                'cupos_maximos'     => $cuposMax,
-                'reservas_actuales' => $reservasActual,
-                'cupos_disponibles' => $cuposDisp,
-                'disponible'        => $cuposDisp > 0,
-            ];
-        }
+        // Sin programa_id: contar reservas totales del día
+        $cuposMax       = 16; // slots de tinaja
+        $reservasActual = Reserva::whereDate('fecha_visita', $fecha)->count();
+        $cuposDisp      = max(0, $cuposMax - $reservasActual);
 
         return response()->json([
-            'disponible' => $hayDisponibilidad,
-            'fecha'      => $fecha,
-            'dia'        => $diaFormateado,
-            'espacios'   => $resumen,
+            'disponible'        => $cuposDisp > 0,
+            'fecha'             => $fecha,
+            'dia'               => $fechaCarbon->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY'),
+            'cupos_maximos'     => $cuposMax,
+            'reservas_actuales' => $reservasActual,
+            'cupos_disponibles' => $cuposDisp,
         ]);
     }
 
     // ─────────────────────────────────────────────────────────────
     // POST /api/bot/clientes/buscar-o-crear
     // Body: { nombre_cliente, whatsapp_cliente, canal, instagram_cliente? }
-    // Busca por whatsapp_cliente (campo UNIQUE en clientes)
     // ─────────────────────────────────────────────────────────────
     public function buscarOCrearCliente(Request $request)
     {
@@ -233,14 +158,11 @@ class BotController extends Controller
         }
 
         $esNuevo = false;
-
-        // Buscar por WhatsApp primero
         $cliente = null;
+
         if ($telefono) {
             $cliente = Cliente::where('whatsapp_cliente', $telefono)->first();
         }
-
-        // Si viene de Instagram y no hay WA, buscar por instagram_cliente
         if (!$cliente && $canal === 'instagram') {
             $igId = $request->input('instagram_cliente');
             if ($igId) {
@@ -250,56 +172,37 @@ class BotController extends Controller
 
         if (!$cliente) {
             $nombre = $request->input('nombre_cliente', 'Cliente Bot');
-            $correo = $request->input('correo');
-            $genero = $request->input('genero');
-
-            $datos = [
-                'nombre_cliente'    => $nombre,
-                'whatsapp_cliente'  => $telefono ?: null,
-                'instagram_cliente' => $request->input('instagram_cliente', ''),
-                'sexo'              => $genero ?: '',
-                'correo'            => $correo ?: $this->generarCorreoTemporal($telefono, $canal),
-            ];
-
             try {
-                $cliente = Cliente::create($datos);
+                $cliente = Cliente::create([
+                    'nombre_cliente'    => $nombre,
+                    'whatsapp_cliente'  => $telefono ?: null,
+                    'instagram_cliente' => $request->input('instagram_cliente', null),
+                    'sexo'              => null,
+                    'correo'            => $this->generarCorreoTemporal($telefono, $canal),
+                ]);
                 $esNuevo = true;
-                Log::info("[Bot] Cliente creado #{$cliente->id} vía {$canal} — {$nombre}");
+                Log::info("[Bot] Cliente creado #{$cliente->id} vía {$canal}");
             } catch (\Exception $e) {
                 Log::error("[Bot] Error creando cliente: " . $e->getMessage());
                 return response()->json(['error' => 'No se pudo crear el cliente'], 500);
             }
         } else {
-            // Actualizar campos vacíos si ahora tenemos datos
             $actualizaciones = [];
             if (empty($cliente->whatsapp_cliente) && $telefono) {
                 $actualizaciones['whatsapp_cliente'] = $telefono;
             }
-            if (empty($cliente->instagram_cliente) && $request->filled('instagram_cliente')) {
-                $actualizaciones['instagram_cliente'] = $request->input('instagram_cliente');
-            }
-            if (empty($cliente->correo) && $request->filled('correo')) {
-                $actualizaciones['correo'] = $request->input('correo');
-            }
-            if (empty($cliente->sexo) && $request->filled('genero')) {
-                $actualizaciones['sexo'] = $request->input('genero');
-            }
-            if (empty($cliente->nombre_cliente) && $request->filled('nombre_cliente')) {
-                $actualizaciones['nombre_cliente'] = $request->input('nombre_cliente');
-            }
             if (!empty($actualizaciones)) {
                 $cliente->update($actualizaciones);
             }
-
-            Log::info("[Bot] Cliente encontrado #{$cliente->id} — {$cliente->nombre_cliente}");
+            Log::info("[Bot] Cliente encontrado #{$cliente->id}");
         }
 
         return response()->json([
-            'cliente'  => [
-                'id'                => $cliente->id,
-                'nombre_cliente'    => $cliente->nombre_cliente,
-                'whatsapp_cliente'  => $cliente->whatsapp_cliente,
-                'instagram_cliente' => $cliente->instagram_cliente,
+            'cliente' => [
+                'id'               => $cliente->id,
+                'nombre_cliente'   => $cliente->nombre_cliente,
+                'whatsapp_cliente' => $cliente->whatsapp_cliente,
+                'correo'           => $cliente->correo,
             ],
             'es_nuevo' => $esNuevo,
         ]);
@@ -307,420 +210,426 @@ class BotController extends Controller
 
     // ─────────────────────────────────────────────────────────────
     // POST /api/bot/reservas
-    // Crea reserva + venta (abono 50%) usando el mismo patrón
-    // que ProcesarOrdenWoocommerce
-    //
-    // Body:
-    //   id_cliente, id_programa, cantidad_personas,
-    //   fecha_visita (YYYY-MM-DD), canal, observacion?
+    // Body: { cliente_id, id_programa, fecha_visita, cantidad_personas, canal? }
     // ─────────────────────────────────────────────────────────────
     public function crearReserva(Request $request)
     {
-        $idCliente        = $request->input('id_cliente');
-        $idPrograma       = $request->input('id_programa');
-        $cantidadPersonas = (int) $request->input('cantidad_personas', 1);
-        $fechaVisita      = $request->input('fecha_visita');
-        $canal            = $request->input('canal', 'whatsapp');
-        $observacion      = $request->input('observacion');
+        $request->validate([
+            'cliente_id'        => 'required|integer|exists:clientes,id',
+            'id_programa'       => 'required|integer|exists:programas,id',
+            'fecha_visita'      => 'required|date|after_or_equal:today',
+            'cantidad_personas' => 'required|integer|min:1|max:50',
+        ]);
 
-        // Validaciones básicas
-        if (!$idCliente || !$idPrograma || !$fechaVisita) {
-            return response()->json([
-                'error' => 'Faltan datos requeridos: id_cliente, id_programa, fecha_visita',
-            ], 422);
-        }
+        $botUserId = (int) env('BOT_SYSTEM_USER_ID', 1);
 
-        if (!$this->esFechaValida($fechaVisita)) {
-            return response()->json(['error' => 'Fecha inválida'], 422);
-        }
+        $reservaId = DB::table('reservas')->insertGetId([
+            'cliente_id'        => $request->cliente_id,
+            'id_programa'       => $request->id_programa,
+            'fecha_visita'      => $request->fecha_visita,
+            'cantidad_personas' => $request->cantidad_personas,
+            'cantidad_masajes'  => 0,
+            'observacion'       => 'Creada por bot WhatsApp',
+            'user_id'           => $botUserId,
+            'estado'            => 'pendiente_pago',
+            'fuente'            => 'bot_whatsapp',
+            'menu_recibido'     => 0,
+            'created_at'        => now(),
+            'updated_at'        => now(),
+        ]);
 
-        $programa = Programa::find($idPrograma);
-        if (!$programa) {
-            return response()->json(['error' => 'Programa no encontrado'], 404);
-        }
+        $programa   = DB::table('programas')->where('id', $request->id_programa)->first();
+        $valorTotal = ($programa ? (int) $programa->valor_programa : 0) * (int) $request->cantidad_personas;
+        $abono50    = (int) ceil($valorTotal / 2);
 
-        $cliente = Cliente::find($idCliente);
-        if (!$cliente) {
-            return response()->json(['error' => 'Cliente no encontrado'], 404);
-        }
+        Log::info("[Bot] Reserva creada #{$reservaId}");
 
-        // Calcular montos
-        $valorBase    = $programa->valor_programa;
-        $descuento    = $programa->descuento ?? 0;
-        $valorFinal   = $valorBase - $descuento;
-        $totalPagar   = $valorFinal * $cantidadPersonas;
-        $abono        = (int) round($totalPagar * 0.5); // 50% de abono
-
-        // ID del usuario bot (configurado en .env como BOT_SYSTEM_USER_ID)
-        $botUserId = config('app.bot_system_user_id', 1);
-
-        // Texto de observación enriquecido
-        $obsTexto = trim(implode(' | ', array_filter([
-            "Reserva vía {$canal}",
-            $observacion,
-            "Bot-Acura " . now()->format('d-m-Y H:i'),
-        ])));
-
-        DB::beginTransaction();
-        try {
-            // 1) Crear reserva
-            $reserva = Reserva::create([
-                'cliente_id'        => $cliente->id,
-                'id_programa'       => $programa->id,
-                'cantidad_personas' => $cantidadPersonas,
-                'cantidad_masajes'  => $programa->incluye_masajes ? $cantidadPersonas : null,
-                'fecha_visita'      => $fechaVisita,
-                'observacion'       => $obsTexto,
-                'user_id'           => $botUserId,
-                'avisado_en_cocina' => 'reservado',
-            ]);
-
-            // 2) Buscar tipo de transacción para transferencia/bot
-            // Ajusta el nombre según lo que tengas en tipos_transacciones
-            $tipoTransaccion = TipoTransaccion::where('nombre', 'like', '%transferencia%')
-                ->orWhere('nombre', 'like', '%depósito%')
-                ->orWhere('nombre', 'like', '%deposito%')
-                ->first();
-
-            // 3) Crear venta con abono pendiente de confirmación
-            $venta = Venta::create([
-                'id_reserva'                => $reserva->id,
-                'abono_programa'            => null,      // se completa cuando confirmen el pago
-                'folio_abono'               => null,      // se completa con comprobante
-                'total_pagar'               => $totalPagar,
-                'descuento'                 => $descuento * $cantidadPersonas,
-                'id_tipo_transaccion_abono' => $tipoTransaccion ? $tipoTransaccion->id : null,
-            ]);
-
-            DB::commit();
-
-            Log::info(
-                "[Bot] ✓ Reserva #{$reserva->id} creada | " .
-                "Cliente #{$cliente->id} ({$cliente->nombre_cliente}) | " .
-                "Programa: {$programa->nombre_programa} | " .
-                "Fecha: {$fechaVisita} | Canal: {$canal}"
-            );
-
-            return response()->json([
-                'success'           => true,
-                'id_reserva'        => $reserva->id,
-                'id_venta'          => $venta->id,
-                'cliente'           => $cliente->nombre_cliente,
-                'programa'          => $programa->nombre_programa,
-                'fecha_visita'      => Carbon::parse($fechaVisita)->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY'),
-                'cantidad_personas' => $cantidadPersonas,
-                'total_pagar'       => $totalPagar,
-                'abono_requerido'   => $abono,
-                'saldo_dia_visita'  => $totalPagar - $abono,
-                'total_formateado'  => '$' . number_format($totalPagar, 0, ',', '.'),
-                'abono_formateado'  => '$' . number_format($abono, 0, ',', '.'),
-                'saldo_formateado'  => '$' . number_format($totalPagar - $abono, 0, ',', '.'),
-            ], 201);
-
-        } catch (\Throwable $e) {
-            DB::rollBack();
-            Log::error("[Bot] ✗ Error creando reserva: " . $e->getMessage(), [
-                'cliente_id' => $idCliente,
-                'programa'   => $idPrograma,
-                'fecha'      => $fechaVisita,
-            ]);
-            return response()->json(['error' => 'Error interno al crear la reserva'], 500);
-        }
+        return response()->json([
+            'ok'                 => true,
+            'reserva_id'         => $reservaId,
+            'valor_total'        => $valorTotal,
+            'valor_total_fmt'    => '$' . number_format($valorTotal, 0, ',', '.'),
+            'abono_50'           => $abono50,
+            'abono_50_fmt'       => '$' . number_format($abono50, 0, ',', '.'),
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────
     // POST /api/bot/reservas/{id}/pago
-    // Registra el abono recibido en la venta asociada a la reserva
-    //
-    // Body:
-    //   monto, folio (número de transferencia o referencia),
-    //   tipo_transaccion? (nombre o id)
+    // Body: { monto, comprobante_url? }
     // ─────────────────────────────────────────────────────────────
-    public function registrarPago(Request $request, $idReserva)
+    public function registrarPago(Request $request, $id)
     {
-        $reserva = Reserva::with('venta')->find($idReserva);
-
+        $reserva = DB::table('reservas')->where('id', $id)->first();
         if (!$reserva) {
             return response()->json(['error' => 'Reserva no encontrada'], 404);
         }
 
-        $venta = $reserva->venta;
-        if (!$venta) {
-            return response()->json(['error' => 'La reserva no tiene venta asociada'], 404);
-        }
+        DB::table('reservas')->where('id', $id)->update([
+            'estado'     => 'pago_parcial',
+            'updated_at' => now(),
+        ]);
 
-        $monto = (int) $request->input('monto', 0);
-        $folio = $request->input('folio', 'BOT-' . now()->format('YmdHis'));
+        Log::info("[Bot] Pago registrado para reserva #{$id}");
 
-        if ($monto <= 0) {
-            return response()->json(['error' => 'El monto debe ser mayor a 0'], 422);
-        }
-
-        // Buscar tipo de transacción si se especifica
-        $tipoTransaccion = null;
-        if ($request->filled('tipo_transaccion')) {
-            $tipoTransaccion = TipoTransaccion::where('nombre', 'like', '%' . $request->input('tipo_transaccion') . '%')
-                ->first();
-        }
-        if (!$tipoTransaccion) {
-            $tipoTransaccion = TipoTransaccion::where('nombre', 'like', '%transferencia%')
-                ->orWhere('nombre', 'like', '%depósito%')
-                ->orWhere('nombre', 'like', '%deposito%')
-                ->first();
-        }
-
-        try {
-            $venta->update([
-                'abono_programa'            => $monto,
-                'folio_abono'               => $folio,
-                'id_tipo_transaccion_abono' => $tipoTransaccion ? $tipoTransaccion->id : $venta->id_tipo_transaccion_abono,
-            ]);
-
-            Log::info(
-                "[Bot] ✓ Pago registrado | Reserva #{$idReserva} | " .
-                "Monto: \${$monto} | Folio: {$folio}"
-            );
-
-            $saldoPendiente = max(0, ($venta->total_pagar ?? 0) - $monto);
-
-            return response()->json([
-                'success'           => true,
-                'id_reserva'        => $idReserva,
-                'monto_registrado'  => $monto,
-                'folio'             => $folio,
-                'saldo_pendiente'   => $saldoPendiente,
-                'saldo_formateado'  => '$' . number_format($saldoPendiente, 0, ',', '.'),
-                'estado'            => $saldoPendiente === 0 ? 'pagado_completo' : 'abono_registrado',
-            ]);
-
-        } catch (\Throwable $e) {
-            Log::error("[Bot] ✗ Error registrando pago reserva #{$idReserva}: " . $e->getMessage());
-            return response()->json(['error' => 'Error al registrar el pago'], 500);
-        }
+        return response()->json([
+            'ok'         => true,
+            'reserva_id' => $id,
+            'estado'     => 'pago_parcial',
+        ]);
     }
 
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot/conversacion/{usuario_id}
-    // Obtiene el estado actual de la conversación activa
     // ─────────────────────────────────────────────────────────────
     public function getConversacion($usuarioId)
     {
         $conv = DB::table('bot_conversaciones')
             ->where('usuario_id', $usuarioId)
             ->where('activo', 1)
-            ->orderByDesc('updated_at')
+            ->orderBy('id', 'desc')
             ->first();
 
         if (!$conv) {
-            return response()->json(['conversacion' => null, 'existe' => false]);
+            return response()->json(['conversacion' => null]);
         }
 
-        return response()->json([
-            'conversacion' => $conv,
-            'existe'       => true,
-        ]);
+        return response()->json(['conversacion' => $conv]);
     }
 
     // ─────────────────────────────────────────────────────────────
     // POST /api/bot/conversacion
-    // Crea o actualiza el estado de una conversación
-    //
-    // Body (todos opcionales excepto usuario_id):
-    //   usuario_id, canal, paso, nombre_cliente, correo, telefono,
-    //   instagram, genero, id_programa, cantidad_personas, fecha_visita,
-    //   celebracion_especial, tipo_pago, incluye_masajes, incluye_menu,
-    //   politicas_aceptadas, id_cliente, id_reserva, ultimo_mensaje,
-    //   activo, motivo_cierre
+    // Body: { usuario_id, canal?, paso?, nombre_cliente?, ... }
     // ─────────────────────────────────────────────────────────────
     public function upsertConversacion(Request $request)
     {
         $usuarioId = $request->input('usuario_id');
-
         if (!$usuarioId) {
-            return response()->json(['error' => 'usuario_id es requerido'], 422);
+            return response()->json(['error' => 'usuario_id requerido'], 422);
         }
 
-        $existe = DB::table('bot_conversaciones')
+        $conv = DB::table('bot_conversaciones')
             ->where('usuario_id', $usuarioId)
             ->where('activo', 1)
-            ->exists();
+            ->first();
 
         $campos = array_filter([
-            'paso'                => $request->input('paso'),
-            'nombre_cliente'      => $request->input('nombre_cliente'),
-            'correo'              => $request->input('correo'),
-            'telefono'            => $request->input('telefono'),
-            'instagram'           => $request->input('instagram'),
-            'genero'              => $request->input('genero'),
-            'id_programa'         => $request->input('id_programa'),
-            'cantidad_personas'   => $request->input('cantidad_personas'),
-            'fecha_visita'        => $request->input('fecha_visita'),
-            'celebracion_especial'=> $request->input('celebracion_especial'),
-            'tipo_pago'           => $request->input('tipo_pago'),
-            'incluye_masajes'     => $request->input('incluye_masajes'),
-            'incluye_menu'        => $request->input('incluye_menu'),
+            'canal'          => $request->input('canal'),
+            'paso'           => $request->input('paso'),
+            'nombre_cliente' => $request->input('nombre_cliente'),
+            'telefono'       => $request->input('telefono'),
+            'correo'         => $request->input('correo'),
+            'id_programa'    => $request->input('id_programa'),
+            'cantidad_personas' => $request->input('cantidad_personas'),
+            'fecha_visita'   => $request->input('fecha_visita'),
             'politicas_aceptadas' => $request->input('politicas_aceptadas'),
-            'id_cliente'          => $request->input('id_cliente'),
-            'id_reserva'          => $request->input('id_reserva'),
-            'ultimo_mensaje'      => $request->input('ultimo_mensaje'),
-            'activo'              => $request->input('activo'),
-            'motivo_cierre'       => $request->input('motivo_cierre'),
-        ], function ($v) { return !is_null($v); });
+            'ultimo_mensaje' => $request->input('ultimo_mensaje'),
+            'historial_json' => $request->input('historial_json'),
+            'activo'         => $request->input('activo'),
+            'motivo_cierre'  => $request->input('motivo_cierre'),
+        ], function ($v) { return $v !== null; });
 
-        if ($existe) {
-            DB::table('bot_conversaciones')
-                ->where('usuario_id', $usuarioId)
-                ->where('activo', 1)
-                ->update(array_merge($campos, ['updated_at' => now()]));
+        $campos['updated_at'] = now();
 
-            $accion = 'actualizada';
+        if ($conv) {
+            DB::table('bot_conversaciones')->where('id', $conv->id)->update($campos);
+            $id = $conv->id;
         } else {
-            DB::table('bot_conversaciones')->insert(array_merge(
-                [
-                    'usuario_id' => $usuarioId,
-                    'canal'      => $request->input('canal', 'whatsapp'),
-                    'paso'       => 0,
-                    'activo'     => 1,
-                    'created_at' => now(),
-                    'updated_at' => now(),
-                ],
-                $campos
-            ));
-
-            $accion = 'creada';
+            $campos['usuario_id'] = $usuarioId;
+            $campos['canal']      = $campos['canal'] ?? 'whatsapp';
+            $campos['activo']     = 1;
+            $campos['paso']       = 0;
+            $campos['created_at'] = now();
+            $id = DB::table('bot_conversaciones')->insertGetId($campos);
         }
-
-        return response()->json(['success' => true, 'accion' => $accion]);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // GET /api/bot/productos?categoria=entrada|fondo|acompanamiento
-    // Devuelve productos activos filtrados por tipo/categoría
-    // ─────────────────────────────────────────────────────────────
-    public function productos(Request $request)
-    {
-        $categoria = $request->query('categoria'); // entrada|fondo|acompanamiento
-
-        $query = \App\Producto::with('tipoProducto')->activos();
-
-        if ($categoria) {
-            $query->whereHas('tipoProducto', function ($q) use ($categoria) {
-                $q->where('nombre', 'like', '%' . $categoria . '%');
-            });
-        }
-
-        $productos = $query->get(['id', 'nombre', 'valor', 'id_tipo_producto'])->map(function ($p) {
-            return [
-                'id'        => $p->id,
-                'nombre'    => $p->nombre,
-                'valor'     => $p->valor,
-                'categoria' => $p->tipoProducto ? $p->tipoProducto->nombre : null,
-            ];
-        });
-
-        return response()->json(['productos' => $productos]);
-    }
-
-    // ─────────────────────────────────────────────────────────────
-    // POST /api/bot/menu
-    // Crea o actualiza el menú de una reserva
-    //
-    // Body:
-    //   id_reserva, id_producto_entrada?, id_producto_fondo?,
-    //   id_producto_acompanamiento?, alergias?, observacion?
-    // ─────────────────────────────────────────────────────────────
-    public function guardarMenu(Request $request)
-    {
-        $idReserva = $request->input('id_reserva');
-
-        if (!$idReserva) {
-            return response()->json(['error' => 'id_reserva es requerido'], 422);
-        }
-
-        $reserva = Reserva::find($idReserva);
-        if (!$reserva) {
-            return response()->json(['error' => 'Reserva no encontrada'], 404);
-        }
-
-        $campos = array_filter([
-            'id_producto_entrada'        => $request->input('id_producto_entrada'),
-            'id_producto_fondo'          => $request->input('id_producto_fondo'),
-            'id_producto_acompanamiento' => $request->input('id_producto_acompanamiento'),
-            'alergias'                   => $request->input('alergias'),
-            'observacion'                => $request->input('observacion'),
-        ], function ($v) { return !is_null($v); });
-
-        $menu = \App\Menu::where('id_reserva', $idReserva)->first();
-
-        if ($menu) {
-            $menu->update($campos);
-            $accion = 'actualizado';
-        } else {
-            $menu = \App\Menu::create(array_merge(['id_reserva' => $idReserva], $campos));
-            $accion = 'creado';
-        }
-
-        Log::info("[Bot] Menú #{$menu->id} {$accion} para reserva #{$idReserva}");
 
         return response()->json([
-            'success'    => true,
-            'accion'     => $accion,
-            'id_menu'    => $menu->id,
-            'id_reserva' => $idReserva,
+            'ok'              => true,
+            'conversacion_id' => $id,
         ]);
     }
 
     // ─────────────────────────────────────────────────────────────
-    // HELPERS PRIVADOS
+    // POST /api/bot/message
+    // Endpoint principal para n8n — Claude maneja la conversación completa
+    // Body: { telefono, mensaje, nombre? }
+    // ─────────────────────────────────────────────────────────────
+    public function message(Request $request)
+    {
+        // Auth
+        $secret = config('services.bot.secret');
+        if ($secret && $request->header(self::BOT_SECRET_HEADER) !== $secret) {
+            return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
+        }
+
+        $request->validate([
+            'telefono' => 'required|string',
+            'mensaje'  => 'required|string|max:4000',
+            'nombre'   => 'nullable|string|max:100',
+        ]);
+
+        $usuarioId = $this->normalizarTelefono($request->telefono);
+        $mensaje   = trim($request->mensaje);
+        $nombre    = $request->nombre ?? 'Cliente';
+
+        // Cargar/crear conversación
+        $conv = $this->obtenerConversacion($usuarioId, $nombre);
+
+        // Historial para Claude
+        $historial   = json_decode($conv->historial_json ?? '[]', true) ?: [];
+        $historial[] = ['role' => 'user', 'content' => $mensaje];
+
+        // System prompt con programas dinámicos desde BD
+        $programas    = $this->cargarProgramasBd();
+        $promptSvc    = new BotPromptService();
+        $systemPrompt = $promptSvc->getSystemPrompt($programas);
+
+        // Llamar a Claude
+        $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
+
+        if (!$respuesta) {
+            $msgError = 'Estamos teniendo problemas técnicos. Por favor escríbenos al +56 9 7448 4112 🙏';
+            $historial[] = ['role' => 'assistant', 'content' => $msgError];
+            $this->persistirHistorial($conv->id, $mensaje, $msgError, $historial, []);
+            return response()->json([
+                'ok'     => true,
+                'accion' => 'escalar_humano',
+                'mensaje' => $msgError,
+                'datos'  => ['motivo' => 'error_claude_api'],
+            ]);
+        }
+
+        $accion = $respuesta['accion'] ?? 'responder';
+        $datos  = $respuesta['datos']  ?? [];
+
+        // Procesar acciones especiales
+        if ($accion === 'verificar_disponibilidad') {
+            $respuesta = $this->procesarDisponibilidad($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
+        } elseif ($accion === 'crear_reserva') {
+            $respuesta = $this->procesarCrearReservaClaude($respuesta, $systemPrompt, $historial, $mensaje, $nombre, $usuarioId);
+        }
+
+        $historial[] = ['role' => 'assistant', 'content' => $respuesta['mensaje'] ?? ''];
+
+        if (count($historial) > self::MAX_HISTORY_TURNS * 2) {
+            $historial = array_slice($historial, -(self::MAX_HISTORY_TURNS * 2));
+        }
+
+        $this->persistirHistorial($conv->id, $mensaje, $respuesta['mensaje'] ?? '', $historial, $respuesta['datos'] ?? []);
+
+        return response()->json(array_merge(['ok' => true], $respuesta));
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // INTERNOS — Claude
     // ─────────────────────────────────────────────────────────────
 
-    /**
-     * Normaliza un número de teléfono al formato 569XXXXXXXX
-     * (mismo criterio que Cliente::store())
-     */
-    private function normalizarTelefono(string $telefono): string
+    private function llamarClaude(string $systemPrompt, array $historial, string $nombre)
     {
-        // Eliminar todo excepto dígitos
-        $limpio = preg_replace('/[^0-9]/', '', $telefono);
+        $apiKey = config('services.anthropic.key');
+        $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
 
-        if (empty($limpio)) {
-            return '';
+        try {
+            $response = Http::withHeaders([
+                'x-api-key'         => $apiKey,
+                'anthropic-version' => '2023-06-01',
+                'content-type'      => 'application/json',
+            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
+                'model'      => $model,
+                'max_tokens' => 1024,
+                'system'     => $systemPrompt . "\n\nNombre del cliente: {$nombre}",
+                'messages'   => $historial,
+            ]);
+
+            if (!$response->successful()) {
+                Log::error('[Bot] Claude error', ['status' => $response->status()]);
+                return null;
+            }
+
+            $content = $response->json()['content'][0]['text'] ?? '';
+            $content = trim(preg_replace(['/^```json\s*/i', '/\s*```$/'], '', trim($content)));
+            $parsed  = json_decode($content, true);
+
+            if (!$parsed || !isset($parsed['accion'], $parsed['mensaje'])) {
+                return ['accion' => 'responder', 'mensaje' => $content, 'datos' => []];
+            }
+            return $parsed;
+
+        } catch (\Exception $e) {
+            Log::error('[Bot] Excepción Claude: ' . $e->getMessage());
+            return null;
         }
-
-        // Si ya empieza con 56, dejarlo
-        if (substr($limpio, 0, 2) === '56') {
-            return $limpio;
-        }
-
-        // Si empieza con 9 (móvil chileno sin código país)
-        if (substr($limpio, 0, 1) === '9') {
-            return '56' . $limpio;
-        }
-
-        return '56' . $limpio;
     }
 
-    /**
-     * Genera un correo temporal único para clientes que llegan
-     * por WhatsApp/Instagram sin correo registrado.
-     * El correo puede actualizarse después desde el backoffice.
-     */
-    private function generarCorreoTemporal(string $telefono, string $canal): string
+    private function procesarDisponibilidad(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
     {
-        $base = $telefono ?: uniqid();
-        return "bot_{$canal}_{$base}@botacura.cl";
+        $datos = $respuesta['datos'] ?? [];
+        if (empty($datos['fecha']) || empty($datos['programa_id'])) {
+            return $respuesta;
+        }
+        try {
+            $disp = Http::timeout(10)->get(url('/api/disponibilidad'), [
+                'fecha'       => $datos['fecha'],
+                'programa_id' => $datos['programa_id'],
+                'personas'    => $datos['personas'] ?? 1,
+            ]);
+            $ctx      = '[Sistema-disponibilidad: ' . json_encode($disp->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
+            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error disponibilidad: ' . $e->getMessage());
+            return $respuesta;
+        }
     }
 
-    /**
-     * Valida que una cadena sea una fecha en formato YYYY-MM-DD
-     */
-    private function esFechaValida(string $fecha): bool
+    private function procesarCrearReservaClaude(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre, string $usuarioId)
+    {
+        $datos = $respuesta['datos'] ?? [];
+        foreach (['nombre', 'email', 'programa_id', 'fecha', 'personas'] as $campo) {
+            if (empty($datos[$campo])) {
+                return $respuesta;
+            }
+        }
+        try {
+            $secret = config('services.bot.secret');
+            $res = Http::withHeaders([
+                self::BOT_SECRET_HEADER => $secret,
+                'content-type'          => 'application/json',
+            ])->timeout(15)->post(url('/api/bot/reserva'), [
+                'nombre'      => $datos['nombre'],
+                'telefono'    => $datos['telefono'] ?? $usuarioId,
+                'email'       => $datos['email'],
+                'programa_id' => $datos['programa_id'],
+                'fecha'       => $datos['fecha'],
+                'personas'    => $datos['personas'],
+            ]);
+            $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
+            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error creando reserva: ' . $e->getMessage());
+            return $respuesta;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // INTERNOS — Conversación
+    // ─────────────────────────────────────────────────────────────
+
+    private function obtenerConversacion(string $usuarioId, string $nombre)
+    {
+        $conv = DB::table('bot_conversaciones')
+            ->where('usuario_id', $usuarioId)
+            ->where('activo', 1)
+            ->orderBy('id', 'desc')
+            ->first();
+
+        if (!$conv) {
+            $id = DB::table('bot_conversaciones')->insertGetId([
+                'usuario_id'     => $usuarioId,
+                'canal'          => 'whatsapp',
+                'paso'           => 0,
+                'nombre_cliente' => $nombre !== 'Cliente' ? $nombre : null,
+                'activo'         => 1,
+                'historial_json' => '[]',
+                'created_at'     => now(),
+                'updated_at'     => now(),
+            ]);
+            $conv = DB::table('bot_conversaciones')->find($id);
+        }
+        return $conv;
+    }
+
+    private function persistirHistorial(int $convId, string $msgUsuario, string $msgBot, array $historial, array $datos)
+    {
+        $update = [
+            'ultimo_mensaje' => $msgUsuario,
+            'historial_json' => json_encode($historial, JSON_UNESCAPED_UNICODE),
+            'updated_at'     => now(),
+        ];
+        $mapeo = [
+            'nombre'           => 'nombre_cliente',
+            'telefono'         => 'telefono',
+            'email'            => 'correo',
+            'programa_id'      => 'id_programa',
+            'personas'         => 'cantidad_personas',
+            'fecha'            => 'fecha_visita',
+            'acepta_politicas' => 'politicas_aceptadas',
+        ];
+        foreach ($mapeo as $clave => $col) {
+            if (!empty($datos[$clave])) {
+                $update[$col] = $datos[$clave];
+            }
+        }
+        if (!empty($datos['id_reserva'])) {
+            $update['id_reserva']    = $datos['id_reserva'];
+            $update['activo']        = 0;
+            $update['motivo_cierre'] = 'reserva_creada';
+        }
+        DB::table('bot_conversaciones')->where('id', $convId)->update($update);
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // INTERNOS — Programas
+    // ─────────────────────────────────────────────────────────────
+
+    private function cargarProgramasBd()
     {
         try {
-            $dt = \DateTime::createFromFormat('Y-m-d', $fecha);
-            return $dt && $dt->format('Y-m-d') === $fecha;
+            $filas = DB::table('programas as p')
+                ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
+                ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
+                ->select('p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo', 's.nombre_servicio')
+                ->orderBy('p.valor_programa')
+                ->orderBy('s.nombre_servicio')
+                ->get();
+
+            $agrupados = [];
+            foreach ($filas as $fila) {
+                $id = $fila->id;
+                if (!isset($agrupados[$id])) {
+                    $agrupados[$id] = [
+                        'id'             => $id,
+                        'nombre'         => $fila->nombre_programa,
+                        'precio'         => (int) $fila->valor_programa,
+                        'precio_formato' => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
+                        'espacio_tipo'   => $fila->espacio_tipo,
+                        'servicios'      => [],
+                    ];
+                }
+                if ($fila->nombre_servicio) {
+                    $agrupados[$id]['servicios'][] = $fila->nombre_servicio;
+                }
+            }
+            return array_values($agrupados);
         } catch (\Exception $e) {
-            return false;
+            Log::error('[Bot] Error cargando programas: ' . $e->getMessage());
+            return [];
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // HELPERS
+    // ─────────────────────────────────────────────────────────────
+
+    private function normalizarTelefono(string $telefono)
+    {
+        $limpio = preg_replace('/[^0-9]/', '', $telefono);
+        if (strlen($limpio) === 9 && substr($limpio, 0, 1) === '9') {
+            $limpio = '56' . $limpio;
+        }
+        return $limpio;
+    }
+
+    private function generarCorreoTemporal(string $telefono, string $canal)
+    {
+        $base = $telefono ?: uniqid('bot');
+        return "bot_{$canal}_{$base}@temporal.botacura.cl";
+    }
+
+    private function esFechaValida(string $fecha)
+    {
+        $d = \DateTime::createFromFormat('Y-m-d', $fecha);
+        return $d && $d->format('Y-m-d') === $fecha;
     }
 }

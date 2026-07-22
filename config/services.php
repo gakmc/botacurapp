@@ -36,4 +36,15 @@ return [
         'subject'     => env('VAPID_SUBJECT'),
     ],
 
+    // ── Anthropic Claude (Bot WhatsApp) ──────────────────────────────────
+    'anthropic' => [
+        'key'   => env('ANTHROPIC_API_KEY'),
+        'model' => env('ANTHROPIC_MODEL', 'claude-haiku-4-5-20251001'),
+    ],
+
+    // ── Bot secret (header X-Bot-Secret para n8n) ─────────────────────
+    'bot' => [
+        'secret' => env('BOT_SECRET'),
+    ],
+
 ];

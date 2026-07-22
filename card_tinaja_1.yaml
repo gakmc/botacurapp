@@ -1,0 +1,289 @@
+# ═══════════════════════════════════════════════════════════════
+# TARJETA TINAJA 1 — Dashboard Botacura Spa
+# Muestra: temperatura interior, próxima reserva, calefacción toggle
+# Entidades:
+#   Calefacción : switch.sonoff_100136bad0_2
+#   Filtrado    : switch.sonoff_100136bad0_1
+#   Salida Calefón: switch.sonoff_10012a25d8
+#   Temp interior : sensor.sonoff_a440041249_temperature
+#   Reservas    : sensor.reservas_tinajas → attribute tinaja_1
+# ═══════════════════════════════════════════════════════════════
+
+# --- TARJETA PRINCIPAL T1 (temperatura + reserva + toggle calefacción) ---
+type: custom:button-card
+show_icon: false
+show_name: false
+show_state: false
+tap_action:
+  action: more-info
+styles:
+  grid:
+    - grid-template-areas: '"icon info temp light"'
+    - grid-template-columns: 54px 1fr auto 54px
+    - align-items: center
+    - column-gap: 14px
+  card:
+    - border-radius: 18px
+    - padding: 16px
+    - box-shadow: none
+    - background: |
+        [[[
+          const t = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+          const cal = states['switch.sonoff_100136bad0_2']?.state === 'on';
+          if (t >= 40) return cal ? '#ffd8b5' : '#fff0e0';
+          if (t >= 35) return cal ? '#bbf7d0' : '#ecfdf5';
+          if (t >= 25) return cal ? '#a5e8ff' : '#e0f7ff';
+          return cal ? '#dbeafe' : '#f0f9ff';
+        ]]]
+  custom_fields:
+    icon:
+      - justify-self: center
+      - align-self: center
+    info:
+      - justify-self: start
+      - align-self: center
+    temp:
+      - justify-self: end
+      - align-self: center
+    light:
+      - justify-self: end
+      - align-self: center
+custom_fields:
+  icon: |
+    [[[
+      const t = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+      let icon = 'mdi:hot-tub', color = '#0284c7';
+      if (t >= 40) { icon = 'mdi:thermometer-alert'; color = '#ea580c'; }
+      else if (t >= 35) { icon = 'mdi:hot-tub'; color = '#059669'; }
+      else if (t >= 25) { icon = 'mdi:hot-tub'; color = '#0891b2'; }
+      return `<div style="width:42px;height:42px;border-radius:50%;background:${color};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="${icon}" style="width:24px;height:24px;"></ha-icon></div>`;
+    ]]]
+  info: |
+    [[[
+      const t = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+      const cal = states['switch.sonoff_100136bad0_2']?.state === 'on';
+      const res = states['sensor.reservas_tinajas']?.attributes?.tinaja_1;
+      const fH = dt => { if (!dt) return '--:--'; const d = new Date(dt.replace(' ','T')); return String(d.getHours()).padStart(2,'0')+':'+String(d.getMinutes()).padStart(2,'0'); };
+      const fD = dt => { if (!dt) return ''; const d = new Date(dt.replace(' ','T')); const ds=['Dom','Lun','Mar','Mié','Jue','Vie','Sáb']; return ds[d.getDay()]+' '+String(d.getDate()).padStart(2,'0')+'-'+String(d.getMonth()+1).padStart(2,'0'); };
+      const cliente = res?.cliente || 'Sin reserva';
+      const hora = res ? fH(res.datetime_reserva) : '--:--';
+      const dia  = res ? fD(res.datetime_reserva) : '';
+      let estado = 'FRÍA', color = '#0284c7';
+      if (t >= 40) { estado = 'LISTA';       color = '#ea580c'; }
+      else if (t >= 35) { estado = 'CALENTANDO'; color = '#059669'; }
+      else if (t >= 25) { estado = 'TIBIA';      color = '#0891b2'; }
+      return `<div style="text-align:left;">
+        <div style="font-size:18px;font-weight:900;color:#1f2933;">Tinaja 1</div>
+        <div style="font-size:14px;font-weight:900;color:${color};margin-top:2px;">${estado} · ${hora}</div>
+        <div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">${res ? cliente+' · '+dia : 'Sin reserva próxima'}</div>
+      </div>`;
+    ]]]
+  temp: |
+    [[[
+      const t = Number(states['sensor.sonoff_a440041249_temperature']?.state || 0);
+      return `<div style="text-align:right;line-height:1.2;">
+        <div style="font-size:18px;font-weight:900;color:#1f2933;">${t.toFixed(1)}°C</div>
+        <div style="font-size:12px;font-weight:700;color:#4b5563;">Interior</div>
+      </div>`;
+    ]]]
+  light:
+    card:
+      type: custom:button-card
+      entity: switch.sonoff_100136bad0_2
+      show_icon: false
+      show_name: false
+      show_state: false
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      styles:
+        grid:
+          - grid-template-areas: '"luz"'
+        card:
+          - width: 44px
+          - height: 44px
+          - border-radius: 50%
+          - padding: 0
+          - box-shadow: none
+          - background-color: |
+              [[[
+                return states['switch.sonoff_100136bad0_2']?.state === 'on' ? '#ea580c' : '#94a3b8';
+              ]]]
+        custom_fields:
+          luz:
+            - display: flex
+            - align-items: center
+            - justify-content: center
+      custom_fields:
+        luz: |
+          [[[
+            const on = states['switch.sonoff_100136bad0_2']?.state === 'on';
+            return `<ha-icon icon="${on ? 'mdi:fire' : 'mdi:fire-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+          ]]]
+
+---
+# --- FILTRADO T1 ---
+type: custom:button-card
+show_icon: false
+show_name: false
+show_state: false
+tap_action:
+  action: more-info
+styles:
+  grid:
+    - grid-template-areas: '"icon info light"'
+    - grid-template-columns: 54px 1fr 54px
+    - align-items: center
+    - column-gap: 14px
+  card:
+    - border-radius: 18px
+    - padding: 16px
+    - box-shadow: none
+    - background: |
+        [[[
+          return states['switch.sonoff_100136bad0_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+        ]]]
+  custom_fields:
+    icon:
+      - justify-self: center
+      - align-self: center
+    info:
+      - justify-self: start
+      - align-self: center
+    light:
+      - justify-self: end
+      - align-self: center
+custom_fields:
+  icon: |
+    [[[
+      const on = states['switch.sonoff_100136bad0_1']?.state === 'on';
+      return `<div style="width:42px;height:42px;border-radius:50%;background:${on ? '#0891b2' : '#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:pump" style="width:24px;height:24px;"></ha-icon></div>`;
+    ]]]
+  info: |
+    [[[
+      const on = states['switch.sonoff_100136bad0_1']?.state === 'on';
+      return `<div style="text-align:left;">
+        <div style="font-size:18px;font-weight:900;color:#1f2933;">Filtrado T1</div>
+        <div style="font-size:14px;font-weight:900;color:${on ? '#0891b2' : '#64748b'};margin-top:2px;">${on ? 'ENCENDIDO' : 'APAGADO'}</div>
+        <div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Tinaja 1</div>
+      </div>`;
+    ]]]
+  light:
+    card:
+      type: custom:button-card
+      entity: switch.sonoff_100136bad0_1
+      show_icon: false
+      show_name: false
+      show_state: false
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      styles:
+        grid:
+          - grid-template-areas: '"luz"'
+        card:
+          - width: 44px
+          - height: 44px
+          - border-radius: 50%
+          - padding: 0
+          - box-shadow: none
+          - background-color: |
+              [[[
+                return states['switch.sonoff_100136bad0_1']?.state === 'on' ? '#0891b2' : '#94a3b8';
+              ]]]
+        custom_fields:
+          luz:
+            - display: flex
+            - align-items: center
+            - justify-content: center
+      custom_fields:
+        luz: |
+          [[[
+            const on = states['switch.sonoff_100136bad0_1']?.state === 'on';
+            return `<ha-icon icon="${on ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+          ]]]
+
+---
+# --- SALIDA CALEFÓN T1 ---
+type: custom:button-card
+show_icon: false
+show_name: false
+show_state: false
+tap_action:
+  action: more-info
+styles:
+  grid:
+    - grid-template-areas: '"icon info light"'
+    - grid-template-columns: 54px 1fr 54px
+    - align-items: center
+    - column-gap: 14px
+  card:
+    - border-radius: 18px
+    - padding: 16px
+    - box-shadow: none
+    - background: |
+        [[[
+          return states['switch.sonoff_10012a25d8']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+        ]]]
+  custom_fields:
+    icon:
+      - justify-self: center
+      - align-self: center
+    info:
+      - justify-self: start
+      - align-self: center
+    light:
+      - justify-self: end
+      - align-self: center
+custom_fields:
+  icon: |
+    [[[
+      const on = states['switch.sonoff_10012a25d8']?.state === 'on';
+      return `<div style="width:42px;height:42px;border-radius:50%;background:${on ? '#7c3aed' : '#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:water-boiler" style="width:24px;height:24px;"></ha-icon></div>`;
+    ]]]
+  info: |
+    [[[
+      const on = states['switch.sonoff_10012a25d8']?.state === 'on';
+      return `<div style="text-align:left;">
+        <div style="font-size:18px;font-weight:900;color:#1f2933;">Salida Calefón T1</div>
+        <div style="font-size:14px;font-weight:900;color:${on ? '#7c3aed' : '#64748b'};margin-top:2px;">${on ? 'ENCENDIDO' : 'APAGADO'}</div>
+        <div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Tinaja 1</div>
+      </div>`;
+    ]]]
+  light:
+    card:
+      type: custom:button-card
+      entity: switch.sonoff_10012a25d8
+      show_icon: false
+      show_name: false
+      show_state: false
+      tap_action:
+        action: toggle
+      hold_action:
+        action: more-info
+      styles:
+        grid:
+          - grid-template-areas: '"luz"'
+        card:
+          - width: 44px
+          - height: 44px
+          - border-radius: 50%
+          - padding: 0
+          - box-shadow: none
+          - background-color: |
+              [[[
+                return states['switch.sonoff_10012a25d8']?.state === 'on' ? '#7c3aed' : '#94a3b8';
+              ]]]
+        custom_fields:
+          luz:
+            - display: flex
+            - align-items: center
+            - justify-content: center
+      custom_fields:
+        luz: |
+          [[[
+            const on = states['switch.sonoff_10012a25d8']?.state === 'on';
+            return `<ha-icon icon="${on ? 'mdi:toggle-switch' : 'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+          ]]]

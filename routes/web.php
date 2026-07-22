@@ -318,6 +318,35 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('complemento', 'ComplementoController');
     Route::resource('cotizacion', 'CotizacionController');
     Route::resource('egreso', 'EgresoController');
+
+    // SII – Integración tributaria (RCV compras/ventas)
+    Route::prefix('sii')->name('sii.')->group(function () {
+        Route::get('/',              'SiiController@index')->name('index');
+        Route::post('/sincronizar',  'SiiController@sincronizar')->name('sincronizar');
+        Route::get('/listar',        'SiiController@listar')->name('listar');
+        Route::post('/importar',     'SiiController@importar')->name('importar');
+        Route::post('/importar-todo','SiiController@importarTodo')->name('importarTodo');
+        Route::get('/resumen',        'SiiController@resumen')->name('resumen');
+        Route::get('/gastos-semana', 'SiiController@gastosSemana')->name('gastosSemana');
+        Route::get('/detalle-mes',      'SiiController@detalleMes')->name('detalleMes');
+        Route::post('/importar-directo','SiiController@importarDirecto')->name('importarDirecto');
+        Route::get('/contribuyente',    'SiiController@contribuyente')->name('contribuyente');
+        // DEBUG TEMPORAL — remover antes de subir a producción
+        Route::get('/debug-raw',     'SiiController@debugRaw')->name('debugRaw');
+    });
+
+    // Honorarios BTE – Boletas de prestación de servicios de terceros recibidas
+    Route::prefix('honorarios')->name('honorarios.')->group(function () {
+        Route::get('/',             'HonorarioController@index')->name('index');
+        Route::post('/sincronizar', 'HonorarioController@sincronizar')->name('sincronizar');
+        Route::get('/resumen',      'HonorarioController@resumen')->name('resumen');
+    });
+    // F29 / Impuestos — estimación mensual desde datos SII
+    Route::prefix('impuesto')->name('impuesto.')->group(function () {
+        Route::get('/',             'ImpuestoController@index')->name('index');
+        Route::post('/sincronizar', 'ImpuestoController@sincronizar')->name('sincronizar');
+    });
+
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');
@@ -584,6 +613,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::match(['put', 'patch'], '/egreso/{egreso}/update_variable', 'EgresoController@update_variable')->name('egreso.update_variable');
 
+    Route::get('finanzas/utilidad',      'ReporteFinancieroController@utilidad')->name('finanzas.utilidad');
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
 
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
@@ -591,6 +621,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
     Route::get('finanzas/ingresos/comparar', 'ReporteFinancieroController@comparar')->name('finanzas.comparar');
+
+    Route::get('finanzas/egresos', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.acumulado');
+    Route::get('finanzas/egresos/{anio}/{mes}', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.mes');
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
     Route::get('giftcards/{gc}/reservar', 'GiftCardController@byPassReserva')->name('giftcards.reservar');

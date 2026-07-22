@@ -31,3 +31,14 @@ phpunit.xml*
 /public/js/app.js
 /public/mix-manifest.json
 backups_api_iot/
+*.pem
+database/*prod*.sql
+datos_produccion.sql
+ha_ssh_fix.php
+public/db-export-tmp.php
+deploy_run.php
+fix_deploy.php
+run_fix_secret.bat
+database/botacura_solo_datos.sql
+database/*.sql
+database/sql-migrations/*.sql

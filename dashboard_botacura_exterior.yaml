@@ -1,0 +1,1809 @@
+# ══════════════════════════════════════════════
+# Dashboard: Botacura Exterior
+# Pegar en: Settings > Dashboards > [nuevo dashboard] > Edit > Raw Config Editor
+# ══════════════════════════════════════════════
+title: Botacura Exterior
+views:
+  - title: Exterior
+    path: botacura-exterior
+    icon: mdi:home-city-outline
+    type: sections
+    max_columns: 2
+    sections:
+      - type: grid
+        title: "🏊 Piscina"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info temp light"'
+            - grid-template-columns: 54px 1fr auto 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  const t = Number(states['sensor.sonoff_10012a47e1_temperature']?.state || 0);
+                  const on = states['switch.sonoff_10012a47e1']?.state === 'on';
+                  if (t >= 28) return on ? '#ffd8b5' : '#fff0e0';
+                  if (t >= 22) return on ? '#bbf7d0' : '#ecfdf5';
+                  return on ? '#a5e8ff' : '#e0f7ff';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            temp:
+              - justify-self: end
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const t = Number(states['sensor.sonoff_10012a47e1_temperature']?.state || 0);
+              let c = '#0284c7';
+              if (t >= 28) c = '#ea580c';
+              else if (t >= 22) c = '#059669';
+              else if (t >= 16) c = '#0891b2';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${c};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:pool" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const t = Number(states['sensor.sonoff_10012a47e1_temperature']?.state || 0);
+              const on = states['switch.sonoff_10012a47e1']?.state === 'on';
+              let estado = 'MUY FRÍA', color = '#0284c7';
+              if (t >= 28) { estado = 'CÁLIDA'; color = '#ea580c'; }
+              else if (t >= 22) { estado = 'TEMPLADA'; color = '#059669'; }
+              else if (t >= 16) { estado = 'FRESCA'; color = '#0891b2'; }
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Piscina</div><div style="font-size:14px;font-weight:900;color:${color};margin-top:2px;">${estado}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">${on?'Luz encendida':'Luz apagada'}</div></div>`;
+            ]]]
+          temp: |
+            [[[
+              const t = Number(states['sensor.sonoff_10012a47e1_temperature']?.state || 0);
+              return `<div style="text-align:right;line-height:1.2;"><div style="font-size:18px;font-weight:900;color:#1f2933;">${t.toFixed(1)}°C</div><div style="font-size:12px;font-weight:700;color:#4b5563;">Temperatura</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_10012a47e1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_10012a47e1']?.state === 'on' ? '#0284c7' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_10012a47e1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:lightbulb-on':'mdi:lightbulb-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+
+
+      - type: grid
+        title: "💧 Agua y Fuentes"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_10023c2e3e']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_10023c2e3e']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:fountain" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_10023c2e3e']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Fuente de Agua</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Agua y Fuentes</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_10023c2e3e
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_10023c2e3e']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_10023c2e3e']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100246dd49']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100246dd49']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:waterfall" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100246dd49']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Cascada Final</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Agua y Fuentes</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100246dd49
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100246dd49']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100246dd49']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+
+
+      - type: grid
+        title: "🍹 Salón y Barra"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_10026540d6_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_10026540d6_1']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:lightbulb-group" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_10026540d6_1']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luces Barra</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Salón y Barra</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_10026540d6_1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_10026540d6_1']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_10026540d6_1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_10026540d6_2']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_10026540d6_2']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:table-furniture" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_10026540d6_2']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Salón Exterior</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Salón y Barra</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_10026540d6_2
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_10026540d6_2']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_10026540d6_2']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bd74_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_1']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:sofa" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_1']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Salón</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Salón y Barra</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bd74_1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bd74_1']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bd74_1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bd74_2']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_2']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:fan" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_2']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Ventiladores</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Salón y Barra</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bd74_2
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bd74_2']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bd74_2']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bd74_3']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_3']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:tree" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bd74_3']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Nísperos</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Salón y Barra</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bd74_3
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bd74_3']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bd74_3']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+
+
+      - type: grid
+        title: "🌿 Luces Exteriores"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bb30_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_1']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:road-variant" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_1']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Calle</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bb30_1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bb30_1']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bb30_1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bb30_2']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_2']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:water-outline" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_2']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Canal 2</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bb30_2
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bb30_2']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bb30_2']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bb30_3']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_3']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:water-outline" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bb30_3']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Canal 3</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bb30_3
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bb30_3']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bb30_3']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bf23_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_1']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:outdoor-lamp" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_1']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Iluminación Exterior</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bf23_1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bf23_1']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bf23_1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bf23_2']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_2']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:ceiling-light" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_2']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Iluminación Interior</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bf23_2
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bf23_2']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bf23_2']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139bf23_3']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_3']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:fan" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139bf23_3']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Ventiladores</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139bf23_3
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139bf23_3']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139bf23_3']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100139b45a']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100139b45a']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:tree-outline" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100139b45a']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Quillay</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Luces Exteriores</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100139b45a
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100139b45a']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100139b45a']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+
+
+      - type: grid
+        title: "✨ Iluminación Decorativa"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_1001fe220f']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_1001fe220f']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:lightbulb-outline" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_1001fe220f']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luz Poro Poro</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Iluminación Deco</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_1001fe220f
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_1001fe220f']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_1001fe220f']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100136b658_2']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100136b658_2']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:pine-tree" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100136b658_2']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luces Pino</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Iluminación Deco</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100136b658_2
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100136b658_2']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100136b658_2']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_a4400308e5']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_a4400308e5']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:sign-text" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_a4400308e5']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luz Letrero Botacura</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Iluminación Deco</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_a4400308e5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_a4400308e5']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_a4400308e5']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_a440032cc8']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_a440032cc8']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:wall-sconce" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_a440032cc8']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luz Alero Baños</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Iluminación Deco</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_a440032cc8
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_a440032cc8']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_a440032cc8']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_a440032cc5']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_a440032cc5']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:wall-sconce-round" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_a440032cc5']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Luz Alero Calle</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Iluminación Deco</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_a440032cc5
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_a440032cc5']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_a440032cc5']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+
+
+      - type: grid
+        title: "🚿 Baños Botacura"
+        cards:
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_100136b658_1']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_100136b658_1']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:wardrobe-outline" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_100136b658_1']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Vestidor Femenino</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Baños Botacura</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_100136b658_1
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_100136b658_1']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_100136b658_1']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_a4400308f4']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_a4400308f4']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:human-female" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_a4400308f4']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Baño Femenino</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Baños Botacura</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_a4400308f4
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_a4400308f4']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_a4400308f4']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]
+      - type: custom:button-card
+        show_icon: false
+        show_name: false
+        show_state: false
+        tap_action:
+          action: more-info
+        styles:
+          grid:
+            - grid-template-areas: '"icon info light"'
+            - grid-template-columns: 54px 1fr 54px
+            - align-items: center
+            - column-gap: 14px
+          card:
+            - border-radius: 18px
+            - padding: 16px
+            - box-shadow: none
+            - background: |
+                [[[
+                  return states['switch.sonoff_a4400308eb']?.state === 'on' ? '#bbf7d0' : '#f1f5f9';
+                ]]]
+          custom_fields:
+            icon:
+              - justify-self: center
+              - align-self: center
+            info:
+              - justify-self: start
+              - align-self: center
+            light:
+              - justify-self: end
+              - align-self: center
+        custom_fields:
+          icon: |
+            [[[
+              const on = states['switch.sonoff_a4400308eb']?.state === 'on';
+              return `<div style="width:42px;height:42px;border-radius:50%;background:${on?'#16a34a':'#94a3b8'};display:flex;align-items:center;justify-content:center;color:white;"><ha-icon icon="mdi:human-male" style="width:24px;height:24px;"></ha-icon></div>`;
+            ]]]
+          info: |
+            [[[
+              const on = states['switch.sonoff_a4400308eb']?.state === 'on';
+              return `<div style="text-align:left;"><div style="font-size:18px;font-weight:900;color:#1f2933;">Baño Masculino</div><div style="font-size:14px;font-weight:900;color:${on?'#16a34a':'#64748b'};margin-top:2px;">${on?'ENCENDIDO':'APAGADO'}</div><div style="font-size:12px;font-weight:600;color:#4b5563;margin-top:2px;">Baños Botacura</div></div>`;
+            ]]]
+          light:
+            card:
+              type: custom:button-card
+              entity: switch.sonoff_a4400308eb
+              show_icon: false
+              show_name: false
+              show_state: false
+              tap_action:
+                action: toggle
+              hold_action:
+                action: more-info
+              styles:
+                grid:
+                  - grid-template-areas: '"luz"'
+                card:
+                  - width: 44px
+                  - height: 44px
+                  - border-radius: 50%
+                  - padding: 0
+                  - box-shadow: none
+                  - background-color: |
+                      [[[
+                        return states['switch.sonoff_a4400308eb']?.state === 'on' ? '#16a34a' : '#94a3b8';
+                      ]]]
+                custom_fields:
+                  luz:
+                    - display: flex
+                    - align-items: center
+                    - justify-content: center
+              custom_fields:
+                luz: |
+                  [[[
+                    const on = states['switch.sonoff_a4400308eb']?.state === 'on';
+                    return `<ha-icon icon="${on?'mdi:toggle-switch':'mdi:toggle-switch-off'}" style="width:24px;height:24px;color:white;"></ha-icon>`;
+                  ]]]

@@ -389,6 +389,20 @@
                     @endif
 
                     <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.impuesto.index') }}">
+                            <i class="material-icons">account_balance</i>
+                            <span class="nav-text">F29 Estimado</span>
+                        </a>
+                    </li>
+
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.finanzas.utilidad') }}">
+                            <i class="material-icons">show_chart</i>
+                            <span class="nav-text">Utilidad</span>
+                        </a>
+                    </li>
+
+                    <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
                             <i class="material-icons">
                                 data_usage
