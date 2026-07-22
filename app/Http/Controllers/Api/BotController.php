@@ -412,45 +412,65 @@ class BotController extends Controller
                 . "- Si el cliente quiere corregir algún dato, actualízalo y úsalo.";
         }
 
-        // Precomputar próximos días operativos para evitar que Claude use su calendario erróneo
-        $fechaHoy = \Carbon\Carbon::now(); // timezone ya configurado en config/app.php (APP_TIMEZONE=America/Santiago)
-        // Días operativos: jue=4, vie=5, sab=6, dom=0
-        $diasOperativos = [0, 4, 5, 6];
-        $lineasCal = [];
+        // Precomputar calendario para evitar que Claude use su calendario erróneo
+        $fechaHoy = \Carbon\Carbon::now(); // timezone configurado en APP_TIMEZONE=America/Santiago
+        $diasOperativos = [0, 4, 5, 6]; // dom=0, jue=4, vie=5, sab=6
 
-        // Incluir HOY si es día operativo (alguien puede reservar de madrugada o en la mañana para hoy mismo)
+        // Tabla 1: Referencia completa de los próximos 35 días (TODOS los días, para que Claude
+        // pueda verificar el día de la semana de cualquier número que mencione el cliente)
+        $lineasRef = [];
+        $cursorRef = $fechaHoy->copy();
+        for ($i = 0; $i < 35; $i++) {
+            $esHoy     = $cursorRef->format('Y-m-d') === $fechaHoy->format('Y-m-d');
+            $esMañana  = $cursorRef->format('Y-m-d') === $fechaHoy->copy()->addDay()->format('Y-m-d');
+            $operativo = in_array($cursorRef->dayOfWeek, $diasOperativos);
+            $tag       = $esHoy ? ' ← HOY' : ($esMañana ? ' ← MAÑANA' : ($operativo ? '' : ' [no operativo: ' . $cursorRef->locale('es')->isoFormat('dddd') . ']'));
+            $lineasRef[] = "  {$cursorRef->format('Y-m-d')}  {$cursorRef->locale('es')->isoFormat('dddd D [de] MMMM')}{$tag}";
+            $cursorRef->addDay();
+        }
+
+        // Tabla 2: Solo días operativos con datos.fecha para matching
+        $lineasOp = [];
         $cursor = $fechaHoy->copy();
         if (in_array($cursor->dayOfWeek, $diasOperativos)) {
-            $lineasCal[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\" (HOY)  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
+            $lineasOp[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\" (HOY)  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
         }
-        $cursor->addDay(); // avanzar a mañana
-
-        while (count($lineasCal) < 14) {
-            $dow = $cursor->dayOfWeek;
-            if (in_array($dow, $diasOperativos)) {
+        $cursor->addDay();
+        while (count($lineasOp) < 14) {
+            if (in_array($cursor->dayOfWeek, $diasOperativos)) {
                 $esMañana = $cursor->format('Y-m-d') === $fechaHoy->copy()->addDay()->format('Y-m-d') ? ' (MAÑANA)' : '';
-                $lineasCal[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\"{$esMañana}  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
+                $lineasOp[] = "  \"{$cursor->locale('es')->isoFormat('dddd')} {$cursor->day} de {$cursor->locale('es')->isoFormat('MMMM')}\"{$esMañana}  →  datos.fecha = \"{$cursor->format('Y-m-d')}\"";
             }
             $cursor->addDay();
         }
 
         $systemPrompt .= "\n\n"
             . "════════════════════════════════════════════\n"
-            . "CALENDARIO OPERATIVO — ÚNICA FUENTE DE VERDAD\n"
+            . "CALENDARIO — ÚNICA FUENTE DE VERDAD\n"
             . "════════════════════════════════════════════\n"
             . "HOY ES: " . $fechaHoy->format('Y-m-d') . " ("
             . $fechaHoy->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ")\n\n"
-            . "⚠️  TU CONOCIMIENTO DEL CALENDARIO PARA 2026 TIENE ERRORES.\n"
-            . "NO uses tu propio cálculo de días de la semana.\n"
-            . "Usa EXCLUSIVAMENTE la siguiente tabla generada por el servidor:\n\n"
-            . implode("\n", $lineasCal) . "\n\n"
-            . "REGLAS DE MATCHING (obligatorias):\n"
-            . "- Cliente dice 'jueves'     → primera fila que empiece con 'jueves'\n"
-            . "- Cliente dice 'el 23'      → fila que tenga el número 23\n"
-            . "- Cliente dice 'jueves 23'  → fila 'jueves 23 de julio' → 2026-07-23\n"
-            . "- Si la fecha ya pasó, ofrece la siguiente disponible de la lista\n"
-            . "- NUNCA uses una fecha fuera de esta tabla\n"
-            . "- NUNCA confíes en tu propio conocimiento del día de la semana para 2026";
+            . "⚠️ NUNCA uses tu propio cálculo de días de la semana para 2026.\n"
+            . "Usa EXCLUSIVAMENTE esta tabla para saber qué día cae cada número.\n\n"
+            . "TABLA DE REFERENCIA (todos los días, para verificar día de semana):\n"
+            . implode("\n", $lineasRef) . "\n\n"
+            . "DÍAS OPERATIVOS CON CUPO (para reservas):\n"
+            . implode("\n", $lineasOp) . "\n\n"
+            . "REGLAS DE MATCHING:\n"
+            . "1. Cuando el cliente menciona una fecha (ej: 'domingo 27'), busca el número 27\n"
+            . "   en la TABLA DE REFERENCIA para saber el día real.\n"
+            . "2. Si el día real coincide con lo que dijo el cliente → fecha correcta.\n"
+            . "3. Si el día real NO coincide (ej: '27' es lunes, no domingo) → el cliente\n"
+            . "   se equivocó en el nombre del día. NO digas 'ya pasó'. Corrige:\n"
+            . "   'El 27 de julio cae en lunes 😊 ¿Quiso decir domingo 26 o lunes 27?'\n"
+            . "4. Si la fecha ya pasó (anterior a HOY) → ofrece el primer día operativo de la lista.\n"
+            . "5. NUNCA uses una fecha que no esté en la TABLA DE REFERENCIA.\n\n"
+            . "REGLA 'MAÑANA' (CRÍTICO):\n"
+            . "- Solo llames 'mañana' a la fecha marcada '← MAÑANA' en la TABLA DE REFERENCIA.\n"
+            . "- Si esa fecha no es operativa, NO uses 'mañana' para ninguna otra fecha.\n"
+            . "- Para cualquier otra fecha futura usa el día completo: 'el domingo 26 de julio'.\n"
+            . "- NUNCA digas 'mañana domingo', 'mañana sábado', etc. si la fecha marcada como\n"
+            . "  '← MAÑANA' no es ese día.";
 
         // Llamar a Claude
         $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);

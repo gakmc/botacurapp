@@ -50,10 +50,10 @@ class DisponibilidadController extends Controller
     ];
 
     /**
-     * Tipos que comparten pool de disponibilidad (terraza + reposera).
-     * Un programa de tipo "terraza" puede ocupar una reposera si no hay terrazas.
+     * Tipos que comparten pool de disponibilidad (terraza + reposera + wellness).
+     * Wellness Day / Plus usan espacio_tipo='wellness' pero comparten el mismo pool físico.
      */
-    private $poolFlexible = ['terraza', 'reposera'];
+    private $poolFlexible = ['terraza', 'reposera', 'wellness'];
 
     /** Máximo de slots de tinaja por día (8 T1 + 8 T2) */
     private $maxSlotsTinaja = 16;

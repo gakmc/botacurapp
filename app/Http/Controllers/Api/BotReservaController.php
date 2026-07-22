@@ -383,7 +383,7 @@ class BotReservaController extends Controller
             'terraza'             => 6,
             'reposera'            => 4,
         ];
-        $poolFlexible   = ['terraza', 'reposera'];
+        $poolFlexible   = ['terraza', 'reposera', 'wellness']; // wellness comparte pool terraza+reposera
         $maxSlotsTinaja = 16;
 
         $programa = DB::table('programas')->where('id', $programaId)->first();
