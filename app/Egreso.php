@@ -13,7 +13,16 @@ class Egreso extends Model
         'categoria_id',
         'subcategoria_id',
         'proveedor_id',
-        'total'
+        'descripcion',
+        'fecha_egreso',
+        'numero_documento',
+        'total',
+        'neto',
+        'iva',
+        'fuente',
+        'periodo_sii',
+        'estado',
+        'observaciones',
     ];
 
 
@@ -42,8 +51,8 @@ class Egreso extends Model
         return $this->hasMany(PagoEgreso::class, 'egreso_id');
     }
 
-    public function getFechaAttribute($value)
+    public function getFechaEgresoAttribute($value)
     {
-        return \Carbon\Carbon::parse($value)->format('d-m-Y');
+        return $value ? \Carbon\Carbon::parse($value)->format('d-m-Y') : null;
     }
 }
