@@ -42,3 +42,6 @@ run_fix_secret.bat
 database/botacura_solo_datos.sql
 database/*.sql
 database/sql-migrations/*.sql
+sync-db-produccion.bat
+sync-db-importar-solo.bat
+produccion_dump.sql
