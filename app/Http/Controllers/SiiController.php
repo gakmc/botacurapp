@@ -327,4 +327,217 @@ class SiiController extends Controller
         $tipo = \App\TipoDocumento::where('nombre', 'like', '%' . $nombre . '%')->first();
         return $tipo ? $tipo->id : null;
     }
+
+    // -------------------------------------------------------------------------
+    // 6. RESUMEN: resumen mensual de egresos SII por año
+    // -------------------------------------------------------------------------
+
+    public function resumen(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+
+        // Años disponibles (desde primer egreso SII registrado hasta año actual)
+        $anioMin = (int) (Egreso::where('fuente', 'sii')->min(DB::raw('YEAR(fecha_egreso)')) ?? now()->year);
+        $anios   = range(now()->year, $anioMin);
+
+        // Datos importados por mes desde egresos con fuente=sii
+        $importadosPorMes = Egreso::where('fuente', 'sii')
+            ->whereYear('fecha_egreso', $anio)
+            ->selectRaw('MONTH(fecha_egreso) as mes, COUNT(*) as documentos, SUM(COALESCE(neto,0)) as neto, SUM(COALESCE(iva,0)) as iva, SUM(total) as total')
+            ->groupBy(DB::raw('MONTH(fecha_egreso)'))
+            ->get()
+            ->keyBy('mes');
+
+        $nombresMeses = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo',  6 => 'Junio',   7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+
+        $mesMax = ($anio === (int) now()->year) ? (int) now()->month : 12;
+        $meses  = [];
+
+        for ($m = 1; $m <= 12; $m++) {
+            $fila = $importadosPorMes->get($m);
+            $meses[] = [
+                'mes'        => $m,
+                'nombre'     => $nombresMeses[$m] . ' ' . $anio,
+                'importado'  => $fila !== null,
+                'documentos' => $fila ? (int) $fila->documentos : 0,
+                'neto'       => $fila ? (int) $fila->neto  : 0,
+                'iva'        => $fila ? (int) $fila->iva   : 0,
+                'total'      => $fila ? (int) $fila->total : 0,
+            ];
+        }
+
+        return view('themes.backoffice.pages.sii.resumen', compact('anio', 'anios', 'meses'));
+    }
+
+    // -------------------------------------------------------------------------
+    // 7. DETALLE-MES: listado de egresos SII de un mes específico
+    // -------------------------------------------------------------------------
+
+    public function detalleMes(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+        $mes  = (int) $request->input('mes', now()->month);
+
+        $egresos = Egreso::with(['proveedor', 'tipoDocumento', 'categoria', 'subcategoria'])
+            ->where('fuente', 'sii')
+            ->whereYear('fecha_egreso', $anio)
+            ->whereMonth('fecha_egreso', $mes)
+            ->orderBy('fecha_egreso', 'desc')
+            ->get();
+
+        $nombresMeses = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo',  6 => 'Junio',   7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+        $nombreMes = ($nombresMeses[$mes] ?? '') . ' ' . $anio;
+
+        $totales = [
+            'documentos' => $egresos->count(),
+            'neto'       => $egresos->sum('neto'),
+            'iva'        => $egresos->sum('iva'),
+            'total'      => $egresos->sum('total'),
+        ];
+
+        return view('themes.backoffice.pages.sii.detalle-mes', compact(
+            'anio', 'mes', 'nombreMes', 'egresos', 'totales'
+        ));
+    }
+
+    // -------------------------------------------------------------------------
+    // 8. IMPORTAR-DIRECTO: importa un mes completo del RCV (vía AJAX)
+    // -------------------------------------------------------------------------
+
+    public function importarDirecto(Request $request)
+    {
+        $request->validate([
+            'anio' => 'required|integer|min:2020|max:2099',
+            'mes'  => 'required|integer|min:1|max:12',
+        ]);
+
+        $anio = (int) $request->anio;
+        $mes  = (int) $request->mes;
+
+        $resultado = $this->sii->listarCompras($anio, $mes);
+
+        if (!$resultado['ok']) {
+            return response()->json(['ok' => false, 'error' => $resultado['error'] ?? 'Error SII'], 422);
+        }
+
+        $documentos = $resultado['data'] ?? [];
+        $importados = 0;
+        $omitidos   = 0;
+        $totalNeto  = 0;
+        $totalIva   = 0;
+        $totalMonto = 0;
+
+        DB::beginTransaction();
+        try {
+            foreach ($documentos as $doc) {
+                $folio = $doc['folio'] ?? ($doc['numero_documento'] ?? null);
+                if (!$folio) continue;
+
+                $existe = Egreso::where('fuente', 'sii')
+                    ->where('numero_documento', $folio)
+                    ->exists();
+
+                if ($existe) {
+                    $omitidos++;
+                    $totalNeto  += (int) ($doc['monto_neto']   ?? 0);
+                    $totalIva   += (int) ($doc['monto_iva']    ?? 0);
+                    $totalMonto += (int) ($doc['monto_total']  ?? 0);
+                    continue;
+                }
+
+                $rut          = $doc['rut_emisor']    ?? null;
+                $razonSocial  = $doc['razon_social']  ?? null;
+                $tipoDocCodigo = (int) ($doc['tipo_documento'] ?? 33);
+                $monto        = (int) ($doc['monto_total'] ?? 0);
+                $neto         = (int) ($doc['monto_neto']  ?? 0);
+                $iva          = (int) ($doc['monto_iva']   ?? 0);
+                $fecha        = $doc['fecha_documento'] ?? now()->format('Y-m-d');
+
+                $proveedor = $rut ? $this->resolverProveedor($rut, $razonSocial) : null;
+                $tipoDocId = $this->resolverTipoDocumento($tipoDocCodigo);
+
+                Egreso::create([
+                    'tipo_documento_id' => $tipoDocId,
+                    'proveedor_id'      => $proveedor ? $proveedor->id : null,
+                    'descripcion'       => trim(($razonSocial ?? '') . ' - Folio ' . $folio),
+                    'fecha_egreso'      => $fecha,
+                    'numero_documento'  => $folio,
+                    'neto'              => $neto ?: null,
+                    'iva'               => $iva  ?: null,
+                    'total'             => $monto,
+                    'fuente'            => 'sii',
+                    'estado'            => 'pendiente',
+                    'observaciones'     => 'Auto-importado RCV ' . $anio . '-' . sprintf('%02d', $mes),
+                ]);
+
+                $importados++;
+                $totalNeto  += $neto;
+                $totalIva   += $iva;
+                $totalMonto += $monto;
+            }
+            DB::commit();
+        } catch (\Throwable $e) {
+            DB::rollBack();
+            return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
+        }
+
+        return response()->json([
+            'ok'         => true,
+            'importados' => $importados,
+            'omitidos'   => $omitidos,
+            'docs'       => $importados + $omitidos,
+            'neto'       => $totalNeto,
+            'iva'        => $totalIva,
+            'total'      => $totalMonto,
+        ]);
+    }
+
+    // -------------------------------------------------------------------------
+    // 9. GASTOS-SEMANA: egresos SII de la semana actual
+    // -------------------------------------------------------------------------
+
+    public function gastosSemana(Request $request)
+    {
+        $inicio = now()->startOfWeek();
+        $fin    = now()->endOfWeek();
+
+        $egresos = Egreso::with(['proveedor', 'tipoDocumento'])
+            ->where('fuente', 'sii')
+            ->whereBetween('fecha_egreso', [$inicio->format('Y-m-d'), $fin->format('Y-m-d')])
+            ->orderBy('fecha_egreso', 'desc')
+            ->get();
+
+        $totales = [
+            'documentos' => $egresos->count(),
+            'neto'       => $egresos->sum('neto'),
+            'iva'        => $egresos->sum('iva'),
+            'total'      => $egresos->sum('total'),
+        ];
+
+        return view('themes.backoffice.pages.sii.gastos-semana', compact(
+            'egresos', 'totales', 'inicio', 'fin'
+        ));
+    }
+
+    // -------------------------------------------------------------------------
+    // 10. DEBUG-RAW: muestra respuesta cruda del SII (solo dev)
+    // -------------------------------------------------------------------------
+
+    public function debugRaw(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+        $mes  = (int) $request->input('mes', now()->month);
+
+        $resultado = $this->sii->listarCompras($anio, $mes);
+
+        return response()->json($resultado);
+    }
 }
