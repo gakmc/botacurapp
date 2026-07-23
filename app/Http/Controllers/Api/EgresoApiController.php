@@ -130,17 +130,20 @@ class EgresoApiController extends Controller
 
             // Guardar ítems
             if ($request->items && count($request->items) > 0) {
-                $items = array_map(function($item) use ($egresoId) { return [
-                    'egreso_id'       => $egresoId,
-                    'descripcion'     => $item['descripcion'],
-                    'unidad'          => $item['unidad'] ?? null,
-                    'cantidad'        => $item['cantidad'] ?? 1,
-                    'precio_unitario' => (int) ($item['precio_unitario'] ?? 0),
-                    'descuento'       => (int) ($item['descuento'] ?? 0),
-                    'subtotal'        => (int) ($item['subtotal'] ?? 0),
-                    'created_at'      => now(),
-                    'updated_at'      => now(),
-                ]; }, $request->items);
+                $egresoIdLocal = $egresoId;
+                $items = array_map(function ($item) use ($egresoIdLocal) {
+                    return [
+                        'egreso_id'       => $egresoIdLocal,
+                        'descripcion'     => $item['descripcion'],
+                        'unidad'          => $item['unidad'] ?? null,
+                        'cantidad'        => $item['cantidad'] ?? 1,
+                        'precio_unitario' => (int) ($item['precio_unitario'] ?? 0),
+                        'descuento'       => (int) ($item['descuento'] ?? 0),
+                        'subtotal'        => (int) ($item['subtotal'] ?? 0),
+                        'created_at'      => now(),
+                        'updated_at'      => now(),
+                    ];
+                }, $request->items);
                 DB::table('egreso_items')->insert($items);
             }
 
@@ -226,4 +229,7 @@ class EgresoApiController extends Controller
             'ok'     => true,
             'egreso' => $egreso,
             'items'  => $items,
-            'docs'   => 
+            'docs'   => $docs,
+        ]);
+    }
+}
