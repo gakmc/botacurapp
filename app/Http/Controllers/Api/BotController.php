@@ -407,6 +407,8 @@ class BotController extends Controller
             $respuesta = $this->procesarDisponibilidad($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
         } elseif ($accion === 'crear_reserva') {
             $respuesta = $this->procesarCrearReservaClaude($respuesta, $systemPrompt, $historial, $mensaje, $nombre, $usuarioId);
+        } elseif ($accion === 'guardar_menu_texto') {
+            $respuesta = $this->procesarGuardarMenuTexto($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
         }
 
         $historial[] = ['role' => 'assistant', 'content' => $respuesta['mensaje'] ?? ''];
@@ -458,6 +460,30 @@ class BotController extends Controller
         } catch (\Exception $e) {
             Log::error('[Bot] Excepción Claude: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    private function procesarGuardarMenuTexto(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
+    {
+        $datos = $respuesta['datos'] ?? [];
+        if (empty($datos['reserva_id'])) {
+            return $respuesta;
+        }
+        try {
+            $secret = config('services.bot.secret');
+            $res = Http::withHeaders([
+                self::BOT_SECRET_HEADER => $secret,
+                'content-type'          => 'application/json',
+            ])->timeout(10)->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-texto'), [
+                'menu_texto' => $datos['menu_texto'] ?? null,
+                'alergias'   => $datos['alergias']   ?? null,
+            ]);
+            $ctx = '[Sistema-menu: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
+            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error guardando menú: ' . $e->getMessage());
+            return $respuesta;
         }
     }
 

@@ -402,6 +402,71 @@ class BotReservaController extends Controller
      * @param  string $tipoPago  "Débito", "Crédito", "Transferencia", etc.
      * @return int|null
      */
+    /**
+     * PATCH /api/bot-ai/reserva/{id}/menu-texto
+     * Guarda las elecciones de menú (texto libre) y alergias en los registros de menus.
+     * Se llama después de que el cliente responde al PDF enviado post-pago.
+     */
+    public function guardarMenuTexto(Request $request, $id)
+    {
+        $request->validate([
+            'menu_texto' => 'nullable|string|max:2000',
+            'alergias'   => 'nullable|string|max:500',
+        ]);
+
+        $reserva = DB::table('reservas')->where('id', $id)->first();
+        if (!$reserva) {
+            return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
+        }
+
+        $menuTexto = $request->menu_texto ? trim($request->menu_texto) : null;
+        $alergias  = $request->alergias  ? trim($request->alergias)  : null;
+
+        // Obtener todos los registros de menus de esta reserva
+        $menus = DB::table('menus')->where('id_reserva', $id)->get();
+
+        if ($menus->isEmpty()) {
+            // Si no hay registros previos (reserva sin desayuno/once), crear uno genérico
+            DB::table('menus')->insert([
+                'id_reserva'   => $id,
+                'alergias'     => $alergias,
+                'observacion'  => $menuTexto,
+                'created_at'   => now(),
+                'updated_at'   => now(),
+            ]);
+        } else {
+            // Distribuir el texto y alergias en todos los registros existentes
+            // El texto completo va en el primer registro; alergias en todos.
+            $first = true;
+            foreach ($menus as $menu) {
+                DB::table('menus')->where('id', $menu->id)->update([
+                    'observacion' => $first ? $menuTexto : null,
+                    'alergias'    => $alergias,
+                    'updated_at'  => now(),
+                ]);
+                $first = false;
+            }
+        }
+
+        // Marcar reserva como menu recibido
+        DB::table('reservas')->where('id', $id)->update([
+            'menu_recibido' => 1,
+            'updated_at'    => now(),
+        ]);
+
+        Log::info("[Bot] Menú guardado para reserva #{$id}", [
+            'menu_texto' => $menuTexto,
+            'alergias'   => $alergias,
+        ]);
+
+        return response()->json([
+            'ok'         => true,
+            'reserva_id' => (int) $id,
+            'guardado'   => true,
+            'mensaje'    => '¡Pedido recibido! Tus elecciones de menú quedaron registradas. En los próximos días recibirás los horarios disponibles del spa. 🕐',
+        ]);
+    }
+
     private function buscarTipoTransaccion(string $tipoPago)
     {
         if (!$tipoPago) {

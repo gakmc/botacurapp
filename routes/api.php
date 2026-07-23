@@ -143,6 +143,7 @@ Route::prefix('bot-ai')->namespace('Api')->group(function () {
     Route::post('reservas', 'BotController@crearReserva')->name('bot-ai.reservas.store');
     Route::post('reservas/{id}/pago', 'BotController@registrarPago')->name('bot-ai.reservas.pago');
     Route::post('reserva', 'BotReservaController@store')->name('bot-ai.reserva');
+    Route::patch('reserva/{id}/menu-texto', 'BotReservaController@guardarMenuTexto')->name('bot-ai.reserva.menu-texto');
     Route::get('conversacion/{usuario_id}', 'BotController@getConversacion')->name('bot-ai.conversacion.get');
     Route::post('conversacion', 'BotController@upsertConversacion')->name('bot-ai.conversacion.upsert');
     Route::post('message', 'BotController@message')->name('bot-ai.message');
