@@ -503,8 +503,7 @@ class BotController extends Controller
                 'fecha'         => $datos['fecha'],
                 'personas'      => $datos['personas'],
                 'masajes_extra' => $datos['masajes_extra'] ?? 0,
-                'menu_personas' => $datos['menu_personas'] ?? 0,
-                'menu_tipo'     => $datos['menu_tipo']     ?? null,
+                'desayuno_once' => $datos['desayuno_once'] ?? 0,
                 'tipo_pago'     => $datos['tipo_pago']     ?? null,
             ]);
             $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';

@@ -255,11 +255,11 @@ PASO 8 — MASAJES EXTRA (servicios adicionales)
 → Si no quieren: datos.masajes_extra = 0
 NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
 
-PASO 9 — MENÚ (desayuno u once)
-"¿Agregarán desayuno u once durante su visita? Son $10.000 por persona 🥐"
-→ Si sí: "¿Para cuántas personas?" → guarda en datos.menu_personas (número entero)
-       "¿Prefieren desayuno (10:30-12:00) u once (17:00-18:15)?" → guarda en datos.menu_tipo ('desayuno' o 'once')
-→ Si no quieren: datos.menu_personas = 0, datos.menu_tipo = null
+PASO 9 — DESAYUNO U ONCE (servicio extra)
+"¿Agregarán Desayuno u Once durante su visita? Son $10.000 por persona 🥐
+  Desayuno: 10:30–12:00 | Once: 17:00–18:15"
+→ Si sí: "¿Para cuántas personas?" → guarda en datos.desayuno_once (número entero)
+→ Si no quieren: datos.desayuno_once = 0
 NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
 
 PASO 10 — MEDIO DE PAGO
@@ -285,7 +285,7 @@ Formato del mensaje:
 📧 Correo: [email]
 🌿 Plan: [programa] — $[precio_programa × personas]
 💆 Masajes extra: [masajes_extra] × $25.000 = $[subtotal_masajes] (o "Sin masajes extra")
-🥐 Menú ([menu_tipo]): [menu_personas] × $10.000 = $[subtotal_menu] (o "Sin menú")
+🥐 Desayuno u Once: [desayuno_once] × $10.000 = $[subtotal_dyo] (o "Sin Desayuno u Once")
 💰 *Total: $[valor_total]*
 💳 Medio de pago: [tipo_pago]
 📅 Fecha: [fecha]
@@ -351,21 +351,20 @@ ACCIONES DISPONIBLES:
 "crear_reserva"
   → Todos los datos recopilados (pasos 1-10) y cliente aceptó políticas. Crear la reserva.
   → datos: {
-      "nombre":         "...",
-      "telefono":       "56912345678",
-      "email":          "cliente@mail.com",
-      "programa_id":    N,
-      "programa":       "Nombre del programa",
-      "fecha":          "YYYY-MM-DD",
-      "personas":       N,
-      "masajes_extra":  N,          (0 si no quiere masajes extra)
-      "menu_personas":  N,          (0 si no quiere menú)
-      "menu_tipo":      "desayuno|once|null",
-      "tipo_pago":      "Débito|Crédito|Transferencia",
+      "nombre":          "...",
+      "telefono":        "56912345678",
+      "email":           "cliente@mail.com",
+      "programa_id":     N,
+      "programa":        "Nombre del programa",
+      "fecha":           "YYYY-MM-DD",
+      "personas":        N,
+      "masajes_extra":   N,   (0 si no quiere masajes extra)
+      "desayuno_once":   N,   (0 si no quiere Desayuno u Once — es UN solo servicio en la BD)
+      "tipo_pago":       "Débito|Crédito|Transferencia",
       "acepta_politicas": true
     }
-  IMPORTANTE: masajes_extra, menu_personas, menu_tipo y tipo_pago son OBLIGATORIOS.
-  Usar 0/null para los que no apliquen. NUNCA omitirlos.
+  IMPORTANTE: masajes_extra, desayuno_once y tipo_pago son OBLIGATORIOS.
+  Usar 0 para los que no apliquen. NUNCA omitirlos.
 
 "escalar_humano"
   → Situación que supera el alcance del bot (evento empresa, excepción de política, etc.)
