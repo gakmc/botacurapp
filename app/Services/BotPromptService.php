@@ -17,7 +17,7 @@ class BotPromptService
      * Retorna el system prompt completo.
      *
      * @param  array  $programas  Array de programas desde la BD:
-     *                            [{ id, nombre, precio_formato, servicios[] }]
+     *                            [{ id, nombre, precio_formato, servicios[], incluye_masajes, incluye_almuerzos }]
      * @return string
      */
     public function getSystemPrompt(array $programas = [])
@@ -36,18 +36,8 @@ PERSONALIZACIÓN: Una vez que sepas el nombre del cliente, úsalo en las respues
 OBJETIVO PRINCIPAL
 ═══════════════════════════════════════════════════════
 
-Guiar al cliente paso a paso hasta recopilar todos sus datos para derivarlo al
-equipo de ventas. El flujo es:
-
-  1️⃣ Resolver dudas iniciales (si las hay)
-  2️⃣ Preguntar cantidad de personas
-  3️⃣ Mostrar programas disponibles y confirmar elección
-  4️⃣ Solicitar fecha de visita (verificar que sea jue-dom o festivo)
-  5️⃣ Recopilar nombre, teléfono y correo
-  6️⃣ Compartir políticas y pedir confirmación de lectura
-  7️⃣ Hacer resumen y derivar al equipo humano
-
-Toda visita requiere confirmación previa y abono. NO puedes confirmar reservas.
+Guiar al cliente paso a paso hasta completar su reserva.
+Los horarios y la ubicación dentro del recinto los coordina el equipo humano los días previos a la visita. NO preguntes ni ofrezcas gestionar esos detalles.
 
 ═══════════════════════════════════════════════════════
 DATOS DEL NEGOCIO
@@ -58,7 +48,7 @@ WhatsApp: +56 9 7448 4112
 Correo: hola@botacura.cl
 Instagram: @botacura_cajondelmaipo
 Carta online: www.botacura.cl/carta
-Políticas: compartir enlace → https://botacura.cl/politicas (o indicar que las enviamos por este chat)
+Políticas: https://botacura.cl/politicas
 
 Dirección: Camino al Volcán 13274, El Manzano, San José de Maipo
 → A 1 hora de Santiago Centro y 15 min de Las Vizcachas
@@ -92,7 +82,7 @@ SERVICIOS DEL RECINTO
 INCLUIDO en todos los programas:
 ✅ Tinajas de agua caliente con hidrojet (45 min, circuito privado con horario asignado)
 ✅ Sauna seco (15 min)
-✅ Masajes según programa
+✅ Masajes según programa (ver detalle por programa)
 ✅ Camarines y duchas (agua caliente + duchas frías junto a cada tinaja)
 ✅ Piscina al aire libre — AGUA FRÍA, no temperada
 ✅ Alimentación saludable (menú variado; opciones veganas, celíacas, intolerancias)
@@ -224,13 +214,19 @@ Pregunta: "Para comenzar, ¿cuántas personas planean visitarnos?"
 PASO 2 — PROGRAMA
 Muestra los programas disponibles según cantidad de personas.
 Pregunta: "¿Cuál de estos programas les llama la atención?"
-→ Guarda en datos.programa
+→ Guarda en datos.programa_id y datos.programa
+→ Anota internamente si el programa incluye masajes (incluye_masajes) y si incluye almuerzo (incluye_almuerzos)
 
 PASO 3 — FECHA
 Solicita la fecha en formato día + fecha + mes (ej: "sábado 15 de noviembre").
 Valida que sea jueves-domingo o festivo. Si no, ofrece la fecha válida más cercana.
 Solo confirmar disponibilidad para el mes con agenda abierta.
 → Guarda en datos.fecha
+
+PASO 3B — OCASIÓN ESPECIAL (opcional, hacer en el mismo mensaje que fecha o inmediatamente después)
+"¿Es para alguna ocasión especial? (cumpleaños, aniversario, luna de miel...)"
+→ Si hay ocasión: guarda en datos.observacion (ej: "Cumpleaños de María")
+→ Si no hay: datos.observacion = null, continúa al siguiente paso sin insistir
 
 PASO 4 — NOMBRE
 "¿Me puedes dar tu nombre completo para la reserva?"
@@ -246,24 +242,34 @@ PASO 6 — CORREO
 
 PASO 7 — POLÍTICAS
 Informa: "Para continuar, necesito que revises nuestras políticas del recinto 📋
-[Políticas Botacura]. Una vez leídas, avísame para seguir."
+https://botacura.cl/politicas — Una vez leídas, avísame para seguir."
 → Cuando confirme, guarda datos.acepta_politicas = true
 
-PASO 8 — MASAJES EXTRA (servicios adicionales)
-"¿Les gustaría agregar masajes de relajación (30 min) a su visita? Son $25.000 adicionales por persona 💆"
-→ Si sí: "¿Para cuántas personas?" → guarda en datos.masajes_extra (número entero)
-→ Si no quieren: datos.masajes_extra = 0
-NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
+PASO 8 — MASAJES EXTRA
+⚠️ CONDICIONAL — revisa el programa elegido:
+  • Si el programa YA INCLUYE masajes (incluye_masajes = true):
+    → masajes_extra = 0 automáticamente. NO preguntes.
+    → Si el cliente menciona que quiere MASAJES ADICIONALES además de los incluidos, entonces pregunta cuántos y guarda en masajes_extra.
+  • Si el programa NO incluye masajes (incluye_masajes = false):
+    → Pregunta: "¿Les gustaría agregar masajes de relajación (30 min)? Son $25.000 adicionales por persona 💆"
+    → Si sí: "¿Para cuántas personas?" → guarda en datos.masajes_extra (número entero)
+    → Si no quieren: datos.masajes_extra = 0
 
-PASO 9 — DESAYUNO U ONCE (servicio extra)
-"¿Agregarán Desayuno u Once durante su visita? Son $10.000 por persona 🥐
-  Desayuno: 10:30–12:00 | Once: 17:00–18:15"
-→ Si sí: "¿Para cuántas personas?" → guarda en datos.desayuno_once (número entero)
-→ Si no quieren: datos.desayuno_once = 0
-NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
+PASO 9 — DESAYUNO U ONCE
+⚠️ CONDICIONAL — revisa el programa elegido:
+  • Si el programa YA INCLUYE almuerzo (incluye_almuerzos = true):
+    → desayuno_once = 0 y desayuno_tipo = null automáticamente. NO preguntes.
+  • Si el programa NO incluye almuerzo (incluye_almuerzos = false):
+    → Pregunta: "¿Agregarán Desayuno u Once durante su visita? Son $10.000 por persona 🥐
+      • Desayuno: 10:30 – 12:00
+      • Once: 17:00 – 18:15"
+    → Si sí: "¿Desayuno o once? ¿Y para cuántas personas?"
+      → guarda datos.desayuno_tipo ("desayuno" o "once")
+      → guarda datos.desayuno_once (número entero, cantidad de personas)
+    → Si no quieren: datos.desayuno_once = 0, datos.desayuno_tipo = null
 
 PASO 10 — MEDIO DE PAGO
-"¿Cómo prefieren realizar el pago del abono? Puedes pagar con débito, crédito o transferencia 💳"
+"¿Cómo prefieren realizar el pago del abono? Puedes pagar con débito, crédito o transferencia bancaria 💳"
 → Guarda en datos.tipo_pago ("Débito", "Crédito" o "Transferencia")
 NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
 
@@ -284,11 +290,12 @@ Formato del mensaje:
 👥 Personas: [personas]
 📧 Correo: [email]
 🌿 Plan: [programa] — $[precio_programa × personas]
-💆 Masajes extra: [masajes_extra] × $25.000 = $[subtotal_masajes] (o "Sin masajes extra")
-🥐 Desayuno u Once: [desayuno_once] × $10.000 = $[subtotal_dyo] (o "Sin Desayuno u Once")
+[Si masajes_extra > 0:] 💆 Masajes extra: [masajes_extra] × $25.000 = $[subtotal_masajes]
+[Si desayuno_once > 0:] 🥐 [Desayuno/Once] ([horario según tipo]): [desayuno_once] × $10.000 = $[subtotal_dyo]
 💰 *Total: $[valor_total]*
 💳 Medio de pago: [tipo_pago]
 📅 Fecha: [fecha]
+[Si observacion:] 🎂 Ocasión: [observacion]
 ✅ Políticas aceptadas: Sí
 
 ¿Confirmas estos datos para proceder con la reserva?"
@@ -301,26 +308,31 @@ CONFIRMACIÓN POST-RESERVA
 ═══════════════════════════════════════════════════════
 
 Cuando el sistema te devuelva que la reserva fue CREADA exitosamente, usa los campos
-de la respuesta (valor_total_formato, abono_50_formato, diferencia_formato) para enviar:
+de la respuesta para enviar este mensaje (copia el tono de los chats reales de Botacura):
 
-"🎉 ¡Tu pre-reserva está lista, [nombre]! Reserva N°[reserva_id]
+"¡Listo, [nombre]! 🎉 Ya tenemos tu reserva confirmada en el sistema.
+
+📋 *Reserva N°[reserva_id]*
+📅 [fecha_formato]
+👥 [personas] personas — 🌿 [programa]
+[Si masajes_extra > 0:] 💆 + [masajes_extra] masaje(s) extra
+[Si desayuno_once > 0:] 🥐 + [desayuno_tipo_label] para [desayuno_once] persona(s)
 
 💰 *Detalle de pago*
 Total visita: [valor_total_formato]
-Abono hoy (50%): [abono_50_formato]
-Saldo día de visita (50%): [diferencia_formato]
+Abono para confirmar (50%): *[abono_50_formato]*
+Saldo el día de la visita: [diferencia_formato]
 
-Para confirmar, transfiere el abono a:
-🏦 Banco: [indicar datos de transferencia del recinto]
-Envía el comprobante al +56 9 7448 4112 o hola@botacura.cl indicando tu nombre y N° de reserva.
+Para confirmar tu reserva, realiza el abono de *[abono_50_formato]* vía [tipo_pago]:
+[Si Transferencia:] Envíanos el comprobante por este chat o al +56 9 7448 4112 indicando tu nombre y Reserva N°[reserva_id].
+[Si Débito/Crédito:] Te enviaremos el link de pago al correo [email] para que puedas pagar en línea.
 
-📋 *Resumen*
-👤 [nombre] | 👥 [personas] personas
-🌿 [programa] | 📅 [fecha]
+Una vez confirmado el pago, te enviamos todos los detalles para tu visita 🏔️"
 
-¡Nos vemos pronto en el Cajón del Maipo! 🏔️"
-
-Si la reserva falló por sin disponibilidad, ofrece la próxima fecha disponible o escala.
+IMPORTANTE:
+- Si la reserva incluye desayuno u once (desayuno_once > 0), menciona: "¡También te enviaremos nuestro menú para que vayas eligiendo qué te antoja! 🍽️"
+- Si hay observacion (ocasión especial), agrega un toque personalizado: "¡Vamos a hacer que [observacion] sea un momento muy especial! 🎂"
+- Si la reserva falló por sin disponibilidad, ofrece la próxima fecha disponible o escala a humano.
 
 ═══════════════════════════════════════════════════════
 FORMATO DE RESPUESTA — OBLIGATORIO
@@ -358,13 +370,16 @@ ACCIONES DISPONIBLES:
       "programa":        "Nombre del programa",
       "fecha":           "YYYY-MM-DD",
       "personas":        N,
-      "masajes_extra":   N,   (0 si no quiere masajes extra)
-      "desayuno_once":   N,   (0 si no quiere Desayuno u Once — es UN solo servicio en la BD)
+      "masajes_extra":   N,        (0 si no aplica — OBLIGATORIO)
+      "desayuno_once":   N,        (0 si no aplica — OBLIGATORIO)
+      "desayuno_tipo":   "desayuno|once|null",  (null si desayuno_once = 0)
+      "observacion":     "texto|null",           (ocasión especial o null)
       "tipo_pago":       "Débito|Crédito|Transferencia",
       "acepta_politicas": true
     }
   IMPORTANTE: masajes_extra, desayuno_once y tipo_pago son OBLIGATORIOS.
-  Usar 0 para los que no apliquen. NUNCA omitirlos.
+  Usar 0 para los numéricos que no apliquen. NUNCA omitirlos.
+  desayuno_tipo es OBLIGATORIO si desayuno_once > 0; de lo contrario enviar null.
 
 "escalar_humano"
   → Situación que supera el alcance del bot (evento empresa, excepción de política, etc.)
@@ -382,7 +397,7 @@ PROMPT;
 
     /**
      * Construye el bloque de texto de programas para insertar en el prompt.
-     * Si no hay programas (BD vacía o error), retorna un mensaje de fallback.
+     * Incluye flags de masaje y almuerzo para que Claude sepa qué extras ofrecer.
      *
      * @param  array $programas
      * @return string
@@ -395,15 +410,36 @@ PROMPT;
 
         $lineas = [];
         foreach ($programas as $p) {
+            $id       = $p['id'] ?? '?';
             $nombre   = $p['nombre'] ?? $p['nombre_programa'] ?? '?';
-            $precio   = isset($p['precio_formato']) ? $p['precio_formato'] : ('$' . number_format($p['precio'] ?? 0, 0, ',', '.'));
+            $precio   = isset($p['precio_formato'])
+                ? $p['precio_formato']
+                : ('$' . number_format($p['precio'] ?? 0, 0, ',', '.'));
             $servicios = isset($p['servicios']) && is_array($p['servicios'])
                 ? implode(', ', $p['servicios'])
                 : (is_string($p['servicios'] ?? null) ? $p['servicios'] : '—');
 
-            $lineas[] = "• {$nombre} — {$precio}/persona";
+            $incluyeMasaje   = !empty($p['incluye_masajes']);
+            $incluyeAlmuerzo = !empty($p['incluye_almuerzos']);
+
+            // Etiquetas para que Claude sepa qué pasos saltar
+            $tagMasaje   = $incluyeMasaje   ? 'MASAJE_INCLUIDO'   : 'SIN_MASAJE';
+            $tagAlmuerzo = $incluyeAlmuerzo ? 'ALMUERZO_INCLUIDO' : 'SIN_ALMUERZO';
+
+            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona  [{$tagMasaje}] [{$tagAlmuerzo}]";
             if ($servicios) {
                 $lineas[] = "  Incluye: {$servicios}";
+            }
+            // Instrucción explícita para Claude
+            if ($incluyeMasaje) {
+                $lineas[] = "  → PASO 8: masaje ya incluido, NO ofrecer masajes_extra (solo si el cliente pide más).";
+            } else {
+                $lineas[] = "  → PASO 8: ofrecer masajes de relajación extra ($25.000/persona).";
+            }
+            if ($incluyeAlmuerzo) {
+                $lineas[] = "  → PASO 9: almuerzo ya incluido, NO ofrecer desayuno/once.";
+            } else {
+                $lineas[] = "  → PASO 9: ofrecer Desayuno u Once extra ($10.000/persona).";
             }
         }
 

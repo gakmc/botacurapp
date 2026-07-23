@@ -496,15 +496,17 @@ class BotController extends Controller
                 self::BOT_SECRET_HEADER => $secret,
                 'content-type'          => 'application/json',
             ])->timeout(15)->post(url('/api/bot-ai/reserva'), [
-                'nombre'        => $datos['nombre'],
-                'telefono'      => $datos['telefono'] ?? $usuarioId,
-                'email'         => $datos['email'],
-                'programa_id'   => $datos['programa_id'],
-                'fecha'         => $datos['fecha'],
-                'personas'      => $datos['personas'],
-                'masajes_extra' => $datos['masajes_extra'] ?? 0,
-                'desayuno_once' => $datos['desayuno_once'] ?? 0,
-                'tipo_pago'     => $datos['tipo_pago']     ?? null,
+                'nombre'         => $datos['nombre'],
+                'telefono'       => $datos['telefono'] ?? $usuarioId,
+                'email'          => $datos['email'],
+                'programa_id'    => $datos['programa_id'],
+                'fecha'          => $datos['fecha'],
+                'personas'       => $datos['personas'],
+                'masajes_extra'  => $datos['masajes_extra']  ?? 0,
+                'desayuno_once'  => $datos['desayuno_once']  ?? 0,
+                'desayuno_tipo'  => $datos['desayuno_tipo']  ?? null,
+                'observacion'    => $datos['observacion']    ?? null,
+                'tipo_pago'      => $datos['tipo_pago']      ?? null,
             ]);
             $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
@@ -582,7 +584,11 @@ class BotController extends Controller
             $filas = DB::table('programas as p')
                 ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
                 ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
-                ->select('p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo', 's.nombre_servicio')
+                ->select(
+                    'p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo',
+                    'p.incluye_masajes', 'p.incluye_almuerzos',
+                    's.nombre_servicio', 's.slug as servicio_slug'
+                )
                 ->orderBy('p.valor_programa')
                 ->orderBy('s.nombre_servicio')
                 ->get();
@@ -592,22 +598,64 @@ class BotController extends Controller
                 $id = $fila->id;
                 if (!isset($agrupados[$id])) {
                     $agrupados[$id] = [
-                        'id'             => $id,
-                        'nombre'         => $fila->nombre_programa,
-                        'precio'         => (int) $fila->valor_programa,
-                        'precio_formato' => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
-                        'espacio_tipo'   => $fila->espacio_tipo,
-                        'servicios'      => [],
+                        'id'                => $id,
+                        'nombre'            => $fila->nombre_programa,
+                        'precio'            => (int) $fila->valor_programa,
+                        'precio_formato'    => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
+                        'espacio_tipo'      => $fila->espacio_tipo,
+                        'servicios'         => [],
+                        'incluye_masajes'   => (bool) ($fila->incluye_masajes ?? false),
+                        'incluye_almuerzos' => (bool) ($fila->incluye_almuerzos ?? false),
                     ];
                 }
                 if ($fila->nombre_servicio) {
                     $agrupados[$id]['servicios'][] = $fila->nombre_servicio;
+                    // Detección por slug como respaldo si el booleano no está seteado
+                    if ($fila->servicio_slug === 'masaje') {
+                        $agrupados[$id]['incluye_masajes'] = true;
+                    }
                 }
             }
             return array_values($agrupados);
         } catch (\Exception $e) {
-            Log::error('[Bot] Error cargando programas: ' . $e->getMessage());
-            return [];
+            // Fallback sin las columnas nuevas (si la migración no se ha corrido aún)
+            try {
+                $filas = DB::table('programas as p')
+                    ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
+                    ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
+                    ->select('p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo',
+                             's.nombre_servicio', 's.slug as servicio_slug')
+                    ->orderBy('p.valor_programa')
+                    ->orderBy('s.nombre_servicio')
+                    ->get();
+
+                $agrupados = [];
+                foreach ($filas as $fila) {
+                    $id = $fila->id;
+                    if (!isset($agrupados[$id])) {
+                        $agrupados[$id] = [
+                            'id'                => $id,
+                            'nombre'            => $fila->nombre_programa,
+                            'precio'            => (int) $fila->valor_programa,
+                            'precio_formato'    => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
+                            'espacio_tipo'      => $fila->espacio_tipo,
+                            'servicios'         => [],
+                            'incluye_masajes'   => false,
+                            'incluye_almuerzos' => false,
+                        ];
+                    }
+                    if ($fila->nombre_servicio) {
+                        $agrupados[$id]['servicios'][] = $fila->nombre_servicio;
+                        if ($fila->servicio_slug === 'masaje') {
+                            $agrupados[$id]['incluye_masajes'] = true;
+                        }
+                    }
+                }
+                return array_values($agrupados);
+            } catch (\Exception $e2) {
+                Log::error('[Bot] Error cargando programas: ' . $e2->getMessage());
+                return [];
+            }
         }
     }
 

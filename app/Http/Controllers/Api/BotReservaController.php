@@ -59,15 +59,17 @@ class BotReservaController extends Controller
     {
         // ── Validar payload ───────────────────────────────────────────────────
         $request->validate([
-            'nombre'        => 'required|string|max:200',
-            'telefono'      => 'required|string|max:20',
-            'email'         => 'required|email|max:200',
-            'programa_id'   => 'required|integer|exists:programas,id',
-            'fecha'         => 'required|date|after_or_equal:today',
-            'personas'      => 'required|integer|min:1|max:50',
-            'masajes_extra' => 'nullable|integer|min:0|max:20',
-            'desayuno_once' => 'nullable|integer|min:0|max:50',
-            'tipo_pago'     => 'nullable|string|max:80',
+            'nombre'         => 'required|string|max:200',
+            'telefono'       => 'required|string|max:20',
+            'email'          => 'required|email|max:200',
+            'programa_id'    => 'required|integer|exists:programas,id',
+            'fecha'          => 'required|date|after_or_equal:today',
+            'personas'       => 'required|integer|min:1|max:50',
+            'masajes_extra'  => 'nullable|integer|min:0|max:20',
+            'desayuno_once'  => 'nullable|integer|min:0|max:50',
+            'desayuno_tipo'  => 'nullable|string|in:desayuno,once',
+            'observacion'    => 'nullable|string|max:500',
+            'tipo_pago'      => 'nullable|string|max:80',
         ]);
 
         $telefono      = $this->normalizarTelefono($request->telefono);
@@ -78,6 +80,8 @@ class BotReservaController extends Controller
         $email         = strtolower(trim($request->email));
         $masajesExtra  = max(0, (int) ($request->masajes_extra ?? 0));
         $desayunoOnce  = max(0, (int) ($request->desayuno_once ?? 0));
+        $desayunoTipo  = ($desayunoOnce > 0 && $request->desayuno_tipo) ? $request->desayuno_tipo : null;
+        $observacion   = $request->observacion ? trim($request->observacion) : null;
         $tipoPago      = trim($request->tipo_pago ?? '');
 
         // ── 1. Verificar disponibilidad ───────────────────────────────────────
@@ -122,13 +126,18 @@ class BotReservaController extends Controller
         $diferencia        = $valorTotal - $abono50;
 
         // ── 5. Crear reserva ──────────────────────────────────────────────────
+        $notaBot = 'Reserva creada por bot WhatsApp';
+        if ($observacion) {
+            $notaBot .= " | Ocasión: {$observacion}";
+        }
+
         $reservaId = DB::table('reservas')->insertGetId([
             'cliente_id'             => $clienteId,
             'cantidad_personas'      => $personas,
-            'cantidad_masajes'       => 0,           // masajes INCLUIDOS en programa (lo setea el backoffice)
+            'cantidad_masajes'       => 0,             // masajes INCLUIDOS en programa (lo setea el backoffice)
             'cantidad_masajes_extra' => $masajesExtra, // masajes EXTRAS solicitados por el bot
             'fecha_visita'           => $fecha,
-            'observacion'            => 'Reserva creada por bot WhatsApp',
+            'observacion'            => $notaBot,
             'id_programa'            => $programaId,
             'user_id'                => $this->getBotUserId(),
             'estado'                 => 'pendiente_pago',
@@ -193,6 +202,26 @@ class BotReservaController extends Controller
             }
         }
 
+        // ── 8. Crear registros menus (planificación cocina) ──────────────────
+        // Un registro por persona que ordenó desayuno u once.
+        // Los productos (entrada/fondo/acompañamiento) y alergias se llenan
+        // vía bot post-pago o por el backoffice el día de la visita.
+        if ($desayunoOnce > 0) {
+            for ($i = 0; $i < $desayunoOnce; $i++) {
+                DB::table('menus')->insert([
+                    'id_reserva'                 => $reservaId,
+                    'id_producto_entrada'        => null,
+                    'id_producto_fondo'          => null,
+                    'id_producto_acompanamiento' => null,
+                    'alergias'                   => null,
+                    'tipo_servicio'              => $desayunoTipo,
+                    'observacion'                => null,
+                    'created_at'                 => now(),
+                    'updated_at'                 => now(),
+                ]);
+            }
+        }
+
         Log::info('BotReservaController: reserva creada', [
             'reserva_id'     => $reservaId,
             'venta_id'       => $ventaId,
@@ -211,25 +240,34 @@ class BotReservaController extends Controller
             'tipo_pago'      => $tipoPago,
         ]);
 
+        // Etiqueta legible del tipo de servicio para el mensaje al cliente
+        $desayunoTipoLabel = $desayunoTipo === 'desayuno' ? 'Desayuno (10:30–12:00)'
+                           : ($desayunoTipo === 'once'    ? 'Once (17:00–18:15)'
+                           : 'Desayuno u Once');
+
         return response()->json([
-            'ok'                  => true,
-            'reserva_id'          => $reservaId,
-            'venta_id'            => $ventaId,
-            'consumo_id'          => $consumoId,
-            'programa'            => $programa ? $programa->nombre_programa : 'Programa',
-            'fecha'               => $fecha,
-            'personas'            => $personas,
-            'masajes_extra'       => $masajesExtra,
-            'precio_masaje'       => $precioMasaje,
-            'desayuno_once'       => $desayunoOnce,
-            'precio_dyo'          => $precioDyO,
-            'valor_total'         => $valorTotal,
-            'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
-            'abono_50'            => $abono50,
-            'abono_50_formato'    => '$' . number_format($abono50, 0, ',', '.'),
-            'diferencia'          => $diferencia,
-            'diferencia_formato'  => '$' . number_format($diferencia, 0, ',', '.'),
-            'mensaje_siguiente'   => "Para confirmar tu reserva N°{$reservaId}, transfiere el abono de \$" . number_format($abono50, 0, ',', '.') . " e indica tu nombre y N° de reserva al +56974484112 o hola@botacura.cl.",
+            'ok'                   => true,
+            'reserva_id'           => $reservaId,
+            'venta_id'             => $ventaId,
+            'consumo_id'           => $consumoId,
+            'programa'             => $programa ? $programa->nombre_programa : 'Programa',
+            'fecha'                => $fecha,
+            'personas'             => $personas,
+            'masajes_extra'        => $masajesExtra,
+            'precio_masaje'        => $precioMasaje,
+            'desayuno_once'        => $desayunoOnce,
+            'desayuno_tipo'        => $desayunoTipo,
+            'desayuno_tipo_label'  => $desayunoTipoLabel,
+            'precio_dyo'           => $precioDyO,
+            'observacion'          => $observacion,
+            'valor_total'          => $valorTotal,
+            'valor_total_formato'  => '$' . number_format($valorTotal, 0, ',', '.'),
+            'abono_50'             => $abono50,
+            'abono_50_formato'     => '$' . number_format($abono50, 0, ',', '.'),
+            'diferencia'           => $diferencia,
+            'diferencia_formato'   => '$' . number_format($diferencia, 0, ',', '.'),
+            'incluye_menu'         => ($desayunoOnce > 0),
+            'mensaje_siguiente'    => "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Envía el comprobante al +56974484112 indicando tu nombre y N° de reserva.",
         ]);
     }
 
