@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\WhisperService;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
@@ -13,14 +14,19 @@ use Illuminate\Support\Facades\Log;
  * GET  /api/whatsapp/webhook  → verificación Meta
  * POST /api/whatsapp/webhook  → mensajes entrantes → BotController@message
  *
+ * Tipos soportados:
+ *   text  → directo al bot
+ *   audio → Whisper transcribe → bot
+ *   image → Claude Vision describe → bot
+ *
  * Compatible Laravel 6 / PHP 7.2
  */
 class WhatsAppWebhookController extends Controller
 {
     // ─────────────────────────────────────────────────────────────────────────
-    // GET /api/whatsapp/webhook
-    // Meta envía: hub.mode=subscribe, hub.verify_token=..., hub.challenge=...
+    // GET /api/whatsapp/webhook  — verificación Meta
     // ─────────────────────────────────────────────────────────────────────────
+
     public function verify(Request $request)
     {
         $mode      = $request->query('hub_mode')         ?? $request->query('hub.mode');
@@ -39,14 +45,13 @@ class WhatsAppWebhookController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // POST /api/whatsapp/webhook
-    // Recibe mensajes de WhatsApp y los pasa al BotController
+    // POST /api/whatsapp/webhook — mensajes entrantes
     // ─────────────────────────────────────────────────────────────────────────
+
     public function handle(Request $request)
     {
         $body = $request->all();
 
-        // Verificar que sea un evento de WhatsApp Business
         if (($body['object'] ?? '') !== 'whatsapp_business_account') {
             return response()->json(['ok' => true]);
         }
@@ -60,7 +65,6 @@ class WhatsAppWebhookController extends Controller
                 return response()->json(['ok' => true]);
             }
 
-            // Solo procesar mensajes entrantes (ignorar status updates)
             $messages = $value['messages'] ?? [];
             if (empty($messages)) {
                 return response()->json(['ok' => true]);
@@ -71,20 +75,39 @@ class WhatsAppWebhookController extends Controller
             $telefono = $msg['from'] ?? '';
             $nombre   = $value['contacts'][0]['profile']['name'] ?? 'Cliente';
 
-            // Solo procesar mensajes de texto por ahora
-            if ($tipo !== 'text') {
+            Log::info("[WhatsApp] Mensaje tipo={$tipo} de {$telefono}");
+
+            $textoParaBot = null;
+
+            // ── Texto ─────────────────────────────────────────────────────
+            if ($tipo === 'text') {
+                $textoParaBot = $msg['text']['body'] ?? '';
+
+            // ── Audio ─────────────────────────────────────────────────────
+            } elseif ($tipo === 'audio') {
+                $textoParaBot = $this->procesarAudio($msg, $telefono);
+
+            // ── Imagen ────────────────────────────────────────────────────
+            } elseif ($tipo === 'image') {
+                $textoParaBot = $this->procesarImagen($msg, $telefono);
+
+            // ── Sticker (ignorar silenciosamente) ─────────────────────────
+            } elseif ($tipo === 'sticker') {
+                Log::info("[WhatsApp] Sticker ignorado de {$telefono}");
+
+            // ── Tipos no soportados ────────────────────────────────────────
+            } else {
                 Log::info("[WhatsApp] Tipo no soportado: {$tipo} de {$telefono}");
+                $this->enviarMensaje($telefono,
+                    "Por ahora solo puedo procesar mensajes de texto, audios e imágenes 😊"
+                );
+            }
+
+            if (!$textoParaBot) {
                 return response()->json(['ok' => true]);
             }
 
-            $texto = $msg['text']['body'] ?? '';
-            if (!$texto) {
-                return response()->json(['ok' => true]);
-            }
-
-            Log::info("[WhatsApp] Mensaje recibido de {$telefono}: {$texto}");
-
-            // Llamar al bot internamente
+            // ── Llamar al bot ──────────────────────────────────────────────
             $secret = config('services.bot.secret');
             $client = new GuzzleClient(['timeout' => 35, 'http_errors' => false]);
             $botRes = $client->post(url('/api/bot-ai/message'), [
@@ -94,7 +117,7 @@ class WhatsAppWebhookController extends Controller
                 ],
                 'json' => [
                     'telefono' => $telefono,
-                    'mensaje'  => $texto,
+                    'mensaje'  => $textoParaBot,
                     'nombre'   => $nombre,
                 ],
             ]);
@@ -102,12 +125,10 @@ class WhatsAppWebhookController extends Controller
             $botData = json_decode((string) $botRes->getBody(), true) ?? [];
             $mensaje = $botData['mensaje'] ?? null;
 
-            // Enviar respuesta por WhatsApp
             if ($mensaje) {
                 $this->enviarMensaje($telefono, $mensaje);
             }
 
-            // Si el bot adjunta archivos (PDF del menú)
             if (!empty($botData['adjunto_url'])) {
                 $this->enviarDocumento($telefono, $botData['adjunto_url'], $botData['adjunto_nombre'] ?? 'menu.pdf');
             }
@@ -116,12 +137,260 @@ class WhatsAppWebhookController extends Controller
             Log::error('[WhatsApp] Error procesando webhook: ' . $e->getMessage());
         }
 
-        // Meta espera siempre 200
         return response()->json(['ok' => true]);
     }
 
     // ─────────────────────────────────────────────────────────────────────────
-    // Helpers — WhatsApp Cloud API
+    // AUDIO — descarga + Whisper
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function procesarAudio(array $msg, string $telefono): ?string
+    {
+        $mediaId = $msg['audio']['id'] ?? null;
+        if (!$mediaId) {
+            return null;
+        }
+
+        $whisper = new WhisperService();
+
+        if (!$whisper->configurado()) {
+            Log::warning('[WhatsApp] Whisper no configurado — audio de ' . $telefono . ' ignorado');
+            $this->enviarMensaje($telefono,
+                "Recibí tu audio 🎤 pero aún no tengo activada la transcripción. "
+                . "Por favor escríbeme tu consulta en texto 😊"
+            );
+            return null;
+        }
+
+        // Descargar audio de Meta
+        $extension  = $msg['audio']['mime_type'] ?? 'audio/ogg';
+        $extension  = $this->mimeToExtension($extension);
+        $rutaTemp   = $this->descargarMedia($mediaId, $extension);
+
+        if (!$rutaTemp) {
+            $this->enviarMensaje($telefono,
+                "No pude procesar tu audio. ¿Puedes escribirme tu consulta? 😊"
+            );
+            return null;
+        }
+
+        $transcripcion = $whisper->transcribir($rutaTemp, $extension);
+
+        if (!$transcripcion) {
+            $this->enviarMensaje($telefono,
+                "No entendí el audio. ¿Puedes escribirme tu consulta? 😊"
+            );
+            return null;
+        }
+
+        Log::info("[WhatsApp] Audio transcrito de {$telefono}: {$transcripcion}");
+
+        // Indicar al bot que viene de un audio
+        return "[Audio transcrito]: {$transcripcion}";
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // IMAGEN — descarga + Claude Vision
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function procesarImagen(array $msg, string $telefono): ?string
+    {
+        $mediaId  = $msg['image']['id']      ?? null;
+        $caption  = $msg['image']['caption'] ?? '';
+
+        if (!$mediaId) {
+            return null;
+        }
+
+        // Descargar imagen
+        $rutaTemp = $this->descargarMedia($mediaId, 'jpg');
+
+        if (!$rutaTemp) {
+            $this->enviarMensaje($telefono,
+                "No pude procesar la imagen. ¿Puedes describirme lo que necesitas? 😊"
+            );
+            return null;
+        }
+
+        // Describir con Claude Vision
+        $descripcion = $this->describirConClaude($rutaTemp, $caption);
+
+        if (file_exists($rutaTemp)) {
+            @unlink($rutaTemp);
+        }
+
+        if (!$descripcion) {
+            // Si Claude Vision falla, al menos pasar el caption
+            $texto = $caption ?: "[El cliente envió una imagen]";
+            return $texto;
+        }
+
+        Log::info("[WhatsApp] Imagen descrita de {$telefono}: " . substr($descripcion, 0, 100));
+
+        $texto = "[Imagen recibida]: {$descripcion}";
+        if ($caption) {
+            $texto .= " | Caption del cliente: \"{$caption}\"";
+        }
+
+        return $texto;
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // CLAUDE VISION — describe una imagen
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function describirConClaude(string $rutaLocal, string $contexto = ''): ?string
+    {
+        $apiKey = config('services.anthropic.key', '');
+        $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
+
+        if (!$apiKey || !file_exists($rutaLocal)) {
+            return null;
+        }
+
+        try {
+            $imageData  = base64_encode(file_get_contents($rutaLocal));
+            $mimeType   = 'image/jpeg';
+
+            // Detectar tipo real por extensión o magic bytes
+            $finfo = finfo_open(FILEINFO_MIME_TYPE);
+            if ($finfo) {
+                $detected = finfo_file($finfo, $rutaLocal);
+                finfo_close($finfo);
+                if ($detected && strpos($detected, 'image/') === 0) {
+                    $mimeType = $detected;
+                }
+            }
+
+            $promptVision = "Describe brevemente esta imagen en español. "
+                . "Si es una consulta sobre servicios, precios, instalaciones o reservas de un spa/centro recreativo llamado Botacura, "
+                . "indícalo. Si contiene texto legible, transcríbelo. "
+                . "Sé conciso (máx 100 palabras).";
+
+            if ($contexto) {
+                $promptVision .= " El cliente adjuntó este texto: \"{$contexto}\"";
+            }
+
+            $client   = new GuzzleClient(['timeout' => 20, 'http_errors' => false]);
+            $response = $client->post('https://api.anthropic.com/v1/messages', [
+                'headers' => [
+                    'x-api-key'         => $apiKey,
+                    'anthropic-version' => '2023-06-01',
+                    'content-type'      => 'application/json',
+                ],
+                'json' => [
+                    'model'      => $model,
+                    'max_tokens' => 300,
+                    'messages'   => [
+                        [
+                            'role'    => 'user',
+                            'content' => [
+                                [
+                                    'type'  => 'image',
+                                    'source' => [
+                                        'type'       => 'base64',
+                                        'media_type' => $mimeType,
+                                        'data'       => $imageData,
+                                    ],
+                                ],
+                                [
+                                    'type' => 'text',
+                                    'text' => $promptVision,
+                                ],
+                            ],
+                        ],
+                    ],
+                ],
+            ]);
+
+            if ($response->getStatusCode() >= 300) {
+                Log::error('[Vision] Claude error ' . $response->getStatusCode());
+                return null;
+            }
+
+            $body = json_decode((string) $response->getBody(), true) ?? [];
+            return trim($body['content'][0]['text'] ?? '');
+
+        } catch (\Exception $e) {
+            Log::error('[Vision] Error: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPERS — Meta Cloud API media download
+    // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Descarga un archivo de media de Meta y lo guarda en un temporal.
+     * Retorna la ruta local o null si falló.
+     */
+    private function descargarMedia(string $mediaId, string $extension): ?string
+    {
+        $token   = env('META_WHATSAPP_TOKEN');
+        $version = env('META_API_VERSION', 'v19.0');
+
+        try {
+            $client = new GuzzleClient(['timeout' => 30, 'http_errors' => false]);
+
+            // 1. Obtener URL del media
+            $metaRes = $client->get("https://graph.facebook.com/{$version}/{$mediaId}", [
+                'headers' => ['Authorization' => 'Bearer ' . $token],
+            ]);
+
+            if ($metaRes->getStatusCode() !== 200) {
+                Log::error('[WhatsApp] No se pudo obtener URL media', ['id' => $mediaId, 'status' => $metaRes->getStatusCode()]);
+                return null;
+            }
+
+            $metaData = json_decode((string) $metaRes->getBody(), true) ?? [];
+            $mediaUrl = $metaData['url'] ?? null;
+
+            if (!$mediaUrl) {
+                Log::error('[WhatsApp] URL de media vacía', ['id' => $mediaId]);
+                return null;
+            }
+
+            // 2. Descargar el archivo
+            $rutaTemp = tempnam(sys_get_temp_dir(), 'wa_media_') . '.' . $extension;
+
+            $dlRes = $client->get($mediaUrl, [
+                'headers' => ['Authorization' => 'Bearer ' . $token],
+                'sink'    => $rutaTemp,
+            ]);
+
+            if ($dlRes->getStatusCode() !== 200 || !file_exists($rutaTemp) || filesize($rutaTemp) === 0) {
+                Log::error('[WhatsApp] Descarga de media fallida', ['id' => $mediaId]);
+                return null;
+            }
+
+            Log::info('[WhatsApp] Media descargado', ['id' => $mediaId, 'bytes' => filesize($rutaTemp)]);
+            return $rutaTemp;
+
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] Error descargando media: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    private function mimeToExtension(string $mime): string
+    {
+        $map = [
+            'audio/ogg'         => 'ogg',
+            'audio/mpeg'        => 'mp3',
+            'audio/mp4'         => 'm4a',
+            'audio/webm'        => 'webm',
+            'audio/wav'         => 'wav',
+            'audio/x-m4a'       => 'm4a',
+            'audio/amr'         => 'amr',
+        ];
+        // El mime puede venir con codecs: "audio/ogg; codecs=opus"
+        $base = explode(';', $mime)[0];
+        return $map[trim($base)] ?? 'ogg';
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // HELPERS — envío de mensajes
     // ─────────────────────────────────────────────────────────────────────────
 
     private function enviarMensaje(string $telefono, string $texto)
@@ -133,8 +402,11 @@ class WhatsAppWebhookController extends Controller
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
             $res    = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
-                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
-                'json'    => [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => [
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'text',
@@ -142,7 +414,10 @@ class WhatsAppWebhookController extends Controller
                 ],
             ]);
             if ($res->getStatusCode() >= 300) {
-                Log::error('[WhatsApp] Error enviando mensaje', ['status' => $res->getStatusCode(), 'body' => (string) $res->getBody()]);
+                Log::error('[WhatsApp] Error enviando mensaje', [
+                    'status' => $res->getStatusCode(),
+                    'body'   => (string) $res->getBody(),
+                ]);
             }
         } catch (\Exception $e) {
             Log::error('[WhatsApp] Excepción enviando mensaje: ' . $e->getMessage());
@@ -158,8 +433,11 @@ class WhatsAppWebhookController extends Controller
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
             $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
-                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
-                'json'    => [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => [
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'document',
