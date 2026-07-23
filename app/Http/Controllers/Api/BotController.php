@@ -10,7 +10,8 @@ use App\Services\BotPromptService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
+use GuzzleHttp\Client as GuzzleClient;
+use GuzzleHttp\Exception\RequestException as GuzzleRequestException;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -433,23 +434,28 @@ class BotController extends Controller
         $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
 
         try {
-            $response = Http::withHeaders([
-                'x-api-key'         => $apiKey,
-                'anthropic-version' => '2023-06-01',
-                'content-type'      => 'application/json',
-            ])->timeout(30)->post('https://api.anthropic.com/v1/messages', [
-                'model'      => $model,
-                'max_tokens' => 1024,
-                'system'     => $systemPrompt . "\n\nNombre del cliente: {$nombre}",
-                'messages'   => $historial,
+            $client   = new GuzzleClient(['timeout' => 30, 'http_errors' => false]);
+            $response = $client->post('https://api.anthropic.com/v1/messages', [
+                'headers' => [
+                    'x-api-key'         => $apiKey,
+                    'anthropic-version' => '2023-06-01',
+                    'content-type'      => 'application/json',
+                ],
+                'json' => [
+                    'model'      => $model,
+                    'max_tokens' => 1024,
+                    'system'     => $systemPrompt . "\n\nNombre del cliente: {$nombre}",
+                    'messages'   => $historial,
+                ],
             ]);
 
-            if (!$response->successful()) {
-                Log::error('[Bot] Claude error', ['status' => $response->status()]);
+            if ($response->getStatusCode() >= 300) {
+                Log::error('[Bot] Claude error', ['status' => $response->getStatusCode()]);
                 return null;
             }
 
-            $content = $response->json()['content'][0]['text'] ?? '';
+            $body    = json_decode((string) $response->getBody(), true) ?? [];
+            $content = $body['content'][0]['text'] ?? '';
             $content = trim(preg_replace(['/^```json\s*/i', '/\s*```$/'], '', trim($content)));
             $parsed  = json_decode($content, true);
 
@@ -472,13 +478,15 @@ class BotController extends Controller
         }
         try {
             $secret = config('services.bot.secret');
-            $res = Http::withHeaders([
-                self::BOT_SECRET_HEADER => $secret,
-                'content-type'          => 'application/json',
-            ])->timeout(10)->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
-                'selecciones' => $datos['selecciones'] ?? [],
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $res    = $client->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
+                'headers' => [
+                    self::BOT_SECRET_HEADER => $secret,
+                    'content-type'          => 'application/json',
+                ],
+                'json' => ['selecciones' => $datos['selecciones'] ?? []],
             ]);
-            $ctx = '[Sistema-menu: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $ctx = '[Sistema-menu: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
             return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
         } catch (\Exception $e) {
@@ -504,12 +512,15 @@ class BotController extends Controller
             return $respuesta;
         }
         try {
-            $disp = Http::timeout(10)->get(url('/api/disponibilidad'), [
-                'fecha'       => $datos['fecha'],
-                'programa_id' => $datos['programa_id'],
-                'personas'    => $datos['personas'] ?? 1,
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $disp   = $client->get(url('/api/disponibilidad'), [
+                'query' => [
+                    'fecha'       => $datos['fecha'],
+                    'programa_id' => $datos['programa_id'],
+                    'personas'    => $datos['personas'] ?? 1,
+                ],
             ]);
-            $ctx      = '[Sistema-disponibilidad: ' . json_encode($disp->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $ctx = '[Sistema-disponibilidad: ' . json_encode(json_decode((string) $disp->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
             return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
         } catch (\Exception $e) {
@@ -528,23 +539,27 @@ class BotController extends Controller
         }
         try {
             $secret = config('services.bot.secret');
-            $res = Http::withHeaders([
-                self::BOT_SECRET_HEADER => $secret,
-                'content-type'          => 'application/json',
-            ])->timeout(15)->post(url('/api/bot-ai/reserva'), [
-                'nombre'         => $datos['nombre'],
-                'telefono'       => $datos['telefono'] ?? $usuarioId,
-                'email'          => $datos['email'],
-                'programa_id'    => $datos['programa_id'],
-                'fecha'          => $datos['fecha'],
-                'personas'       => $datos['personas'],
-                'masajes_extra'  => $datos['masajes_extra']  ?? 0,
-                'desayuno_once'  => $datos['desayuno_once']  ?? 0,
-                'desayuno_tipo'  => $datos['desayuno_tipo']  ?? null,
-                'observacion'    => $datos['observacion']    ?? null,
-                'tipo_pago'      => $datos['tipo_pago']      ?? null,
+            $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
+            $res    = $client->post(url('/api/bot-ai/reserva'), [
+                'headers' => [
+                    self::BOT_SECRET_HEADER => $secret,
+                    'content-type'          => 'application/json',
+                ],
+                'json' => [
+                    'nombre'         => $datos['nombre'],
+                    'telefono'       => $datos['telefono'] ?? $usuarioId,
+                    'email'          => $datos['email'],
+                    'programa_id'    => $datos['programa_id'],
+                    'fecha'          => $datos['fecha'],
+                    'personas'       => $datos['personas'],
+                    'masajes_extra'  => $datos['masajes_extra']  ?? 0,
+                    'desayuno_once'  => $datos['desayuno_once']  ?? 0,
+                    'desayuno_tipo'  => $datos['desayuno_tipo']  ?? null,
+                    'observacion'    => $datos['observacion']    ?? null,
+                    'tipo_pago'      => $datos['tipo_pago']      ?? null,
+                ],
             ]);
-            $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
+            $ctx = '[Sistema-reserva: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
             return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
         } catch (\Exception $e) {

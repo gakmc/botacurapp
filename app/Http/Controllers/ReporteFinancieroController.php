@@ -15,6 +15,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ReporteFinancieroController extends Controller
 {
@@ -441,6 +442,161 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // UTILIDAD — Ingresos vs Egresos SII + Honorarios + PPM
+    // ─────────────────────────────────────────────────────────────────────────
+    public function utilidad(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+        $mes  = (int) $request->input('mes',  now()->month);
+
+        $inicio    = Carbon::create($anio, $mes, 1)->startOfMonth();
+        $fin       = Carbon::create($anio, $mes, 1)->endOfMonth();
+        $nombreMes = $inicio->locale('es')->isoFormat('MMMM');
+        $periodo   = sprintf('%04d%02d', $anio, $mes);
+        $periodoKey = $anio . '-' . sprintf('%02d', $mes);
+
+        $mesesNombres = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo',  6 => 'Junio',   7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+
+        // ── Ingresos del mes ──────────────────────────────────────────────────
+        $abonos = (int) DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
+
+        $consumos = (int) DB::table('detalles_consumos')
+            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum('detalles_consumos.subtotal');
+
+        $servicios = (int) DB::table('detalle_servicios_extra')
+            ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum('detalle_servicios_extra.subtotal');
+
+        $directas = (int) DB::table('ventas_directas')
+            ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+            ->sum('subtotal');
+
+        $poro = (int) DB::table('poro_poro_ventas')
+            ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+            ->sum('total');
+
+        $totalIngresos = $abonos + $consumos + $servicios + $directas + $poro;
+
+        // ── Egresos del mes ───────────────────────────────────────────────────
+        // 1. Facturas SII (fuente=sii, neto = monto sin IVA)
+        $facturasSii = (int) DB::table('egresos')
+            ->where('fuente', 'sii')
+            ->where('periodo_sii', $periodoKey)
+            ->sum('neto');
+
+        // Fallback: si no hay columna neto, usar total
+        if ($facturasSii === 0) {
+            $facturasSii = (int) DB::table('egresos')
+                ->where('fuente', 'sii')
+                ->where('periodo_sii', $periodoKey)
+                ->sum('total');
+        }
+
+        // 2. Honorarios BTE (retenciones)
+        $honorariosRetencion = 0;
+        $honorariosNeto      = 0;
+        if (Schema::hasTable('honorarios_bte')) {
+            $honorariosRetencion = (int) DB::table('honorarios_bte')
+                ->where('periodo', $periodo)
+                ->where('estado', '!=', 'Anulada')
+                ->sum('monto_retenido');
+            $honorariosNeto = (int) DB::table('honorarios_bte')
+                ->where('periodo', $periodo)
+                ->where('estado', '!=', 'Anulada')
+                ->sum('monto_pagado');
+        }
+
+        // 3. Sueldos pagados
+        $sueldosPagados = (int) DB::table('sueldos_pagados')
+            ->whereBetween('fecha_pago', [$inicio->toDateString(), $fin->toDateString()])
+            ->sum('monto');
+
+        // 4. PPM estimado (1.5% del total ventas en app — aproximado)
+        $ppm = (int) round($totalIngresos * 0.015);
+
+        $totalEgresos = $facturasSii + $honorariosRetencion + $sueldosPagados + $ppm;
+        $utilidad     = $totalIngresos - $totalEgresos;
+        $margen       = $totalIngresos > 0 ? round(($utilidad / $totalIngresos) * 100, 1) : 0;
+
+        // ── Breakdown egresos ─────────────────────────────────────────────────
+        $breakdown = [
+            ['label' => 'Facturas SII',       'monto' => $facturasSii,          'pct' => $totalIngresos > 0 ? round(($facturasSii / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'Honorarios (ret.)',  'monto' => $honorariosRetencion,  'pct' => $totalIngresos > 0 ? round(($honorariosRetencion / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'Sueldos',            'monto' => $sueldosPagados,       'pct' => $totalIngresos > 0 ? round(($sueldosPagados / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'PPM est.',           'monto' => $ppm,                  'pct' => $totalIngresos > 0 ? round(($ppm / $totalIngresos) * 100, 1) : 0],
+        ];
+
+        // ── Ventas SII del período ────────────────────────────────────────────
+        $ventasSii = (int) DB::table('sii_resumen_mensual')
+            ->where('periodo', $periodo)
+            ->value('ventas_total') ?? 0;
+
+        // ── Resumen anual ─────────────────────────────────────────────────────
+        $resumenAnual = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $ini = Carbon::create($anio, $m, 1)->startOfMonth()->toDateString();
+            $fin_m = Carbon::create($anio, $m, 1)->endOfMonth()->toDateString();
+            $per_m = sprintf('%04d%02d', $anio, $m);
+            $per_k = $anio . '-' . sprintf('%02d', $m);
+
+            $ing = (int) DB::table('ventas')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
+            $ing += (int) DB::table('ventas_directas')->whereBetween('fecha', [$ini, $fin_m])->sum('subtotal');
+
+            $egr = (int) DB::table('egresos')->where('fuente', 'sii')->where('periodo_sii', $per_k)->sum('neto');
+            if ($egr === 0) {
+                $egr = (int) DB::table('egresos')->where('fuente', 'sii')->where('periodo_sii', $per_k)->sum('total');
+            }
+            if (Schema::hasTable('honorarios_bte')) {
+                $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
+            }
+            $egr += (int) DB::table('sueldos_pagados')->whereBetween('fecha_pago', [$ini, $fin_m])->sum('monto');
+            $egr += (int) round($ing * 0.015);
+
+            if ($ing === 0 && $egr === 0 && Carbon::create($anio, $m, 1)->isFuture()) {
+                $resumenAnual[$m] = null;
+            } else {
+                $util_m = $ing - $egr;
+                $resumenAnual[$m] = [
+                    'ing'     => $ing,
+                    'egr'     => $egr,
+                    'utilidad' => $util_m,
+                    'margen'  => $ing > 0 ? round(($util_m / $ing) * 100, 1) : 0,
+                ];
+            }
+        }
+
+        return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
+            'anio', 'mes', 'nombreMes', 'mesesNombres',
+            'abonos', 'consumos', 'servicios', 'directas', 'poro',
+            'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
+            'facturasSii', 'honorariosRetencion', 'honorariosNeto',
+            'sueldosPagados', 'ppm', 'breakdown',
+            'ventasSii', 'resumenAnual'
+        ));
+    }
 
     public function comparar(Request $request)
     {

@@ -3,8 +3,8 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
@@ -86,16 +86,20 @@ class WhatsAppWebhookController extends Controller
 
             // Llamar al bot internamente
             $secret = config('services.bot.secret');
-            $botRes = Http::withHeaders([
-                'X-Bot-Secret'  => $secret,
-                'Content-Type'  => 'application/json',
-            ])->timeout(35)->post(url('/api/bot-ai/message'), [
-                'telefono' => $telefono,
-                'mensaje'  => $texto,
-                'nombre'   => $nombre,
+            $client = new GuzzleClient(['timeout' => 35, 'http_errors' => false]);
+            $botRes = $client->post(url('/api/bot-ai/message'), [
+                'headers' => [
+                    'X-Bot-Secret' => $secret,
+                    'Content-Type' => 'application/json',
+                ],
+                'json' => [
+                    'telefono' => $telefono,
+                    'mensaje'  => $texto,
+                    'nombre'   => $nombre,
+                ],
             ]);
 
-            $botData = $botRes->json();
+            $botData = json_decode((string) $botRes->getBody(), true) ?? [];
             $mensaje = $botData['mensaje'] ?? null;
 
             // Enviar respuesta por WhatsApp
@@ -127,17 +131,18 @@ class WhatsAppWebhookController extends Controller
         $version = env('META_API_VERSION', 'v19.0');
 
         try {
-            $res = Http::withToken($token)
-                ->timeout(10)
-                ->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $res    = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
+                'json'    => [
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'text',
                     'text'              => ['body' => $texto],
-                ]);
-
-            if (!$res->successful()) {
-                Log::error('[WhatsApp] Error enviando mensaje', ['status' => $res->status(), 'body' => $res->body()]);
+                ],
+            ]);
+            if ($res->getStatusCode() >= 300) {
+                Log::error('[WhatsApp] Error enviando mensaje', ['status' => $res->getStatusCode(), 'body' => (string) $res->getBody()]);
             }
         } catch (\Exception $e) {
             Log::error('[WhatsApp] Excepción enviando mensaje: ' . $e->getMessage());
@@ -151,17 +156,16 @@ class WhatsAppWebhookController extends Controller
         $version = env('META_API_VERSION', 'v19.0');
 
         try {
-            Http::withToken($token)
-                ->timeout(10)
-                ->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
+                'json'    => [
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'document',
-                    'document'          => [
-                        'link'     => $url,
-                        'filename' => $nombre,
-                    ],
-                ]);
+                    'document'          => ['link' => $url, 'filename' => $nombre],
+                ],
+            ]);
         } catch (\Exception $e) {
             Log::error('[WhatsApp] Excepción enviando documento: ' . $e->getMessage());
         }

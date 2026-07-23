@@ -613,7 +613,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::match(['put', 'patch'], '/egreso/{egreso}/update_variable', 'EgresoController@update_variable')->name('egreso.update_variable');
 
-    Route::get('finanzas/utilidad',      'ReporteFinancieroController@utilidad')->name('finanzas.utilidad');
+    Route::get('finanzas/utilidad',      'ReporteFinancieroController@utilidad')->name('backoffice.finanzas.utilidad');
     Route::get('finanzas/resumen-anual', 'ReporteFinancieroController@resumenAnual')->name('finanzas.resumen.anual');
 
     Route::get('finanzas/resumen/{anio}/{mes}', 'ReporteFinancieroController@resumenMensual')->name('finanzas.resumen.mensual');
