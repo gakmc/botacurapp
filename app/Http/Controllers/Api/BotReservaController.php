@@ -10,31 +10,40 @@ use Illuminate\Support\Facades\Log;
 /**
  * BotReservaController
  *
- * POST /api/bot/reserva
- * Crea (o actualiza) un cliente y una reserva a partir de los datos
+ * POST /api/bot-ai/reserva
+ * Crea cliente, reserva, venta y registros de menú a partir de los datos
  * recopilados por el bot de WhatsApp.
  *
  * Flujo:
- * 1. Verificar disponibilidad (reutiliza lógica de DisponibilidadController)
- * 2. Find-or-create cliente por whatsapp_cliente o correo
- * 3. Crear reserva con estado='pendiente_pago', fuente='bot_whatsapp'
- * 4. Retornar ID de reserva + instrucciones de pago
+ * 1. Verificar disponibilidad
+ * 2. Find-or-create cliente
+ * 3. Calcular total real (programa × personas + masajes × $25.000 + menú × $10.000)
+ * 4. Crear reserva (con cantidad_masajes)
+ * 5. Crear Venta (abono=50%, diferencia=50%, tipo_transaccion)
+ * 6. Crear registros menus (si aplica)
  *
  * Body JSON:
  * {
- *   "nombre":     "Juan Pérez",
- *   "telefono":   "56912345678",
- *   "email":      "juan@example.com",
- *   "programa_id": 3,
- *   "fecha":      "2026-08-02",
- *   "personas":    2
+ *   "nombre":        "Juan Pérez",
+ *   "telefono":      "56912345678",
+ *   "email":         "juan@example.com",
+ *   "programa_id":    3,
+ *   "fecha":         "2026-08-02",
+ *   "personas":       2,
+ *   "masajes_extra":  1,        (opcional, default 0)
+ *   "menu_personas":  2,        (opcional, default 0)
+ *   "menu_tipo":     "desayuno", (opcional: desayuno|once)
+ *   "tipo_pago":     "Débito"   (opcional)
  * }
  *
  * Compatible Laravel 6 / PHP 7.2
  */
 class BotReservaController extends Controller
 {
-    /** ID del usuario sistema (creado por BotUserSeeder). Configurable en .env */
+    const PRECIO_MASAJE_EXTRA = 25000; // Masaje relajación 30 min
+    const PRECIO_MENU         = 10000; // Desayuno u once por persona
+
+    /** ID del usuario sistema. Configurable en .env → BOT_SYSTEM_USER_ID */
     private function getBotUserId()
     {
         return (int) (env('BOT_SYSTEM_USER_ID', 1));
@@ -46,20 +55,28 @@ class BotReservaController extends Controller
     {
         // ── Validar payload ───────────────────────────────────────────────────
         $request->validate([
-            'nombre'      => 'required|string|max:200',
-            'telefono'    => 'required|string|max:20',
-            'email'       => 'required|email|max:200',
-            'programa_id' => 'required|integer|exists:programas,id',
-            'fecha'       => 'required|date|after_or_equal:today',
-            'personas'    => 'required|integer|min:1|max:50',
+            'nombre'        => 'required|string|max:200',
+            'telefono'      => 'required|string|max:20',
+            'email'         => 'required|email|max:200',
+            'programa_id'   => 'required|integer|exists:programas,id',
+            'fecha'         => 'required|date|after_or_equal:today',
+            'personas'      => 'required|integer|min:1|max:50',
+            'masajes_extra' => 'nullable|integer|min:0|max:20',
+            'menu_personas' => 'nullable|integer|min:0|max:50',
+            'menu_tipo'     => 'nullable|string|in:desayuno,once',
+            'tipo_pago'     => 'nullable|string|max:80',
         ]);
 
-        $telefono   = $this->normalizarTelefono($request->telefono);
-        $programaId = (int) $request->programa_id;
-        $fecha      = $request->fecha;
-        $personas   = (int) $request->personas;
-        $nombre     = trim($request->nombre);
-        $email      = strtolower(trim($request->email));
+        $telefono     = $this->normalizarTelefono($request->telefono);
+        $programaId   = (int) $request->programa_id;
+        $fecha        = $request->fecha;
+        $personas     = (int) $request->personas;
+        $nombre       = trim($request->nombre);
+        $email        = strtolower(trim($request->email));
+        $masajesExtra = max(0, (int) ($request->masajes_extra ?? 0));
+        $menuPersonas = max(0, (int) ($request->menu_personas ?? 0));
+        $menuTipo     = $request->menu_tipo;
+        $tipoPago     = trim($request->tipo_pago ?? '');
 
         // ── 1. Verificar disponibilidad ───────────────────────────────────────
         $dispCheck = $this->verificarDisponibilidad($fecha, $programaId, $personas);
@@ -77,58 +94,97 @@ class BotReservaController extends Controller
         // ── 2. Find-or-create cliente ─────────────────────────────────────────
         $clienteId = $this->obtenerOCrearCliente($nombre, $telefono, $email);
 
-        // ── 3. Crear reserva ──────────────────────────────────────────────────
+        // ── 3. Calcular totales reales ────────────────────────────────────────
+        $programa            = DB::table('programas')->where('id', $programaId)->first();
+        $valorProgramaUnit   = $programa ? (int) $programa->valor_programa : 0;
+        $totalPrograma       = $valorProgramaUnit * $personas;
+        $totalMasajes        = $masajesExtra * self::PRECIO_MASAJE_EXTRA;
+        $totalMenu           = $menuPersonas  * self::PRECIO_MENU;
+        $valorTotal          = $totalPrograma + $totalMasajes + $totalMenu;
+        $abono50             = (int) ceil($valorTotal / 2);
+        $diferencia          = $valorTotal - $abono50;
+
+        // ── 4. Crear reserva ──────────────────────────────────────────────────
         $reservaId = DB::table('reservas')->insertGetId([
             'cliente_id'        => $clienteId,
             'cantidad_personas' => $personas,
-            'cantidad_masajes'  => 0,
+            'cantidad_masajes'  => $masajesExtra,
             'fecha_visita'      => $fecha,
             'observacion'       => 'Reserva creada por bot WhatsApp',
             'id_programa'       => $programaId,
             'user_id'           => $this->getBotUserId(),
             'estado'            => 'pendiente_pago',
             'fuente'            => 'bot_whatsapp',
-            'menu_recibido'     => 0,
+            'menu_recibido'     => ($menuPersonas > 0 && $menuTipo) ? 1 : 0,
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
 
-        Log::info('BotReservaController: reserva creada', [
-            'reserva_id'  => $reservaId,
-            'cliente_id'  => $clienteId,
-            'telefono'    => $telefono,
-            'programa_id' => $programaId,
-            'fecha'       => $fecha,
-            'personas'    => $personas,
+        // ── 5. Buscar tipo de transacción ─────────────────────────────────────
+        $tipoTransaccionId = $this->buscarTipoTransaccion($tipoPago);
+
+        // ── 6. Crear Venta ────────────────────────────────────────────────────
+        $ventaId = DB::table('ventas')->insertGetId([
+            'id_reserva'                 => $reservaId,
+            'abono_programa'             => $abono50,
+            'folio_abono'                => $tipoPago ?: null,
+            'diferencia_programa'        => $diferencia,
+            'total_pagar'                => $diferencia,
+            'descuento'                  => 0,
+            'id_tipo_transaccion_abono'  => $tipoTransaccionId,
+            'created_at'                 => now(),
+            'updated_at'                 => now(),
         ]);
 
-        // ── 4. Obtener nombre del programa ────────────────────────────────────
-        $programa = DB::table('programas')->where('id', $programaId)->first();
-        $valorTotal = ($programa ? (int) $programa->valor_programa : 0) * $personas;
-        $abono50    = (int) ceil($valorTotal / 2);
+        // ── 7. Crear registros de menú ────────────────────────────────────────
+        if ($menuPersonas > 0 && $menuTipo) {
+            for ($i = 0; $i < $menuPersonas; $i++) {
+                DB::table('menus')->insert([
+                    'id_reserva'   => $reservaId,
+                    'tipo_servicio' => $menuTipo,
+                    'created_at'   => now(),
+                    'updated_at'   => now(),
+                ]);
+            }
+        }
+
+        Log::info('BotReservaController: reserva creada', [
+            'reserva_id'    => $reservaId,
+            'venta_id'      => $ventaId,
+            'cliente_id'    => $clienteId,
+            'valor_total'   => $valorTotal,
+            'abono_50'      => $abono50,
+            'diferencia'    => $diferencia,
+            'masajes_extra' => $masajesExtra,
+            'menu_personas' => $menuPersonas,
+            'menu_tipo'     => $menuTipo,
+            'tipo_pago'     => $tipoPago,
+        ]);
 
         return response()->json([
-            'ok'         => true,
-            'reserva_id' => $reservaId,
-            'programa'   => $programa ? $programa->nombre_programa : 'Programa',
-            'fecha'      => $fecha,
-            'personas'   => $personas,
-            'valor_total' => $valorTotal,
+            'ok'                  => true,
+            'reserva_id'          => $reservaId,
+            'venta_id'            => $ventaId,
+            'programa'            => $programa ? $programa->nombre_programa : 'Programa',
+            'fecha'               => $fecha,
+            'personas'            => $personas,
+            'masajes_extra'       => $masajesExtra,
+            'menu_personas'       => $menuPersonas,
+            'menu_tipo'           => $menuTipo,
+            'valor_total'         => $valorTotal,
             'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
-            'abono_50'   => $abono50,
-            'abono_50_formato' => '$' . number_format($abono50, 0, ',', '.'),
-            'instrucciones_pago' => [
+            'abono_50'            => $abono50,
+            'abono_50_formato'    => '$' . number_format($abono50, 0, ',', '.'),
+            'diferencia'          => $diferencia,
+            'diferencia_formato'  => '$' . number_format($diferencia, 0, ',', '.'),
+            'instrucciones_pago'  => [
                 'transferencia' => [
-                    'abono'    => '50% al reservar: ' . '$' . number_format($abono50, 0, ',', '.'),
-                    'saldo'    => '50% el día de visita: ' . '$' . number_format($abono50, 0, ',', '.'),
+                    'abono'                => '50% al reservar: $' . number_format($abono50, 0, ',', '.'),
+                    'saldo'                => '50% el día de visita: $' . number_format($diferencia, 0, ',', '.'),
                     'enviar_comprobante_a' => '+56974484112 o hola@botacura.cl',
                 ],
-                'link_pago' => [
-                    'monto'    => '100% anticipado: ' . '$' . number_format($valorTotal, 0, ',', '.'),
-                    'nota'     => 'Solicita el link de pago al equipo de Botacura',
-                ],
             ],
-            'mensaje_siguiente' => 'Para confirmar tu reserva, envía el comprobante de pago al +56974484112 o a hola@botacura.cl indicando tu nombre y fecha de visita.',
+            'mensaje_siguiente' => "Para confirmar tu reserva N°{$reservaId}, transfiere el abono de $" . number_format($abono50, 0, ',', '.') . " e indica tu nombre y N° de reserva al +56974484112 o hola@botacura.cl.",
         ]);
     }
 
@@ -153,7 +209,7 @@ class BotReservaController extends Controller
             'terraza'             => 6,
             'reposera'            => 4,
         ];
-        $poolFlexible    = ['terraza', 'reposera'];
+        $poolFlexible    = ['terraza', 'reposera', 'wellness'];
         $maxSlotsTinaja  = 16;
 
         $programa = DB::table('programas')->where('id', $programaId)->first();
@@ -254,6 +310,52 @@ class BotReservaController extends Controller
             'created_at'        => now(),
             'updated_at'        => now(),
         ]);
+    }
+
+    /**
+     * Busca el id de tipos_transacciones más cercano al texto recibido.
+     * Usa LIKE case-insensitive. Devuelve null si no encuentra.
+     *
+     * @param  string $tipoPago  "Débito", "Crédito", "Transferencia", etc.
+     * @return int|null
+     */
+    private function buscarTipoTransaccion(string $tipoPago)
+    {
+        if (!$tipoPago) {
+            return null;
+        }
+
+        // Búsqueda exacta primero
+        $tt = DB::table('tipos_transacciones')
+            ->whereRaw('LOWER(nombre) = ?', [strtolower($tipoPago)])
+            ->first();
+        if ($tt) {
+            return $tt->id;
+        }
+
+        // Búsqueda parcial — mapear variantes comunes
+        $claves = [
+            'deb'    => 'deb',     // débito, debito, debit
+            'cred'   => 'cred',    // crédito, credito, credit
+            'transf' => 'transf',  // transferencia
+            'efect'  => 'efect',   // efectivo
+            'webpay' => 'webpay',
+            'web'    => 'web',
+        ];
+
+        $lower = strtolower($tipoPago);
+        foreach ($claves as $clave => $busqueda) {
+            if (strpos($lower, $clave) !== false) {
+                $tt = DB::table('tipos_transacciones')
+                    ->whereRaw('LOWER(nombre) LIKE ?', ['%' . $busqueda . '%'])
+                    ->first();
+                if ($tt) {
+                    return $tt->id;
+                }
+            }
+        }
+
+        return null;
     }
 
     /**

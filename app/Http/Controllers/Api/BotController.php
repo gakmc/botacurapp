@@ -495,13 +495,17 @@ class BotController extends Controller
             $res = Http::withHeaders([
                 self::BOT_SECRET_HEADER => $secret,
                 'content-type'          => 'application/json',
-            ])->timeout(15)->post(url('/api/bot/reserva'), [
-                'nombre'      => $datos['nombre'],
-                'telefono'    => $datos['telefono'] ?? $usuarioId,
-                'email'       => $datos['email'],
-                'programa_id' => $datos['programa_id'],
-                'fecha'       => $datos['fecha'],
-                'personas'    => $datos['personas'],
+            ])->timeout(15)->post(url('/api/bot-ai/reserva'), [
+                'nombre'        => $datos['nombre'],
+                'telefono'      => $datos['telefono'] ?? $usuarioId,
+                'email'         => $datos['email'],
+                'programa_id'   => $datos['programa_id'],
+                'fecha'         => $datos['fecha'],
+                'personas'      => $datos['personas'],
+                'masajes_extra' => $datos['masajes_extra'] ?? 0,
+                'menu_personas' => $datos['menu_personas'] ?? 0,
+                'menu_tipo'     => $datos['menu_tipo']     ?? null,
+                'tipo_pago'     => $datos['tipo_pago']     ?? null,
             ]);
             $ctx      = '[Sistema-reserva: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
