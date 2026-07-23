@@ -97,52 +97,47 @@ class SiiService
             // Intentar endpoint resumen primero
             $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
 
-            // Si la API devuelve un resumen directo
-            if (isset($resp['data']) && is_array($resp['data'])) {
-                $d = $resp['data'];
-                return [
-                    'ok'      => true,
-                    'neto'    => (int) ($d['neto']     ?? $d['monto_neto']    ?? 0),
-                    'iva'     => (int) ($d['iva']      ?? $d['monto_iva']     ?? 0),
-                    'exento'  => (int) ($d['exento']   ?? $d['monto_exento']  ?? 0),
-                    'total'   => (int) ($d['total']    ?? $d['monto_total']   ?? 0),
-                    'cantidad'=> (int) ($d['cantidad'] ?? $d['count']         ?? 0),
-                    'error'   => null,
+            // Extraer datos crudos de la respuesta
+            $d = $resp['data'] ?? $resp;
+
+            // Si data es un array asociativo (resumen directo)
+            if (isset($d['neto']) || isset($d['monto_neto']) || isset($d['total'])) {
+                $resumen = [
+                    'neto'     => (int) ($d['neto']     ?? $d['monto_neto']    ?? 0),
+                    'iva'      => (int) ($d['iva']       ?? $d['monto_iva']     ?? 0),
+                    'exento'   => (int) ($d['exento']    ?? $d['monto_exento']  ?? 0),
+                    'total'    => (int) ($d['total']     ?? $d['monto_total']   ?? 0),
+                    'cantidad' => (int) ($d['cantidad']  ?? $d['count']         ?? 0),
                 ];
+                return ['ok' => true, 'resumen' => $resumen, 'error' => null];
             }
 
-            // Si devuelve lista de documentos, sumarlos
-            $docs    = is_array($resp) ? $resp : [];
-            $neto    = 0; $iva = 0; $exento = 0; $total = 0; $cnt = 0;
-            foreach ($docs as $d) {
-                $neto   += (int) ($d['neto']    ?? $d['monto_neto']   ?? 0);
-                $iva    += (int) ($d['iva']     ?? $d['monto_iva']    ?? 0);
-                $exento += (int) ($d['exento']  ?? $d['monto_exento'] ?? 0);
-                $total  += (int) ($d['total']   ?? $d['monto_total']  ?? 0);
+            // Si data es una lista de documentos, sumarlos
+            $docs = is_array($d) ? $d : [];
+            $neto = 0; $iva = 0; $exento = 0; $total = 0; $cnt = 0;
+            foreach ($docs as $doc) {
+                $neto   += (int) ($doc['neto']    ?? $doc['monto_neto']   ?? 0);
+                $iva    += (int) ($doc['iva']     ?? $doc['monto_iva']    ?? 0);
+                $exento += (int) ($doc['exento']  ?? $doc['monto_exento'] ?? 0);
+                $total  += (int) ($doc['total']   ?? $doc['monto_total']  ?? 0);
                 $cnt++;
             }
 
             return [
-                'ok'       => true,
-                'neto'     => $neto,
-                'iva'      => $iva,
-                'exento'   => $exento,
-                'total'    => $total,
-                'cantidad' => $cnt,
-                'error'    => null,
+                'ok'      => true,
+                'resumen' => ['neto' => $neto, 'iva' => $iva, 'exento' => $exento,
+                              'total' => $total, 'cantidad' => $cnt],
+                'error'   => null,
             ];
 
         } catch (\Throwable $e) {
-            // Algunos períodos sin ventas devuelven 404 — tratarlo como 0 ventas
             $msg = $e->getMessage();
+            $resumenVacio = ['neto' => 0, 'iva' => 0, 'exento' => 0, 'total' => 0, 'cantidad' => 0];
+            // 404 o sin registros = 0 ventas (no es error)
             if (strpos($msg, '404') !== false || strpos($msg, 'sin registro') !== false) {
-                return [
-                    'ok' => true, 'neto' => 0, 'iva' => 0,
-                    'exento' => 0, 'total' => 0, 'cantidad' => 0, 'error' => null,
-                ];
+                return ['ok' => true, 'resumen' => $resumenVacio, 'error' => null];
             }
-            return ['ok' => false, 'neto' => 0, 'iva' => 0,
-                    'exento' => 0, 'total' => 0, 'cantidad' => 0, 'error' => $msg];
+            return ['ok' => false, 'resumen' => $resumenVacio, 'error' => $msg];
         }
     }
 
