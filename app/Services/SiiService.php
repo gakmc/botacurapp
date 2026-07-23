@@ -84,6 +84,68 @@ class SiiService
         ];
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PÚBLICO: RCV Ventas — devuelve resumen del período para F29/PPM
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function listarVentas($anio, $mes)
+    {
+        $periodo = sprintf('%04d%02d', $anio, $mes);
+        $rut     = $this->rut;
+
+        try {
+            // Intentar endpoint resumen primero
+            $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
+
+            // Si la API devuelve un resumen directo
+            if (isset($resp['data']) && is_array($resp['data'])) {
+                $d = $resp['data'];
+                return [
+                    'ok'      => true,
+                    'neto'    => (int) ($d['neto']     ?? $d['monto_neto']    ?? 0),
+                    'iva'     => (int) ($d['iva']      ?? $d['monto_iva']     ?? 0),
+                    'exento'  => (int) ($d['exento']   ?? $d['monto_exento']  ?? 0),
+                    'total'   => (int) ($d['total']    ?? $d['monto_total']   ?? 0),
+                    'cantidad'=> (int) ($d['cantidad'] ?? $d['count']         ?? 0),
+                    'error'   => null,
+                ];
+            }
+
+            // Si devuelve lista de documentos, sumarlos
+            $docs    = is_array($resp) ? $resp : [];
+            $neto    = 0; $iva = 0; $exento = 0; $total = 0; $cnt = 0;
+            foreach ($docs as $d) {
+                $neto   += (int) ($d['neto']    ?? $d['monto_neto']   ?? 0);
+                $iva    += (int) ($d['iva']     ?? $d['monto_iva']    ?? 0);
+                $exento += (int) ($d['exento']  ?? $d['monto_exento'] ?? 0);
+                $total  += (int) ($d['total']   ?? $d['monto_total']  ?? 0);
+                $cnt++;
+            }
+
+            return [
+                'ok'       => true,
+                'neto'     => $neto,
+                'iva'      => $iva,
+                'exento'   => $exento,
+                'total'    => $total,
+                'cantidad' => $cnt,
+                'error'    => null,
+            ];
+
+        } catch (\Throwable $e) {
+            // Algunos períodos sin ventas devuelven 404 — tratarlo como 0 ventas
+            $msg = $e->getMessage();
+            if (strpos($msg, '404') !== false || strpos($msg, 'sin registro') !== false) {
+                return [
+                    'ok' => true, 'neto' => 0, 'iva' => 0,
+                    'exento' => 0, 'total' => 0, 'cantidad' => 0, 'error' => null,
+                ];
+            }
+            return ['ok' => false, 'neto' => 0, 'iva' => 0,
+                    'exento' => 0, 'total' => 0, 'cantidad' => 0, 'error' => $msg];
+        }
+    }
+
     public function buscarContribuyente($rut)
     {
         try {
