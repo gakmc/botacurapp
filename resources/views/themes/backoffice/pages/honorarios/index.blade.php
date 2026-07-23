@@ -84,7 +84,7 @@
     @else
     <div class="card-panel orange lighten-4" style="margin:12px 0">
         <i class="material-icons tiny">warning</i>
-        Credenciales SII no configuradas. Agrega <code>SII_RUT</code> y <code>SII_CLAVE</code> al <code>.env</code>.
+        Credenciales SII no configuradas. Agrega <code>SII_RUT_EMPRESA</code> y <code>SII_CLAVE_TRIBUTARIA</code> al <code>.env</code>.
     </div>
     @endif
 
