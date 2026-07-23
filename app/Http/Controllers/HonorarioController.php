@@ -154,6 +154,43 @@ class HonorarioController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+    // DEBUG: ver respuesta cruda del portal BHE del SII
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function debugBte(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+        $mes  = (int) $request->input('mes', now()->month);
+
+        $resultado = $this->bte->debugRaw($anio, $mes);
+
+        // Devolver como texto plano para ver en el navegador
+        if ($resultado['ok']) {
+            $html = $resultado['html'];
+            // Extraer solo el bloque de JS relevante para no ver HTML completo
+            $snippet = '';
+            if (preg_match('/CantidadFilas.*?arr_informe_mensual\[\'nroboleta_(\d+)/s', $html, $m)) {
+                $snippet = '>>> CantidadFilas y nroboleta encontrados <<<';
+            } else {
+                $snippet = '>>> CantidadFilas NO encontrado — posible formato distinto <<<';
+            }
+
+            return response()->make(
+                "LONGITUD: {$resultado['length']} bytes\n\n{$snippet}\n\n--- PRIMEROS 5000 CARACTERES ---\n\n"
+                . htmlspecialchars(substr($html, 0, 5000)),
+                200,
+                ['Content-Type' => 'text/plain; charset=utf-8']
+            );
+        }
+
+        return response()->make(
+            "ERROR: " . $resultado['error'],
+            500,
+            ['Content-Type' => 'text/plain; charset=utf-8']
+        );
+    }
+
+    // ─────────────────────────────────────────────────────────────────────────
     // 3. RESUMEN: gasto mensual por emisor
     // ─────────────────────────────────────────────────────────────────────────
 

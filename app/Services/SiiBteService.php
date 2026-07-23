@@ -216,15 +216,51 @@ class SiiBteService
         return $resp['body'];
     }
 
+    // ── Debug público ────────────────────────────────────────────────────────
+
+    /**
+     * Devuelve la respuesta cruda del portal BHE para depuración.
+     * Llama a esto desde una ruta protegida para ver qué devuelve SII.
+     */
+    public function debugRaw($anio, $mes)
+    {
+        try {
+            $this->abrirSesion();
+            $html = $this->pedirMensual($anio, $mes);
+            $this->cerrarSesion();
+
+            // Guardar en log
+            \Illuminate\Support\Facades\Log::info('BHE debug raw', [
+                'periodo' => sprintf('%04d%02d', $anio, $mes),
+                'length'  => strlen($html),
+                'snippet' => substr($html, 0, 2000),
+            ]);
+
+            return ['ok' => true, 'html' => $html, 'length' => strlen($html)];
+        } catch (\Exception $e) {
+            $this->cerrarSesion();
+            return ['ok' => false, 'error' => $e->getMessage(), 'html' => ''];
+        }
+    }
+
     // ── Parser JS ────────────────────────────────────────────────────────────
 
     private function parsearJs($html, $periodo)
     {
+        // Guardar en log para depuración
+        \Illuminate\Support\Facades\Log::info('BHE parsearJs', [
+            'periodo' => $periodo,
+            'length'  => strlen($html),
+            'snippet' => substr($html, 0, 3000),
+        ]);
+
         if (strpos($html, 'NO REGISTRA MOVIMIENTOS') !== false) {
+            \Illuminate\Support\Facades\Log::info('BHE: sin movimientos en período ' . $periodo);
             return [];
         }
 
         if (!preg_match('/CantidadFilas\s*=\s*(\d+)\s*;/', $html, $m)) {
+            \Illuminate\Support\Facades\Log::warning('BHE: CantidadFilas no encontrado en período ' . $periodo);
             return [];
         }
         $total = (int) $m[1];

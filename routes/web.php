@@ -340,6 +340,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::get('/',             'HonorarioController@index')->name('index');
         Route::post('/sincronizar', 'HonorarioController@sincronizar')->name('sincronizar');
         Route::get('/resumen',      'HonorarioController@resumen')->name('resumen');
+        Route::get('/debug-bte',    'HonorarioController@debugBte')->name('debugBte');
     });
     // F29 / Impuestos — estimación mensual desde datos SII
     Route::prefix('impuesto')->name('impuesto.')->group(function () {
