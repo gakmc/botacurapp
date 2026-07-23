@@ -84,6 +84,16 @@ Route::prefix('egresos')->namespace('Api')->group(function () {
     Route::get('/{id}',         'EgresoApiController@show')->name('egresos.show');
 });
 
+// -------------------------------------------------------------------------
+// WhatsApp Business — webhook Meta
+// GET  /api/whatsapp/webhook  → verificación
+// POST /api/whatsapp/webhook  → mensajes entrantes
+// -------------------------------------------------------------------------
+Route::prefix('whatsapp')->namespace('Api')->group(function () {
+    Route::get('webhook',  'WhatsAppWebhookController@verify')->name('whatsapp.webhook.verify');
+    Route::post('webhook', 'WhatsAppWebhookController@handle')->name('whatsapp.webhook.handle');
+});
+
 Route::prefix('woocommerce')->namespace('Api')->group(function(){
 
     // Endpoint de prueba — no requiere auth, solo verifica que el servidor responde
