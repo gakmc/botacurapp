@@ -180,10 +180,13 @@ class SiiService
 
     private function postJson($path, $body)
     {
+        // Construir URL absoluta manualmente para evitar que Guzzle descarte
+        // el segmento /api/v2/sii cuando el path empieza con '/'.
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+
         $client = new Client([
-            'base_uri' => $this->baseUrl,
-            'timeout'  => $this->timeout,
-            'headers'  => [
+            'timeout' => $this->timeout,
+            'headers' => [
                 'Authorization' => 'Token ' . $this->token,
                 'Content-Type'  => 'application/json',
                 'Accept'        => 'application/json',
@@ -191,7 +194,9 @@ class SiiService
             'verify' => false,
         ]);
 
-        $response = $client->post($path, ['json' => $body]);
+        \Illuminate\Support\Facades\Log::info('SII API request', ['url' => $url]);
+
+        $response = $client->post($url, ['json' => $body]);
         $body_str = (string) $response->getBody();
         $decoded  = json_decode($body_str, true);
 

@@ -247,20 +247,12 @@ class SiiBteService
 
     private function parsearJs($html, $periodo)
     {
-        // Guardar en log para depuración
-        \Illuminate\Support\Facades\Log::info('BHE parsearJs', [
-            'periodo' => $periodo,
-            'length'  => strlen($html),
-            'snippet' => substr($html, 0, 3000),
-        ]);
-
         if (strpos($html, 'NO REGISTRA MOVIMIENTOS') !== false) {
-            \Illuminate\Support\Facades\Log::info('BHE: sin movimientos en período ' . $periodo);
             return [];
         }
 
         if (!preg_match('/CantidadFilas\s*=\s*(\d+)\s*;/', $html, $m)) {
-            \Illuminate\Support\Facades\Log::warning('BHE: CantidadFilas no encontrado en período ' . $periodo);
+            \Illuminate\Support\Facades\Log::warning('BHE: CantidadFilas no encontrado en ' . $periodo);
             return [];
         }
         $total = (int) $m[1];
@@ -268,18 +260,52 @@ class SiiBteService
             return [];
         }
 
+        // Extraer todos los valores de arr_informe_mensual en una sola pasada.
+        // El SII puede usar asignación directa ("value") o formatMiles("digits"...)
+        // Patrón: arr_informe_mensual['key_N'] = "value" o = formatMiles("digits"...
+        $lookup = [];
+
+        // Valores de cadena: arr_informe_mensual['key'] = "value";;
+        preg_match_all(
+            '/arr_informe_mensual\s*\[\s*\'([^\']+)\'\s*\]\s*=\s*"([^"]*)"/u',
+            $html, $matches, PREG_SET_ORDER
+        );
+        foreach ($matches as $match) {
+            $lookup[$match[1]] = $match[2];
+        }
+
+        // Valores monetarios via formatMiles: arr_informe_mensual['key'] = formatMiles("digits"
+        preg_match_all(
+            '/arr_informe_mensual\s*\[\s*\'([^\']+)\'\s*\]\s*=\s*formatMiles\s*\(\s*"(\d+)"/u',
+            $html, $matches, PREG_SET_ORDER
+        );
+        foreach ($matches as $match) {
+            $lookup[$match[1]] = $match[2]; // override con valor numérico
+        }
+
+        // Log para depuración: primeros 3 registros del lookup
+        $sample = array_filter($lookup, function ($k) {
+            return strpos($k, '_1') !== false || strpos($k, '_2') !== false;
+        }, ARRAY_FILTER_USE_KEY);
+        \Illuminate\Support\Facades\Log::info('BHE parsearJs', [
+            'periodo'      => $periodo,
+            'total'        => $total,
+            'lookup_count' => count($lookup),
+            'sample'       => array_slice($sample, 0, 20),
+        ]);
+
         $btes = [];
         for ($i = 1; $i <= $total; $i++) {
-            $folio        = $this->jsVal($html, 'nroboleta',        $i);
-            $rutNum       = $this->jsVal($html, 'rutemisor',        $i);
-            $dvEmisor     = $this->jsVal($html, 'dvemisor',         $i);
-            $nombreEmisor = $this->jsVal($html, 'nombre_emisor',    $i);
-            $fechaStr     = $this->jsVal($html, 'fecha_boleta',     $i);
-            $estadoCod    = $this->jsVal($html, 'estado',           $i);
+            $folio        = $lookup["nroboleta_{$i}"]        ?? '';
+            $rutNum       = $lookup["rutemisor_{$i}"]        ?? '';
+            $dvEmisor     = $lookup["dvemisor_{$i}"]         ?? '';
+            $nombreEmisor = $lookup["nombre_emisor_{$i}"]    ?? '';
+            $fechaStr     = $lookup["fecha_boleta_{$i}"]     ?? '';
+            $estadoCod    = $lookup["estado_{$i}"]           ?? '';
 
-            $bruto    = $this->jsMiles($html, 'totalhonorarios',    $i);
-            $retenido = $this->jsMiles($html, 'retencion_receptor', $i);
-            $pagado   = $this->jsMiles($html, 'honorariosliquidos', $i);
+            $bruto    = (int) ($lookup["totalhonorarios_{$i}"]    ?? 0);
+            $retenido = (int) ($lookup["retencion_receptor_{$i}"] ?? 0);
+            $pagado   = (int) ($lookup["honorariosliquidos_{$i}"]  ?? 0);
 
             if (empty($folio)) {
                 continue;
@@ -304,24 +330,6 @@ class SiiBteService
         }
 
         return $btes;
-    }
-
-    private function jsVal($html, $key, $idx)
-    {
-        $pat = '/arr_informe_mensual\[\'' . preg_quote($key, '/') . '_' . $idx . '\'\]\s*=\s*"([^"]*)"/';
-        if (preg_match($pat, $html, $m)) {
-            return $m[1];
-        }
-        return '';
-    }
-
-    private function jsMiles($html, $key, $idx)
-    {
-        $pat = '/arr_informe_mensual\[\'' . preg_quote($key, '/') . '_' . $idx . '\'\]\s*=\s*formatMiles\("(\d+)"/';
-        if (preg_match($pat, $html, $m)) {
-            return (int) $m[1];
-        }
-        return 0;
     }
 
     private function parsearFecha($valor)
