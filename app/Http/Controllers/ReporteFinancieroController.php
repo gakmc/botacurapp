@@ -490,9 +490,11 @@ class ReporteFinancieroController extends Controller
             ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
             ->sum('subtotal');
 
-        $poro = (int) DB::table('poro_poro_ventas')
-            ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
-            ->sum('total');
+        $poro = Schema::hasTable('poro_poro_ventas')
+            ? (int) DB::table('poro_poro_ventas')
+                ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+                ->sum('total')
+            : 0;
 
         $totalIngresos = $abonos + $consumos + $servicios + $directas + $poro;
 
