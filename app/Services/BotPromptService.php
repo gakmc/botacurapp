@@ -16,13 +16,14 @@ class BotPromptService
     /**
      * Retorna el system prompt completo.
      *
-     * @param  array  $programas  Array de programas desde la BD:
-     *                            [{ id, nombre, precio_formato, servicios[], incluye_masajes, incluye_almuerzos }]
+     * @param  array  $programas     Array de programas desde la BD
+     * @param  array  $menuOpciones  Array con 'entradas', 'fondos', 'acompañamientos' (id+nombre)
      * @return string
      */
-    public function getSystemPrompt(array $programas = [])
+    public function getSystemPrompt(array $programas = [], array $menuOpciones = [])
     {
         $bloqueProgramas = $this->construirBloqueProgramas($programas);
+        $bloqueMenu      = $this->construirBloqueMenu($menuOpciones);
 
         return <<<PROMPT
 Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo.
@@ -304,42 +305,16 @@ Luego usa accion "crear_reserva" — el sistema crea la reserva en la BD y te de
 el ID + instrucciones de pago. Tú usas esos datos para confirmar al cliente.
 
 ═══════════════════════════════════════════════════════
-MENÚ OTOÑO 2026 — ALMUERZO (para guiar al cliente en sus elecciones)
+MENÚ OTOÑO 2026 — ALMUERZO (productos desde la base de datos)
 ═══════════════════════════════════════════════════════
 
 Cada persona elige 1 entrada + 1 fondo + 1 acompañamiento.
-El Pastel de Papas NO lleva acompañamiento.
-Formato de pedido: ENTRADA + FONDO + ACOMPAÑAMIENTO
+REGLA: El "Pastel de Papas" NO lleva acompañamiento → acompanamiento_id = null.
+REGLA: Si no envían menú antes del día de la visita, NO se envían horarios del spa.
 
-ENTRADAS (elegir 1):
-1. Crema de Zapallo — zapallo fresco, zanahoria, cebolla, ajo, cúrcuma, crema y parmesano
-2. Ensalada Repollo Zanahoria
-3. Ensalada Chilena
-4. Ensalada Tomate
-5. Ensalada Surtida
+USA SIEMPRE LOS ID DE PRODUCTO al usar la acción guardar_seleccion_menu.
 
-PLATOS DE FONDO (elegir 1):
-1. Costillar al Horno — salsa de cerveza, ajo, orégano, soya y azúcar
-2. Carne Mechada — vacuno a fuego lento, vino tinto, especias
-3. Pollo a la Mostaza — trutro horneado, mostaza, miel, ajo
-4. Pastel de Papas — puré cremoso, pino de vacuno, huevo, aceitunas, parmesano (SIN acompañamiento)
-VEGETARIANOS:
-5. Fettuchinni con Salsa de Champiñón — crema, cebolla, ajo, champiñones, parmesano
-6. Fettuchinni con Salsa de Champiñón Veggie — bechamel vegetal, sin lácteos
-7. Lasagna de Berenjena con Bechamel Vegana — berenjenas, cebolla, zanahoria, tomates, queso vegano
-
-ACOMPAÑAMIENTOS (elegir 1, excepto si elige Pastel de Papas):
-1. Puré Verde — puré de papas con espinaca, leche, mantequilla, crema
-2. Arroz a la Primavera de la Casa — caldo de pollo, zanahoria, apio, pimentón
-3. Papas Mayo — papas y zanahoria cocidas con mayonesa y ciboulette
-4. Quinoa — al dente, aceite de oliva, ajo
-
-REGLA CLAVE (mencionar siempre al solicitar menú):
-"Si no envían las elecciones de menú ANTES del día de la visita, no podemos enviarles los horarios disponibles de spa 🕐"
-
-Formato ideal de respuesta del cliente:
-"Persona 1: Ensalada Chilena + Pollo a la Mostaza + Papas Mayo
-Persona 2: Crema de Zapallo + Carne Mechada + Arroz"
+{$bloqueMenu}
 
 ═══════════════════════════════════════════════════════
 CONFIRMACIÓN POST-RESERVA
@@ -394,9 +369,11 @@ Persona 2: Crema de Zapallo + Carne Mechada + Arroz
 
 ¿Tienen alguna alergia o restricción alimentaria que debamos saber? 🌱"
 
-Cuando el cliente responda con sus elecciones, usa la acción "guardar_menu_texto".
-Cuando mencione alergias/restricciones, inclúyelas también.
-Si pide aclaración sobre algún plato, usa el menú del prompt para explicar ingredientes.
+Cuando el cliente responda con sus elecciones, usa la acción "guardar_seleccion_menu".
+Mapea cada nombre de plato al ID correspondiente del bloque de menú.
+Si menciona alergias/restricciones, inclúyelas en el campo "alergias" de esa persona.
+Si pide "sin cebolla" u otra nota sobre un plato, ponlo en "observacion" de esa persona.
+Si pide aclaración sobre algún plato, explica ingredientes con la info del bloque de menú.
 
 ═══════════════════════════════════════════════════════
 FORMATO DE RESPUESTA — OBLIGATORIO
@@ -445,17 +422,29 @@ ACCIONES DISPONIBLES:
   Usar 0 para los numéricos que no apliquen. NUNCA omitirlos.
   desayuno_tipo es OBLIGATORIO si desayuno_once > 0; de lo contrario enviar null.
 
-"guardar_menu_texto"
-  → Cliente envió sus elecciones de menú (entradas/fondos/acompañamientos) y/o alergias.
+"guardar_seleccion_menu"
+  → Cliente envió sus elecciones de menú. Debes mapear cada plato al ID del bloque MENÚ.
   → datos: {
-      "reserva_id":  N,                    (ID de la reserva — OBLIGATORIO)
-      "menu_texto":  "Persona 1: ... | Persona 2: ...",  (elecciones como texto libre)
-      "alergias":    "texto o null"        (restricciones alimentarias)
+      "reserva_id": N,              (ID de la reserva — OBLIGATORIO)
+      "selecciones": [              (array — una entrada por persona)
+        {
+          "persona":            1,
+          "entrada_id":         N,  (ID del producto entrada — OBLIGATORIO)
+          "fondo_id":           N,  (ID del producto fondo — OBLIGATORIO)
+          "acompanamiento_id":  N,  (ID del acompañamiento; null si elige Pastel de Papas)
+          "observacion":       "sin cebolla",  (nota sobre el plato; null si no hay)
+          "alergias":          "celíaco"       (restricción alimentaria; null si no hay)
+        }
+      ]
     }
   REGLAS:
-  - Concatenar todas las elecciones de personas en un solo string, separadas por " | "
-  - Si el cliente dice "sin alergias" o no menciona → alergias = null
-  - Confirmar al cliente que recibiste su pedido y que los horarios se enviarán próximamente.
+  - Una entrada en "selecciones" por cada persona que ordenó desayuno u once.
+  - Mapea SIEMPRE nombre de plato → ID usando el bloque MENÚ del prompt.
+  - Pastel de Papas → acompanamiento_id = null.
+  - "sin algo" (ej: sin cebolla) → va en "observacion", NO en alergias.
+  - Alergias/intolerancias → van en "alergias".
+  - Si el cliente no menciona alergias → alergias = null.
+  - Confirmar al cliente que recibiste el pedido y que los horarios se enviarán próximamente.
 
 "escalar_humano"
   → Situación que supera el alcance del bot (evento empresa, excepción de política, etc.)
@@ -469,6 +458,48 @@ REGLAS DEL MENSAJE:
 - Si no sabes, di: "Déjame consultarlo con el equipo 🙏"
 - Al escalar: "Puedes también escribir directamente a +56 9 7448 4112 o hola@botacura.cl"
 PROMPT;
+    }
+
+    /**
+     * Construye el bloque de menú con IDs reales de la BD.
+     * Claude usará estos IDs en la acción guardar_seleccion_menu.
+     *
+     * @param  array $menuOpciones  ['entradas' => [{id,nombre}], 'fondos' => [...], 'acompañamientos' => [...]]
+     * @return string
+     */
+    private function construirBloqueMenu(array $menuOpciones)
+    {
+        $entradas        = $menuOpciones['entradas']        ?? [];
+        $fondos          = $menuOpciones['fondos']          ?? [];
+        $acompañamientos = $menuOpciones['acompañamientos'] ?? [];
+
+        if (empty($entradas) && empty($fondos) && empty($acompañamientos)) {
+            return "⚠️ [Menú no disponible en BD — usar información estática si el cliente pregunta]";
+        }
+
+        $lineas = [];
+
+        $lineas[] = "ENTRADAS (entrada_id):";
+        foreach ($entradas as $e) {
+            $lineas[] = "  ID:{$e['id']} | {$e['nombre']}";
+        }
+
+        $lineas[] = "";
+        $lineas[] = "FONDOS (fondo_id):";
+        foreach ($fondos as $f) {
+            $lineas[] = "  ID:{$f['id']} | {$f['nombre']}";
+            if (strpos($f['nombre'], 'Pastel de Papas') !== false) {
+                $lineas[] = "    ⚠️ SIN ACOMPAÑAMIENTO → acompanamiento_id = null";
+            }
+        }
+
+        $lineas[] = "";
+        $lineas[] = "ACOMPAÑAMIENTOS (acompanamiento_id):";
+        foreach ($acompañamientos as $a) {
+            $lineas[] = "  ID:{$a['id']} | {$a['nombre']}";
+        }
+
+        return implode("\n", $lineas);
     }
 
     /**

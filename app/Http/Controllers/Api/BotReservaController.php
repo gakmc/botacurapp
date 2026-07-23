@@ -403,15 +403,38 @@ class BotReservaController extends Controller
      * @return int|null
      */
     /**
-     * PATCH /api/bot-ai/reserva/{id}/menu-texto
-     * Guarda las elecciones de menú (texto libre) y alergias en los registros de menus.
-     * Se llama después de que el cliente responde al PDF enviado post-pago.
+     * PATCH /api/bot-ai/reserva/{id}/menu-seleccion
+     *
+     * Guarda la selección de menú de cada persona con IDs reales de productos.
+     * La tabla menus tiene un registro por persona (creados al hacer la reserva si
+     * desayuno_once > 0). Este endpoint actualiza esos registros con:
+     *   id_producto_entrada, id_producto_fondo, id_producto_acompanamiento,
+     *   observacion (notas por plato, ej: "sin cebolla"), alergias.
+     *
+     * Body JSON:
+     * {
+     *   "selecciones": [
+     *     {
+     *       "persona":           1,
+     *       "entrada_id":        N,
+     *       "fondo_id":          N,
+     *       "acompanamiento_id": N|null,
+     *       "observacion":       "sin cebolla"|null,
+     *       "alergias":          "celíaco"|null
+     *     }
+     *   ]
+     * }
      */
-    public function guardarMenuTexto(Request $request, $id)
+    public function guardarSeleccionMenu(Request $request, $id)
     {
         $request->validate([
-            'menu_texto' => 'nullable|string|max:2000',
-            'alergias'   => 'nullable|string|max:500',
+            'selecciones'                       => 'required|array|min:1',
+            'selecciones.*.persona'             => 'required|integer|min:1',
+            'selecciones.*.entrada_id'          => 'required|integer|exists:productos,id',
+            'selecciones.*.fondo_id'            => 'required|integer|exists:productos,id',
+            'selecciones.*.acompanamiento_id'   => 'nullable|integer|exists:productos,id',
+            'selecciones.*.observacion'         => 'nullable|string|max:500',
+            'selecciones.*.alergias'            => 'nullable|string|max:500',
         ]);
 
         $reserva = DB::table('reservas')->where('id', $id)->first();
@@ -419,50 +442,70 @@ class BotReservaController extends Controller
             return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
         }
 
-        $menuTexto = $request->menu_texto ? trim($request->menu_texto) : null;
-        $alergias  = $request->alergias  ? trim($request->alergias)  : null;
+        // Obtener registros de menus existentes para esta reserva (ordenados por id)
+        $menus = DB::table('menus')
+            ->where('id_reserva', $id)
+            ->orderBy('id')
+            ->get();
 
-        // Obtener todos los registros de menus de esta reserva
-        $menus = DB::table('menus')->where('id_reserva', $id)->get();
+        $selecciones = $request->selecciones;
+        $guardados   = 0;
 
-        if ($menus->isEmpty()) {
-            // Si no hay registros previos (reserva sin desayuno/once), crear uno genérico
-            DB::table('menus')->insert([
-                'id_reserva'   => $id,
-                'alergias'     => $alergias,
-                'observacion'  => $menuTexto,
-                'created_at'   => now(),
-                'updated_at'   => now(),
-            ]);
-        } else {
-            // Distribuir el texto y alergias en todos los registros existentes
-            // El texto completo va en el primer registro; alergias en todos.
-            $first = true;
-            foreach ($menus as $menu) {
-                DB::table('menus')->where('id', $menu->id)->update([
-                    'observacion' => $first ? $menuTexto : null,
-                    'alergias'    => $alergias,
-                    'updated_at'  => now(),
+        foreach ($selecciones as $i => $sel) {
+            $entradaId       = (int) $sel['entrada_id'];
+            $fondoId         = (int) $sel['fondo_id'];
+            $acompId         = isset($sel['acompanamiento_id']) && $sel['acompanamiento_id']
+                                ? (int) $sel['acompanamiento_id']
+                                : null;
+            $observacion     = isset($sel['observacion']) && $sel['observacion']
+                                ? trim($sel['observacion'])
+                                : null;
+            $alergias        = isset($sel['alergias']) && $sel['alergias']
+                                ? trim($sel['alergias'])
+                                : null;
+
+            if (isset($menus[$i])) {
+                // Actualizar registro existente
+                DB::table('menus')->where('id', $menus[$i]->id)->update([
+                    'id_producto_entrada'        => $entradaId,
+                    'id_producto_fondo'          => $fondoId,
+                    'id_producto_acompanamiento' => $acompId,
+                    'observacion'                => $observacion,
+                    'alergias'                   => $alergias,
+                    'updated_at'                 => now(),
                 ]);
-                $first = false;
+            } else {
+                // Crear nuevo registro si la reserva no tenía suficientes (edge case)
+                DB::table('menus')->insert([
+                    'id_reserva'                 => $id,
+                    'id_producto_entrada'        => $entradaId,
+                    'id_producto_fondo'          => $fondoId,
+                    'id_producto_acompanamiento' => $acompId,
+                    'observacion'                => $observacion,
+                    'alergias'                   => $alergias,
+                    'tipo_servicio'              => $reserva->tipo_servicio ?? null,
+                    'created_at'                 => now(),
+                    'updated_at'                 => now(),
+                ]);
             }
+            $guardados++;
         }
 
-        // Marcar reserva como menu recibido
+        // Marcar reserva como menú recibido
         DB::table('reservas')->where('id', $id)->update([
             'menu_recibido' => 1,
             'updated_at'    => now(),
         ]);
 
-        Log::info("[Bot] Menú guardado para reserva #{$id}", [
-            'menu_texto' => $menuTexto,
-            'alergias'   => $alergias,
+        Log::info("[Bot] Selección de menú guardada para reserva #{$id}", [
+            'personas'  => $guardados,
+            'selecciones' => $selecciones,
         ]);
 
         return response()->json([
             'ok'         => true,
             'reserva_id' => (int) $id,
-            'guardado'   => true,
+            'guardados'  => $guardados,
             'mensaje'    => '¡Pedido recibido! Tus elecciones de menú quedaron registradas. En los próximos días recibirás los horarios disponibles del spa. 🕐',
         ]);
     }

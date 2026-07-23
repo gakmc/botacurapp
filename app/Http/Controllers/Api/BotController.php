@@ -379,10 +379,11 @@ class BotController extends Controller
         $historial   = json_decode($conv->historial_json ?? '[]', true) ?: [];
         $historial[] = ['role' => 'user', 'content' => $mensaje];
 
-        // System prompt con programas dinámicos desde BD
+        // System prompt con programas y menú dinámicos desde BD
         $programas    = $this->cargarProgramasBd();
+        $menuOpciones = $this->cargarMenuOpciones();
         $promptSvc    = new BotPromptService();
-        $systemPrompt = $promptSvc->getSystemPrompt($programas);
+        $systemPrompt = $promptSvc->getSystemPrompt($programas, $menuOpciones);
 
         // Llamar a Claude
         $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
@@ -407,8 +408,8 @@ class BotController extends Controller
             $respuesta = $this->procesarDisponibilidad($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
         } elseif ($accion === 'crear_reserva') {
             $respuesta = $this->procesarCrearReservaClaude($respuesta, $systemPrompt, $historial, $mensaje, $nombre, $usuarioId);
-        } elseif ($accion === 'guardar_menu_texto') {
-            $respuesta = $this->procesarGuardarMenuTexto($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
+        } elseif ($accion === 'guardar_seleccion_menu') {
+            $respuesta = $this->procesarGuardarSeleccionMenu($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
         }
 
         $historial[] = ['role' => 'assistant', 'content' => $respuesta['mensaje'] ?? ''];
@@ -463,7 +464,7 @@ class BotController extends Controller
         }
     }
 
-    private function procesarGuardarMenuTexto(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
+    private function procesarGuardarSeleccionMenu(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
     {
         $datos = $respuesta['datos'] ?? [];
         if (empty($datos['reserva_id'])) {
@@ -474,17 +475,26 @@ class BotController extends Controller
             $res = Http::withHeaders([
                 self::BOT_SECRET_HEADER => $secret,
                 'content-type'          => 'application/json',
-            ])->timeout(10)->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-texto'), [
-                'menu_texto' => $datos['menu_texto'] ?? null,
-                'alergias'   => $datos['alergias']   ?? null,
+            ])->timeout(10)->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
+                'selecciones' => $datos['selecciones'] ?? [],
             ]);
             $ctx = '[Sistema-menu: ' . json_encode($res->json(), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
             return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
         } catch (\Exception $e) {
-            Log::error('[Bot] Error guardando menú: ' . $e->getMessage());
+            Log::error('[Bot] Error guardando selección menú: ' . $e->getMessage());
             return $respuesta;
         }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // GET /api/bot-ai/menu-opciones
+    // Retorna productos activos agrupados por tipo (entrada/fondo/acompañamiento)
+    // ─────────────────────────────────────────────────────────────
+    public function menuOpciones()
+    {
+        $opciones = $this->cargarMenuOpciones();
+        return response()->json(['ok' => true, 'menu' => $opciones]);
     }
 
     private function procesarDisponibilidad(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
@@ -682,6 +692,54 @@ class BotController extends Controller
                 Log::error('[Bot] Error cargando programas: ' . $e2->getMessage());
                 return [];
             }
+        }
+    }
+
+    // ─────────────────────────────────────────────────────────────
+    // INTERNOS — Menú opciones
+    // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Carga todos los productos activos agrupados por tipo (entrada/fondo/acompañamiento).
+     * Retorna array con 'entradas', 'fondos', 'acompañamientos', cada uno con id+nombre.
+     */
+    private function cargarMenuOpciones()
+    {
+        try {
+            $rows = DB::table('productos as p')
+                ->join('tipos_productos as tp', 'tp.id', '=', 'p.id_tipo_producto')
+                ->where(function ($q) {
+                    $q->where('p.estado', 'activo')->orWhereNull('p.estado');
+                })
+                ->whereIn('tp.nombre', ['entrada', 'fondo', 'acompañamiento'])
+                ->select('p.id', 'p.nombre', 'tp.nombre as tipo')
+                ->orderBy('tp.nombre')
+                ->orderBy('p.id')
+                ->get();
+
+            $entradas       = [];
+            $fondos         = [];
+            $acompañamientos = [];
+
+            foreach ($rows as $row) {
+                $item = ['id' => $row->id, 'nombre' => $row->nombre];
+                if ($row->tipo === 'entrada') {
+                    $entradas[] = $item;
+                } elseif ($row->tipo === 'fondo') {
+                    $fondos[] = $item;
+                } elseif ($row->tipo === 'acompañamiento') {
+                    $acompañamientos[] = $item;
+                }
+            }
+
+            return [
+                'entradas'        => $entradas,
+                'fondos'          => $fondos,
+                'acompañamientos' => $acompañamientos,
+            ];
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error cargando menú opciones: ' . $e->getMessage());
+            return ['entradas' => [], 'fondos' => [], 'acompañamientos' => []];
         }
     }
 
