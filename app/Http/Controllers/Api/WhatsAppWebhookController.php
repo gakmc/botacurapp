@@ -122,7 +122,11 @@ class WhatsAppWebhookController extends Controller
                 ],
             ]);
 
-            $botData = json_decode((string) $botRes->getBody(), true) ?? [];
+            $botStatus = $botRes->getStatusCode();
+            $botBody   = (string) $botRes->getBody();
+            Log::info('[WhatsApp] Bot response', ['status' => $botStatus, 'body' => substr($botBody, 0, 500)]);
+
+            $botData = json_decode($botBody, true) ?? [];
             $mensaje = $botData['mensaje'] ?? null;
 
             if ($mensaje) {

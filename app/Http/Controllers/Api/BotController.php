@@ -636,10 +636,11 @@ class BotController extends Controller
                 ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
                 ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
                 ->select(
-                    'p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo',
-                    'p.incluye_masajes', 'p.incluye_almuerzos',
+                    'p.id', 'p.nombre_programa', 'p.valor_programa', 'p.descuento',
+                    'p.espacio_tipo', 'p.incluye_masajes', 'p.incluye_almuerzos',
                     's.nombre_servicio', 's.slug as servicio_slug'
                 )
+                ->where('p.estado', 'activo')
                 ->orderBy('p.valor_programa')
                 ->orderBy('s.nombre_servicio')
                 ->get();
@@ -648,11 +649,14 @@ class BotController extends Controller
             foreach ($filas as $fila) {
                 $id = $fila->id;
                 if (!isset($agrupados[$id])) {
+                    $base     = (int) ($fila->valor_programa ?? 0);
+                    $desc     = (int) ($fila->descuento ?? 0);
+                    $precio   = $base - $desc;
                     $agrupados[$id] = [
                         'id'                => $id,
                         'nombre'            => $fila->nombre_programa,
-                        'precio'            => (int) $fila->valor_programa,
-                        'precio_formato'    => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
+                        'precio'            => $precio,
+                        'precio_formato'    => '$' . number_format($precio, 0, ',', '.'),
                         'espacio_tipo'      => $fila->espacio_tipo,
                         'servicios'         => [],
                         'incluye_masajes'   => (bool) ($fila->incluye_masajes ?? false),

@@ -27,21 +27,6 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
-Route::get('/test-mail', function () {
-    $data = [
-        'pdfPath' => storage_path('app/temp_pdfs/test.pdf'), // crea un archivo dummy si quieres
-        'correo'  => 'tu_correo@ejemplo.com',
-    ];
-
-    // pruébalo con un mailable simple sin adjunto primero
-    Mail::raw('Prueba de correo desde Laravel', function ($message) {
-        $message->to('tu_correo@ejemplo.com')
-            ->subject('Test mail simple');
-    });
-
-    return 'ok';
-});
-
 Route::get('/prueba-pdf', function () {
     $pdf = PDF::loadHTML('<h1>Hola desde wkhtmltopdf</h1>');
     return $pdf->inline('test.pdf'); // o ->download('test.pdf')
