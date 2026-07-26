@@ -27,10 +27,6 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
-Route::get('/prueba-pdf', function () {
-    $pdf = PDF::loadHTML('<h1>Hola desde wkhtmltopdf</h1>');
-    return $pdf->inline('test.pdf'); // o ->download('test.pdf')
-});
 
 Route::middleware('auth')->group(function () {
     Route::post('/push/subscribe', 'PushSubscriptionController@store')->name('push.subscribe');
