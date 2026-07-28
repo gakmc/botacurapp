@@ -150,8 +150,8 @@ class SueldoController extends Controller
                 continue;
             }
 
-            // El accessor getDiaTrabajadoAttribute devuelve "d-m-Y"; usamos createFromFormat para parsear sin ambigüedad
-            $rawDate      = $sueldo->getRawOriginal('dia_trabajado');
+            // Usar el valor raw del atributo (sin accessor) para parsear la fecha sin ambigüedad
+            $rawDate      = $sueldo->getAttributes()['dia_trabajado'];
             $fecha        = Carbon::parse($rawDate);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
             $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
