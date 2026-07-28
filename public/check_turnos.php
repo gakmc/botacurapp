@@ -2,63 +2,75 @@
 $pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=cbo56863_botacurapp;charset=utf8",
     'cbo56863', 'gZbQTjPFVYDzRzTdNmmA', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
+// 1. Turnos asignados semana 20-26 Jul (vía pivot asignacion_user)
+$turnos = $pdo->query("
+    SELECT a.fecha, u.id AS user_id, u.name
+    FROM asignaciones a
+    JOIN asignacion_user au ON au.asignacion_id = a.id
+    JOIN users u ON u.id = au.user_id
+    WHERE a.fecha BETWEEN '2026-07-20' AND '2026-07-26'
+    ORDER BY u.name, a.fecha
+")->fetchAll(PDO::FETCH_ASSOC);
+
+// 2. Valor/día promedio de cada persona (últimos sueldos 2026)
+$rates_stmt = $pdo->query("
+    SELECT s.id_user, ROUND(AVG(s.valor_dia)) AS avg_dia
+    FROM sueldos s
+    WHERE s.dia_trabajado BETWEEN '2026-01-01' AND '2026-07-19'
+    GROUP BY s.id_user
+");
+$rates = [];
+foreach ($rates_stmt->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    $rates[$r['id_user']] = $r['avg_dia'];
+}
+
+// 3. Ver qué sueldos YA existen esa semana
+$existing = $pdo->query("
+    SELECT id_user, dia_trabajado
+    FROM sueldos
+    WHERE dia_trabajado BETWEEN '2026-07-20' AND '2026-07-26'
+")->fetchAll(PDO::FETCH_ASSOC);
+$exists_set = [];
+foreach ($existing as $e) {
+    $exists_set[$e['id_user'].'_'.$e['dia_trabajado']] = true;
+}
+
 header('Content-Type: text/plain; charset=utf-8');
+echo "=== TURNOS ASIGNADOS 20-26 Jul 2026 ===\n";
+echo count($turnos) . " registros encontrados\n\n";
 
-// 1. Columnas de asignaciones
-echo "=== TABLA asignaciones ===\n";
-foreach ($pdo->query("DESCRIBE asignaciones")->fetchAll(PDO::FETCH_ASSOC) as $c) {
-    echo $c['Field'] . " " . $c['Type'] . "\n";
-}
-echo "\nMuestra 3 filas:\n";
-foreach ($pdo->query("SELECT * FROM asignaciones LIMIT 3")->fetchAll(PDO::FETCH_ASSOC) as $r) {
-    echo json_encode($r) . "\n";
-}
-
-// 2. Columnas de asistencias
-echo "\n=== TABLA asistencias ===\n";
-foreach ($pdo->query("DESCRIBE asistencias")->fetchAll(PDO::FETCH_ASSOC) as $c) {
-    echo $c['Field'] . " " . $c['Type'] . "\n";
-}
-echo "\nMuestra 3 filas:\n";
-foreach ($pdo->query("SELECT * FROM asistencias LIMIT 3")->fetchAll(PDO::FETCH_ASSOC) as $r) {
-    echo json_encode($r) . "\n";
+$inserts = [];
+$by_user = [];
+foreach ($turnos as $t) {
+    $uid = $t['user_id'];
+    $by_user[$uid]['name'] = $t['name'];
+    $by_user[$uid]['dias'][] = $t['fecha'];
+    $by_user[$uid]['avg_dia'] = isset($rates[$uid]) ? $rates[$uid] : 0;
 }
 
-// 3. Asignaciones semana 20-26 Jul
-echo "\n=== ASIGNACIONES semana 20-26 Jul ===\n";
-$cols = array_column($pdo->query("DESCRIBE asignaciones")->fetchAll(PDO::FETCH_ASSOC), 'Field');
-// Buscar columna de fecha
-$date_col = null;
-foreach (['fecha', 'date', 'dia', 'fecha_inicio', 'start_date', 'created_at'] as $c) {
-    if (in_array($c, $cols)) { $date_col = $c; break; }
+foreach ($by_user as $uid => $info) {
+    $dias = count($info['dias']);
+    $avg = $info['avg_dia'];
+    $total = $dias * $avg;
+    $already = 0;
+    foreach ($info['dias'] as $d) {
+        if (isset($exists_set[$uid.'_'.$d])) $already++;
+    }
+    echo "id=$uid  {$info['name']}  dias=$dias  valor_dia=\${$avg}  total=\${$total}  ya_en_sueldos=$already\n";
+    echo "  fechas: " . implode(', ', $info['dias']) . "\n";
 }
-if ($date_col) {
-    $stmt = $pdo->prepare("SELECT a.*, u.name FROM asignaciones a LEFT JOIN users u ON u.id = a.id_user OR u.id = a.user_id WHERE `$date_col` BETWEEN '2026-07-20' AND '2026-07-26' LIMIT 50");
-    try { $stmt->execute(); foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) echo json_encode($r) . "\n"; }
-    catch(Exception $e) { echo "Error: " . $e->getMessage() . "\n"; }
-} else {
-    echo "No se encontró columna de fecha. Columnas: " . implode(', ', $cols) . "\n";
-    // intenta con created_at
-    try {
-        foreach ($pdo->query("SELECT a.*, u.name FROM asignaciones a LEFT JOIN users u ON u.id = a.id_user WHERE a.created_at BETWEEN '2026-07-20' AND '2026-07-27' LIMIT 20")->fetchAll(PDO::FETCH_ASSOC) as $r) {
-            echo json_encode($r) . "\n";
+
+// 4. Generar INSERTs para los que faltan
+echo "\n=== SQL PARA INSERTAR LOS FALTANTES ===\n";
+echo "-- Pega esto en el gestor de DB de produccion (MySQL local EC2)\n\n";
+foreach ($by_user as $uid => $info) {
+    foreach ($info['dias'] as $d) {
+        $key = $uid.'_'.$d;
+        if (!isset($exists_set[$key])) {
+            $avg = $info['avg_dia'];
+            echo "INSERT INTO sueldos (id_user, dia_trabajado, valor_dia, sub_sueldo, total_pagar, created_at, updated_at) VALUES ($uid, '$d', $avg, $avg, $avg, NOW(), NOW());\n";
+            $inserts[] = $uid.'_'.$d;
         }
-    } catch(Exception $e) { echo "Error2: " . $e->getMessage() . "\n"; }
-}
-
-// 4. Valor/día histórico de cada funcionario
-echo "\n=== VALOR DIA HISTORICO ===\n";
-$names2 = ['Paula','Javiera','Juan G','Catalina M','Fernando M','Fernando C','Oliver','Jacinta','Alejandro','Catherine'];
-foreach ($names2 as $n) {
-    $s = $pdo->prepare("SELECT u.id, u.name, ROUND(AVG(s.valor_dia)) avg, COUNT(*) cnt FROM users u JOIN sueldos s ON s.id_user=u.id WHERE u.name LIKE ? AND s.dia_trabajado>='2026-01-01' GROUP BY u.id,u.name");
-    $s->execute(['%'.$n.'%']);
-    foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
-        echo "id={$r['id']} {$r['name']} avg_dia=\${$r['avg']} registros={$r['cnt']}\n";
     }
 }
-
-// 5. Asistencias semana
-echo "\n=== TABLA asistencia_user ===\n";
-foreach ($pdo->query("DESCRIBE asistencia_user")->fetchAll(PDO::FETCH_ASSOC) as $c) {
-    echo $c['Field'] . " " . $c['Type'] . "\n";
-}
+echo "\n-- Total INSERTs a ejecutar: " . count($inserts) . "\n";
