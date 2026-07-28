@@ -1,55 +1,64 @@
 <?php
-$host = '127.0.0.1'; $db = 'cbo56863_botacurapp';
-$user = 'cbo56863'; $pass = 'gZbQTjPFVYDzRzTdNmmA';
-$pdo = new PDO("mysql:host=$host;port=3306;dbname=$db;charset=utf8", $user, $pass);
-$pdo->setAttribute(PDO::ATTR_ERRMODE, PDO::ERRMODE_EXCEPTION);
+$pdo = new PDO("mysql:host=127.0.0.1;port=3306;dbname=cbo56863_botacurapp;charset=utf8",
+    'cbo56863', 'gZbQTjPFVYDzRzTdNmmA', [PDO::ATTR_ERRMODE => PDO::ERRMODE_EXCEPTION]);
 
-// Todas las tablas
-$tables = $pdo->query("SHOW TABLES")->fetchAll(PDO::FETCH_COLUMN);
-echo "<b>Tablas:</b> " . implode(', ', $tables) . "<br><br>";
+header('Content-Type: text/plain; charset=utf-8');
 
-// Tablas de turnos
-$turno_tables = [];
-foreach ($tables as $t) {
-    if (stripos($t,'turno') !== false || stripos($t,'horario') !== false || stripos($t,'asig') !== false) {
-        $turno_tables[] = $t;
+// 1. Columnas de asignaciones
+echo "=== TABLA asignaciones ===\n";
+foreach ($pdo->query("DESCRIBE asignaciones")->fetchAll(PDO::FETCH_ASSOC) as $c) {
+    echo $c['Field'] . " " . $c['Type'] . "\n";
+}
+echo "\nMuestra 3 filas:\n";
+foreach ($pdo->query("SELECT * FROM asignaciones LIMIT 3")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    echo json_encode($r) . "\n";
+}
+
+// 2. Columnas de asistencias
+echo "\n=== TABLA asistencias ===\n";
+foreach ($pdo->query("DESCRIBE asistencias")->fetchAll(PDO::FETCH_ASSOC) as $c) {
+    echo $c['Field'] . " " . $c['Type'] . "\n";
+}
+echo "\nMuestra 3 filas:\n";
+foreach ($pdo->query("SELECT * FROM asistencias LIMIT 3")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+    echo json_encode($r) . "\n";
+}
+
+// 3. Asignaciones semana 20-26 Jul
+echo "\n=== ASIGNACIONES semana 20-26 Jul ===\n";
+$cols = array_column($pdo->query("DESCRIBE asignaciones")->fetchAll(PDO::FETCH_ASSOC), 'Field');
+// Buscar columna de fecha
+$date_col = null;
+foreach (['fecha', 'date', 'dia', 'fecha_inicio', 'start_date', 'created_at'] as $c) {
+    if (in_array($c, $cols)) { $date_col = $c; break; }
+}
+if ($date_col) {
+    $stmt = $pdo->prepare("SELECT a.*, u.name FROM asignaciones a LEFT JOIN users u ON u.id = a.id_user OR u.id = a.user_id WHERE `$date_col` BETWEEN '2026-07-20' AND '2026-07-26' LIMIT 50");
+    try { $stmt->execute(); foreach ($stmt->fetchAll(PDO::FETCH_ASSOC) as $r) echo json_encode($r) . "\n"; }
+    catch(Exception $e) { echo "Error: " . $e->getMessage() . "\n"; }
+} else {
+    echo "No se encontró columna de fecha. Columnas: " . implode(', ', $cols) . "\n";
+    // intenta con created_at
+    try {
+        foreach ($pdo->query("SELECT a.*, u.name FROM asignaciones a LEFT JOIN users u ON u.id = a.id_user WHERE a.created_at BETWEEN '2026-07-20' AND '2026-07-27' LIMIT 20")->fetchAll(PDO::FETCH_ASSOC) as $r) {
+            echo json_encode($r) . "\n";
+        }
+    } catch(Exception $e) { echo "Error2: " . $e->getMessage() . "\n"; }
+}
+
+// 4. Valor/día histórico de cada funcionario
+echo "\n=== VALOR DIA HISTORICO ===\n";
+$names2 = ['Paula','Javiera','Juan G','Catalina M','Fernando M','Fernando C','Oliver','Jacinta','Alejandro','Catherine'];
+foreach ($names2 as $n) {
+    $s = $pdo->prepare("SELECT u.id, u.name, ROUND(AVG(s.valor_dia)) avg, COUNT(*) cnt FROM users u JOIN sueldos s ON s.id_user=u.id WHERE u.name LIKE ? AND s.dia_trabajado>='2026-01-01' GROUP BY u.id,u.name");
+    $s->execute(['%'.$n.'%']);
+    foreach ($s->fetchAll(PDO::FETCH_ASSOC) as $r) {
+        echo "id={$r['id']} {$r['name']} avg_dia=\${$r['avg']} registros={$r['cnt']}\n";
     }
 }
-echo "<b>Tablas turno/horario/asig:</b> " . (implode(', ', $turno_tables) ?: 'ninguna') . "<br><br>";
 
-foreach ($turno_tables as $t) {
-    $cols = $pdo->query("DESCRIBE `$t`")->fetchAll(PDO::FETCH_COLUMN);
-    echo "<b>$t</b>: " . implode(', ', $cols) . "<br>";
-    $cnt = $pdo->query("SELECT COUNT(*) FROM `$t`")->fetchColumn();
-    echo "  Total registros: $cnt<br>";
-    // muestra muestra
-    $sample = $pdo->query("SELECT * FROM `$t` LIMIT 2")->fetchAll(PDO::FETCH_ASSOC);
-    if ($sample) echo "<pre style='font-size:11px'>" . print_r($sample, true) . "</pre>";
-    echo "<br>";
-}
-
-// Valor por día de cada funcionario (de sueldos recientes)
-echo "<hr><b>Valor/día histórico de los funcionarios faltantes:</b><br><pre>";
-$names = ['Paula', 'Javiera', 'Juan G', 'Catalina M', 'Fernando M', 'Fernando C', 'Oliver', 'Jacinta', 'Alejandro', 'Catherine'];
-foreach ($names as $n) {
-    $stmt = $pdo->prepare("
-        SELECT u.id, u.name, ROUND(AVG(s.valor_dia)) as avg_dia, COUNT(s.id) as cnt
-        FROM users u JOIN sueldos s ON s.id_user = u.id
-        WHERE u.name LIKE ? AND s.dia_trabajado >= '2026-01-01'
-        GROUP BY u.id, u.name
-    ");
-    $stmt->execute(['%'.$n.'%']);
-    $rows = $stmt->fetchAll(PDO::FETCH_ASSOC);
-    foreach ($rows as $r) {
-        echo "id={$r['id']}  {$r['name']}  avg_dia=\${$r['avg_dia']}  registros={$r['cnt']}\n";
-    }
-}
-echo "</pre>";
-
-// Reservas de esa semana (para ver quién trabajó)
-if (in_array('reservas', $tables)) {
-    echo "<hr><b>Reservas 20-26 Jul (para inferir quién trabajó):</b><br><pre style='font-size:11px'>";
-    $reservas = $pdo->query("SELECT * FROM reservas WHERE fecha_reserva BETWEEN '2026-07-20' AND '2026-07-26' LIMIT 30")->fetchAll(PDO::FETCH_ASSOC);
-    echo print_r($reservas, true);
-    echo "</pre>";
+// 5. Asistencias semana
+echo "\n=== TABLA asistencia_user ===\n";
+foreach ($pdo->query("DESCRIBE asistencia_user")->fetchAll(PDO::FETCH_ASSOC) as $c) {
+    echo $c['Field'] . " " . $c['Type'] . "\n";
 }
