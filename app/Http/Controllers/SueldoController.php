@@ -108,8 +108,8 @@ class SueldoController extends Controller
 
         // ordenar las semanas cronológicamente
         uksort($semanas, function ($a, $b) use ($anio) {
-            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
-            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . ' ' . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . ' ' . $anio);
             return $dateA->timestamp <=> $dateB->timestamp;
         });
 
@@ -145,7 +145,14 @@ class SueldoController extends Controller
         $semanas = [];
 
         foreach ($sueldos as $sueldo) {
-            $fecha        = Carbon::parse($sueldo->dia_trabajado);
+            // Saltar si el usuario fue eliminado o no existe
+            if (! $sueldo->user) {
+                continue;
+            }
+
+            // El accessor getDiaTrabajadoAttribute devuelve "d-m-Y"; usamos createFromFormat para parsear sin ambigüedad
+            $rawDate      = $sueldo->getRawOriginal('dia_trabajado');
+            $fecha        = Carbon::parse($rawDate);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
             $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
@@ -214,8 +221,9 @@ class SueldoController extends Controller
 
         // Orden cronológico de semanas
         uksort($semanas, function ($a, $b) use ($anio) {
-            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
-            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            // "21 Jul - 27 Jul" → "21 Jul 2026"
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . ' ' . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . ' ' . $anio);
             return $dateA->timestamp <=> $dateB->timestamp;
         });
 
