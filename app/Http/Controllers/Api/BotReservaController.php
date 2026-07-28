@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\WebpayService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
@@ -245,6 +246,34 @@ class BotReservaController extends Controller
                            : ($desayunoTipo === 'once'    ? 'Once (17:00–18:15)'
                            : 'Desayuno u Once');
 
+        // ── 9. Iniciar transacción Webpay Plus ───────────────────────────────
+        $webpayUrl = null;
+        try {
+            $webpay      = new WebpayService();
+            $returnUrl   = url('/pago/webpay/retorno');
+            $wpResult    = $webpay->iniciarTransaccion($ventaId, $reservaId, $abono50, $returnUrl);
+
+            if ($wpResult) {
+                $webpayUrl = $wpResult['url'];
+                // Guardar token en la venta para confirmación posterior
+                DB::table('ventas')->where('id', $ventaId)->update([
+                    'webpay_token' => $wpResult['token'],
+                    'webpay_url'   => $webpayUrl,
+                    'estado_pago'  => 'pendiente',
+                    'updated_at'   => now(),
+                ]);
+                Log::info('[BotReserva] Webpay iniciado', ['venta_id' => $ventaId, 'url' => $webpayUrl]);
+            } else {
+                Log::warning('[BotReserva] Webpay no disponible, retornando sin link de pago', ['venta_id' => $ventaId]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[BotReserva] Error Webpay: ' . $e->getMessage());
+        }
+
+        $mensajePago = $webpayUrl
+            ? "Para confirmar tu reserva N°{$reservaId}, haz clic aquí para pagar el abono de \$" . number_format($abono50, 0, ',', '.') . " de forma segura con tarjeta:\n{$webpayUrl}"
+            : "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Envía el comprobante al +56974484112 indicando tu nombre y N° de reserva.";
+
         return response()->json([
             'ok'                   => true,
             'reserva_id'           => $reservaId,
@@ -267,7 +296,8 @@ class BotReservaController extends Controller
             'diferencia'           => $diferencia,
             'diferencia_formato'   => '$' . number_format($diferencia, 0, ',', '.'),
             'incluye_menu'         => ($desayunoOnce > 0),
-            'mensaje_siguiente'    => "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Envía el comprobante al +56974484112 indicando tu nombre y N° de reserva.",
+            'webpay_url'           => $webpayUrl,
+            'mensaje_siguiente'    => $mensajePago,
         ]);
     }
 

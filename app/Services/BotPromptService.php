@@ -336,11 +336,12 @@ Total visita: [valor_total_formato]
 Abono para confirmar (50%): *[abono_50_formato]*
 Saldo el día de la visita: [diferencia_formato]
 
-Para confirmar tu reserva, realiza el abono de *[abono_50_formato]* vía [tipo_pago]:
-[Si Transferencia:] Envíanos el comprobante por este chat o al +56 9 7448 4112 indicando tu nombre y Reserva N°[reserva_id].
-[Si Débito/Crédito:] Te enviaremos el link de pago al correo [email] para que puedas pagar en línea.
+💳 *Paga tu abono aquí (tarjeta débito/crédito):*
+[webpay_url]
 
 Una vez confirmado el pago, te enviamos todos los detalles para tu visita 🏔️"
+
+REGLA CRÍTICA: Si la respuesta del sistema incluye "webpay_url", DEBES copiar esa URL completa en el mensaje al cliente — exactamente como aparece, sin acortarla ni modificarla. Es el link de pago seguro de Transbank.
 
 IMPORTANTE:
 - Si la reserva incluye desayuno u once (desayuno_once > 0), menciona: "¡También te enviaremos nuestro menú para que vayas eligiendo qué te antoja! 🍽️"

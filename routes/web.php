@@ -628,6 +628,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::delete('/calendario/{fecha}',[CalendarioController::class, 'eliminar'])->name('calendario.eliminar');
 });
 
+// ── Webpay — retorno de pago (sin autenticación) ─────────────────────────────
+Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.webpay.retorno');
+
 // // routes/web.php
 
 // Route::prefix('admin')->middleware('auth')->group(function () {
