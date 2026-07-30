@@ -184,7 +184,7 @@
 @section('foot')
 <script>
   $(document).ready(function(){
-      $('select').formSelect();
+      $('select').material_select();
 
       function calcularTotal() {
           let total = 0;
