@@ -2395,6 +2395,17 @@ html, body {
   height: 100%;
 }
 
+@media only screen and (max-width: 992px) {
+  html, body {
+    overflow-x: hidden;
+    overscroll-behavior-x: none;
+  }
+
+  .navbar-fixed nav {
+    width: 100vw;
+  }
+}
+
 body {
   background-color: #f9f9f9;
 }

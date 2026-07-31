@@ -78,12 +78,7 @@
                         $sueldoMes = 0;
                         $totalSueldoBruto = 0;
                     @endphp
-                    <table class="centered">
-
-                        <tbody>
-
-
-
+                    <div>
 
 
     @forelse ($semanas as $rango => $usuariosSemana)
@@ -126,7 +121,8 @@
         </div>
 
 
-        <table class="" style="font-size:13px;">
+        <div style="overflow-x:auto;">
+        <table class="" style="font-size:13px;min-width:900px;">
             <thead>
                 <tr style="background:#eceff1;">
                     <th>Funcionario</th>
@@ -269,6 +265,7 @@
                 </tr>
             </tbody>
         </table>
+        </div>
 
         @if(Auth::user()->has_role(config('app.admin_role')))
             <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 15px; display:none;">
@@ -284,7 +281,8 @@
 @endforelse
 
     
-    <table>
+    <div style="overflow-x:auto;">
+    <table style="min-width:500px;">
         <tbody>
             <tr>
                 <td ></td>
@@ -295,8 +293,9 @@
             </tr>
         </tbody>
     </table>
-                        
-                    
+    </div>
+
+                    </div>
 
                 </div>
             </div>

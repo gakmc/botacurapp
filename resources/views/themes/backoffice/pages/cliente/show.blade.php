@@ -69,6 +69,12 @@
                     <div class="card-action">
                         <a href="{{route('backoffice.cliente.edit', $cliente) }}" class="purple-text">Editar</a>
                         {{-- <a href="#" style="color: red" onclick="enviar_formulario()">Eliminar</a> --}}
+                        
+                        @if ($cliente->lista_negra == false)
+                            <a href="#" onclick="enviar_bloqueo()" class="red-text right valign-wrapper"><i class='material-icons'>add_circle_outline</i> Añadir a lista Negra</a>
+                        @else
+                            <a href="#" onclick="enviar_bloqueo()" class="green-text right valign-wrapper"><i class='material-icons'>remove_circle_outline</i> Quitar de lista Negra</a>
+                        @endif
                     </div>
                 </div>
             </div>
@@ -89,6 +95,11 @@
 <form method="post" action="{{route('backoffice.cliente.destroy', $cliente) }} " name="delete_form">
     {{csrf_field()}}
     {{method_field('DELETE')}}
+</form>
+
+<form method="post" action="{{route('backoffice.cliente.bloqueado', $cliente) }} " name="bloquear_form">
+    {{csrf_field()}}
+    {{method_field('PUT')}}
 </form>
 @endsection
 
@@ -117,6 +128,32 @@
          }
      });
  }
+</script>
+
+<script>
+    function enviar_bloqueo()
+    {
+        Swal.fire({
+            title: "¿Deseas cambiar el estado de este cliente?",
+            text: "{{ $cliente->bloqueado ? 'Este cliente se quitará de la lista negra.' : 'Este cliente se añadira a la lista negra.' }}",
+            type: "info",
+            showCancelButton: true,
+            confirmButtonText: "Si, continuar",
+            cancelButtonText: "No, cancelar",
+            closeOnCancel: false,
+            closeOnConfirm: true
+        }).then((result)=> {
+            if(result.value){
+                document.bloquear_form.submit();
+            }else{
+                Swal.fire(
+                    'Operación Cancelada',
+                    'Cliente no fue bloqueado',
+                    'error'
+                )
+            }
+        });
+    }
 </script>
 
 <script>
@@ -215,5 +252,37 @@ $(document).ready(function () {
             $('#modalReserva').modal('open');
         });
     });
+</script>
+
+<script>
+    @if(session('success'))
+        Swal.fire({
+            toast: true,
+            icon: 'success',
+            title: '{{ session('success') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
+
+    @if(session('error'))
+        Swal.fire({
+            toast: true,
+            icon: 'error',
+            title: '{{ session('error') }}',
+            showConfirmButton: false,
+            timer: 5000,
+            timerProgressBar: true,
+                didOpen: (toast) => {
+                toast.onmouseenter = Swal.stopTimer;
+                toast.onmouseleave = Swal.resumeTimer;
+                }
+        });
+    @endif
 </script>
 @endsection

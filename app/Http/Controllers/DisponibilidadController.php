@@ -7,11 +7,34 @@ use Illuminate\Support\Facades\DB;
 class DisponibilidadController extends Controller
 {
     /**
+     * Agrupa espacio_tipo específicos bajo una categoría general.
+     * El trabajador del centro puede reservar estacion_full aunque no
+     * queden cupos de ese subtipo puntual, si sobra cupo en otro subtipo
+     * de estación (economico/intermedio) — por eso la disponibilidad
+     * relevante para el backoffice es la suma de los 3 subtipos.
+     */
+    private $grupos = [
+        'estacion' => ['estacion_economico', 'estacion_intermedio', 'estacion_full'],
+    ];
+
+    /**
+     * Etiquetas legibles para el resumen mostrado en el backoffice.
+     * Un espacio_tipo sin entrada aquí igual aparece (fallback a ucfirst),
+     * para que el resumen sea dinámico si se agregan espacios nuevos.
+     */
+    private $labels = [
+        'estacion' => 'Estaciones',
+        'terraza'  => 'Terrazas',
+        'reposera' => 'Reposeras',
+    ];
+
+    /**
      * GET /backoffice/disponibilidad/{fecha}
      *
      * Devuelve disponibilidad por espacio_tipo y slots de tinaja para una fecha (Y-m-d).
      * Consumido por el partial disponibilidad-resumen.blade.php via fetch().
      */
+
     public function resumen($fecha)
     {
         if (!preg_match('/^\d{4}-\d{2}-\d{2}$/', $fecha)) {
@@ -71,8 +94,55 @@ class DisponibilidadController extends Controller
             ];
         }
 
+        // ── Disponibilidad agrupada (ej. estacion = suma de sus subtipos) ──
+        foreach ($this->grupos as $categoria => $tipos) {
+            $max    = 0;
+            $usados = 0;
+
+            foreach ($tipos as $tipo) {
+                if (!isset($espacios[$tipo])) {
+                    continue;
+                }
+
+                $max    += $espacios[$tipo]['max'];
+                $usados += $espacios[$tipo]['usados'];
+            }
+
+            $espacios[$categoria] = [
+                'max'         => $max,
+                'usados'      => $usados,
+                'disponibles' => max(0, $max - $usados),
+            ];
+        }
+
+        // ── Resumen listo para mostrar (agrupado, sin subtipos internos) ──
+        // Los tipos que pertenecen a un grupo (ej. estacion_full) no se listan
+        // sueltos aquí; se muestran solo bajo su categoría (ej. estacion).
+        $tiposAgrupados = array_merge(...array_values($this->grupos));
+        $resumen = [];
+
+        foreach ($this->grupos as $categoria => $tipos) {
+            if (!isset($espacios[$categoria])) {
+                continue;
+            }
+
+            $resumen[$categoria] = array_merge($espacios[$categoria], [
+                'label' => $this->labels[$categoria] ?? ucfirst(str_replace('_', ' ', $categoria)),
+            ]);
+        }
+
+        foreach ($espacioConfig as $tipo => $max) {
+            if (in_array($tipo, $tiposAgrupados, true)) {
+                continue;
+            }
+
+            $resumen[$tipo] = array_merge($espacios[$tipo], [
+                'label' => $this->labels[$tipo] ?? ucfirst(str_replace('_', ' ', $tipo)),
+            ]);
+        }
+
         // ── Slots de tinaja ───────────────────────────────────────
-        $maxSlots = 16;
+        $maxSlots = config('app.cantidad_slot_spa');
 
         $slotsReservas = (int) DB::table('reservas')
             ->whereRaw('DATE(fecha_visita) = ?', [$fecha])
@@ -92,6 +162,7 @@ class DisponibilidadController extends Controller
         return response()->json([
             'fecha'   => $fecha,
             'espacios' => $espacios,
+            'resumen' => $resumen,
             'tinaja'  => [
                 'max_slots'   => $maxSlots,
                 'usados'      => $slotsUsados,

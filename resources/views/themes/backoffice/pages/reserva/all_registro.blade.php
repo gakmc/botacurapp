@@ -15,6 +15,14 @@
 @section('content')
 <div class="section">
     <p class="caption"><strong>Reservas Mensuales</strong></p>
+
+        <div class="row">
+            <div class="col s2 green-text offset-s1"><i class='material-icons left'>fiber_manual_record</i>1 - 5 reservas</div>
+            <div class="col s2 offset-s1" style="color: #fdd835"><i class='material-icons left'>fiber_manual_record</i>6 - 10 reservas</div>
+            <div class="col s2 orange-text offset-s1"><i class='material-icons left'>fiber_manual_record</i>11 - 15 reservas</div>
+            <div class="col s2 red-text offset-s1"><i class='material-icons left'>fiber_manual_record</i>16 - 19 reservas</div>
+        </div>
+
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -69,7 +77,7 @@
             firstDay: 1,
             editable: false,
             eventSources: [{
-                url: '{{ route('backoffice.reservas.eventos') }}',
+                url: '{{ route("backoffice.reservas.eventos") }}',
                 method: 'GET',
             }],
             // eventClick: function (info) {

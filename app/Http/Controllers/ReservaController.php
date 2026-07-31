@@ -1462,6 +1462,16 @@ class ReservaController extends Controller
         $start = Carbon::parse($request->start)->startOfDay();
         $end   = Carbon::parse($request->end)->endOfDay();
 
+        $totalUbicaciones = DB::table('ubicaciones')->count();
+
+        $ubicacionesUsadasPorFecha = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->whereBetween('reservas.fecha_visita', [$start, $end])
+            ->whereNotNull('visitas.id_ubicacion')
+            ->select(DB::raw('DATE(reservas.fecha_visita) as fecha'), DB::raw('COUNT(DISTINCT visitas.id_ubicacion) as usadas'))
+            ->groupBy(DB::raw('DATE(reservas.fecha_visita)'))
+            ->pluck('usadas', 'fecha');
+
         $reservas = Reserva::with('cliente')
             ->whereBetween('fecha_visita', [$start, $end])
             ->orderBy('fecha_visita')
@@ -1472,7 +1482,7 @@ class ReservaController extends Controller
             // ->groupBy('fecha_visita');
 
             $eventos = [];
-            
+
             foreach ($reservas as $fecha => $lista) {
 
             $clientes = $lista->pluck('cliente.nombre_cliente')->toArray();
@@ -1488,13 +1498,28 @@ class ReservaController extends Controller
                 $texto = ' reserva: ';
             }
 
+            $ubicacionesUsadas = (int) $ubicacionesUsadasPorFecha->get($fecha, 0);
+
+            if ($ubicacionesUsadas >= 16) {
+                $color = '#e53935'; // rojo: critico (16-19)
+            } elseif ($ubicacionesUsadas >= 11) {
+                $color = '#fb8c00'; // naranja (11-15)
+            } elseif ($ubicacionesUsadas >= 6) {
+                $color = '#fdd835'; // amarillo (6-10)
+            } else {
+                $color = '#43a047'; // verde (0-5)
+            }
+
             $eventos[] = [
-                'title' => $cantidad.$texto.implode(', ', $clientes),
+                'title' => $cantidad.$texto.implode(', ', $clientes).' ('.$ubicacionesUsadas.'/'.$totalUbicaciones.' ubicaciones)',
                 'start' => $fecha,
                 'url'   => route('backoffice.reservas.registro', ['fecha' => $fecha]),
+                'color' => $color,
                 'extendedProps' => [
-                    'observacion' => $reservaEjemplo->observacion,
-                    'cantidad'    => count($clientes),
+                    'observacion'        => $reservaEjemplo->observacion,
+                    'cantidad'           => count($clientes),
+                    'ubicacionesUsadas'  => $ubicacionesUsadas,
+                    'totalUbicaciones'   => $totalUbicaciones,
                 ],
             ];
         }

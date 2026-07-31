@@ -49,7 +49,7 @@
                                           <span class="invalid-feedback" role="alert">
                                               <strong style="color:red">{{ $message }}</strong>
                                           </span>
-                                      @enderror
+                                    @enderror
                                 </div>
 
                             </div>     
@@ -281,91 +281,137 @@
 </script> --}}
 
 <script>
-$(document).ready(function () {
-  let validandoWhatsapp = false;
-  let ultimoNumeroValidado = null;
+  $(document).ready(function () {
+    let validandoWhatsapp = false;
+    let ultimoNumeroValidado = null;
 
-  $('#whatsapp_cliente').on('blur', function () {
-    let numero = $(this).val().trim().replace(/\D/g, '');
+    $('#whatsapp_cliente').on('blur', function () {
+      let numero = $(this).val().trim().replace(/\D/g, '');
 
-    // Formateo del número
-    if (numero.length === 8) {
-      numero = '569' + numero;
-    } else if (numero.length === 11 && numero.startsWith('56') && !numero.startsWith('569')) {
-      numero = '569' + numero.slice(3);
-    }
-
-    if (numero === ultimoNumeroValidado || numero === '') {
-      return;
-    }
-
-    if (validandoWhatsapp) return;
-    validandoWhatsapp = true;
-    ultimoNumeroValidado = numero;
-
-    $.ajax({
-      url: '{{ route("backoffice.validar.whatsapp") }}',
-      method: 'POST',
-      data: {
-        whatsapp_cliente: numero,
-        _token: '{{ csrf_token() }}'
-      },
-      success: function (response) {
-        $('#error-whatsapp').remove();
-        $('#whatsapp_cliente').nextAll('.material-icons').remove();
-        $('#whatsapp_cliente').removeClass('valid invalid');
-
-        if (!response.disponible) {
-          $('#whatsapp_cliente').addClass('invalid');
-
-          Swal.fire({
-            icon: 'warning',
-            title: 'Número ya registrado',
-            text: `Este número ya pertenece a ${response.cliente.nombre_cliente}.`,
-            showCancelButton: true,
-            confirmButtonText: 'Crear reserva',
-            cancelButtonText: 'Cambiar número',
-            reverseButtons: true,
-            customClass: {
-              confirmButton: 'btn green darken-1',
-              cancelButton: 'btn red darken-1'
-            },
-            buttonsStyling: false
-          }).then((result) => {
-            if (result.isConfirmed) {
-              window.location.href = `/reserva/create/${response.cliente.id}`;
-            } else {
-              $('#whatsapp_cliente').focus();
-            }
-
-            validandoWhatsapp = false;
-          });
-
-        } else {
-          $('#whatsapp_cliente').addClass('valid');
-          $('#whatsapp_cliente').after('<i class="material-icons green-text">check_circle</i>');
-          validandoWhatsapp = false;
-        }
-      },
-      error: function () {
-        Swal.fire({
-          icon: "error",
-          title: "Error al validar número de WhatsApp.",
-          toast: true,
-          position: "center",
-          timer: 3000,
-          showConfirmButton: false
-        });
-        validandoWhatsapp = false;
+      // Formateo del número
+      if (numero.length === 8) {
+        numero = '569' + numero;
+      } else if (numero.length === 11 && numero.startsWith('56') && !numero.startsWith('569')) {
+        numero = '569' + numero.slice(3);
       }
+
+      if (numero === ultimoNumeroValidado || numero === '') {
+        return;
+      }
+
+      if (validandoWhatsapp) return;
+      validandoWhatsapp = true;
+      ultimoNumeroValidado = numero;
+
+      function validarBloqueo() {
+        $.ajax({
+          url: '{{ route("backoffice.validar.bloqueo") }}',
+          method: 'POST',
+          data: {
+            whatsapp_cliente: numero,
+            _token: '{{ csrf_token() }}'
+          },
+          success: function (response) {
+            if (!response.disponible) {
+              $('#whatsapp_cliente').removeClass('valid').addClass('invalid');
+              $('#whatsapp_cliente').nextAll('.material-icons').remove();
+
+              Swal.fire({
+                icon: 'error',
+                title: 'Número en lista negra',
+                text: `Numero asociado a un cliente bloqueado.`,
+                showCancelButton: false,
+                reverseButtons: false,
+                customClass: {
+                  confirmButton: 'btn red darken-1'
+                },
+                buttonsStyling: false
+              }).then(() => {
+                $('#whatsapp_cliente').focus();
+                validandoWhatsapp = false;
+              });
+
+            } else {
+              validandoWhatsapp = false;
+            }
+          },
+          error: function () {
+            Swal.fire({
+              icon: "error",
+              title: "Error al validar bloquo del número indicado.",
+              toast: true,
+              position: "center",
+              timer: 3000,
+              showConfirmButton: false
+            });
+            validandoWhatsapp = false;
+          }
+        });
+      }
+
+      $.ajax({
+        url: '{{ route("backoffice.validar.whatsapp") }}',
+        method: 'POST',
+        data: {
+          whatsapp_cliente: numero,
+          _token: '{{ csrf_token() }}'
+        },
+        success: function (response) {
+          $('#error-whatsapp').remove();
+          $('#whatsapp_cliente').nextAll('.material-icons').remove();
+          $('#whatsapp_cliente').removeClass('valid invalid');
+
+          if (!response.disponible) {
+            $('#whatsapp_cliente').addClass('invalid');
+
+            Swal.fire({
+              icon: 'warning',
+              title: 'Número ya registrado',
+              text: `Este número ya pertenece a ${response.cliente.nombre_cliente}.`,
+              showCancelButton: true,
+              confirmButtonText: 'Crear reserva',
+              cancelButtonText: 'Cambiar número',
+              reverseButtons: true,
+              customClass: {
+                confirmButton: 'btn green darken-1',
+                cancelButton: 'btn red darken-1'
+              },
+              buttonsStyling: false
+            }).then((result) => {
+              if (result.isConfirmed) {
+                // Ya se va a la reserva del cliente existente: no tiene sentido validar bloqueo.
+                window.location.href = `/reserva/create/${response.cliente.id}`;
+              } else {
+                $('#whatsapp_cliente').focus();
+                validarBloqueo();
+              }
+            });
+
+          } else {
+            $('#whatsapp_cliente').addClass('valid');
+            $('#whatsapp_cliente').after('<i class="material-icons green-text">check_circle</i>');
+            validarBloqueo();
+          }
+        },
+        error: function () {
+          Swal.fire({
+            icon: "error",
+            title: "Error al validar número de WhatsApp.",
+            toast: true,
+            position: "center",
+            timer: 3000,
+            showConfirmButton: false
+          });
+          validarBloqueo();
+        }
+      });
+    });
+
+    $('#whatsapp_cliente').on('input', function () {
+      validandoWhatsapp = false;
+      ultimoNumeroValidado = null;
     });
   });
-
-  $('#whatsapp_cliente').on('input', function () {
-    validandoWhatsapp = false;
-    ultimoNumeroValidado = null;
-  });
-});
 </script>
 
 

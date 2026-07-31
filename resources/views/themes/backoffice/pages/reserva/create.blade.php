@@ -22,7 +22,7 @@
   <div class="divider"></div>
   <div id="basic-form" class="section">
     <div class="row">
-      <div class="col s12 m8 offset-m2 ">
+      <div class="col s12 m7 offset-m1 ">
         <div class="card-panel">
           <h4 class="header">Crear reserva para <strong>{{$cliente->nombre_cliente}}</strong>
           </h4>
@@ -57,7 +57,7 @@
 
                       @endif data-valor="{{$programa->valor_programa}}"
                       data-incluye-masajes="{{ $programa->incluye_masajes ? '1' : '0' }}"
-                      data-incluye-almuerzos="{{ $programa->incluye_almuerzos ? '1' : '0' }}"
+                      data-incluye-almuerzos="{{ $programa->incluye_almuerzos ? '1' : '0' }}" data-espacio-tipo="{{ $programa->espacio_tipo }}"
                       >{{$programa->nombre_programa}}</option>
                     @endforeach
                   </select>
@@ -229,6 +229,11 @@
             </form>
           </div>
         </div>
+      
+        
+      </div>
+      <div class="col s12 m4">
+        @include('themes.backoffice.pages.reserva.includes.create_nav')
       </div>
     </div>
   </div>
@@ -278,45 +283,45 @@
   var cantidadPersonas = 1;
   var abono = 0;
 
-$('#id_programa').on('change', function(){
-  valorPrograma = parseInt($(this).find(':selected').data('valor')) || 0;
-  calcularValorTotal();
-});
+  $('#id_programa').on('change', function(){
+    valorPrograma = parseInt($(this).find(':selected').data('valor')) || 0;
+    calcularValorTotal();
+  });
 
-$('#cantidad_personas').on('change', function(){
-  cantidadPersonas = $(this).val();
-  calcularValorTotal();
-})
+  $('#cantidad_personas').on('change', function(){
+    cantidadPersonas = $(this).val();
+    calcularValorTotal();
+  })
 
-// $('#abono_programa').on('change', function(){
-//   abono = parseInt($(this).val());
-//   calcularValorTotal();
-// })
+  // $('#abono_programa').on('change', function(){
+  //   abono = parseInt($(this).val());
+  //   calcularValorTotal();
+  // })
 
 
-$('#abono_programa').on('change', function(){
-  let rawValue = $(this).val().replace(/\D/g, ''); // Eliminar caracteres no numéricos
-      abono = parseInt(rawValue) || 0; 
+  $('#abono_programa').on('change', function(){
+    let rawValue = $(this).val().replace(/\D/g, ''); // Eliminar caracteres no numéricos
+        abono = parseInt(rawValue) || 0; 
 
-      // Guardar el valor sin formato en un input oculto
-      $('#abono_hidden').val(abono);
+        // Guardar el valor sin formato en un input oculto
+        $('#abono_hidden').val(abono);
 
-      // Mostrar el valor formateado en el input visible
-      $(this).val(formatCLP(abono));
-  calcularValorTotal();
-})
+        // Mostrar el valor formateado en el input visible
+        $(this).val(formatCLP(abono));
+    calcularValorTotal();
+  })
 
-function calcularValorTotal(){
+  function calcularValorTotal(){
 
-  var total = (valorPrograma * cantidadPersonas)-abono;
-  $('#abono_programa').val(formatCLP(abono));
-  $('#total_pagar').val(formatCLP(total));
-}
+    var total = (valorPrograma * cantidadPersonas)-abono;
+    $('#abono_programa').val(formatCLP(abono));
+    $('#total_pagar').val(formatCLP(total));
+  }
 
-function formatCLP(number) 
-{
-  return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
-}
+  function formatCLP(number) 
+  {
+    return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
+  }
 </script>
 
 
@@ -440,6 +445,61 @@ function formatCLP(number)
         }
       });
 
+    });
+  });
+</script>
+
+<script>
+  $(document).ready(function () {
+    const $resumen = $('#disponibilidad-resumen');
+    const urlTemplate = '{{ route("backoffice.disponibilidad.resumen", ["fecha" => "__FECHA__"]) }}';
+
+    function mostrarPlaceholder(mensaje) {
+      $resumen.find('.disponibilidad-item').remove();
+      $resumen.find('.disponibilidad-placeholder').text(mensaje).show();
+    }
+
+    function renderDisponibilidad(resumenEspacios) {
+      $resumen.find('.disponibilidad-item').remove();
+      $resumen.find('.disponibilidad-placeholder').hide();
+
+      $.each(resumenEspacios, function (tipo, info) {
+        $('<a>', {
+          class: 'collection-item disponibilidad-item',
+          html: info.label + ' = <span class="black-text">' + info.disponibles + '</span>'
+        }).appendTo($resumen);
+      });
+    }
+
+    // pickadate con hiddenName:true deja la fecha en formato yyyy-mm-dd en un
+    // input oculto name="fecha_visita" (sin id); el #fecha_visita visible
+    // guarda el formato de despliegue dd-mm-yyyy, no sirve para la consulta.
+    function obtenerFechaSubmit() {
+      return $('input[name="fecha_visita"]').val();
+    }
+
+    function cargarDisponibilidad(fecha) {
+      if (!fecha) {
+        mostrarPlaceholder('Selecciona una fecha para ver la disponibilidad');
+        return;
+      }
+
+      $.ajax({
+        url: urlTemplate.replace('__FECHA__', fecha),
+        type: 'GET',
+        success: function (response) {
+          renderDisponibilidad(response.resumen || {});
+        },
+        error: function () {
+          mostrarPlaceholder('No se pudo cargar la disponibilidad de espacios.');
+        }
+      });
+    }
+
+    cargarDisponibilidad(obtenerFechaSubmit());
+
+    $('#fecha_visita').on('change', function () {
+      cargarDisponibilidad(obtenerFechaSubmit());
     });
   });
 </script>
@@ -579,15 +639,15 @@ function formatCLP(number)
 
 <script>
   $.get('{{ route("backoffice.giftcards.lista") }}', function(data){
-  $('#gcard_codigo').autocomplete({
-    data: data,
-    limit: 5,
-    minLength: 2,
-    onAutocomplete: function(val){
-      $('#gcard_codigo').val(val).trigger('blur'); // reutiliza tu verificación
-    }
+    $('#gcard_codigo').autocomplete({
+      data: data,
+      limit: 5,
+      minLength: 2,
+      onAutocomplete: function(val){
+        $('#gcard_codigo').val(val).trigger('blur'); // reutiliza tu verificación
+      }
+    });
   });
-});
 
 </script>
 

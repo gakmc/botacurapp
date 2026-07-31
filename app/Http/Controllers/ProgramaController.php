@@ -176,7 +176,7 @@ class ProgramaController extends Controller
             }
         }
 
-        $msg = "WC Sync: {$vinculados} programa(s) vinculado(s)";
+        $msg = "WC Sincronizado: {$vinculados} programa(s) vinculado(s)";
         if ($errores) {
             $msg .= ", {$errores} error(es) — revisar logs.";
         }

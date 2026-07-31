@@ -17,6 +17,7 @@ return [
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'visit_role' => env('VISIT_ROLE', 'visitante'),
     'laravel_api_key' => env('LARAVEL_API_KEY'),
+    'cantidad_slot_spa' => env('CANTIDAD_SLOT_SPA'),
     /*
     |--------------------------------------------------------------------------
     | Application Name

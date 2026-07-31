@@ -41,14 +41,6 @@
 
 <script>
 (function () {
-    var NOMBRES = {
-        estacion_economico:  'Est. Eco',
-        estacion_intermedio: 'Est. Inter',
-        estacion_full:       'Est. Full',
-        terraza:             'Terraza',
-        reposera:            'Reposera'
-    };
-
     function colorChip(disponibles, max) {
         if (disponibles === 0)           return { bg: '#F44336', text: '#fff' };
         if (disponibles <= max * 0.33)   return { bg: '#FF9800', text: '#fff' };
@@ -60,14 +52,12 @@
     fetch(url, { headers: { 'X-Requested-With': 'XMLHttpRequest' } })
         .then(function (res) { return res.json(); })
         .then(function (d) {
-            // ── Chips de espacio_tipo ─────────────────────────────
+            // ── Chips de espacio_tipo (agrupado, ej. estacion = suma de subtipos) ──
             var wrap = document.getElementById('disp-espacios-{{ $uid }}');
-            if (wrap && d.espacios) {
+            if (wrap && d.resumen) {
                 wrap.innerHTML = '';
-                var tipos = Object.keys(d.espacios);
-                tipos.forEach(function (tipo) {
-                    var e = d.espacios[tipo];
-                    var nombre = NOMBRES[tipo] || tipo;
+                Object.keys(d.resumen).forEach(function (tipo) {
+                    var e = d.resumen[tipo];
                     var col = colorChip(e.disponibles, e.max);
 
                     var chip = document.createElement('div');
@@ -76,11 +66,7 @@
                         'border-radius:14px;font-size:12px;font-weight:500;white-space:nowrap;' +
                         'background:' + col.bg + ';color:' + col.text + ';';
 
-                    var label = e.disponibles === 0
-                        ? nombre + ': Agotado'
-                        : nombre + ': ' + e.disponibles + (e.disponibles === 1 ? ' libre' : ' libres');
-
-                    chip.textContent = label;
+                    chip.textContent = e.label + ': ' + e.disponibles;
                     wrap.appendChild(chip);
                 });
             }
