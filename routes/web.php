@@ -290,6 +290,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::match(['put', 'patch'], '/reserva/{reserva}/visitas/actualizar', 'VisitaController@actualizar')->name('reserva.visitas.actualizar');
 
+    Route::match(['put', 'patch'], '/cliente/{cliente}/bloquear', 'ClienteController@bloquear')->name('cliente.bloqueado');
+
     Route::resource('usuario-sueldo', 'AnularSueldoUsuarioController');
     Route::resource('asignacion', 'AsignacionController');
     Route::resource('asistencia', 'AsistenciaController');
@@ -386,6 +388,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Create - Ingresa al formulario para nueva reserva
     Route::post('/validar-whatsapp', 'ClienteController@validarWhatsapp')->name('validar.whatsapp');
     Route::post('/validar-whatsapp-edit', 'ClienteController@validarWhatsappEdit')->name('validar.whatsapp.edit');
+    
+    Route::post('/validar-bloqueo', 'ClienteController@validarBloqueo')->name('validar.bloqueo');
 
     // Store - Guardar la nueva reserva
     Route::post('reserva', 'ReservaController@store')->name('reserva.store');

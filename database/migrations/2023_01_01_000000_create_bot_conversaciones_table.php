@@ -8,7 +8,7 @@ use Illuminate\Support\Facades\Schema;
  * Tabla bot_conversaciones — sesiones del bot WhatsApp/Instagram.
  * Creada desde schema de producción.
  */
-class CreateBotConversacionesTable extends Migration
+class CreateBotConversacionesTableFromProdSchema extends Migration
 {
     public function up()
     {

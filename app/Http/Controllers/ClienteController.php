@@ -68,6 +68,21 @@ class ClienteController extends Controller
         ]);
     }
 
+    public function bloquear(Cliente $cliente){
+        $nuevoEstado = !$cliente->bloqueado;
+        $cliente->update(['bloqueado' => $nuevoEstado]);
+
+        if ($nuevoEstado) {
+            $estado = 'error';
+            $msj = 'Cliente se encuentra bloqueado del sistema';
+        } else {
+            $estado = 'success';
+            $msj = 'Cliente se encuentra desbloqueado del sistema';
+        }
+
+        return back()->with($estado, $msj);
+    }
+
     public function generarPDF(Reserva $reserva)
     {
         $visitas = $reserva->visitas;
@@ -151,6 +166,26 @@ class ClienteController extends Controller
         return response()->json([
             'disponible' => !$existe,
             'cliente' => ($existe) ? $cliente : null,
+        ]);
+    }
+
+    public function validarBloqueo(Request $request)
+    {
+        $numero = preg_replace('/\D/', '', $request->whatsapp_cliente); // solo dígitos
+
+        if (strlen($numero) === 8) {
+            $numero = '569' . $numero;
+        } elseif (strlen($numero) === 11 && substr($numero, 0, 2) === '56') {
+            $numero = '569' . substr($numero, 3);
+        }
+
+        $cliente = Cliente::whereRaw("REPLACE(REPLACE(REPLACE(whatsapp_cliente, '+', ''), ' ', ''), '-', '') LIKE ?", ["%$numero"])->first();
+
+        $bloqueado = $cliente && $cliente->bloqueado;
+
+        return response()->json([
+            'disponible' => !$bloqueado,
+            'cliente' => $bloqueado ? $cliente : null,
         ]);
     }
 
