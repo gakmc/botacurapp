@@ -1,8 +1,3 @@
-if (location.protocol !== 'https:') {
-    alert('Debes usar HTTPS para activar notificaciones');
-    return;
-}
-
 self.addEventListener('push', function (event) {
     let data = {};
 
@@ -10,7 +5,7 @@ self.addEventListener('push', function (event) {
         data = event.data.json();
     } catch (e) {
         data = {
-            title: 'Botacura',
+            title: 'Pedido completado',
             body: 'Pedido listo para entrega',
             url: self.location.origin + '/barman/bebidas'
         };

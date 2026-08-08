@@ -25,10 +25,16 @@ class ClienteController extends Controller
                 ->orWhere('whatsapp_cliente', 'LIKE', '%' . $query . '%')
                 ->orWhere('instagram_cliente', 'LIKE', '%' . $query . '%')
                 ->orWhere('correo', 'LIKE', '%' . $query . '%')
-                ->orderBy('id', 'asc')->get();
+                ->orderBy('id', 'asc');
+
+            if ($request->ajax() || $request->wantsJson()) {
+                return response()->json(
+                    $clientes->limit(8)->get(['id', 'nombre_cliente', 'correo', 'whatsapp_cliente', 'bloqueado'])
+                );
+            }
 
             return view('themes.backoffice.pages.cliente.index', [
-                'clientes' => $clientes,
+                'clientes' => $clientes->get(),
                 'search' => $query,
             ]);
 

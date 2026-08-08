@@ -1,19 +1,19 @@
-<div id="modalVenta" class="modal">
+<div id="modalVenta-{{ $reserva->id }}" class="modal">
   <div class="modal-content">
     <h4>Detalles de la Venta</h4>
 
 
     <div class="col s12">
-      <p><strong>Consumo:</strong><span id="modalConsumo"></span></p>
+      <p><strong>Consumo:</strong><span id="modalConsumo-{{ $reserva->id }}"></span></p>
 
     </div>
 
     <div class="col s12">
-      <p><strong>Servicio:</strong><span id="modalServicio"></span></p>
+      <p><strong>Servicio:</strong><span id="modalServicio-{{ $reserva->id }}"></span></p>
     </div>
 
     <div class="col s12">
-      <p><strong>Resumen:</strong><span id="modalResumen"></span></p>
+      <p><strong>Resumen:</strong><span id="modalResumen-{{ $reserva->id }}"></span></p>
     </div>
 
 

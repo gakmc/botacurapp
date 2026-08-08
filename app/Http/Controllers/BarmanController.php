@@ -302,7 +302,7 @@ class BarmanController extends Controller
 
         if ($usuarios->isNotEmpty()) {
             app(WebPushService::class)->sendToUsers($usuarios, [
-                'title' => 'Pedido listo',
+                'title' => 'Pedido completado',
                 'body'  => 'Cliente: '.$cliente.' - Ubicación: '.$ubicacion,
                 'url'   => url('/barman/bebidas'),
             ]);

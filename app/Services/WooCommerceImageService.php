@@ -127,14 +127,18 @@ class WooCommerceImageService
      * una imagen principal que ocupe la position 0.
      *
      * Si no hay imágenes principales se retorna [] → WC conserva las
-     * imágenes existentes del producto sin modificarlas.
+     * imágenes existentes del producto sin modificarlas. Excepción:
+     * $allowServiceOnlyFeatured en true (producto que se está creando en WC
+     * por primera vez, sin imágenes propias todavía) permite que las
+     * imágenes de servicios ocupen las posiciones, incluida la 0, para que
+     * el producto no quede sin ninguna imagen.
      *
      * position 0   → imagen destacada (Product Image, viene del form)
      * position 1+  → galería (Product Gallery)
      */
-    public function buildImagesPayload(array $mainImageIds, array $serviceImageIds): array
+    public function buildImagesPayload(array $mainImageIds, array $serviceImageIds, bool $allowServiceOnlyFeatured = false): array
     {
-        if (empty($mainImageIds)) {
+        if (empty($mainImageIds) && !($allowServiceOnlyFeatured && !empty($serviceImageIds))) {
             return [];
         }
 

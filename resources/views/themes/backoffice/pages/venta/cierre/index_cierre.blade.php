@@ -148,7 +148,7 @@
                                         <a href="#modal-{{$reserva->id }}" class="btn-floating btn-small waves-effect waves-light blue modal-trigger tooltipped" data-position="bottom" data-tooltip="Ver consumo"><i class="material-icons">remove_red_eye</i></a>
                                     @endif
 
-                                    <a href="#modalVenta" class="btn-floating btn-small waves-effect waves-light purple  modal-trigger tooltipped" data-position="bottom" data-tooltip="Detalles Venta" data-id="{{ $reserva->venta->id }}" data-diferencia="{{ $reserva->venta->diferencia_programa }}" data-totalpagar="{{$reserva->venta->total_pagar}}" data-consumo="{{$consumo}}"><i class="material-icons">view_list</i></a>
+                                    <a href="#modalVenta-{{ $reserva->id }}" class="btn-floating btn-small waves-effect waves-light purple  modal-trigger tooltipped" data-position="bottom" data-tooltip="Detalles Venta" data-id="{{ $reserva->venta->id }}" data-diferencia="{{ $reserva->venta->diferencia_programa }}" data-totalpagar="{{$reserva->venta->total_pagar}}" data-consumo="{{$consumo}}"><i class="material-icons">view_list</i></a>
 
                                     <a href="{{ route('backoffice.venta.consumo.create', $reserva->venta) }}" class="btn-floating btn-small waves-effect waves-light pink tooltipped" data-position="bottom" data-tooltip="Ingresar consumo" ><i class="material-icons">local_bar</i></a>
 
@@ -256,8 +256,16 @@
   
     $(document).ready(function(){
       $('.modal-trigger').on('click', function(){
+            // Este handler solo debe actuar sobre el trigger de "Detalles Venta"
+            // (href="#modalVenta-{id}"); ignorar otros modal-trigger como "Ver consumo".
+            var href = $(this).attr('href') || '';
+            if (href.indexOf('#modalVenta-') !== 0) {
+                return;
+            }
+            var reservaId = href.replace('#modalVenta-', '');
+
             // Obtener los datos del cliente y la reserva seleccionada
-  
+
             var abonoImg = $(this).data('abonoimg');
             var diferencia = $(this).data('diferencia') || 0;
   
@@ -281,7 +289,7 @@
             
             
             // Limpiar el contenido anterior de consumos en el modal
-            $('#modalConsumo').empty();
+            $('#modalConsumo-' + reservaId).empty();
   
             // Crear la tabla para los consumos
             var subtotalConsumo=0;
@@ -336,11 +344,11 @@
             tablaConsumos += '</tbody></table>';
   
             // Añadir la tabla al modal
-            $('#modalConsumo').append(tablaConsumos);
-  
-  
+            $('#modalConsumo-' + reservaId).append(tablaConsumos);
+
+
             // Limpiar el contenido anterior de consumos en el modal
-            $('#modalServicio').empty();
+            $('#modalServicio-' + reservaId).empty();
   
             var tablaServicios = '<table class="highlight responsive-table centered">';
             tablaServicios += '<thead><tr><th>Servicio</th><th>Valor</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
@@ -373,11 +381,11 @@
             tablaServicios += '</tbody></table>';
   
             // Añadir la tabla al modal
-            $('#modalServicio').append(tablaServicios);
-            
-            
+            $('#modalServicio-' + reservaId).append(tablaServicios);
+
+
             // Limpiar el contenido anterior de consumos en el modal
-            $('#modalResumen').empty();
+            $('#modalResumen-' + reservaId).empty();
             
             var SubTotalPagar = subtotalConsumo+subtotalServicio+totalPagar;
             var TotalPagarCP = Math.trunc(totalConsumo)+subtotalServicio+totalPagar;
@@ -397,10 +405,10 @@
               tablaResumen += '</tbody></table>';
                 
                 // Añadir la tabla al modal
-                $('#modalResumen').append(tablaResumen);
-  
+                $('#modalResumen-' + reservaId).append(tablaResumen);
+
         // Abrir el modal
-        var modal = M.Modal.getInstance($('#modalVenta'));
+        var modal = M.Modal.getInstance(document.getElementById('modalVenta-' + reservaId));
         modal.open();
       });
     });

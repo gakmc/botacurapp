@@ -25,10 +25,26 @@ class ProgramaController extends Controller
         $this->wcImage = $wcImage;
     }
 
-    public function index()
+    public function index(Request $request)
     {
+        $query = trim($request->get('search', ''));
+
+        $programas = Programa::where(function ($q) {
+                $q->activos();
+            })
+            ->when($query !== '', function ($q) use ($query) {
+                $q->where('nombre_programa', 'LIKE', '%' . $query . '%');
+            })
+            ->orderBy('id', 'asc');
+
+        if ($request->ajax() || $request->wantsJson()) {
+            return response()->json(
+                $programas->limit(8)->get(['id', 'nombre_programa', 'valor_programa'])
+            );
+        }
+
         return view('themes.backoffice.pages.programa.index', [
-            'programa' => Programa::activos()->get(),
+            'programa' => $programas->get(),
         ]);
     }
 
@@ -42,28 +58,7 @@ class ProgramaController extends Controller
     {
         $programa = $programa->store($request);
 
-        if (!$programa->solo_plataforma) {
-            try {
-                $mainImageIds = $this->uploadMainImages($request);
-
-                $programa->loadMissing('servicios');
-                $serviceUrls = $this->wcImage->getServiceImageIds($programa->servicios);
-
-                $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls);
-
-                $wcId = $this->wc->createProduct($programa, $images);
-
-                Programa::withoutEvents(function () use ($programa, $wcId, $mainImageIds) {
-                    $programa->update([
-                        'wc_product_id'     => $wcId,
-                        'wc_main_image_ids' => $mainImageIds,
-                    ]);
-                });
-
-            } catch (\Exception $e) {
-                Log::warning("[WC-Sync] store: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
-            }
-        }
+        $this->syncToWc($programa, $request);
 
         return redirect()->route('backoffice.programa.show', $programa);
     }
@@ -90,30 +85,7 @@ class ProgramaController extends Controller
 
         $fresh = $programa->fresh();
 
-        if ($fresh->wc_product_id && !$fresh->solo_plataforma) {
-            try {
-                // Si se subieron nuevas imágenes principales, reemplazar las guardadas
-                if ($request->hasFile('imagenes')) {
-                    $mainImageIds = $this->uploadMainImages($request);
-                    Programa::withoutEvents(function () use ($fresh, $mainImageIds) {
-                        $fresh->update(['wc_main_image_ids' => $mainImageIds]);
-                    });
-                } else {
-                    $mainImageIds = $fresh->wc_main_image_ids ?? [];
-                }
-
-                // Recalcular imágenes de servicios con la lista actualizada
-                $fresh->loadMissing('servicios');
-                $serviceUrls = $this->wcImage->getServiceImageIds($fresh->servicios);
-
-                $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls);
-
-                $this->wc->updateProduct($fresh, $images);
-
-            } catch (\Exception $e) {
-                Log::warning("[WC-Sync] update: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
-            }
-        }
+        $this->syncToWc($fresh, $request);
 
         return redirect()->route('backoffice.programa.show', $programa);
     }
@@ -201,5 +173,67 @@ class ProgramaController extends Controller
         }
 
         return $ids;
+    }
+
+    /**
+     * Sincroniza el programa con WooCommerce: actualiza el producto si ya
+     * está vinculado (wc_product_id), o lo crea si todavía no existe allá
+     * (por ejemplo porque el create original falló por falta de credenciales).
+     *
+     * Antes de crear, busca por nombre en WC para no generar un producto
+     * duplicado si ya existiera del lado de WC por alguna otra vía; si lo
+     * encuentra, solo vincula el ID (igual que syncUnlinked) en vez de crear
+     * uno nuevo.
+     */
+    private function syncToWc(Programa $programa, Request $request): void
+    {
+        if ($programa->solo_plataforma) {
+            return;
+        }
+
+        try {
+            if ($request->hasFile('imagenes')) {
+                $mainImageIds = $this->uploadMainImages($request);
+                Programa::withoutEvents(function () use ($programa, $mainImageIds) {
+                    $programa->update(['wc_main_image_ids' => $mainImageIds]);
+                });
+            } else {
+                $mainImageIds = $programa->wc_main_image_ids ?? [];
+            }
+
+            $programa->loadMissing('servicios');
+            $serviceUrls = $this->wcImage->getServiceImageIds($programa->servicios);
+
+            if ($programa->wc_product_id) {
+                $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls);
+                $this->wc->updateProduct($programa, $images);
+                return;
+            }
+
+            $wcId = $this->wc->findByName($programa->nombre_programa);
+
+            if ($wcId) {
+                Programa::withoutEvents(function () use ($programa, $wcId) {
+                    $programa->update(['wc_product_id' => $wcId]);
+                });
+                Log::info("[WC-Sync] syncToWc: programa #{$programa->id} vinculado a producto WC existente #{$wcId}, no se creó uno nuevo");
+                return;
+            }
+
+            // Sin imágenes principales, se permite que las de servicios ocupen
+            // la posición 0 para que el producto no se cree sin ninguna imagen.
+            $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls, true);
+            $wcId   = $this->wc->createProduct($programa, $images);
+
+            Programa::withoutEvents(function () use ($programa, $wcId, $mainImageIds) {
+                $programa->update([
+                    'wc_product_id'     => $wcId,
+                    'wc_main_image_ids' => $mainImageIds,
+                ]);
+            });
+
+        } catch (\Exception $e) {
+            Log::warning("[WC-Sync] syncToWc: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
+        }
     }
 }
