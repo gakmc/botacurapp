@@ -6,6 +6,8 @@
 @endsection
 
 @section('breadcrumbs')
+<li><a href="{{route('backoffice.cliente.index') }}">Programas</a></li>
+<li>{{$programa->nombre_programa}}</li>
 @endsection
 
 

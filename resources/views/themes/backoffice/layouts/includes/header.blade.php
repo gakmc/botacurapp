@@ -14,11 +14,12 @@
                     </li>
                 </ul>
 
-                <div class="header-search-wrapper hide-on-med-and-down">
-                    <form action="" class="">
+                <div class="header-search-wrapper hide-on-med-and-down" style="position: relative;">
+                    <form action="" class="" onsubmit="return false;" autocomplete="off">
                     <i class="material-icons">search</i>
-                    <input class="header-search-input z-depth-2" id="search" name="search" placeholder="¿Qué deseas buscar?" type="text"/>
+                    <input class="header-search-input z-depth-2" id="search" name="search" placeholder="¿Qué deseas buscar?" type="text" autocomplete="off"/>
                     </form>
+                    <ul id="header-search-results" class="collection z-depth-3" style="display:none; position:absolute; top:100%; left:0; width:100%; max-height:320px; overflow-y:auto; margin:0; z-index:1000; color:rgba(0,0,0,0.87);"></ul>
                 </div>
 
                 <ul class="right hide-on-med-and-down">

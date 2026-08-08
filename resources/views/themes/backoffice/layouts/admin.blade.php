@@ -59,6 +59,12 @@
 
         async function activarNotificacionesPush() {
 
+            const esLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+            if (location.protocol !== 'https:' && !esLocalhost) {
+                alert('Debes usar HTTPS para activar notificaciones');
+                return;
+            }
+
             const permission = await Notification.requestPermission();
             if (permission !== 'granted') return;
 

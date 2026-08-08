@@ -77,6 +77,87 @@
 
 
 @section('foot')
+<script>
+(function () {
+    var input   = document.getElementById('search');
+    var results = document.getElementById('header-search-results');
+    if (!input || !results) return;
+
+    var debounceTimer = null;
+    var currentXhr     = null;
+    var showUrl        = "{{ route('backoffice.cliente.show', ['cliente' => '__ID__']) }}";
+
+    function hideResults() {
+        results.style.display = 'none';
+        results.innerHTML = '';
+    }
+
+    function renderResults(clientes) {
+        results.innerHTML = '';
+
+        if (!clientes.length) {
+            var empty = document.createElement('li');
+            empty.className = 'collection-item grey-text';
+            empty.style.cssText = 'float:none; display:block; width:100%;';
+            empty.textContent = 'Sin coincidencias';
+            results.appendChild(empty);
+            results.style.display = 'block';
+            return;
+        }
+
+        clientes.forEach(function (cliente) {
+            var item = document.createElement('li');
+            item.className = 'collection-item' + (cliente.bloqueado ? ' red-text' : '');
+            item.style.cssText = 'float:none; display:block; width:100%; cursor:pointer;';
+            item.textContent = cliente.nombre_cliente
+                + (cliente.correo ? ' — ' + cliente.correo : '')
+                + (cliente.whatsapp_cliente ? ' — +' + cliente.whatsapp_cliente : '');
+
+            item.addEventListener('click', function () {
+                window.location.href = showUrl.replace('__ID__', cliente.id);
+            });
+
+            results.appendChild(item);
+        });
+
+        results.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+        var query = input.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            hideResults();
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            if (currentXhr) currentXhr.abort();
+
+            currentXhr = $.ajax({
+                url: "{{ route('backoffice.cliente.index') }}",
+                method: 'GET',
+                data: { search: query },
+                dataType: 'json'
+            }).done(function (clientes) {
+                renderResults(clientes);
+            });
+        }, 250);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.target !== input && !results.contains(e.target)) {
+            hideResults();
+        }
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideResults();
+    });
+})();
+</script>
 @endsection
 
 

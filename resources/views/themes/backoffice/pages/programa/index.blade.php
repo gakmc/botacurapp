@@ -152,4 +152,88 @@
         });
         @endif
 </script>
+
+<script>
+(function () {
+    var input   = document.getElementById('search');
+    var results = document.getElementById('header-search-results');
+    if (!input || !results) return;
+
+    var debounceTimer = null;
+    var currentXhr     = null;
+    var editUrl        = "{{ route('backoffice.programa.edit', ['programa' => '__ID__']) }}";
+
+    function formatCLP(valor) {
+        return '$' + Math.round(valor).toString().replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+    }
+
+    function hideResults() {
+        results.style.display = 'none';
+        results.innerHTML = '';
+    }
+
+    function renderResults(programas) {
+        results.innerHTML = '';
+
+        if (!programas.length) {
+            var empty = document.createElement('li');
+            empty.className = 'collection-item grey-text';
+            empty.style.cssText = 'float:none; display:block; width:100%;';
+            empty.textContent = 'Sin coincidencias';
+            results.appendChild(empty);
+            results.style.display = 'block';
+            return;
+        }
+
+        programas.forEach(function (programa) {
+            var item = document.createElement('li');
+            item.className = 'collection-item';
+            item.style.cssText = 'float:none; display:block; width:100%; cursor:pointer;';
+            item.textContent = programa.nombre_programa + ' — ' + formatCLP(programa.valor_programa);
+
+            item.addEventListener('click', function () {
+                window.location.href = editUrl.replace('__ID__', programa.id);
+            });
+
+            results.appendChild(item);
+        });
+
+        results.style.display = 'block';
+    }
+
+    input.addEventListener('input', function () {
+        var query = input.value.trim();
+
+        clearTimeout(debounceTimer);
+
+        if (query.length < 2) {
+            hideResults();
+            return;
+        }
+
+        debounceTimer = setTimeout(function () {
+            if (currentXhr) currentXhr.abort();
+
+            currentXhr = $.ajax({
+                url: "{{ route('backoffice.programa.index') }}",
+                method: 'GET',
+                data: { search: query },
+                dataType: 'json'
+            }).done(function (programas) {
+                renderResults(programas);
+            });
+        }, 250);
+    });
+
+    document.addEventListener('click', function (e) {
+        if (e.target !== input && !results.contains(e.target)) {
+            hideResults();
+        }
+    });
+
+    input.addEventListener('keydown', function (e) {
+        if (e.key === 'Escape') hideResults();
+    });
+})();
+</script>
 @endsection
