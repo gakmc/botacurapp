@@ -61,6 +61,7 @@ Route::prefix('iot')->namespace('Api')->group(function () {
     Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
     // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
+    Route::get('tinajas/agenda-dia', 'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
     // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
     Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
 
