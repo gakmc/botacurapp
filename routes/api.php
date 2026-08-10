@@ -63,7 +63,7 @@ Route::prefix('iot')->namespace('Api')->group(function () {
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
     Route::get('tinajas/agenda-dia', 'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
     // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
-    Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
+    // Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas'); // deshabilitada: controller no existe en esta rama y no la usa HA (ver IotController@proximaTinaja)
 
     // Route::get('/iot/tinajas/proxima-reserva', 'Api\TinajaController@proximaReserva');
 });
@@ -76,8 +76,8 @@ Route::prefix('egresos')->namespace('Api')->group(function () {
     Route::get('form-data',    'EgresoApiController@formData')->name('egresos.form-data');
 
     // Escaneo de factura/boleta con IA
-    Route::post('scan',         'EgresoScanController@scan')->name('egresos.scan');
-    Route::post('scan/confirm', 'EgresoScanController@confirm')->name('egresos.scan.confirm');
+    // Route::post('scan',         'EgresoScanController@scan')->name('egresos.scan'); // deshabilitada: reemplazada por integracion SII
+    // Route::post('scan/confirm', 'EgresoScanController@confirm')->name('egresos.scan.confirm'); // deshabilitada: reemplazada por integracion SII
 
     // Ingreso rápido manual
     Route::post('/',            'EgresoApiController@store')->name('egresos.store');
