@@ -48,3 +48,9 @@ produccion_dump.sql
 qa-bot.py
 qa-bot.sh
 sync-db.sh
+.env.production
+dump_*.sql
+dbexport.php
+db_export.php
+public/unificar_usuario.php
+public/dbexport.php

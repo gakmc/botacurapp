@@ -53,20 +53,24 @@ Route::prefix('bot')->namespace('Api')->middleware('bot.token')->group(function 
 // IoT — Gas (Home Assistant)
 // POST /api/iot/gas/registrar
 //   tipo_operacion: pago_proveedor | instalacion_cilindro
-// No requiere auth: se recomienda validar por token de HA en el controlador
+// Protegido por API key (header X-API-KEY o ?api_key=), validada por
+// auth.apikey (ApiKeyMiddleware) contra config('app.laravel_api_key')
+// [env LARAVEL_API_KEY]. /ping queda fuera de la protección para health-check.
 // -------------------------------------------------------------------------
 Route::prefix('iot')->namespace('Api')->group(function () {
+    // NOTA: auth.apikey (LARAVEL_API_KEY) disponible pero NO activado aqui
+    // todavia -- no confirmado si Home Assistant ya envia la API key.
+    // Ver commit 3f99502 para la version protegida cuando se confirme HA.
     Route::get('ping',                    'IotController@ping')->name('iot.ping');
     Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
     Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
     Route::post('agua/registrar',         'AguaIotController@registrar')->name('iot.agua.registrar');
     // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
-    Route::get('tinajas/agenda-dia', 'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
+    // Agenda completa de hoy por tinaja/sauna — para mantener temperatura toda la jornada
+    Route::get('tinajas/agenda-dia',      'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
     // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
-    // Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas'); // deshabilitada: controller no existe en esta rama y no la usa HA (ver IotController@proximaTinaja)
-
-    // Route::get('/iot/tinajas/proxima-reserva', 'Api\TinajaController@proximaReserva');
+    Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
 });
 
 // -------------------------------------------------------------------------
