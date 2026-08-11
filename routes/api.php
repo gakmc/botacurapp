@@ -59,6 +59,7 @@ Route::prefix('iot')->namespace('Api')->group(function () {
     Route::get('ping',                    'IotController@ping')->name('iot.ping');
     Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
     Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
+    Route::post('agua/registrar',         'AguaIotController@registrar')->name('iot.agua.registrar');
     // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
     Route::get('tinajas/agenda-dia', 'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
