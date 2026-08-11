@@ -53,18 +53,23 @@ Route::prefix('bot')->namespace('Api')->middleware('bot.token')->group(function 
 // IoT — Gas (Home Assistant)
 // POST /api/iot/gas/registrar
 //   tipo_operacion: pago_proveedor | instalacion_cilindro
-// No requiere auth: se recomienda validar por token de HA en el controlador
+// Protegido por API key (header X-API-KEY o ?api_key=), validada por
+// auth.apikey (ApiKeyMiddleware) contra config('app.laravel_api_key')
+// [env LARAVEL_API_KEY]. /ping queda fuera de la protección para health-check.
 // -------------------------------------------------------------------------
 Route::prefix('iot')->namespace('Api')->group(function () {
-    Route::get('ping',                    'IotController@ping')->name('iot.ping');
-    Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
-    Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
-    // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
-    Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
-    // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
-    Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
+    Route::get('ping', 'IotController@ping')->name('iot.ping');
 
-    // Route::get('/iot/tinajas/proxima-reserva', 'Api\TinajaController@proximaReserva');
+    Route::middleware('auth.apikey')->group(function () {
+        Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
+        Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
+        // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
+        Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
+        // Agenda completa de hoy por tinaja/sauna — para mantener temperatura toda la jornada
+        Route::get('tinajas/agenda-dia',      'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
+        // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
+        Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
+    });
 });
 
 // -------------------------------------------------------------------------
