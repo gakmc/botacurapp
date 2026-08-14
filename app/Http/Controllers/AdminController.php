@@ -387,7 +387,8 @@ class AdminController extends Controller
         }
 
         // 3) Masoterapeutas (usuarios con rol masoterapeuta)
-        $masoterapeutas = User::whereHas('roles', function ($q) {
+        $masoterapeutas = User::activos()
+            ->whereHas('roles', function ($q) {
                 $q->where('name', 'masoterapeuta');
             })
             ->orderBy('name')
@@ -573,7 +574,7 @@ class AdminController extends Controller
     {
         Carbon::setLocale('es');
         // Obtener usuarios con roles especificos
-        $usuarios = User::whereHas('roles', function ($query) {
+        $usuarios = User::activos()->whereHas('roles', function ($query) {
             $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
         })->get();
 

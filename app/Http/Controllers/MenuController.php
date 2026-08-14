@@ -151,6 +151,7 @@ class MenuController extends Controller
                 'menus.productoEntrada:id,nombre',
                 'menus.productoFondo:id,nombre',
                 'menus.productoAcompanamiento:id,nombre',
+                'desayunoOnce:id,id_reserva,tipo',
             ])
             ->orderBy('id', 'asc')
             ->get();
@@ -162,6 +163,8 @@ class MenuController extends Controller
         $entradas = [];
         $fondos = [];
         $acomps = [];
+        $desayunos = 0;
+        $onces = 0;
 
         foreach ($reservas as $reserva) {
             foreach ($reserva->menus as $menu) {
@@ -178,6 +181,22 @@ class MenuController extends Controller
                     $acomps[$n] = ($acomps[$n] ?? 0) + 1;
                 }
             }
+
+            foreach ($reserva->desayunoOnce as $item) {
+                if ($item->tipo === 'desayuno') {
+                    $desayunos += (int) ($reserva->cantidad_personas ?? 0);
+                } elseif ($item->tipo === 'once') {
+                    $onces += (int) ($reserva->cantidad_personas ?? 0);
+                }
+            }
+        }
+
+        $buffet = [];
+        if ($desayunos > 0) {
+            $buffet['Desayuno'] = $desayunos;
+        }
+        if ($onces > 0) {
+            $buffet['Once'] = $onces;
         }
 
         $reservasPayload = $reservas->map(function ($r) {
@@ -189,6 +208,7 @@ class MenuController extends Controller
                 'observacion_reserva' => $r->observacion ?? 'Sin Observaciones',
                 'avisado_en_cocina' => $r->avisado_en_cocina,
                 'avisar_url' => route('backoffice.reserva.avisar', $r->id), // (sin backoffice, por tu prefix)
+                'desayuno_once' => $r->desayunoOnce->pluck('tipo')->values(),
                 'menus' => $r->menus->map(function ($m) {
                     return [
                         'entrada' => ($m->id_producto_entrada && $m->productoEntrada) ? $m->productoEntrada->nombre : null,
@@ -207,6 +227,7 @@ class MenuController extends Controller
             'entradas' => $entradas,
             'fondos' => $fondos,
             'acompanamientos' => $acomps,
+            'buffet' => $buffet,
             'reservas' => $reservasPayload,
         ]);
     }

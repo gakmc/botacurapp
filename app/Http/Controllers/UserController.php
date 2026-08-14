@@ -18,12 +18,26 @@ class UserController extends Controller
     public function index()
     {
         $this->authorize('index', User::class);
-        
+
         return view('themes.backoffice.pages.user.index',[
-            'users' => auth()->user()->visible_users(),
+            'users' => auth()->user()->visible_users()->where('activo', true)->values(),
             //'roles' => Role::all(),
         ]);
-    } 
+    }
+
+    /**
+     * Display a listing of the deactivated users.
+     *
+     * @return \Illuminate\Http\Response
+     */
+    public function index_inactivos()
+    {
+        $this->authorize('index', User::class);
+
+        return view('themes.backoffice.pages.user.index_inactivos',[
+            'users' => auth()->user()->visible_users()->where('activo', false)->values(),
+        ]);
+    }
 
     /**
      * Show the form for creating a new resource.
@@ -110,8 +124,24 @@ class UserController extends Controller
 
     
     /**
+     * Activar o desactivar el usuario (no aparece en asignación de turnos si está inactivo)
+     *
+     */
+    public function toggleStatus(User $user)
+    {
+        $this->authorize('toggleStatus', $user);
+        $user->update(['activo' => ! $user->activo]);
+
+        return response()->json([
+            'ok'     => true,
+            'activo' => $user->activo,
+            'msg'    => $user->activo ? 'Usuario activado' : 'Usuario desactivado',
+        ]);
+    }
+
+    /**
      * Mostrar formulario para asignar rol
-     * 
+     *
      */
     public function assign_role(User $user)
     {

@@ -27,20 +27,13 @@
                         @yield('dropdown_settings')
                     </ul>
 
-
-                    <a class="btn modal-trigger waves-effect waves-light hide-on-large-only right" href="#modal-acciones">
-                        <i class="material-icons">settings</i>
-                    </a>
-
-                    <!-- Modal estructurado -->
-                    <div id="modal-acciones" class="modal">
-                        <div class="modal-content">
-                            {{-- <h5>Acciones</h5> --}}
-                            <ul class="collection with-header">
-                                <li class="collection-header"><h5>Acciones</h5></li>
-                                @yield('dropdown_settings')
-                            </ul>
-                        </div>
+                    <div class="dropdown-settings-mobile hide-on-large-only right">
+                        <a href="#!" id="dropdown-settings-mobile-btn" class="btn-floating red waves-effect waves-light">
+                            <i class="material-icons">settings</i>
+                        </a>
+                        <ul class="dropdown-settings-mobile-menu">
+                            @yield('dropdown_settings')
+                        </ul>
                     </div>
                 @endif
             </div>

@@ -62,7 +62,7 @@ class AsistenciaController extends Controller
         
         $rolesValidos = ['Administracion', 'Mantencion', 'Informatica', 'Aseo'];
 
-        $users = User::whereHas('roles', function ($query) use ($rolesValidos) {
+        $users = User::activos()->whereHas('roles', function ($query) use ($rolesValidos) {
             $query->whereIn('name', $rolesValidos);
         })->get();
 
@@ -136,9 +136,14 @@ class AsistenciaController extends Controller
     {
         $asistencia = Asistencia::findOrFail($id);
         $rolesValidos = ['Administracion', 'Mantencion', 'Informatica', 'Aseo'];
+        $idsAsignados = $asistencia->users->pluck('id');
 
+        // Se incluyen los usuarios ya registrados aunque estén inactivos, para no
+        // desmarcarlos silenciosamente al guardar el formulario sin volver a marcarlos.
         $users = User::whereHas('roles', function ($query) use ($rolesValidos) {
             $query->whereIn('name', $rolesValidos);
+        })->where(function ($query) use ($idsAsignados) {
+            $query->where('activo', true)->orWhereIn('id', $idsAsignados);
         })->get();
 
         $fecha = $asistencia->fecha;

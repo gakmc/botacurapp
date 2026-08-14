@@ -40,6 +40,7 @@ class UpdateRequest extends FormRequest
             'menus.*.id_producto_acompanamiento' => 'nullable|integer',
             'menus.*.alergias' => 'nullable|string',
             'menus.*.observacion' => 'nullable|string',
+            'desayuno_once' => 'nullable|in:desayuno,once',
         ];
     }
 }

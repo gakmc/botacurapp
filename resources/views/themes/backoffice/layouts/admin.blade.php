@@ -58,44 +58,61 @@
         }
 
         async function activarNotificacionesPush() {
+            try {
+                const esLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
+                if (location.protocol !== 'https:' && !esLocalhost) {
+                    alert('Debes usar HTTPS para activar notificaciones');
+                    return;
+                }
 
-            const esLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
-            if (location.protocol !== 'https:' && !esLocalhost) {
-                alert('Debes usar HTTPS para activar notificaciones');
-                return;
-            }
+                const permission = await Notification.requestPermission();
+                if (permission !== 'granted') {
+                    alert('Permiso de notificaciones no concedido (estado: ' + permission + ').');
+                    return;
+                }
 
-            const permission = await Notification.requestPermission();
-            if (permission !== 'granted') return;
+                const registration = await navigator.serviceWorker.register('/sw.js');
+                await navigator.serviceWorker.ready;
 
-            const registration = await navigator.serviceWorker.register('/sw.js');
+                let subscription = await registration.pushManager.getSubscription();
 
-            let subscription = await registration.pushManager.getSubscription();
+                if (!subscription) {
+                    const vapidKey = document.querySelector('meta[name="vapid-public-key"]').content;
 
-            if (!subscription) {
-                const vapidKey = document.querySelector('meta[name="vapid-public-key"]').content;
+                    subscription = await registration.pushManager.subscribe({
+                        userVisibleOnly: true,
+                        applicationServerKey: await urlBase64ToUint8Array(vapidKey)
+                    });
+                }
 
-                subscription = await registration.pushManager.subscribe({
-                    userVisibleOnly: true,
-                    applicationServerKey: await urlBase64ToUint8Array(vapidKey)
-                });
-            }
-
-            await fetch('{{ route('push.subscribe') }}', {
-                method: 'POST',
-                headers: {
-                    'Content-Type': 'application/json',
-                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                },
-                body: JSON.stringify({
-                    endpoint: subscription.endpoint,
-                    keys: {
-                        p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))),
-                        auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth'))))
+                const resp = await fetch('{{ route('push.subscribe') }}', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
                     },
-                    encoding: 'aesgcm'
-                })
-            });
+                    body: JSON.stringify({
+                        endpoint: subscription.endpoint,
+                        keys: {
+                            p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))),
+                            auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth'))))
+                        },
+                        encoding: 'aesgcm'
+                    })
+                });
+
+                if (!resp.ok) {
+                    const texto = await resp.text().catch(() => '');
+                    console.error('Error al guardar la suscripcion push:', resp.status, texto);
+                    alert('No se pudo guardar la suscripcion en el servidor (error ' + resp.status + '). Revisa la consola.');
+                    return;
+                }
+
+                alert('Notificaciones activadas correctamente.');
+            } catch (err) {
+                console.error('Error activando notificaciones push:', err);
+                alert('Error activando notificaciones: ' + (err && err.message ? err.message : err));
+            }
         }
 
     </script>

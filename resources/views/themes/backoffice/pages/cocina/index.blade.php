@@ -114,13 +114,15 @@
   }
 
   function renderReservaCard(reserva) {
-    if (!reserva.menus || !reserva.menus.length) return '';
+    var tieneMenus = reserva.menus && reserva.menus.length;
+    var tieneBuffet = reserva.desayuno_once && reserva.desayuno_once.length;
+    if (!tieneMenus && !tieneBuffet) return '';
 
     var btnDisplay = (reserva.avisado_en_cocina === null || reserva.avisado_en_cocina === 'avisado' || reserva.avisado_en_cocina === 'entregado')
       ? 'display:none;'
       : '';
 
-    var rows = reserva.menus.map(function(menu, idx) {
+    var rows = tieneMenus ? reserva.menus.map(function(menu, idx) {
       var entrada = menu.entrada ? escapeHtml(menu.entrada) : '<span class="red-text">No registra</span>';
       var fondo = menu.fondo ? escapeHtml(menu.fondo) : '<span class="red-text">No registra</span>';
       var acomp = menu.acompanamiento ? escapeHtml(menu.acompanamiento) : 'Sin Acompañamiento';
@@ -138,8 +140,32 @@
           ${obs}
         </tr>
       `;
-    }).join('');
+    }).join('') : '';
 
+    var tablaMenus = tieneMenus ? `
+      <table class="responsive-table">
+        <thead>
+          <tr>
+            <th>Menú</th>
+            <th>Entrada</th>
+            <th>Fondo</th>
+            <th>Acompañamiento</th>
+            <th>Alérgias</th>
+            <th>Observaciones</th>
+          </tr>
+        </thead>
+        <tbody>
+          ${rows}
+        </tbody>
+      </table>
+    ` : `<p>No registra menú de almuerzo.</p>`;
+
+    var buffetTexto = '';
+    if (tieneBuffet) {
+      var etiquetas = reserva.desayuno_once.map(function(t) { return t === 'desayuno' ? 'Desayuno' : 'Once'; });
+      buffetTexto = etiquetas.join(' y ');
+    }
+    var buffetInfo = buffetTexto ? `<p><i class="material-icons tiny">free_breakfast</i> ${escapeHtml(buffetTexto)} (${escapeHtml(reserva.cantidad_personas)})</p>` : '';
 
     return `
       <div class="card-panel">
@@ -161,21 +187,8 @@
         </div>
 
         <div class="card-content grey lighten-4">
-          <table class="responsive-table">
-            <thead>
-              <tr>
-                <th>Menú</th>
-                <th>Entrada</th>
-                <th>Fondo</th>
-                <th>Acompañamiento</th>
-                <th>Alérgias</th>
-                <th>Observaciones</th>
-              </tr>
-            </thead>
-            <tbody>
-              ${rows}
-            </tbody>
-          </table>
+          ${buffetInfo}
+          ${tablaMenus}
         </div>
       </div>
     `;
@@ -232,6 +245,11 @@
               </div>
               <div class="col s12 m4 l4">
                 ${renderContador('Acompañamientos', 'restaurant', 'orange', data.acompanamientos)}
+              </div>
+            </div>
+            <div class="row">
+              <div class="col s12 m4 l4">
+                ${renderContador('Desayuno / Once', 'free_breakfast', 'purple', data.buffet)}
               </div>
             </div>
           </div>
