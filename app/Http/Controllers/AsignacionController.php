@@ -150,7 +150,7 @@ class AsignacionController extends Controller
         //     $query->whereIn('name', $rolesExcluidos);
         // })->get();
 
-        $users = User::whereHas('roles', function ($query) {
+        $users = User::activos()->whereHas('roles', function ($query) {
             $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
         })->get();
 
@@ -191,8 +191,14 @@ class AsignacionController extends Controller
 
     public function edit(asignacion $asignacion)
     {
+        $idsAsignados = $asignacion->users->pluck('id');
+
+        // Se incluyen los usuarios ya asignados aunque estén inactivos, para no
+        // desasignarlos silenciosamente al guardar el formulario sin volver a marcarlos.
         $users = User::whereHas('roles', function ($query) {
             $query->whereIn('name', ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local']);
+        })->where(function ($query) use ($idsAsignados) {
+            $query->where('activo', true)->orWhereIn('id', $idsAsignados);
         })->get();
 
         $fecha = $asignacion->fecha;

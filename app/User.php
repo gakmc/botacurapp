@@ -28,7 +28,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
      * @var array
      */
     protected $fillable = [
-        'name', 'dob', 'email', 'password',
+        'name', 'dob', 'email', 'password', 'activo',
     ];
 
     /**
@@ -48,6 +48,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
      */
     protected $casts = [
         'email_verified_at' => 'datetime',
+        'activo'            => 'boolean',
     ];
 
     protected $appends = ['salario'];
@@ -352,6 +353,11 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
         return $query->whereHas(
             'impuestoUsuario', function ($q) { return $q->where('retiene_impuestos', true); }
         );
+    }
+
+    public function scopeActivos($query)
+    {
+        return $query->where('activo', true);
     }
 
 }

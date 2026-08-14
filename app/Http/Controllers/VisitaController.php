@@ -13,6 +13,7 @@ use App\Menu;
 use App\PrecioTipoMasaje;
 use App\Producto;
 use App\Reserva;
+use App\ReservaDesayunoOnce;
 use App\Servicio;
 use App\TipoMasaje;
 use App\Ubicacion;
@@ -1468,23 +1469,26 @@ class VisitaController extends Controller
         }
 
 
+        $tipoDesayunoOnceActual = $reserva->desayunoOnce()->whereIn('tipo', ['desayuno', 'once'])->pluck('tipo')->first();
+
         return view('themes.backoffice.pages.visita.registrar', [
-            'reserva'               => $reserva,
-            'ubicaciones'           => $ubicaciones,
-            'lugares'               => LugarMasaje::all(),
-            'servicios'             => $serviciosDisponibles,
-            'horarios'              => $horariosDisponiblesSPA,
-            'horasMasaje'           => $horariosDisponiblesMasajes,
-            'entradas'              => $entradas,
-            'fondos'                => $fondos,
-            'acompañamientos'       => $acompañamientos,
-            'masajesExtra'          => $masajesExtra,
-            'almuerzosExtra'        => $almuerzosExtra,
-            'cantidadMasajesExtra'  => $cantidadMasajesExtra,
-            'incluyeMasajePrograma' => $incluyeMasajePrograma,
-            'modoMasaje'            => $modoMasaje,
-            'cantidadSlotsMasaje'   => $cantidadSlotsMasaje,
-            'catalogoMasajes'       => $catalogoMasajes,
+            'reserva'                => $reserva,
+            'ubicaciones'            => $ubicaciones,
+            'lugares'                => LugarMasaje::all(),
+            'servicios'              => $serviciosDisponibles,
+            'horarios'               => $horariosDisponiblesSPA,
+            'horasMasaje'            => $horariosDisponiblesMasajes,
+            'entradas'               => $entradas,
+            'fondos'                 => $fondos,
+            'acompañamientos'        => $acompañamientos,
+            'masajesExtra'           => $masajesExtra,
+            'almuerzosExtra'         => $almuerzosExtra,
+            'cantidadMasajesExtra'   => $cantidadMasajesExtra,
+            'incluyeMasajePrograma'  => $incluyeMasajePrograma,
+            'modoMasaje'             => $modoMasaje,
+            'cantidadSlotsMasaje'    => $cantidadSlotsMasaje,
+            'catalogoMasajes'        => $catalogoMasajes,
+            'tipoDesayunoOnceActual' => $tipoDesayunoOnceActual,
         ]);
     }
 
@@ -1535,8 +1539,9 @@ class VisitaController extends Controller
 
         $masajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0) > 0;
 
-        $incluyeAlmuerzo = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
-        $incluyeMasaje   = $this->reservaIncluyeMasaje($reserva) || $masajesExtra || ((int) $reserva->cantidad_masajes > 0);
+        $incluyeAlmuerzo       = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
+        $incluyeMasajePrograma = $this->reservaIncluyeMasaje($reserva);
+        $incluyeMasaje         = $incluyeMasajePrograma || $masajesExtra || ((int) $reserva->cantidad_masajes > 0);
 
         $visitasConHorario = $reserva->visitas->contains(function ($visita) {
             return ! empty($visita->horario_sauna);
@@ -1552,6 +1557,7 @@ class VisitaController extends Controller
                 $reserva,
                 $incluyeAlmuerzo,
                 $incluyeMasaje,
+                $incluyeMasajePrograma,
                 $personasMasaje,
                 &$visitaMail,
                 $visitasConHorario,
@@ -1574,7 +1580,7 @@ class VisitaController extends Controller
                     $this->actualizarMasajesDesdePayload($reserva, $masajesNorm, $personasMasaje);
                 } elseif ($incluyeMasaje) {
                     if (! $masajesConHorario) {
-                        $this->asegurarMasajesParaPersonas($reserva, $personasMasaje, true);
+                        $this->asegurarMasajesParaPersonas($reserva, $personasMasaje, true, $incluyeMasajePrograma);
                     }
                 } else {
                     $reserva->masajes()->delete();
@@ -1585,6 +1591,8 @@ class VisitaController extends Controller
                 } else {
                     $reserva->menus()->delete();
                 }
+
+                $this->actualizarDesayunoOnceDesdePayload($request, $reserva);
 
                 $this->procesarCobroMasajesExtra($request, $reserva);
             });
@@ -1992,9 +2000,10 @@ class VisitaController extends Controller
         $almuerzosExtra = (bool) session()->get('almuerzosExtra');
         $masajesExtra   = (bool) session()->get('masajesExtra');
 
-        $serviciosPrograma = $programa->servicios->pluck('nombre_servicio')->toArray();
-        $incluyeAlmuerzo   = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
-        $incluyeMasaje     = $programa->servicios->contains('nombre_servicio', 'Masaje') || $masajesExtra;
+        $serviciosPrograma     = $programa->servicios->pluck('nombre_servicio')->toArray();
+        $incluyeAlmuerzo       = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
+        $incluyeMasajePrograma = $programa->servicios->contains('nombre_servicio', 'Masaje');
+        $incluyeMasaje         = $incluyeMasajePrograma || $masajesExtra;
 
         try {
             DB::transaction(function () use (
@@ -2003,6 +2012,7 @@ class VisitaController extends Controller
                 $programa,
                 &$cliente,
                 &$visita,
+                $incluyeMasajePrograma,
                 $incluyeAlmuerzo,
                 $incluyeMasaje,
                 $personasMasaje
@@ -2041,12 +2051,14 @@ class VisitaController extends Controller
                     $this->crearVisitasPlaceholder($request, $reserva);
 
                     if ($incluyeMasaje) {
-                        $this->crearMasajesPlaceholder($reserva, $personasMasaje);
+                        $this->crearMasajesPlaceholder($reserva, $personasMasaje, $incluyeMasajePrograma);
                     }
 
                     if ($incluyeAlmuerzo) {
                         $this->crearMenusSiCorresponde($request, $reserva);
                     }
+
+                    $this->crearDesayunoOnceSiCorresponde($request, $reserva);
 
                     // Si estás usando sesión para extras/almuerzos, límpiala igual
                     session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
@@ -2083,7 +2095,7 @@ class VisitaController extends Controller
                 } else {
                     // Si no hay masajes reales pero el programa incluye masaje, deja placeholders.
                     if ($incluyeMasaje) {
-                        $this->crearMasajesPlaceholder($reserva, $personasMasaje);
+                        $this->crearMasajesPlaceholder($reserva, $personasMasaje, $incluyeMasajePrograma);
                     }
                 }
 
@@ -2093,6 +2105,8 @@ class VisitaController extends Controller
                 if ($incluyeAlmuerzo) {
                     $this->crearMenusSiCorresponde($request, $reserva);
                 }
+
+                $this->crearDesayunoOnceSiCorresponde($request, $reserva);
 
                 // ==========================================
                 // 7) Cobro de MASAJES EXTRA (detalle_extra)
@@ -2447,12 +2461,12 @@ class VisitaController extends Controller
         return $visitas->first();
     }
 
-    private function crearMasajesPlaceholder(Reserva $reserva, int $personasMasaje): void
+    private function crearMasajesPlaceholder(Reserva $reserva, int $personasMasaje, bool $incluyeMasajePrograma = false): void
     {
         for ($i = 1; $i <= $personasMasaje; $i++) {
             Masaje::create([
                 'horario_masaje'  => null,
-                'tipo_masaje'     => null,
+                'tipo_masaje'     => $incluyeMasajePrograma ? 'Relajación' : null,
                 'id_lugar_masaje' => 1,
                 'persona'         => $i,
                 'tiempo_extra'    => 0,
@@ -2558,7 +2572,7 @@ class VisitaController extends Controller
         for (; $contadorPersonas <= $personasMasaje; $contadorPersonas++) {
             Masaje::create([
                 'horario_masaje'  => null,
-                'tipo_masaje'     => null,
+                'tipo_masaje'     => 'Relajación',
                 'id_lugar_masaje' => 1,
                 'persona'         => $contadorPersonas,
                 'tiempo_extra'    => 0,
@@ -2568,8 +2582,10 @@ class VisitaController extends Controller
         }
     }
 
-    private function asegurarMasajesParaPersonas(Reserva $reserva, int $personasMasaje, bool $resetValores = false)
+    private function asegurarMasajesParaPersonas(Reserva $reserva, int $personasMasaje, bool $resetValores = false, bool $incluyeMasajePrograma = false)
     {
+        $tipoMasajeDefault = $incluyeMasajePrograma ? 'Relajación' : null;
+
         $masajes = $reserva->masajes()->orderBy('persona')->get()->keyBy(function ($masaje) {
             return (int) $masaje->persona;
         });
@@ -2578,7 +2594,7 @@ class VisitaController extends Controller
             if (! isset($masajes[$persona])) {
                 Masaje::create([
                     'horario_masaje'  => null,
-                    'tipo_masaje'     => null,
+                    'tipo_masaje'     => $tipoMasajeDefault,
                     'id_lugar_masaje' => 1,
                     'persona'         => $persona,
                     'tiempo_extra'    => 0,
@@ -2588,7 +2604,7 @@ class VisitaController extends Controller
             } elseif ($resetValores) {
                 $masajes[$persona]->update([
                     'horario_masaje' => null,
-                    'tipo_masaje'    => null,
+                    'tipo_masaje'    => $tipoMasajeDefault,
                     'tiempo_extra'   => 0,
                 ]);
             }
@@ -2654,7 +2670,7 @@ class VisitaController extends Controller
             return;
         }
 
-        $masajes = $this->asegurarMasajesParaPersonas($reserva, $personasMasaje);
+        $masajes = $this->asegurarMasajesParaPersonas($reserva, $personasMasaje, false, true);
         $masajes = $masajes->sortBy('persona')->values();
 
         $indicePersona      = 0;
@@ -2686,7 +2702,7 @@ class VisitaController extends Controller
         for (; $indicePersona < $personasMasaje; $indicePersona++) {
             $masajes[$indicePersona]->update([
                 'horario_masaje'  => null,
-                'tipo_masaje'     => null,
+                'tipo_masaje'     => 'Relajación',
                 'tiempo_extra'    => 0,
             ]);
         }
@@ -2737,6 +2753,57 @@ class VisitaController extends Controller
                 'alergias'                   => null,
                 'observacion'                => null,
             ]);
+        }
+    }
+
+    private function crearDesayunoOnceSiCorresponde($request, Reserva $reserva): void
+    {
+        $servicios    = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $incluyeAmbos = in_array('Desayuno y Once', $servicios);
+        $incluyeUno   = in_array('Desayuno u Once', $servicios);
+
+        if (! $incluyeAmbos && ! $incluyeUno) {
+            return;
+        }
+
+        // Si ya existen, no duplicar
+        if (ReservaDesayunoOnce::where('id_reserva', $reserva->id)->exists()) {
+            return;
+        }
+
+        if ($incluyeAmbos) {
+            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'desayuno']);
+            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'once']);
+
+            return;
+        }
+
+        $tipo = $request->input('desayuno_once');
+        if (in_array($tipo, ['desayuno', 'once'], true)) {
+            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+        }
+    }
+
+    private function actualizarDesayunoOnceDesdePayload($request, Reserva $reserva): void
+    {
+        $servicios    = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $incluyeAmbos = in_array('Desayuno y Once', $servicios);
+        $incluyeUno   = in_array('Desayuno u Once', $servicios);
+
+        $reserva->desayunoOnce()->delete();
+
+        if ($incluyeAmbos) {
+            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'desayuno']);
+            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'once']);
+
+            return;
+        }
+
+        if ($incluyeUno) {
+            $tipo = $request->input('desayuno_once');
+            if (in_array($tipo, ['desayuno', 'once'], true)) {
+                ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+            }
         }
     }
 

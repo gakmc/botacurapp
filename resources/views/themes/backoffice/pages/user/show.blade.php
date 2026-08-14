@@ -25,6 +25,14 @@
                             <div class="card-content">
                                 <h4 class="card-title">{{$user->name}}</h4>
                                 <p><strong>Edad: </strong>{{$user->age()}}</p>
+                                <p>
+                                    <strong>Estado: </strong>
+                                    @if($user->activo)
+                                        <span class="green-text">Activo</span>
+                                    @else
+                                        <span class="red-text">Inactivo</span>
+                                    @endif
+                                </p>
                                 <h5>Roles: </h5>
                                 <ul>
                                     @foreach($user->roles as $role)
@@ -39,6 +47,7 @@
                             </div>
                                 <div class="card-action">
                                     <a href="{{route('backoffice.user.edit', $user) }}">Editar</a>
+                                    <a href="#" class="cambiar-estado-user" data-action="{{ route('backoffice.user.toggle_status', $user) }}">{{ $user->activo ? 'Desactivar' : 'Activar' }}</a>
                                     <a href="#" style="color: red" onclick="enviar_formulario()">Eliminar</a>
                                 </div>
                     </div>
@@ -61,6 +70,39 @@
 @endsection
 
 @section('foot')
+<script>
+    $.ajaxSetup({
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+    });
+
+    $(document).off('click.userToggle').on('click.userToggle', '.cambiar-estado-user', function(e){
+        e.preventDefault();
+        const $btn = $(this);
+        if ($btn.data('loading')) return;
+        $btn.data('loading', true);
+        const url = $btn.data('action');
+
+        $.ajax({
+            url: url,
+            type: 'PATCH',
+            success: function(res){
+                if (window.Swal) {
+                    Swal.fire({ toast:true, position:'center', icon:'success',
+                        title: res.msg ?? 'Estado actualizado', showConfirmButton:false, timer:2000 })
+                    .then(function(){ location.reload(); });
+                } else {
+                    location.reload();
+                }
+            },
+            error: function(xhr){
+                $btn.data('loading', false);
+                const msg = xhr?.responseJSON?.message || 'Error al cambiar estado';
+                if (window.Swal) Swal.fire({ toast:true, position:'center', icon:'error',
+                    title: msg, showConfirmButton:false, timer:2500 });
+            }
+        });
+    });
+</script>
 <script>
  function enviar_formulario()
  {

@@ -31,7 +31,10 @@ class WebPushService
                 'contentEncoding' => $sub->content_encoding ?: 'aesgcm',
             ]);
 
-            $webPush->queueNotification($subscription, json_encode($payload));
+            $webPush->queueNotification($subscription, json_encode($payload), [
+                'TTL' => 60,
+                'urgency' => 'high',
+            ]);
         }
 
         $webPush->flush();

@@ -95,6 +95,18 @@ class UserPolicy
     {
         //
     }
+    /**
+     * Determine whether the user can activate/deactivate the model.
+     *
+     * @param  \App\User  $user
+     * @param  \App\User  $model
+     * @return mixed
+     */
+    public function toggleStatus(User $user, User $model)
+    {
+        return $user->has_permission('toggle-status-user');
+    }
+
     public function assign_role(User $user)
     {
         return $user->has_permission('assign-role-user');

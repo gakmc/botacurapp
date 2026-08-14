@@ -1,13 +1,13 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('title','Usuarios Activos')
+@section('title','Usuarios Inactivos')
 
 @section('head')
 @endsection
 
 
 @section('breadcrumbs')
-<li><a href="{{route('backoffice.user.index')}}">Usuarios Activos</a></li>
+<li><a href="{{route('backoffice.user.inactivos')}}">Usuarios Inactivos</a></li>
 @endsection
 
 
@@ -31,17 +31,18 @@
             </a>
         </div>
     </div>
-              <p class="caption"><strong>Usuarios del Sistema</strong></p>
-              <div class="divider"></div>
-              <div id="basic-form" class="section">
-                <div class="row">
-                  <div class="col s12 ">
-                    <div class="card-panel">
+    <p class="caption"><strong>Usuarios Inactivos</strong></p>
+    <div class="divider"></div>
+    <div id="basic-form" class="section">
+        <div class="row">
+            <div class="col s12 ">
+                <div class="card-panel">
 
-                      <div class="row">
+                    <div class="row">
 
+                        @if ($users->isNotEmpty())
 
-                      <table>
+                        <table>
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
@@ -51,7 +52,7 @@
                                 </tr>
                             </thead>
                             <tbody>
-                                @foreach($users as $user )
+                                @foreach($users->sortBy('name') as $user )
                                 <tr>
                                   <td><a href="{{route('backoffice.user.show' ,$user )}}">{{$user->name}}</a></td>
                                   <td>{{$user->age()}}</td>
@@ -62,10 +63,10 @@
                                     <td><a class="tooltipped" data-position="top" data-delay="50" data-tooltip="Certificado de antiguedad" href="{{ route('backoffice.certificados.antiguedad.create', $user )}}"><i class='material-icons red-text'>library_books</i></a></td>
                                   @endif
                                   <td>
-                                    <button class="btn-small waves-effect cambiar-estado-user tooltipped" data-position="top" data-delay="50" data-tooltip="Desactivar"
+                                    <button class="btn-small waves-effect cambiar-estado-user tooltipped" data-position="top" data-delay="50" data-tooltip="Activar"
                                             data-id="{{ $user->id }}"
                                             data-action="{{ route('backoffice.user.toggle_status', $user) }}">
-                                    <i class="material-icons">block</i>
+                                    <i class="material-icons">done_all</i>
                                     </button>
                                   </td>
                                 </tr>
@@ -73,11 +74,15 @@
                               </tbody>
                             </table>
 
-                      </div>
+                        @else
+                            <h5>No se registran usuarios inactivos</h5>
+                        @endif
+
                     </div>
-                  </div>
                 </div>
-              </div>
+            </div>
+        </div>
+    </div>
 </div>
 @endsection
 
@@ -86,16 +91,16 @@
 <script>
 
     $.ajaxSetup({
-      headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
+        headers: { 'X-CSRF-TOKEN': '{{ csrf_token() }}' }
     });
 
-    $(document).off('click.userToggle').on('click.userToggle','.cambiar-estado-user', function(e){
+    $(document).off('click.userToggle').on('click.userToggle', '.cambiar-estado-user', function(e){
       e.preventDefault();
 
       const $btn = $(this);
       if ($btn.prop('disabled')) return;
       $btn.prop('disabled', true);
-      const url  = $btn.data('action');
+      const url  = $btn.data('action'); 
 
       $.ajax({
           url: url,

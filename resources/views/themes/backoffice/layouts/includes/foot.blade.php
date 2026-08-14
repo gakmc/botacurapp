@@ -46,11 +46,19 @@
             alignment: 'left', // Opcional: Alinea el dropdown a la izquierda
             closeOnClick: true // Cierra el dropdown al hacer clic fuera
         });
-        
-        
-        $("#modal-acciones").modal();              // para los móviles
-        
-        
+
+        // Botón flotante de acciones en el nav (tablet/móvil)
+        $(document).on('click', '#dropdown-settings-mobile-btn', function (e) {
+            e.preventDefault();
+            $(this).siblings('.dropdown-settings-mobile-menu').toggleClass('active');
+        });
+
+        $(document).on('click', function (e) {
+            if (!$(e.target).closest('.dropdown-settings-mobile').length) {
+                $('.dropdown-settings-mobile-menu').removeClass('active');
+            }
+        });
+
     });
     
     
@@ -58,5 +66,3 @@
 
 
 @include('sweetalert::alert')
-
-@yield('foot')

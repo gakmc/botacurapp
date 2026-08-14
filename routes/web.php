@@ -353,6 +353,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('sueldo-pagado', 'SueldoPagadoController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
+    Route::get('user/inactivos', 'UserController@index_inactivos')->name('user.inactivos');
     Route::resource('user', 'UserController');
     Route::resource('venta.consumo', 'ConsumoController');
     Route::resource('venta_directa', 'VentaDirectaController');
@@ -372,6 +373,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('cierre-caja/{anio}/{mes}/{dia}', 'AdminController@cierreCaja')->name('admin.cierreCaja');
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::get('user/{user}/assign_permission', 'UserController@assign_permission')->name('user.assign_permission');
+    Route::patch('user/{user}/toggle-status', 'UserController@toggleStatus')->name('user.toggle_status');
     Route::get('reserva', 'ReservaController@index')->name('reserva.index');
 
     // NUEVA: contenido (HTML) para cargar por JS

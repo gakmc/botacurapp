@@ -508,6 +508,42 @@
                                     @endif
                             </div>
 
+                            @php
+                                $incluyeAmbosBuffet = in_array('Desayuno y Once', $servicios);
+                                $incluyeUnoBuffet   = in_array('Desayuno u Once', $servicios);
+                            @endphp
+
+                            @if ($incluyeAmbosBuffet)
+                            <div class="row">
+                                <div class="col s12">
+                                    <h6><strong>Desayuno y Once</strong></h6>
+                                    <p>El programa incluye ambos servicios para los {{ $reserva->cantidad_personas }} asistentes (conteo automático, no requiere selección).</p>
+                                </div>
+                            </div>
+                            @elseif ($incluyeUnoBuffet)
+                            <div class="row">
+                                <div class="col s12">
+                                    <h6><strong>Desayuno u Once</strong></h6>
+                                    <p>Seleccione la opción para los {{ $reserva->cantidad_personas }} asistentes:</p>
+                                    <label>
+                                        <input name="desayuno_once" type="radio" class="with-gap" value="desayuno" required
+                                            {{ old('desayuno_once') === 'desayuno' ? 'checked' : '' }} />
+                                        <span class="black-text">Desayuno</span>
+                                    </label>
+                                    <label style="margin-left: 20px;">
+                                        <input name="desayuno_once" type="radio" class="with-gap" value="once" required
+                                            {{ old('desayuno_once') === 'once' ? 'checked' : '' }} />
+                                        <span class="black-text">Once</span>
+                                    </label>
+                                    @error('desayuno_once')
+                                    <span class="invalid-feedback" role="alert">
+                                        <strong style="color:red">{{ $message }}</strong>
+                                    </span>
+                                    @enderror
+                                </div>
+                            </div>
+                            @endif
+
                             <div class="row">
                                 <div class="input-field col s12">
                                     <button id="btn-guardar" class="btn waves-effect waves-light right" type="submit">Guardar
