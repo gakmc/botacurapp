@@ -435,6 +435,33 @@ class SiiController extends Controller
         $totalIva   = 0;
         $totalMonto = 0;
 
+        // ── Categoría/subcategoría por defecto (Gastos Variables) ─────────────
+        // categoria_id es NOT NULL en la BD; sin esto el INSERT falla con
+        // "Field 'categoria_id' doesn't have a default value".
+        $catDefault    = DB::table('categorias_compras')->where('nombre', 'Gastos Variables')->first();
+        $subCatDefault = $catDefault
+            ? DB::table('subcategorias_compras')->where('categoria_id', $catDefault->id)->first()
+            : null;
+
+        if (!$catDefault || !$subCatDefault) {
+            return response()->json([
+                'ok'    => false,
+                'error' => 'No existe categoría "Gastos Variables" o no tiene subcategorías. Corre el seeder primero.',
+            ], 500);
+        }
+
+        $catIdDef    = $catDefault->id;
+        $subCatIdDef = $subCatDefault->id;
+
+        // Mapa auto-match nombre_proveedor → subcategoría (mismo criterio que
+        // SiiAutoController/SiiImportarSemana, para mantener consistencia).
+        $mapaSub = DB::table('subcategorias_compras as sc')
+            ->join('categorias_compras as c', 'c.id', '=', 'sc.categoria_id')
+            ->select('sc.id as subcategoria_id', 'sc.categoria_id')
+            ->addSelect(DB::raw('LOWER(TRIM(sc.nombre)) AS nombre_key'))
+            ->get()
+            ->keyBy('nombre_key');
+
         DB::beginTransaction();
         try {
             foreach ($documentos as $doc) {
@@ -464,8 +491,15 @@ class SiiController extends Controller
                 $proveedor = $rut ? $this->resolverProveedor($rut, $razonSocial) : null;
                 $tipoDocId = $this->resolverTipoDocumento($tipoDocCodigo);
 
+                $key   = mb_strtolower(trim($razonSocial ?? ''));
+                $match = isset($mapaSub[$key]) ? $mapaSub[$key] : null;
+                $catId    = $match ? $match->categoria_id    : $catIdDef;
+                $subCatId = $match ? $match->subcategoria_id : $subCatIdDef;
+
                 Egreso::create([
                     'tipo_documento_id' => $tipoDocId,
+                    'categoria_id'      => $catId,
+                    'subcategoria_id'   => $subCatId,
                     'proveedor_id'      => $proveedor ? $proveedor->id : null,
                     'descripcion'       => trim(($razonSocial ?? '') . ' - Folio ' . $folio),
                     'fecha_egreso'      => $fecha,
@@ -474,6 +508,7 @@ class SiiController extends Controller
                     'iva'               => $iva  ?: null,
                     'total'             => $monto,
                     'fuente'            => 'sii',
+                    'periodo_sii'       => sprintf('%04d-%02d', $anio, $mes),
                     'estado'            => 'pendiente',
                     'observaciones'     => 'Auto-importado RCV ' . $anio . '-' . sprintf('%02d', $mes),
                 ]);
