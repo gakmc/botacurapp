@@ -78,13 +78,14 @@ class GasIotController extends Controller
         try {
             // 1. Crear egreso en tabla principal
             $egreso = DB::table('egresos')->insertGetId([
+                'categoria_id'     => 2,  // Gastos Variables
+                'subcategoria_id'  => 9,  // Gas
                 'descripcion'      => "Compra gas – {$proveedor} ({$cantidad} cilindro(s) × \${$valorUnit})",
                 'total'            => $totalClp,
                 'fecha_egreso'     => $fecha,
                 'numero_documento' => $request->documento,
-                'metodo_pago'      => null,
                 'estado'           => 'pendiente',
-                'fuente'           => 'home_assistant',
+                'fuente'           => 'gas_iot',
                 'observaciones'    => $request->observacion,
                 'created_at'       => now(),
                 'updated_at'       => now(),
