@@ -632,85 +632,35 @@ class BotController extends Controller
     private function cargarProgramasBd()
     {
         try {
-            $filas = DB::table('programas as p')
-                ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
-                ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
-                ->select(
-                    'p.id', 'p.nombre_programa', 'p.valor_programa', 'p.descuento',
-                    'p.espacio_tipo', 'p.incluye_masajes', 'p.incluye_almuerzos',
-                    's.nombre_servicio', 's.slug as servicio_slug'
-                )
-                ->where('p.estado', 'activo')
-                ->orderBy('p.valor_programa')
-                ->orderBy('s.nombre_servicio')
+            // incluye_masajes / incluye_almuerzos ya no son columnas físicas:
+            // se derivan en vivo desde la relación programa_servicio -> servicios
+            // (ver Programa::getIncluyeMasajesAttribute / getIncluyeAlmuerzosAttribute).
+            $programas = Programa::where('estado', 'activo')
+                ->with('servicios')
+                ->orderBy('valor_programa')
                 ->get();
 
-            $agrupados = [];
-            foreach ($filas as $fila) {
-                $id = $fila->id;
-                if (!isset($agrupados[$id])) {
-                    $base     = (int) ($fila->valor_programa ?? 0);
-                    $desc     = (int) ($fila->descuento ?? 0);
-                    $precio   = $base - $desc;
-                    $agrupados[$id] = [
-                        'id'                => $id,
-                        'nombre'            => $fila->nombre_programa,
-                        'precio'            => $precio,
-                        'precio_formato'    => '$' . number_format($precio, 0, ',', '.'),
-                        'espacio_tipo'      => $fila->espacio_tipo,
-                        'servicios'         => [],
-                        'incluye_masajes'   => (bool) ($fila->incluye_masajes ?? false),
-                        'incluye_almuerzos' => (bool) ($fila->incluye_almuerzos ?? false),
-                    ];
-                }
-                if ($fila->nombre_servicio) {
-                    $agrupados[$id]['servicios'][] = $fila->nombre_servicio;
-                    // Detección por slug como respaldo si el booleano no está seteado
-                    if ($fila->servicio_slug === 'masaje') {
-                        $agrupados[$id]['incluye_masajes'] = true;
-                    }
-                }
-            }
-            return array_values($agrupados);
-        } catch (\Exception $e) {
-            // Fallback sin las columnas nuevas (si la migración no se ha corrido aún)
-            try {
-                $filas = DB::table('programas as p')
-                    ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
-                    ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
-                    ->select('p.id', 'p.nombre_programa', 'p.valor_programa', 'p.espacio_tipo',
-                             's.nombre_servicio', 's.slug as servicio_slug')
-                    ->orderBy('p.valor_programa')
-                    ->orderBy('s.nombre_servicio')
-                    ->get();
+            $resultado = [];
+            foreach ($programas as $programa) {
+                $base   = (int) ($programa->valor_programa ?? 0);
+                $desc   = (int) ($programa->descuento ?? 0);
+                $precio = $base - $desc;
 
-                $agrupados = [];
-                foreach ($filas as $fila) {
-                    $id = $fila->id;
-                    if (!isset($agrupados[$id])) {
-                        $agrupados[$id] = [
-                            'id'                => $id,
-                            'nombre'            => $fila->nombre_programa,
-                            'precio'            => (int) $fila->valor_programa,
-                            'precio_formato'    => '$' . number_format((int) $fila->valor_programa, 0, ',', '.'),
-                            'espacio_tipo'      => $fila->espacio_tipo,
-                            'servicios'         => [],
-                            'incluye_masajes'   => false,
-                            'incluye_almuerzos' => false,
-                        ];
-                    }
-                    if ($fila->nombre_servicio) {
-                        $agrupados[$id]['servicios'][] = $fila->nombre_servicio;
-                        if ($fila->servicio_slug === 'masaje') {
-                            $agrupados[$id]['incluye_masajes'] = true;
-                        }
-                    }
-                }
-                return array_values($agrupados);
-            } catch (\Exception $e2) {
-                Log::error('[Bot] Error cargando programas: ' . $e2->getMessage());
-                return [];
+                $resultado[] = [
+                    'id'                => $programa->id,
+                    'nombre'            => $programa->nombre_programa,
+                    'precio'            => $precio,
+                    'precio_formato'    => '$' . number_format($precio, 0, ',', '.'),
+                    'espacio_tipo'      => $programa->espacio_tipo,
+                    'servicios'         => $programa->servicios->sortBy('nombre_servicio')->pluck('nombre_servicio')->values()->all(),
+                    'incluye_masajes'   => (bool) $programa->incluye_masajes,
+                    'incluye_almuerzos' => (bool) $programa->incluye_almuerzos,
+                ];
             }
+            return $resultado;
+        } catch (\Exception $e) {
+            Log::error('[Bot] Error cargando programas: ' . $e->getMessage());
+            return [];
         }
     }
 
