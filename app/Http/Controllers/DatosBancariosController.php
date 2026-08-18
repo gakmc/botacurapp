@@ -20,6 +20,7 @@ class DatosBancariosController extends Controller
         $this->authorize('index', User::class);
 
         $usuarios = auth()->user()->visible_users()
+            ->where('activo', true)
             ->sortBy('name')
             ->values();
 
