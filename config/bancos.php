@@ -60,4 +60,11 @@ return [
         'CTV' => 'Chequera Electrónica (Cuenta Vista)',
     ],
 
+    // Cuenta de origen real de Botacura en BancoEstado Empresas, tal como
+    // figura en el portal al armar una transferencia a terceros.
+    'cuenta_origen' => [
+        'tipo'   => 'CTV',
+        'numero' => '36072963894',
+    ],
+
 ];

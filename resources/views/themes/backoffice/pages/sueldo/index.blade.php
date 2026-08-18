@@ -270,6 +270,13 @@
         @if(Auth::user()->has_role(config('app.admin_role')))
             <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 15px; display:none;">
                 <span id="contador-{{$semanaId}}">0 Seleccionados</span>
+                <button type="submit"
+                        formaction="{{ route('backoffice.sueldos.exportar-csv') }}"
+                        formmethod="POST"
+                        class="btn-flat waves-effect"
+                        style="margin-right:10px;">
+                    Exportar CSV banco <i class="material-icons right">file_download</i>
+                </button>
                 <button type="submit" class="btn waves-effect waves-light">
                     Pagar seleccionados <i class="material-icons right">monetization_on</i>
                 </button>
@@ -344,6 +351,22 @@
                         toast.onmouseenter = Swal.stopTimer;
                         toast.onmouseleave = Swal.resumeTimer;
                     }
+                });
+            @endif
+
+            @if(session('warning'))
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'CSV generado con observaciones',
+                    text: '{{ session('warning') }}',
+                });
+            @endif
+
+            @if(session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
                 });
             @endif
         });

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 use App\Consumo;
 use App\HonorarioBte;
 use App\Propina;
+use App\Services\CsvPagoBancoService;
 use App\Sueldo;
 use App\SueldoPagado;
 use App\User;
@@ -722,6 +723,48 @@ public function view(User $user, Request $request)
      * @param  \Illuminate\Http\Request  $request
      * @return \Illuminate\Http\Response
      */
+    /**
+     * Exporta el CSV de transferencia a terceros (BancoEstado Empresas)
+     * para los sueldos seleccionados con los checkboxes "Pagar" de la
+     * vista de Remuneraciones (misma seleccion que sueldo-pagado.store).
+     */
+    public function exportarCsv(Request $request, CsvPagoBancoService $csvService)
+    {
+        if (!auth()->user()->has_role(config('app.admin_role'))) {
+            abort(403);
+        }
+
+        $request->validate([
+            'sueldos_seleccionados' => 'required|array|min:1',
+        ]);
+
+        $seleccionados = array_map(function ($item) {
+            return json_decode($item, true);
+        }, $request->sueldos_seleccionados);
+
+        $resultado = $csvService->generar($seleccionados);
+
+        if (!empty($resultado['omitidos'])) {
+            $nombres = array_map(function ($o) {
+                $nombre = $o['user'] ? $o['user']->name : 'usuario desconocido';
+                return "{$nombre} ({$o['motivo']})";
+            }, $resultado['omitidos']);
+
+            session()->flash('warning', 'Se omitieron del CSV: ' . implode('; ', $nombres));
+        }
+
+        if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
+            return back()->with('error', 'No se pudo generar el CSV: ningun seleccionado tiene datos bancarios completos.');
+        }
+
+        $nombreArchivo = 'pago_sueldos_' . now()->format('Y-m-d_His') . '.csv';
+
+        return response($resultado['csv'], 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$nombreArchivo}\"",
+        ]);
+    }
+
     public function store(Request $request)
     {
 

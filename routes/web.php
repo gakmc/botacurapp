@@ -350,6 +350,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('servicio', 'ServicioController');
     Route::resource('subcategoria', 'SubcategoriaController');
     Route::resource('sueldos', 'SueldoController');
+    Route::post('sueldos/exportar-csv', 'SueldoController@exportarCsv')->name('sueldos.exportar-csv');
     Route::resource('sueldo-pagado', 'SueldoPagadoController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
