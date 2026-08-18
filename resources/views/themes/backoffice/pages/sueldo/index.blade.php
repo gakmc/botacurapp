@@ -265,6 +265,7 @@
                     <td colspan="2" class="center">
                         @if(Auth::user()->has_role(config('app.admin_role')))
                             <a href="{{ route('backoffice.sueldos.exportar-csv-semana', ['inicio' => $primeroSemana['inicio'] ?? '', 'fin' => $primeroSemana['fin'] ?? '']) }}"
+                               target="_blank" rel="noopener"
                                class="btn-flat waves-effect" style="font-weight:400;"
                                title="Exporta el CSV bancario con todos los usuarios de esta semana">
                                 <i class="material-icons left" style="margin-right:2px;">file_download</i>CSV
