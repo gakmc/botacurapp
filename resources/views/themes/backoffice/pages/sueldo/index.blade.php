@@ -109,19 +109,34 @@
 
         <h5><strong>{{ $rango }}</strong></h5>
 
-        {{-- <div class="row">
-            <div class="input-field col s12 m2 right">
+        @if(Auth::user()->has_role(config('app.admin_role')))
+        <div class="row" style="margin-bottom:0;">
+            <div class="input-field col s12 m2">
+                <label>
+                    <input type="checkbox" class="toggle-bono" data-semana="{{ $semanaId }}">
+                    <span>Guardar bono</span>
+                </label>
+            </div>
+            <div class="input-field col s12 m3 right">
                 <label for="motivo-{{ $semanaId }}">Motivo</label>
                 <input id="motivo-{{ $semanaId }}" placeholder="Navidad, Fiestas Patrias, etc."
                     type="text" name="motivo" class="">
             </div>
-            <div class="input-field col s12 m2 right">
+            <div class="input-field col s12 m3 right">
                 <label for="bono-{{ $semanaId }}">Bono</label>
                 <input id="bono-{{ $semanaId }}" placeholder="" type="text"
                     name="bono" class="money-format">
             </div>
-        </div> --}}
-
+            <div class="input-field col s12 m3 right" id="btn-guardar-bono-{{ $semanaId }}" style="display:none;">
+                <button type="submit"
+                        formaction="{{ route('backoffice.sueldos.guardar-bonos') }}"
+                        formmethod="POST"
+                        class="btn-flat waves-effect">
+                    Guardar bono seleccionados <i class="material-icons right">save</i>
+                </button>
+            </div>
+        </div>
+        @endif
 
         <div style="overflow-x:auto;">
         <table class="" style="font-size:13px;min-width:900px;">
@@ -135,6 +150,7 @@
                     <th class="right-align">Propinas</th>
                     <th class="right-align">Bono</th>
                     <th>Motivo</th>
+                    <th class="center col-bono-check-{{ $semanaId }}" style="display:none;">Sel. bono</th>
                     <th class="right-align">Total</th>
                     <th class="center">Boleta</th>
                     <th class="center">Pagar</th>
@@ -189,21 +205,10 @@
                         </td>
 
                         <td class="right-align">${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
-                        <td class="right-align">
-                            <input type="text"
-                                   name="bono[{{ $usuario['user_id'] }}]"
-                                   class="money-format"
-                                   style="width:100px;"
-                                   value="{{ $usuario['bono'] ? '$' . number_format($usuario['bono'], 0, '', '.') : '' }}"
-                                   {{ !empty($usuario['confirmado']) ? 'disabled' : '' }}>
-                        </td>
-                        <td>
-                            <input type="text"
-                                   name="motivo[{{ $usuario['user_id'] }}]"
-                                   style="width:140px;"
-                                   placeholder="Navidad, etc."
-                                   value="{{ $usuario['motivo'] }}"
-                                   {{ !empty($usuario['confirmado']) ? 'disabled' : '' }}>
+                        <td class="right-align">${{ number_format($usuario['bono'], 0, '', '.') }}</td>
+                        <td>{{ $usuario['motivo'] ?: '—' }}</td>
+                        <td class="center col-bono-check-{{ $semanaId }}" style="display:none;">
+                            <input type="checkbox" name="usuarios_bono[]" class="checkbox-bono" value="{{ $usuario['user_id'] }}">
                         </td>
 
                         <td class="right-align"><strong>${{ number_format($usuario['total'], 0, '', '.') }}</strong></td>
@@ -270,6 +275,7 @@
                 <tr style="background:#f0faf7; font-weight:700;">
                     <td colspan="7" class="right-align">Total semana</td>
                     <td></td>
+                    <td class="col-bono-check-{{ $semanaId }}" style="display:none;"></td>
                     <td class="right-align">${{ number_format($totalSemana, 0, '', '.') }}</td>
                     <td colspan="2"></td>
                 </tr>
@@ -278,15 +284,6 @@
         </div>
 
         @if(Auth::user()->has_role(config('app.admin_role')))
-            <div class="right-align" style="margin-top: 15px;">
-                <button type="submit"
-                        formaction="{{ route('backoffice.sueldos.guardar-bonos') }}"
-                        formmethod="POST"
-                        class="btn-flat waves-effect"
-                        style="margin-right:10px;">
-                    Guardar bonos <i class="material-icons right">save</i>
-                </button>
-            </div>
             <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 10px; display:none;">
                 <span id="contador-{{$semanaId}}">0 Seleccionados</span>
                 <button type="submit" class="btn waves-effect waves-light">
@@ -527,6 +524,32 @@
                 } else {
                     $(this).val(formatCLP(numero));
                 }
+            });
+        });
+    </script>
+
+    <script>
+        document.addEventListener('DOMContentLoaded', function () {
+            document.querySelectorAll('.toggle-bono').forEach(function (chk) {
+                chk.addEventListener('change', function () {
+                    var semana  = this.dataset.semana;
+                    var mostrar = this.checked;
+
+                    document.querySelectorAll('.col-bono-check-' + semana).forEach(function (el) {
+                        el.style.display = mostrar ? '' : 'none';
+                    });
+
+                    var btn = document.getElementById('btn-guardar-bono-' + semana);
+                    if (btn) {
+                        btn.style.display = mostrar ? '' : 'none';
+                    }
+
+                    if (!mostrar) {
+                        document.querySelectorAll('.col-bono-check-' + semana + ' .checkbox-bono').forEach(function (cb) {
+                            cb.checked = false;
+                        });
+                    }
+                });
             });
         });
     </script>

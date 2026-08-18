@@ -303,8 +303,9 @@ class SueldoController extends Controller
     }
 
     /**
-     * Guarda bono/motivo por usuario para una semana, en cualquier momento
-     * (no hace falta seleccionar "Pagar" para esto). No toca 'confirmado'.
+     * Guarda un bono/motivo "general" (mismo monto y motivo) para el grupo
+     * de usuarios seleccionado con los checkboxes de la columna "Sel. bono"
+     * (independiente de los checkboxes de "Pagar"). No toca 'confirmado'.
      */
     public function guardarBonos(Request $request)
     {
@@ -315,22 +316,15 @@ class SueldoController extends Controller
         $request->validate([
             'semana_inicio' => 'required|date',
             'semana_fin'    => 'required|date',
-            'bono'          => 'nullable|array',
-            'motivo'        => 'nullable|array',
+            'bono'          => 'nullable|string',
+            'motivo'        => 'nullable|string',
+            'usuarios_bono' => 'required|array|min:1',
         ]);
 
-        $bonos   = $request->input('bono', []);
-        $motivos = $request->input('motivo', []);
-        $userIds = array_unique(array_merge(array_keys($bonos), array_keys($motivos)));
+        $bonoValor = (int) str_replace(['$', '.', ','], '', $request->input('bono', 0));
+        $motivo    = $request->input('motivo');
 
-        foreach ($userIds as $userId) {
-            $bonoValor = (int) str_replace(['$', '.', ','], '', $bonos[$userId] ?? 0);
-            $motivo    = $motivos[$userId] ?? null;
-
-            if ($bonoValor === 0 && empty($motivo)) {
-                continue; // nada que guardar para este usuario
-            }
-
+        foreach ($request->input('usuarios_bono', []) as $userId) {
             SueldoPagado::updateOrCreate(
                 [
                     'user_id'       => $userId,
@@ -345,7 +339,9 @@ class SueldoController extends Controller
             );
         }
 
-        return back()->with('success', 'Bonos guardados.');
+        $cantidad = count($request->input('usuarios_bono', []));
+
+        return back()->with('success', "Bono guardado para {$cantidad} usuario(s).");
     }
 
     /**
