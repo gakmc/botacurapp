@@ -280,6 +280,21 @@ class SueldoController extends Controller
             }
         }
 
+        // Recalcular 'total' = neto + propinas + bono. Hasta acá 'total' se
+        // arrastraba desde total_pagar (que no sabe nada de BTE), así que a
+        // quienes boletean nunca se les estaba descontando la retención del
+        // total a pagar. Acá se corrige usando el neto de BTE cuando aplica.
+        foreach ($semanas as $rango => &$usuariosSemana) {
+            foreach ($usuariosSemana as $userId => &$datos) {
+                $netoBase = ($datos['boletea'] && $datos['bte_bruto'] > 0)
+                    ? $datos['bte_neto']
+                    : $datos['sueldos'];
+
+                $datos['total'] = $netoBase + $datos['propinas'] + $datos['bono'];
+            }
+        }
+        unset($usuariosSemana, $datos);
+
         return view('themes.backoffice.pages.sueldo.index', compact(
             'semanas', 'mes', 'anio', 'fechasDisponibles', 'pagosRealizados'
         ));
