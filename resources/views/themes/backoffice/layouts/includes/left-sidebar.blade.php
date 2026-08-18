@@ -341,6 +341,17 @@
                         </a>
                     </li>
 
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.datos-bancarios.index') }}">
+                            <i class="material-icons">
+                                account_balance
+                            </i>
+                            <span class="nav-text">
+                                Datos Bancarios
+                            </span>
+                        </a>
+                    </li>
+
                 @endif
 
                 @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))

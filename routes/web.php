@@ -374,6 +374,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::get('user/{user}/assign_permission', 'UserController@assign_permission')->name('user.assign_permission');
     Route::patch('user/{user}/toggle-status', 'UserController@toggleStatus')->name('user.toggle_status');
+
+    Route::get('datos-bancarios', 'DatosBancariosController@index')->name('datos-bancarios.index');
+    Route::get('user/{user}/datos-bancarios', 'DatosBancariosController@edit')->name('datos-bancarios.edit');
+    Route::match(['put', 'patch'], 'user/{user}/datos-bancarios', 'DatosBancariosController@update')->name('datos-bancarios.update');
     Route::get('reserva', 'ReservaController@index')->name('reserva.index');
 
     // NUEVA: contenido (HTML) para cargar por JS

@@ -29,6 +29,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
      */
     protected $fillable = [
         'name', 'dob', 'email', 'password', 'activo',
+        'rut', 'boletea', 'banco', 'tipo_cuenta_bancaria', 'numero_cuenta_bancaria', 'correo_personal',
     ];
 
     /**
@@ -49,6 +50,7 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
     protected $casts = [
         'email_verified_at' => 'datetime',
         'activo'            => 'boolean',
+        'boletea'           => 'boolean',
     ];
 
     protected $appends = ['salario'];
