@@ -65,7 +65,9 @@ class CsvPagoBancoService
             $inicio  = Carbon::parse($item['inicio'])->locale('es')->isoFormat('DD/MM');
             $fin     = Carbon::parse($item['fin'])->locale('es')->isoFormat('DD/MM');
             $monto   = (int) round((float) $item['total']);
-            $concepto = "Sueldo semana {$inicio} - {$fin}";
+            // Máximo 20 caracteres permitidos por el banco en "Concepto".
+            // "Sueldo " (7) + "DD/MM" (5) + "-" (1) + "DD/MM" (5) = 18, siempre entra.
+            $concepto = "Sueldo {$inicio}-{$fin}";
             $mensaje  = 'Pago de remuneracion Botacura';
             $email1   = $user->correo_personal ?: '';
 
@@ -75,7 +77,7 @@ class CsvPagoBancoService
                 $user->banco,
                 $user->tipo_cuenta_bancaria,
                 $user->numero_cuenta_bancaria,
-                $user->rut,
+                $this->normalizarRut($user->rut),
                 $user->name,
                 $monto,
                 $concepto,
@@ -90,5 +92,28 @@ class CsvPagoBancoService
             'csv'      => implode("\n", $filas),
             'omitidos' => $omitidos,
         ];
+    }
+
+    /**
+     * Normaliza el RUT a "cuerpo-DV" con un único guión, sin importar cómo
+     * haya quedado guardado en la base (con doble guión, sin guión, con
+     * puntos, etc). Ej: "13465824--K" o "134658246" -> "13465824-6".
+     */
+    private function normalizarRut(?string $rut): string
+    {
+        if (empty($rut)) {
+            return '';
+        }
+
+        $limpio = strtoupper(str_replace(['.', ' ', '-'], '', $rut));
+
+        if (strlen($limpio) < 2) {
+            return $limpio;
+        }
+
+        $dv     = substr($limpio, -1);
+        $cuerpo = substr($limpio, 0, -1);
+
+        return "{$cuerpo}-{$dv}";
     }
 }
