@@ -132,14 +132,12 @@ class SueldoController extends Controller
         ]);
     }
 
-    /**
-     * Arma la estructura $semanas (usuario x semana, con BTE ya matcheado
-     * y bono/motivo/confirmado ya pisados desde sueldos_pagados) para un
-     * mes/año dado. La usan tanto index() como exportarCsv(), para que el
-     * CSV pueda armarse sin depender de qué esté seleccionado en pantalla.
-     */
-    private function construirSemanas($mes, $anio)
+    public function index(Request $request)
     {
+
+        $mes  = $request->input('mes', now()->month);
+        $anio = $request->input('anio', now()->year);
+
         $sueldos = Sueldo::with('user')
             ->whereMonth('dia_trabajado', $mes)
             ->whereYear('dia_trabajado', $anio)
@@ -200,7 +198,6 @@ class SueldoController extends Controller
                     'propinas'      => 0,
                     'bono'          => 0,
                     'motivo'        => '',
-                    'confirmado'    => false,
                     'total'         => 0,
                     'user_id'       => $userId,
                     'inicio'        => $inicioSemana->format('Y-m-d'),
@@ -245,11 +242,18 @@ class SueldoController extends Controller
             return $dateA->timestamp <=> $dateB->timestamp;
         });
 
-        // Bono/motivo/confirmado ya guardados (por guardarBonos() y/o
-        // confirmarPago(), independientes entre sí).
+        $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
+            ->groupBy('mes', 'anio')
+            ->orderBy('anio', 'desc')
+            ->orderBy('mes', 'desc')
+            ->get();
+
+        // $pagosRealizados = SueldoPagado::select('*')->get();
+
         $pagosRealizados = SueldoPagado::all();
 
         foreach ($pagosRealizados as $pago) {
+
             $inicioSemana = Carbon::parse($pago->semana_inicio);
             $finSemana    = Carbon::parse($pago->semana_fin);
 
@@ -257,9 +261,8 @@ class SueldoController extends Controller
             $userId = $pago->user_id;
 
             if (isset($semanas[$rango]) && isset($semanas[$rango][$userId])) {
-                $semanas[$rango][$userId]['bono']       = (int) $pago->bono;
-                $semanas[$rango][$userId]['motivo']     = $pago->motivo;
-                $semanas[$rango][$userId]['confirmado'] = (bool) $pago->confirmado;
+                $semanas[$rango][$userId]['bono']   = (int) $pago->bono;
+                $semanas[$rango][$userId]['motivo'] = $pago->motivo;
 
                 // Si el bono debe sumarse al total de la semana:
                 $semanas[$rango][$userId]['total'] += (int) $pago->bono;
@@ -281,73 +284,15 @@ class SueldoController extends Controller
         }
         unset($usuariosSemana, $datos);
 
-        return [$semanas, $pagosRealizados];
-    }
-
-    public function index(Request $request)
-    {
-        $mes  = (int) $request->input('mes', now()->month);
-        $anio = (int) $request->input('anio', now()->year);
-
-        [$semanas, $pagosRealizados] = $this->construirSemanas($mes, $anio);
-
-        $fechasDisponibles = Sueldo::selectRaw('MONTH(dia_trabajado) as mes, YEAR(dia_trabajado) as anio')
-            ->groupBy('mes', 'anio')
-            ->orderBy('anio', 'desc')
-            ->orderBy('mes', 'desc')
-            ->get();
-
         return view('themes.backoffice.pages.sueldo.index', compact(
             'semanas', 'mes', 'anio', 'fechasDisponibles', 'pagosRealizados'
         ));
     }
 
     /**
-     * Guarda un bono/motivo "general" (mismo monto y motivo) para el grupo
-     * de usuarios seleccionado con los checkboxes de la columna "Sel. bono"
-     * (independiente de los checkboxes de "Pagar"). No toca 'confirmado'.
-     */
-    public function guardarBonos(Request $request)
-    {
-        if (!auth()->user()->has_role(config('app.admin_role'))) {
-            abort(403);
-        }
-
-        $request->validate([
-            'semana_inicio' => 'required|date',
-            'semana_fin'    => 'required|date',
-            'bono'          => 'nullable|string',
-            'motivo'        => 'nullable|string',
-            'usuarios_bono' => 'required|array|min:1',
-        ]);
-
-        $bonoValor = (int) str_replace(['$', '.', ','], '', $request->input('bono', 0));
-        $motivo    = $request->input('motivo');
-
-        foreach ($request->input('usuarios_bono', []) as $userId) {
-            SueldoPagado::updateOrCreate(
-                [
-                    'user_id'       => $userId,
-                    'semana_inicio' => $request->semana_inicio,
-                    'semana_fin'    => $request->semana_fin,
-                ],
-                [
-                    'bono'       => $bonoValor,
-                    'motivo'     => $motivo,
-                    'fecha_pago' => now()->format('Y-m-d'),
-                ]
-            );
-        }
-
-        $cantidad = count($request->input('usuarios_bono', []));
-
-        return back()->with('success', "Bono guardado para {$cantidad} usuario(s).");
-    }
-
-    /**
      * Exporta el CSV de transferencia a terceros (BancoEstado Empresas)
-     * para TODOS los sueldos pendientes (no confirmados) del mes/año
-     * indicado — no depende de ninguna selección con checkbox.
+     * para los sueldos seleccionados con los checkboxes "Pagar" de la
+     * vista de Remuneraciones (misma selección que sueldo-pagado.store).
      */
     public function exportarCsv(Request $request, CsvPagoBancoService $csvService)
     {
@@ -355,32 +300,13 @@ class SueldoController extends Controller
             abort(403);
         }
 
-        $mes  = (int) $request->input('mes', now()->month);
-        $anio = (int) $request->input('anio', now()->year);
+        $request->validate([
+            'sueldos_seleccionados' => 'required|array|min:1',
+        ]);
 
-        [$semanas, ] = $this->construirSemanas($mes, $anio);
-
-        $seleccionados = [];
-        foreach ($semanas as $usuariosSemana) {
-            foreach ($usuariosSemana as $datos) {
-                if (!empty($datos['confirmado'])) {
-                    continue; // ya se confirmó que se le transfirió, no se repite
-                }
-                if ((float) $datos['total'] <= 0) {
-                    continue;
-                }
-                $seleccionados[] = [
-                    'user_id' => $datos['user_id'],
-                    'total'   => $datos['total'],
-                    'inicio'  => $datos['inicio'],
-                    'fin'     => $datos['fin'],
-                ];
-            }
-        }
-
-        if (empty($seleccionados)) {
-            return back()->with('error', 'No hay sueldos pendientes de pago para exportar en este período.');
-        }
+        $seleccionados = array_map(function ($item) {
+            return json_decode($item, true);
+        }, $request->sueldos_seleccionados);
 
         $resultado = $csvService->generar($seleccionados);
 
@@ -394,10 +320,10 @@ class SueldoController extends Controller
         }
 
         if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
-            return back()->with('error', 'No se pudo generar el CSV: nadie con datos bancarios completos y pendiente de pago.');
+            return back()->with('error', 'No se pudo generar el CSV: ningún seleccionado tiene datos bancarios completos.');
         }
 
-        $nombreArchivo = 'pago_sueldos_' . $anio . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT) . '_' . now()->format('His') . '.csv';
+        $nombreArchivo = 'pago_sueldos_' . now()->format('Y-m-d_His') . '.csv';
 
         return response($resultado['csv'], 200, [
             'Content-Type'        => 'text/csv; charset=UTF-8',

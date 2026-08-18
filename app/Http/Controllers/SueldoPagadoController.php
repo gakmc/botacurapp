@@ -6,38 +6,34 @@ use App\SueldoPagado;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 
-/**
- * Confirma que la transferencia bancaria de un sueldo ya se hizo
- * (después de subir el CSV al banco y verificar). No toca bono/motivo,
- * que se guardan por separado con SueldoController::guardarBonos()
- * en cualquier momento antes de exportar el CSV.
- */
 class SueldoPagadoController extends Controller
 {
     public function store(Request $request)
     {
         $request->validate([
             'sueldos_seleccionados' => 'required|array|min:1',
+            'motivo' => 'nullable|string|max:255',
+            'bono'   => 'nullable|string',
         ]);
 
-        foreach ($request->sueldos_seleccionados as $item) {
-            $data = json_decode($item, true);
+        $bono = (int) str_replace(['$', '.', ','],'', $request->bono ?? 0);
 
-            SueldoPagado::updateOrCreate(
-                [
-                    'user_id'       => $data['user_id'],
-                    'semana_inicio' => $data['inicio'],
-                    'semana_fin'    => $data['fin'],
-                ],
-                [
-                    'monto'         => $data['total'],
-                    'fecha_pago'    => Carbon::now()->format('Y-m-d'),
-                    'confirmado'    => true,
-                    'confirmado_at' => Carbon::now(),
-                ]
-            );
+        // dd($request->all());
+
+
+        foreach ($request->sueldos_seleccionados as $item){
+            $data = json_decode($item, true);
+            SueldoPagado::create([
+                'user_id' => $data['user_id'],
+                'semana_inicio' => $data['inicio'],
+                'semana_fin' => $data['fin'],
+                'fecha_pago' => Carbon::now()->format('Y-m-d'),
+                'monto' => $data['total'],
+                'bono' => $bono,
+                'motivo' => $request->motivo ?? null,
+            ]);
         }
 
-        return back()->with('success', 'Transferencia confirmada para los seleccionados.');
+        return back()->with('success','Pagos registrados exitosamente.');
     }
 }

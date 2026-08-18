@@ -74,18 +74,6 @@
 
                         </div>
 
-                    @if(Auth::user()->has_role(config('app.admin_role')))
-                        <div class="row" style="margin-top:10px;">
-                            <div class="col s12 right-align">
-                                <a href="{{ route('backoffice.sueldos.exportar-csv', ['mes' => $mes, 'anio' => $anio]) }}"
-                                   class="btn-flat waves-effect"
-                                   title="Descarga el CSV de todos los sueldos pendientes de confirmar de este período">
-                                    Exportar CSV banco (pendientes del período) <i class="material-icons right">file_download</i>
-                                </a>
-                            </div>
-                        </div>
-                    @endif
-
                     @php
                         $sueldoMes = 0;
                         $totalSueldoBruto = 0;
@@ -96,47 +84,42 @@
     @forelse ($semanas as $rango => $usuariosSemana)
         @php
             $semanaId = Str::slug($rango); // por ejemplo: "09-jun-15-jun"
-            $primeroSemana = reset($usuariosSemana);
         @endphp
 
         @if(Auth::user()->has_role(config('app.admin_role')))
             {{-- FORMULARIO POR SEMANA --}}
             <form action="{{ route('backoffice.sueldo-pagado.store') }}" method="POST" id="form-{{ $semanaId }}">
                 @csrf
-                <input type="hidden" name="semana_inicio" value="{{ $primeroSemana['inicio'] ?? '' }}">
-                <input type="hidden" name="semana_fin" value="{{ $primeroSemana['fin'] ?? '' }}">
         @endif
 
         <h5><strong>{{ $rango }}</strong></h5>
 
-        @if(Auth::user()->has_role(config('app.admin_role')))
-        <div class="row" style="margin-bottom:0;">
-            <div class="input-field col s12 m2">
-                <label>
-                    <input type="checkbox" class="toggle-bono" data-semana="{{ $semanaId }}">
-                    <span>Guardar bono</span>
-                </label>
-            </div>
-            <div class="input-field col s12 m3 right">
+        {{-- <div class="row">
+            <div class="input-field col s12 m2 right">
                 <label for="motivo-{{ $semanaId }}">Motivo</label>
                 <input id="motivo-{{ $semanaId }}" placeholder="Navidad, Fiestas Patrias, etc."
                     type="text" name="motivo" class="">
             </div>
-            <div class="input-field col s12 m3 right">
+            <div class="input-field col s12 m2 right">
                 <label for="bono-{{ $semanaId }}">Bono</label>
                 <input id="bono-{{ $semanaId }}" placeholder="" type="text"
                     name="bono" class="money-format">
             </div>
-            <div class="input-field col s12 m3 right" id="btn-guardar-bono-{{ $semanaId }}" style="display:none;">
-                <button type="submit"
-                        formaction="{{ route('backoffice.sueldos.guardar-bonos') }}"
-                        formmethod="POST"
-                        class="btn-flat waves-effect">
-                    Guardar bono seleccionados <i class="material-icons right">save</i>
-                </button>
+        </div> --}}
+
+        <div class="row fila-bono-motivo" data-semana="{{ $semanaId }}">
+            <div class="input-field col s12 m2 right">
+                <label for="motivo-{{ $semanaId }}">Motivo</label>
+                <input id="motivo-{{ $semanaId }}" placeholder="Navidad, Fiestas Patrias, etc."
+                    type="text" name="motivo" class="">
+            </div>
+            <div class="input-field col s12 m2 right">
+                <label for="bono-{{ $semanaId }}">Bono</label>
+                <input id="bono-{{ $semanaId }}" placeholder="" type="text"
+                    name="bono" class="money-format">
             </div>
         </div>
-        @endif
+
 
         <div style="overflow-x:auto;">
         <table class="" style="font-size:13px;min-width:900px;">
@@ -150,7 +133,6 @@
                     <th class="right-align">Propinas</th>
                     <th class="right-align">Bono</th>
                     <th>Motivo</th>
-                    <th class="center col-bono-check-{{ $semanaId }}" style="display:none;">Sel. bono</th>
                     <th class="right-align">Total</th>
                     <th class="center">Boleta</th>
                     <th class="center">Pagar</th>
@@ -207,9 +189,6 @@
                         <td class="right-align">${{ number_format($usuario['propinas'], 0, '', '.') }}</td>
                         <td class="right-align">${{ number_format($usuario['bono'], 0, '', '.') }}</td>
                         <td>{{ $usuario['motivo'] ?: '—' }}</td>
-                        <td class="center col-bono-check-{{ $semanaId }}" style="display:none;">
-                            <input type="checkbox" name="usuarios_bono[]" class="checkbox-bono" value="{{ $usuario['user_id'] }}">
-                        </td>
 
                         <td class="right-align"><strong>${{ number_format($usuario['total'], 0, '', '.') }}</strong></td>
                         @php $sueldoMes += $usuario['total']; @endphp
@@ -235,13 +214,19 @@
                         {{-- Pagar --}}
                         <td class="center">
                             @php
-                                $pago = $pagosRealizados->first(function ($pago) use ($usuario) {
+                                $yaPagado = $pagosRealizados->contains(function ($pago) use ($usuario) {
                                     return $pago->user_id == $usuario['user_id']
                                         && $pago->semana_inicio == $usuario['inicio']
                                         && $pago->semana_fin == $usuario['fin'];
                                 });
 
-                                $yaPagado = $pago && $pago->confirmado;
+                                $pago = $yaPagado
+                                    ? $pagosRealizados->first(function ($pago) use ($usuario) {
+                                        return $pago->user_id == $usuario['user_id']
+                                            && $pago->semana_inicio == $usuario['inicio']
+                                            && $pago->semana_fin == $usuario['fin'];
+                                    })
+                                    : null;
                             @endphp
 
                             @if ($yaPagado)
@@ -275,7 +260,6 @@
                 <tr style="background:#f0faf7; font-weight:700;">
                     <td colspan="7" class="right-align">Total semana</td>
                     <td></td>
-                    <td class="col-bono-check-{{ $semanaId }}" style="display:none;"></td>
                     <td class="right-align">${{ number_format($totalSemana, 0, '', '.') }}</td>
                     <td colspan="2"></td>
                 </tr>
@@ -284,10 +268,17 @@
         </div>
 
         @if(Auth::user()->has_role(config('app.admin_role')))
-            <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 10px; display:none;">
+            <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 15px; display:none;">
                 <span id="contador-{{$semanaId}}">0 Seleccionados</span>
+                <button type="submit"
+                        formaction="{{ route('backoffice.sueldos.exportar-csv') }}"
+                        formmethod="POST"
+                        class="btn-flat waves-effect"
+                        style="margin-right:10px;">
+                    Exportar CSV banco <i class="material-icons right">file_download</i>
+                </button>
                 <button type="submit" class="btn waves-effect waves-light">
-                    Pagar seleccionados (confirmar transferencia) <i class="material-icons right">monetization_on</i>
+                    Pagar seleccionados <i class="material-icons right">monetization_on</i>
                 </button>
             </div>
             </form>
@@ -528,32 +519,23 @@
         });
     </script>
 
+
+
     <script>
-        document.addEventListener('DOMContentLoaded', function () {
-            document.querySelectorAll('.toggle-bono').forEach(function (chk) {
-                chk.addEventListener('change', function () {
-                    var semana  = this.dataset.semana;
-                    var mostrar = this.checked;
+        document.addEventListener('DOMContentLoaded', function (){
+            document.querySelectorAll('.fila-bono-motivo').forEach(function(fila){
+                var semana = fila.dataset.semana;
 
-                    document.querySelectorAll('.col-bono-check-' + semana).forEach(function (el) {
-                        el.style.display = mostrar ? '' : 'none';
-                    });
+                var checkbox = document.querySelector('.checkbox-sueldo[data-semana="' + semana + '"]');
 
-                    var btn = document.getElementById('btn-guardar-bono-' + semana);
-                    if (btn) {
-                        btn.style.display = mostrar ? '' : 'none';
-                    }
+                if (!checkbox) {
+                    fila.style.display = 'none';
+                    $(fila).find('input').prop('disabled', true);
+                }
 
-                    if (!mostrar) {
-                        document.querySelectorAll('.col-bono-check-' + semana + ' .checkbox-bono').forEach(function (cb) {
-                            cb.checked = false;
-                        });
-                    }
-                });
             });
         });
     </script>
-
 
 
 @endsection
