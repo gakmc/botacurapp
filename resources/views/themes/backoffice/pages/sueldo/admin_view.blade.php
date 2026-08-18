@@ -72,6 +72,7 @@
                                         <th>Fecha</th>
                                         <th>Sueldos</th>
                                         <th>Propinas</th>
+                                        <th>Bono</th>
                                         <th>Total a Pagar</th>
                                     </tr>
                                 </thead>
@@ -117,9 +118,28 @@
         $sueldoMes = 0;
         $diasTrabajados = 0;
     @endphp
+    @php
+        $bonoMes = 0;
+    @endphp
     @foreach($sueldosAgrupados as $semana => $sueldosSemana)
+        @php
+            $bonoSemana = $sueldosSemana->first()->bono ?? 0;
+            $motivoSemana = $sueldosSemana->first()->motivo ?? null;
+            $bonoMes += $bonoSemana;
+        @endphp
         <tr style="background-color: #f2f2f2;">
-            <td colspan="4"><strong>Semana: {{ $semana }}</strong></td>
+            <td colspan="3"><strong>Semana: {{ $semana }}</strong></td>
+            <td>
+                @if($bonoSemana > 0)
+                    <strong>${{ number_format($bonoSemana, 0, '', '.') }}</strong>
+                    @if($motivoSemana)
+                        <br><span style="font-size:11px;">{{ $motivoSemana }}</span>
+                    @endif
+                @else
+                    —
+                @endif
+            </td>
+            <td></td>
         </tr>
         @foreach($sueldosSemana as $sueldo)
             @php
@@ -135,6 +155,7 @@
                 </a></td>
                 <td>${{ number_format($sueldo->valor_dia, 0, '', '.') }}</td>
                 <td>${{ number_format($sueldo->total_pagar - $sueldo->valor_dia, 0, '', '.') }}</td>
+                <td></td>
                 <td>${{ number_format($sueldo->total_pagar, 0, '', '.') }}</td>
             </tr>
         @endforeach
@@ -142,11 +163,12 @@
     <tr>
         <td colspan="2">  </td>
         <td><strong>Días Trabajados: {{ $diasTrabajados }} {{ $dias }}</strong></td>
-        <td><strong>Total del mes: ${{ number_format($sueldoMes, 0, '', '.') }} </strong></td>
+        <td><strong>${{ number_format($bonoMes, 0, '', '.') }}</strong></td>
+        <td><strong>Total del mes: ${{ number_format($sueldoMes + $bonoMes, 0, '', '.') }} </strong></td>
     </tr>
 @else
     <tr>
-        <td colspan="4">No hay registros para este período.</td>
+        <td colspan="5">No hay registros para este período.</td>
     </tr>
 @endif
 </tbody>
