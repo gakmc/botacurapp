@@ -50,8 +50,13 @@
 
                             <div class="row">
                                 <div class="input-field col s12">
-                                    <input id="banco" type="text" name="banco" value="{{ old('banco', $user->banco) }}" placeholder="Ej: BancoEstado">
-                                    <label for="banco" class="active">Banco</label>
+                                    <select name="banco" id="banco">
+                                        <option value="" {{ old('banco', $user->banco) == '' ? 'selected' : '' }}>-- Selecciona banco --</option>
+                                        @foreach($bancos as $codigo => $nombre)
+                                            <option value="{{ $codigo }}" {{ old('banco', $user->banco) == $codigo ? 'selected' : '' }}>{{ $nombre }} ({{ $codigo }})</option>
+                                        @endforeach
+                                    </select>
+                                    <label>Banco (según listado del banco)</label>
                                     @error('banco')
                                         <span class="invalid-feedback" role="alert"><strong style="color:red">{{ $message }}</strong></span>
                                     @enderror
@@ -62,10 +67,11 @@
                                 <div class="input-field col s12">
                                     <select name="tipo_cuenta_bancaria" id="tipo_cuenta_bancaria">
                                         <option value="" {{ old('tipo_cuenta_bancaria', $user->tipo_cuenta_bancaria) == '' ? 'selected' : '' }}>-- Selecciona tipo de cuenta --</option>
-                                        @foreach(['Cuenta Corriente', 'Cuenta Vista', 'Cuenta RUT', 'Cuenta de Ahorro'] as $tipo)
-                                            <option value="{{ $tipo }}" {{ old('tipo_cuenta_bancaria', $user->tipo_cuenta_bancaria) == $tipo ? 'selected' : '' }}>{{ $tipo }}</option>
+                                        @foreach($tiposCuenta as $codigo => $nombre)
+                                            <option value="{{ $codigo }}" {{ old('tipo_cuenta_bancaria', $user->tipo_cuenta_bancaria) == $codigo ? 'selected' : '' }}>{{ $nombre }} ({{ $codigo }})</option>
                                         @endforeach
                                     </select>
+                                    <label>Tipo de cuenta (según listado del banco)</label>
                                     @error('tipo_cuenta_bancaria')
                                         <span class="invalid-feedback" role="alert"><strong style="color:red">{{ $message }}</strong></span>
                                     @enderror

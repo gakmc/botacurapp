@@ -3,6 +3,7 @@
 namespace App\Http\Requests\User;
 
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 
 class DatosBancariosRequest extends FormRequest
 {
@@ -16,8 +17,8 @@ class DatosBancariosRequest extends FormRequest
         return [
             'rut' => ['nullable', 'string', 'max:15'],
             'boletea' => ['nullable', 'boolean'],
-            'banco' => ['nullable', 'string', 'max:60'],
-            'tipo_cuenta_bancaria' => ['nullable', 'string', 'max:30'],
+            'banco' => ['nullable', 'string', Rule::in(array_keys(config('bancos.bancos')))],
+            'tipo_cuenta_bancaria' => ['nullable', 'string', Rule::in(array_keys(config('bancos.tipos_cuenta_destino')))],
             'numero_cuenta_bancaria' => ['nullable', 'string', 'max:30'],
             'correo_personal' => ['nullable', 'string', 'email', 'max:100'],
         ];
@@ -27,8 +28,8 @@ class DatosBancariosRequest extends FormRequest
     {
         return [
             'rut.max' => 'El RUT es demasiado largo.',
-            'banco.max' => 'El nombre del banco es demasiado largo.',
-            'tipo_cuenta_bancaria.max' => 'El tipo de cuenta es demasiado largo.',
+            'banco.in' => 'Selecciona un banco de la lista.',
+            'tipo_cuenta_bancaria.in' => 'Selecciona un tipo de cuenta de la lista.',
             'numero_cuenta_bancaria.max' => 'El número de cuenta es demasiado largo.',
             'correo_personal.email' => 'El correo personal no es válido.',
             'correo_personal.max' => 'El correo personal es demasiado largo.',

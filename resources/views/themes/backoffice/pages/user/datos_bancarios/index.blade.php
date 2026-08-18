@@ -44,8 +44,8 @@
                                         <i class="material-icons grey-text" title="No boletea">remove_circle_outline</i>
                                     @endif
                                 </td>
-                                <td>{{ $usuario->banco ?: '—' }}</td>
-                                <td>{{ $usuario->tipo_cuenta_bancaria ?: '—' }}</td>
+                                <td>{{ $usuario->banco ? ($nombresBanco[$usuario->banco] ?? $usuario->banco) . ' (' . $usuario->banco . ')' : '—' }}</td>
+                                <td>{{ $usuario->tipo_cuenta_bancaria ? ($nombresTipoCuenta[$usuario->tipo_cuenta_bancaria] ?? $usuario->tipo_cuenta_bancaria) : '—' }}</td>
                                 <td>{{ $usuario->numero_cuenta_bancaria ?: '—' }}</td>
                                 <td>{{ $usuario->correo_personal ?: '—' }}</td>
                                 <td>

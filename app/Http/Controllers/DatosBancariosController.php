@@ -26,6 +26,8 @@ class DatosBancariosController extends Controller
 
         return view('themes.backoffice.pages.user.datos_bancarios.index', [
             'usuarios' => $usuarios,
+            'nombresBanco' => config('bancos.bancos'),
+            'nombresTipoCuenta' => config('bancos.tipos_cuenta_destino'),
         ]);
     }
 
@@ -33,8 +35,13 @@ class DatosBancariosController extends Controller
     {
         $this->authorize('update', $user);
 
+        $bancos = config('bancos.bancos');
+        asort($bancos);
+
         return view('themes.backoffice.pages.user.datos_bancarios.edit', [
             'user' => $user,
+            'bancos' => $bancos,
+            'tiposCuenta' => config('bancos.tipos_cuenta_destino'),
         ]);
     }
 
