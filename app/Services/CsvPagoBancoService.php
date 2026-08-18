@@ -95,9 +95,9 @@ class CsvPagoBancoService
     }
 
     /**
-     * Normaliza el RUT a "cuerpo-DV" con un único guión, sin importar cómo
-     * haya quedado guardado en la base (con doble guión, sin guión, con
-     * puntos, etc). Ej: "13465824--K" o "134658246" -> "13465824-6".
+     * El banco agrega el guión del RUT por su cuenta, así que el CSV va
+     * sin guión: solo dígitos + DV pegados, sin puntos ni espacios.
+     * Ej: "13465824--K" o "13.465.824-6" -> "134658246".
      */
     private function normalizarRut(?string $rut): string
     {
@@ -105,15 +105,6 @@ class CsvPagoBancoService
             return '';
         }
 
-        $limpio = strtoupper(str_replace(['.', ' ', '-'], '', $rut));
-
-        if (strlen($limpio) < 2) {
-            return $limpio;
-        }
-
-        $dv     = substr($limpio, -1);
-        $cuerpo = substr($limpio, 0, -1);
-
-        return "{$cuerpo}-{$dv}";
+        return strtoupper(str_replace(['.', ' ', '-'], '', $rut));
     }
 }
