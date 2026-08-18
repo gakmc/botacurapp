@@ -382,7 +382,10 @@ class SiiController extends Controller
         $anio = (int) $request->input('anio', now()->year);
         $mes  = (int) $request->input('mes', now()->month);
 
-        $egresos = Egreso::with(['proveedor', 'tipoDocumento', 'categoria', 'subcategoria'])
+        // El modelo App\Egreso define la relación como tipo_documento()
+        // (snake_case), no tipoDocumento(); con el nombre equivocado
+        // Eloquent tira RelationNotFoundException y la pantalla queda en 500.
+        $egresos = Egreso::with(['proveedor', 'tipo_documento', 'categoria', 'subcategoria'])
             ->where('fuente', 'sii')
             ->whereYear('fecha_egreso', $anio)
             ->whereMonth('fecha_egreso', $mes)
@@ -403,8 +406,29 @@ class SiiController extends Controller
             'total'      => $egresos->sum('total'),
         ];
 
+        // Totales agrupados por proveedor, que la vista necesita y antes
+        // no se estaba armando (la vista usaba $porProveedor sin definir).
+        $porProveedor = $egresos
+            ->groupBy(function ($e) {
+                return $e->proveedor_id ?: 0;
+            })
+            ->map(function ($grupo) {
+                $proveedor = $grupo->first()->proveedor;
+
+                return [
+                    'razon_social' => $proveedor->nombre ?? 'Sin proveedor',
+                    'rut'          => $proveedor->rut ?? '—',
+                    'docs'         => $grupo->count(),
+                    'neto'         => $grupo->sum('neto'),
+                    'iva'          => $grupo->sum('iva'),
+                    'total'        => $grupo->sum('total'),
+                ];
+            })
+            ->sortByDesc('total')
+            ->values();
+
         return view('themes.backoffice.pages.sii.detalle-mes', compact(
-            'anio', 'mes', 'nombreMes', 'egresos', 'totales'
+            'anio', 'mes', 'nombreMes', 'egresos', 'totales', 'porProveedor'
         ));
     }
 
