@@ -247,6 +247,14 @@ class SiiBteService
 
     private function parsearJs($html, $periodo)
     {
+        // El SII declara charset=iso-8859-1 y los nombres de emisores pueden
+        // traer tildes/Ñ en Latin-1. Los regex de abajo usan el modificador
+        // /u (UTF-8): si el string tiene UN SOLO byte inválido como UTF-8,
+        // preg_match_all falla en TODO el string (no solo ahí), y devuelve
+        // 0 coincidencias aunque CantidadFilas venga > 0. Por eso se convierte
+        // a UTF-8 antes de parsear.
+        $html = mb_convert_encoding($html, 'UTF-8', 'ISO-8859-1');
+
         if (strpos($html, 'NO REGISTRA MOVIMIENTOS') !== false) {
             return [];
         }
