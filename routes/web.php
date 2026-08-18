@@ -349,9 +349,13 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('role', 'RoleController');
     Route::resource('servicio', 'ServicioController');
     Route::resource('subcategoria', 'SubcategoriaController');
-    Route::resource('sueldos', 'SueldoController');
+    // Las rutas estáticas van ANTES del resource: Route::resource registra
+    // GET sueldos/{sueldo} (método show, vacío) que si va primero intercepta
+    // "exportar-csv"/"exportar-csv-semana" como si fueran un {sueldo} id,
+    // devolviendo una respuesta HTML vacía con 200 en vez de correr el export.
     Route::post('sueldos/exportar-csv', 'SueldoController@exportarCsv')->name('sueldos.exportar-csv');
     Route::get('sueldos/exportar-csv-semana', 'SueldoController@exportarCsvSemana')->name('sueldos.exportar-csv-semana');
+    Route::resource('sueldos', 'SueldoController');
     Route::resource('sueldo-pagado', 'SueldoPagadoController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
