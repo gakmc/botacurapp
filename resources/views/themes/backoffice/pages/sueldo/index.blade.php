@@ -84,6 +84,7 @@
     @forelse ($semanas as $rango => $usuariosSemana)
         @php
             $semanaId = Str::slug($rango); // por ejemplo: "09-jun-15-jun"
+            $primeroSemana = reset($usuariosSemana);
         @endphp
 
         @if(Auth::user()->has_role(config('app.admin_role')))
@@ -261,7 +262,15 @@
                     <td colspan="7" class="right-align">Total semana</td>
                     <td></td>
                     <td class="right-align">${{ number_format($totalSemana, 0, '', '.') }}</td>
-                    <td colspan="2"></td>
+                    <td colspan="2" class="center">
+                        @if(Auth::user()->has_role(config('app.admin_role')))
+                            <a href="{{ route('backoffice.sueldos.exportar-csv-semana', ['inicio' => $primeroSemana['inicio'] ?? '', 'fin' => $primeroSemana['fin'] ?? '']) }}"
+                               class="btn-flat waves-effect" style="font-weight:400;"
+                               title="Exporta el CSV bancario con todos los usuarios de esta semana">
+                                <i class="material-icons left" style="margin-right:2px;">file_download</i>CSV
+                            </a>
+                        @endif
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -270,13 +279,6 @@
         @if(Auth::user()->has_role(config('app.admin_role')))
             <div id="acciones-{{ $semanaId }}" class="right-align" style="margin-top: 15px; display:none;">
                 <span id="contador-{{$semanaId}}">0 Seleccionados</span>
-                <button type="submit"
-                        formaction="{{ route('backoffice.sueldos.exportar-csv') }}"
-                        formmethod="POST"
-                        class="btn-flat waves-effect"
-                        style="margin-right:10px;">
-                    Exportar CSV banco <i class="material-icons right">file_download</i>
-                </button>
                 <button type="submit" class="btn waves-effect waves-light">
                     Pagar seleccionados <i class="material-icons right">monetization_on</i>
                 </button>
