@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Consumo;
+use App\HonorarioBte;
 use App\Propina;
 use App\Sueldo;
 use App\SueldoPagado;
@@ -142,6 +143,13 @@ class SueldoController extends Controller
             ->orderBy('dia_trabajado')
             ->get();
 
+        // BTE (boletas de honorarios) de los usuarios que boletean, agrupadas por rut,
+        // para poder mostrar bruto/retención/neto en la semana donde se emitió cada una.
+        $honorariosPorRut = HonorarioBte::anio($anio)
+            ->whereIn('rut_emisor', User::where('boletea', true)->whereNotNull('rut')->pluck('rut'))
+            ->get()
+            ->groupBy('rut_emisor');
+
         $semanas = [];
 
         foreach ($sueldos as $sueldo) {
@@ -169,18 +177,36 @@ class SueldoController extends Controller
             }
 
             if (! isset($semanas[$rango][$userId])) {
+                // BTE de este usuario emitida dentro de esta semana (si boletea)
+                $boletea = (bool) $sueldo->user->boletea;
+                $bteRow  = null;
+
+                if ($boletea && $sueldo->user->rut) {
+                    $bteSemana = $honorariosPorRut->get($sueldo->user->rut, collect());
+                    $bteRow    = $bteSemana->first(function ($h) use ($inicioSemana, $finSemana) {
+                        return $h->fecha_emision
+                            && $h->fecha_emision->between($inicioSemana->copy()->startOfDay(), $finSemana->copy()->endOfDay());
+                    });
+                }
+
                 $semanas[$rango][$userId] = [
-                    'role'     => $roles,
-                    'name'     => $userName,
-                    'dias'     => 0, // aquí guardaremos "días" o "masajes" según rol
-                    'sueldos'  => 0,
-                    'propinas' => 0,
-                    'bono'     => 0,
-                    'motivo'   => '',
-                    'total'    => 0,
-                    'user_id'  => $userId,
-                    'inicio'   => $inicioSemana->format('Y-m-d'),
-                    'fin'      => $finSemana->format('Y-m-d'),
+                    'role'          => $roles,
+                    'name'          => $userName,
+                    'dias'          => 0, // aquí guardaremos "días" o "masajes" según rol
+                    'sueldos'       => 0,
+                    'propinas'      => 0,
+                    'bono'          => 0,
+                    'motivo'        => '',
+                    'total'         => 0,
+                    'user_id'       => $userId,
+                    'inicio'        => $inicioSemana->format('Y-m-d'),
+                    'fin'           => $finSemana->format('Y-m-d'),
+                    'boletea'       => $boletea,
+                    'bte_bruto'     => $bteRow->monto_bruto ?? 0,
+                    'bte_retencion' => $bteRow->monto_retenido ?? 0,
+                    'bte_neto'      => $bteRow ? ($bteRow->monto_pagado ?: ($bteRow->monto_bruto - $bteRow->monto_retenido)) : 0,
+                    'bte_estado'    => ($bteRow && $bteRow->estado !== 'Anulada') ? 'emitida' : null,
+                    'bte_folio'     => $bteRow->folio ?? null,
                 ];
 
                 // Si es masoterapeuta, calculamos una sola vez los MASAJES de la semana

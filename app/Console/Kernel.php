@@ -34,6 +34,16 @@ class Kernel extends ConsoleKernel
                 ->sundays()
                 ->at('21:05')
                 ->timezone('America/Santiago');
+
+        // Sincroniza las BHE del mes en curso desde el SII los domingos,
+        // antes del cierre de sueldos de las 21:00.
+        // --forzar es necesario: el comando no re-consulta un período que ya
+        // tiene registros, así que sin --forzar nunca vería boletas nuevas
+        // emitidas después de la primera sincronización del mes.
+        $schedule->command('honorarios:sync --mes=' . now()->month . ' --forzar')
+                ->sundays()
+                ->at('20:00')
+                ->timezone('America/Santiago');
     }
 
     /**
