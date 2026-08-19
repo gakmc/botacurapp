@@ -89,6 +89,9 @@ class SueldoDevengadoService
         }
 
         // Bono guardado por semana (sueldos_pagados), igual que en /sueldos.
+        // Puede haber más de una fila para la misma semana/usuario (p. ej.
+        // bono agregado después con un segundo "Pagar seleccionados"), así
+        // que se SUMAN en vez de sobrescribir.
         $pagos = SueldoPagado::all();
         foreach ($pagos as $pago) {
             $inicioSemana = Carbon::parse($pago->semana_inicio);
@@ -97,7 +100,7 @@ class SueldoDevengadoService
             $userId       = $pago->user_id;
 
             if (isset($semanas[$rangoKey][$userId])) {
-                $semanas[$rangoKey][$userId]['bono'] = (int) $pago->bono;
+                $semanas[$rangoKey][$userId]['bono'] += (int) $pago->bono;
             }
         }
 

@@ -261,10 +261,16 @@ class SueldoController extends Controller
             $userId = $pago->user_id;
 
             if (isset($semanas[$rango]) && isset($semanas[$rango][$userId])) {
-                $semanas[$rango][$userId]['bono']   = (int) $pago->bono;
-                $semanas[$rango][$userId]['motivo'] = $pago->motivo;
+                // Puede haber más de una fila de sueldos_pagados para la
+                // misma semana/usuario (p. ej. bono agregado después con
+                // un segundo "Pagar seleccionados"), así que se SUMAN en
+                // vez de sobrescribir para no perder el bono más viejo.
+                $semanas[$rango][$userId]['bono'] += (int) $pago->bono;
+                $semanas[$rango][$userId]['motivo'] = trim(
+                    ($semanas[$rango][$userId]['motivo'] ? $semanas[$rango][$userId]['motivo'] . ' + ' : '')
+                    . ($pago->motivo ?? '')
+                , ' +');
 
-                // Si el bono debe sumarse al total de la semana:
                 $semanas[$rango][$userId]['total'] += (int) $pago->bono;
             }
         }
@@ -504,26 +510,30 @@ class SueldoController extends Controller
             return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
         });
 
-        // Bono/motivo guardados para este usuario, pisados una sola vez por
-        // semana (no por día, para no repetir/multiplicar el valor).
+        // Bono/motivo guardados para este usuario, agregados por semana.
+        // Puede haber más de una fila de sueldos_pagados para la misma
+        // semana (p. ej. se pagó la semana y después se agregó un bono
+        // aparte con un segundo "Pagar seleccionados"), así que hay que
+        // SUMAR todas las filas que caen en esa semana, no quedarse con
+        // una sola — de lo contrario el bono agregado después desaparece.
         $pagosUsuario = SueldoPagado::where('user_id', $userId)->get();
 
         $sueldosAgrupados->each(function ($sueldosSemana) use ($pagosUsuario) {
             $fechaTrabajo = Carbon::parse($sueldosSemana->first()->dia_trabajado)->toDateString();
 
-            $pagoSemana = $pagosUsuario->first(function ($p) use ($fechaTrabajo) {
+            $pagosSemana = $pagosUsuario->filter(function ($p) use ($fechaTrabajo) {
                 $ini = Carbon::parse($p->semana_inicio)->toDateString();
                 $fin = Carbon::parse($p->semana_fin)->toDateString();
 
                 return ($fechaTrabajo >= $ini && $fechaTrabajo <= $fin);
             });
 
-            $bono   = $pagoSemana ? (int) $pagoSemana->bono : 0;
-            $motivo = $pagoSemana ? $pagoSemana->motivo : null;
+            $bono   = (int) $pagosSemana->sum('bono');
+            $motivo = $pagosSemana->pluck('motivo')->filter()->implode(' + ');
 
             foreach ($sueldosSemana as $sueldo) {
                 $sueldo->setAttribute('bono', $bono);
-                $sueldo->setAttribute('motivo', $motivo);
+                $sueldo->setAttribute('motivo', $motivo ?: null);
             }
         });
 
