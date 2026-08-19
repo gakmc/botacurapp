@@ -8,6 +8,7 @@ use App\PagoEgreso;
 use App\PoroPoroVenta;
 use App\Programa;
 use App\Reserva;
+use App\Services\SueldoDevengadoService;
 use App\TipoTransaccion;
 use App\Venta;
 use App\VentaDirecta;
@@ -527,10 +528,11 @@ class ReporteFinancieroController extends Controller
                 ->sum('monto_pagado');
         }
 
-        // 3. Sueldos pagados
-        $sueldosPagados = (int) DB::table('sueldos_pagados')
-            ->whereBetween('fecha_pago', [$inicio->toDateString(), $fin->toDateString()])
-            ->sum('monto');
+        // 3. Sueldos devengados del mes (misma lógica que /sueldos: por semana
+        // trabajada, no por fecha en que se clickeó "Pagar"). Antes esto sumaba
+        // sueldos_pagados.monto por fecha_pago (base caja), lo que generaba un
+        // número distinto al de /sueldos para el mismo mes.
+        $sueldosPagados = (new SueldoDevengadoService())->totalMes($anio, $mes);
 
         // 4. PPM estimado (1.5% del total ventas en app — aproximado)
         $ppm = (int) round($totalIngresos * 0.015);
@@ -574,7 +576,7 @@ class ReporteFinancieroController extends Controller
             if (Schema::hasTable('honorarios_bte')) {
                 $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
             }
-            $egr += (int) DB::table('sueldos_pagados')->whereBetween('fecha_pago', [$ini, $fin_m])->sum('monto');
+            $egr += (new SueldoDevengadoService())->totalMes($anio, $m);
             $egr += (int) round($ing * 0.015);
 
             if ($ing === 0 && $egr === 0 && Carbon::create($anio, $m, 1)->isFuture()) {
