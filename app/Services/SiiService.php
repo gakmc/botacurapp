@@ -94,33 +94,49 @@ class SiiService
         $rut     = $this->rut;
 
         try {
-            // Intentar endpoint resumen primero
             $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
 
-            // Extraer datos crudos de la respuesta
-            $d = $resp['data'] ?? $resp;
+            // La respuesta real viene como:
+            //   { "data": { "respEstado": {...}, "data": [ {fila por tipo de documento}, ... ] } }
+            // Cada fila trae, por tipo de documento (Factura, Boleta, Nota de
+            // Crédito, etc.), sus propios rsmnMntNeto/rsmnMntIVA/rsmnMntExe/
+            // rsmnMntTotal/rsmnTotDoc. Las Notas de Crédito (tipo 60 y 61)
+            // restan, porque anulan/rebajan ventas ya emitidas.
+            $filas = $resp['data']['data'] ?? [];
 
-            // Si data es un array asociativo (resumen directo)
-            if (isset($d['neto']) || isset($d['monto_neto']) || isset($d['total'])) {
-                $resumen = [
-                    'neto'     => (int) ($d['neto']     ?? $d['monto_neto']    ?? 0),
-                    'iva'      => (int) ($d['iva']       ?? $d['monto_iva']     ?? 0),
-                    'exento'   => (int) ($d['exento']    ?? $d['monto_exento']  ?? 0),
-                    'total'    => (int) ($d['total']     ?? $d['monto_total']   ?? 0),
-                    'cantidad' => (int) ($d['cantidad']  ?? $d['count']         ?? 0),
-                ];
-                return ['ok' => true, 'resumen' => $resumen, 'error' => null];
+            // Fallback por si alguna vez la API devuelve un resumen plano
+            // en vez de la lista de filas por tipo de documento.
+            if (!is_array($filas) || empty($filas)) {
+                $plano = $resp['data'] ?? $resp;
+                if (is_array($plano) && (isset($plano['neto']) || isset($plano['rsmnMntNeto']))) {
+                    $resumen = [
+                        'neto'     => (int) ($plano['neto']     ?? $plano['rsmnMntNeto']  ?? 0),
+                        'iva'      => (int) ($plano['iva']      ?? $plano['rsmnMntIVA']   ?? 0),
+                        'exento'   => (int) ($plano['exento']   ?? $plano['rsmnMntExe']   ?? 0),
+                        'total'    => (int) ($plano['total']    ?? $plano['rsmnMntTotal'] ?? 0),
+                        'cantidad' => (int) ($plano['cantidad'] ?? $plano['rsmnTotDoc']   ?? 0),
+                    ];
+                    return ['ok' => true, 'resumen' => $resumen, 'error' => null];
+                }
+
+                $resumenVacio = ['neto' => 0, 'iva' => 0, 'exento' => 0, 'total' => 0, 'cantidad' => 0];
+                return ['ok' => true, 'resumen' => $resumenVacio, 'error' => null];
             }
 
-            // Si data es una lista de documentos, sumarlos
-            $docs = is_array($d) ? $d : [];
+            // Tipos de documento que RESTAN de las ventas (notas de crédito).
+            $tiposQueRestan = [60, 61];
+
             $neto = 0; $iva = 0; $exento = 0; $total = 0; $cnt = 0;
-            foreach ($docs as $doc) {
-                $neto   += (int) ($doc['neto']    ?? $doc['monto_neto']   ?? 0);
-                $iva    += (int) ($doc['iva']     ?? $doc['monto_iva']    ?? 0);
-                $exento += (int) ($doc['exento']  ?? $doc['monto_exento'] ?? 0);
-                $total  += (int) ($doc['total']   ?? $doc['monto_total']  ?? 0);
-                $cnt++;
+
+            foreach ($filas as $fila) {
+                $tipo  = (int) ($fila['rsmnTipoDocInteger'] ?? 0);
+                $signo = in_array($tipo, $tiposQueRestan, true) ? -1 : 1;
+
+                $neto   += $signo * (int) ($fila['rsmnMntNeto']  ?? 0);
+                $iva    += $signo * (int) ($fila['rsmnMntIVA']   ?? 0);
+                $exento += $signo * (int) ($fila['rsmnMntExe']   ?? 0);
+                $total  += $signo * (int) ($fila['rsmnMntTotal'] ?? 0);
+                $cnt    += (int) ($fila['rsmnTotDoc'] ?? 0);
             }
 
             return [
