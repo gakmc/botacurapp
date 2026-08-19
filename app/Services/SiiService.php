@@ -141,6 +141,24 @@ class SiiService
         }
     }
 
+    /**
+     * Devuelve la respuesta CRUDA (sin normalizar) del resumen de ventas,
+     * solo para diagnóstico: así se puede ver el nombre real de los campos
+     * que manda la API cuando el parseo normal da $0 con documentos > 0.
+     */
+    public function debugVentasResumenCrudo($anio, $mes)
+    {
+        $periodo = sprintf('%04d%02d', $anio, $mes);
+        $rut     = $this->rut;
+
+        try {
+            $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
+            return ['ok' => true, 'raw' => $resp, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'raw' => null, 'error' => $e->getMessage()];
+        }
+    }
+
     public function buscarContribuyente($rut)
     {
         try {
