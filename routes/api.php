@@ -69,6 +69,9 @@ Route::prefix('iot')->namespace('Api')->group(function () {
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
     // Agenda completa de hoy por tinaja/sauna — para mantener temperatura toda la jornada
     Route::get('tinajas/agenda-dia',      'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
+    // Estado / toggle del swap Tinaja 1 <-> Tinaja 2 (usado por el switch REST de HA)
+    Route::get('tinajas/estado-inversion', 'TinajaController@estadoInversion')->name('iot.tinajas.estado-inversion');
+    Route::post('tinajas/set-inversion',   'TinajaController@setInversion')->name('iot.tinajas.set-inversion');
     // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
     Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
 });
