@@ -36,7 +36,7 @@
             Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Cierre Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
         </a>
 
-        <a href="#modalVenta{{--$reserva->venta->id--}}"
+        <a href="#modalVenta-{{ $reserva->id }}"
             class="collection-item center-align valign-wrapper left modal-trigger" 
             data-id="{{ $reserva->venta->id }}"
 
