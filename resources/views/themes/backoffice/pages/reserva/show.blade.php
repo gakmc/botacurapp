@@ -37,7 +37,7 @@
 
 @section('content')
 <div class="section">
-  <p class="caption" style="margin-bottom: 0"><strong>Fecha de reserva:</strong> {{ $reserva->fecha_visita }}</p>
+  <p class="caption" style="margin-bottom: 0"><strong>Fecha de reserva: </strong> {{ $reserva->fecha_visita }}</p>
   <div class="divider"></div>
   <div id="basic-form" class="section" style="padding-top: 0">
     <div class="row">
@@ -613,7 +613,7 @@
           
           
           // Limpiar el contenido anterior de consumos en el modal
-          $('#modalConsumo').empty();
+          $('#modalConsumo-{{ $reserva->id }}').empty();
 
           // Crear la tabla para los consumos
           var subtotalConsumo=0;
@@ -668,11 +668,11 @@
           tablaConsumos += '</tbody></table>';
 
           // Añadir la tabla al modal
-          $('#modalConsumo').append(tablaConsumos);
+          $('#modalConsumo-{{ $reserva->id }}').append(tablaConsumos);
 
 
           // Limpiar el contenido anterior de consumos en el modal
-          $('#modalServicio').empty();
+          $('#modalServicio-{{ $reserva->id }}').empty();
 
           var tablaServicios = '<table class="highlight responsive-table centered">';
           tablaServicios += '<thead><tr><th>Servicio</th><th>Valor/Tiempo</th><th>Cantidad</th><th>SubTotal</th></tr></thead>';
@@ -712,11 +712,11 @@
           tablaServicios += '</tbody></table>';
 
           // Añadir la tabla al modal
-          $('#modalServicio').append(tablaServicios);
-          
-          
+          $('#modalServicio-{{ $reserva->id }}').append(tablaServicios);
+
+
           // Limpiar el contenido anterior de consumos en el modal
-          $('#modalResumen').empty();
+          $('#modalResumen-{{ $reserva->id }}').empty();
           
           var SubTotalPagar = subtotalConsumo+subtotalServicio+totalPagar;
           var TotalPagarCP = Math.trunc(totalConsumo)+subtotalServicio+totalPagar;
@@ -736,10 +736,10 @@
             tablaResumen += '</tbody></table>';
               
               // Añadir la tabla al modal
-              $('#modalResumen').append(tablaResumen);
+              $('#modalResumen-{{ $reserva->id }}').append(tablaResumen);
 
       // Abrir el modal
-      var modal = M.Modal.getInstance($('#modalVenta'));
+      var modal = M.Modal.getInstance($('#modalVenta-{{ $reserva->id }}'));
       modal.open();
     });
   });
