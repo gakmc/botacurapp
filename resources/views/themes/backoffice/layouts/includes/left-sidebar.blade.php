@@ -370,34 +370,18 @@
                 @endif
 
 
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
+                @if (Auth::user()->has_role(config('app.admin_role')))
 
-
-                    @if (Auth::user()->has_role(config('app.jefe_local_role')))
-                        <li class="bold">
-                            <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.create') }}">
-                                <i class="material-icons">
-                                    show_chart
-                                </i>
-                                <span class="nav-text">
-                                    Egresos
-                                </span>
-                            </a>
-                        </li>
-                        
-                    @else
-                        <li class="bold">
-                            <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.index') }}">
-                                <i class="material-icons">
-                                    show_chart
-                                </i>
-                                <span class="nav-text">
-                                    Egresos
-                                </span>
-                            </a>
-                        </li>
-                        
-                    @endif
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.index') }}">
+                            <i class="material-icons">
+                                show_chart
+                            </i>
+                            <span class="nav-text">
+                                Egresos
+                            </span>
+                        </a>
+                    </li>
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route('backoffice.impuesto.index') }}">
@@ -412,6 +396,10 @@
                             <span class="nav-text">Utilidad</span>
                         </a>
                     </li>
+
+                @endif
+
+                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
 
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
