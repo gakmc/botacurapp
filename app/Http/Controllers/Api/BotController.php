@@ -132,7 +132,11 @@ class BotController extends Controller
 
         // Sin programa_id: contar reservas totales del día
         $cuposMax       = 16; // slots de tinaja
-        $reservasActual = Reserva::whereDate('fecha_visita', $fecha)->count();
+        $reservasActual = Reserva::whereDate('fecha_visita', $fecha)
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '<>', 'cancelada');
+            })
+            ->count();
         $cuposDisp      = max(0, $cuposMax - $reservasActual);
 
         return response()->json([
@@ -222,6 +226,25 @@ class BotController extends Controller
             'cantidad_personas' => 'required|integer|min:1|max:50',
         ]);
 
+        // Validar disponibilidad real antes de insertar (evita doble-reserva).
+        // Usa la misma logica que GET /api/bot-ai/disponibilidad?programa_id=...
+        $chequeoRequest = new Request([
+            'fecha'       => $request->fecha_visita,
+            'programa_id' => $request->id_programa,
+            'personas'    => $request->cantidad_personas,
+        ]);
+        $chequeoResponse = app(DisponibilidadController::class)->check($chequeoRequest);
+        $chequeo = json_decode($chequeoResponse->getContent(), true);
+
+        if (!($chequeo['disponible'] ?? false)) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'sin_cupo',
+                'mensaje' => $chequeo['motivo_no_disponible'] ?? 'No hay cupo disponible para esa fecha.',
+                'detalle' => $chequeo,
+            ], 409);
+        }
+
         $botUserId = (int) env('BOT_SYSTEM_USER_ID', 1);
 
         $reservaId = DB::table('reservas')->insertGetId([
@@ -252,6 +275,159 @@ class BotController extends Controller
             'valor_total_fmt'    => '$' . number_format($valorTotal, 0, ',', '.'),
             'abono_50'           => $abono50,
             'abono_50_fmt'       => '$' . number_format($abono50, 0, ',', '.'),
+        ]);
+    }
+
+    // -----------------------------------------------------------------------
+    // POST /api/bot-ai/reservas/{id}/cancelar
+    // Body: { motivo? }
+    // Nota: el abono NO es reembolsable - solo se marca la reserva como
+    // cancelada, cualquier devolucion se maneja manualmente por el staff.
+    // -----------------------------------------------------------------------
+    public function cancelarReserva(Request $request, $id)
+    {
+        $reserva = DB::table('reservas')->where('id', $id)->first();
+        if (!$reserva) {
+            return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
+        }
+
+        if ($reserva->estado === 'cancelada') {
+            return response()->json([
+                'ok'         => true,
+                'reserva_id' => (int) $id,
+                'estado'     => 'cancelada',
+                'mensaje'    => 'La reserva ya estaba cancelada.',
+            ]);
+        }
+
+        $motivo = $request->input('motivo');
+        $observacionNueva = trim(($reserva->observacion ? $reserva->observacion . ' | ' : '')
+            . 'Cancelada por bot WhatsApp' . ($motivo ? ": {$motivo}" : ''));
+
+        DB::table('reservas')->where('id', $id)->update([
+            'estado'      => 'cancelada',
+            'observacion' => $observacionNueva,
+            'updated_at'  => now(),
+        ]);
+
+        Log::info("[Bot] Reserva #{$id} cancelada" . ($motivo ? " - motivo: {$motivo}" : ''));
+
+        return response()->json([
+            'ok'         => true,
+            'reserva_id' => (int) $id,
+            'estado'     => 'cancelada',
+            'mensaje'    => 'Reserva cancelada. El abono no es reembolsable.',
+        ]);
+    }
+
+    // -----------------------------------------------------------------------
+    // POST /api/bot-ai/reservas/{id}/reprogramar
+    // Body: { nueva_fecha: YYYY-MM-DD }
+    // Politicas: minimo 3 dias corridos de anticipacion antes de las 10:00,
+    // una sola reprogramacion por reserva, nueva fecha dentro de 45 dias
+    // desde la fecha original, y el programa debe admitir cambios.
+    // -----------------------------------------------------------------------
+    public function reprogramarReserva(Request $request, $id)
+    {
+        $request->validate([
+            'nueva_fecha' => 'required|date|after_or_equal:today',
+        ]);
+
+        $reserva = DB::table('reservas')->where('id', $id)->first();
+        if (!$reserva) {
+            return response()->json(['ok' => false, 'error' => 'Reserva no encontrada'], 404);
+        }
+
+        if ($reserva->estado === 'cancelada') {
+            return response()->json(['ok' => false, 'error' => 'La reserva esta cancelada, no se puede reprogramar'], 422);
+        }
+
+        $nuevaFecha = $request->nueva_fecha;
+
+        if ($nuevaFecha === $reserva->fecha_visita) {
+            return response()->json(['ok' => false, 'error' => 'La nueva fecha es igual a la actual'], 422);
+        }
+
+        $yaReprogramada = DB::table('reagendamientos')->where('id_reserva', $id)->exists();
+        if ($yaReprogramada) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'limite_reprogramacion',
+                'mensaje' => 'Esta reserva ya fue reprogramada una vez. No se permite una segunda reprogramacion.',
+            ], 422);
+        }
+
+        $programa = DB::table('programas')->where('id', $reserva->id_programa)->first();
+        if ($programa && isset($programa->permite_reprogramacion) && !$programa->permite_reprogramacion) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'programa_no_modificable',
+                'mensaje' => 'Este programa no admite cambios de fecha segun las politicas de Botacura.',
+            ], 422);
+        }
+
+        $fechaVisitaOriginal = Carbon::parse($reserva->fecha_visita, 'America/Santiago');
+        $limitePlazo = $fechaVisitaOriginal->copy()->subDays(3)->setTime(10, 0, 0);
+        $ahora = Carbon::now('America/Santiago');
+
+        if ($ahora->greaterThanOrEqualTo($limitePlazo)) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'fuera_de_plazo',
+                'mensaje' => 'La solicitud esta fuera del plazo permitido (minimo 3 dias corridos de anticipacion, antes de las 10:00). No corresponde reprogramacion segun las politicas de Botacura.',
+            ], 422);
+        }
+
+        $limiteVentana = $fechaVisitaOriginal->copy()->addDays(45);
+        $nuevaFechaCarbon = Carbon::parse($nuevaFecha, 'America/Santiago');
+        if ($nuevaFechaCarbon->greaterThan($limiteVentana)) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'fuera_de_ventana',
+                'mensaje' => 'La nueva fecha debe estar dentro de los 45 dias corridos siguientes a la fecha original de la reserva.',
+            ], 422);
+        }
+
+        $chequeoRequest = new Request([
+            'fecha'       => $nuevaFecha,
+            'programa_id' => $reserva->id_programa,
+            'personas'    => $reserva->cantidad_personas,
+        ]);
+        $chequeoResponse = app(DisponibilidadController::class)->check($chequeoRequest);
+        $chequeo = json_decode($chequeoResponse->getContent(), true);
+
+        if (!($chequeo['disponible'] ?? false)) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => 'sin_cupo',
+                'mensaje' => $chequeo['motivo_no_disponible'] ?? 'No hay cupo disponible para la nueva fecha.',
+                'detalle' => $chequeo,
+            ], 409);
+        }
+
+        $fechaAnterior = $reserva->fecha_visita;
+
+        DB::table('reagendamientos')->insert([
+            'fecha_original' => $fechaAnterior,
+            'nueva_fecha'    => $nuevaFecha,
+            'id_reserva'     => $id,
+            'created_at'     => now(),
+            'updated_at'     => now(),
+        ]);
+
+        DB::table('reservas')->where('id', $id)->update([
+            'fecha_visita' => $nuevaFecha,
+            'updated_at'   => now(),
+        ]);
+
+        Log::info("[Bot] Reserva #{$id} reprogramada de {$fechaAnterior} a {$nuevaFecha}");
+
+        return response()->json([
+            'ok'             => true,
+            'reserva_id'     => (int) $id,
+            'fecha_anterior' => $fechaAnterior,
+            'fecha_nueva'    => $nuevaFecha,
+            'mensaje'        => 'Reserva reprogramada correctamente.',
         ]);
     }
 

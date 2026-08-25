@@ -35,6 +35,10 @@ class Kernel extends ConsoleKernel
                 ->at('21:05')
                 ->timezone('America/Santiago');
 
+        $schedule->command('reservas:enviar-recordatorios')
+                ->dailyAt('10:00')
+                ->timezone('America/Santiago');
+
         // ── Sincronización SII, domingos, terminando antes del cierre de
         //    sueldos de las 21:00. Orden importa: compras y honorarios
         //    primero, F29 al final porque depende de ambos.

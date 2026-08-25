@@ -168,6 +168,9 @@ class DisponibilidadController extends Controller
     {
         $reservas = DB::table('reservas')
             ->where('fecha_visita', $fecha)
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '<>', 'cancelada');
+            })
             ->select('cantidad_personas')
             ->get();
 
@@ -189,6 +192,9 @@ class DisponibilidadController extends Controller
             ->join('programas as p', 'r.id_programa', '=', 'p.id')
             ->where('r.fecha_visita', $fecha)
             ->whereIn('p.espacio_tipo', $tipos)
+            ->where(function ($q) {
+                $q->whereNull('r.estado')->orWhere('r.estado', '<>', 'cancelada');
+            })
             ->count();
     }
 

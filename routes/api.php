@@ -161,6 +161,8 @@ Route::prefix('bot-ai')->namespace('Api')->group(function () {
     Route::post('clientes/buscar-o-crear', 'BotController@buscarOCrearCliente')->name('bot-ai.clientes.buscarOCrear');
     Route::post('reservas', 'BotController@crearReserva')->name('bot-ai.reservas.store');
     Route::post('reservas/{id}/pago', 'BotController@registrarPago')->name('bot-ai.reservas.pago');
+    Route::post('reservas/{id}/cancelar', 'BotController@cancelarReserva')->name('bot-ai.reservas.cancelar');
+    Route::post('reservas/{id}/reprogramar', 'BotController@reprogramarReserva')->name('bot-ai.reservas.reprogramar');
     Route::post('reserva', 'BotReservaController@store')->name('bot-ai.reserva');
     Route::get('menu-opciones', 'BotController@menuOpciones')->name('bot-ai.menu-opciones');
     Route::patch('reserva/{id}/menu-seleccion', 'BotReservaController@guardarSeleccionMenu')->name('bot-ai.reserva.menu-seleccion');
