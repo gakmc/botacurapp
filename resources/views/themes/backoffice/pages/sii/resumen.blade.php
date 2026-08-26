@@ -76,7 +76,11 @@
                 <tr id="fila-mes-{{ $fila['mes'] }}"
                     data-mes="{{ $fila['mes'] }}"
                     data-anio="{{ $anio }}"
-                    data-importado="{{ $fila['importado'] ? '1' : '0' }}">
+                    data-importado="{{ $fila['importado'] ? '1' : '0' }}"
+                    data-docs="{{ $fila['importado'] ? $fila['documentos'] : 0 }}"
+                    data-neto="{{ $fila['importado'] ? $fila['neto'] : 0 }}"
+                    data-iva="{{ $fila['importado'] ? $fila['iva'] : 0 }}"
+                    data-total="{{ $fila['importado'] ? $fila['total'] : 0 }}">
 
                     <td style="font-weight:500;">{{ $fila['nombre'] }} {{ $anio }}</td>
 
@@ -250,10 +254,22 @@ $(function () {
                 success: function (resp) {
                     if (resp.ok) {
                         var urlDetalle = urlDetalleMes + '?mes=' + item.mes + '&anio=' + item.anio;
-                        $fila.find('.celda-docs').text(resp.docs || (resp.importados + resp.omitidos));
-                        $fila.find('.celda-neto').html('<span class="grey-text">' + fmt(resp.neto || 0) + '</span>');
-                        $fila.find('.celda-iva').html('<span class="grey-text">' + fmt(resp.iva || 0) + '</span>');
-                        $fila.find('.celda-total').html('<strong style="color:#039B7B;">' + fmt(resp.total) + '</strong>');
+                        var docsNuevo  = resp.docs || (resp.importados + resp.omitidos);
+                        var netoNuevo  = resp.neto  || 0;
+                        var ivaNuevo   = resp.iva   || 0;
+                        var totalNuevo = resp.total || 0;
+
+                        // Delta respecto al aporte previo de esta fila al pie de tabla
+                        // (evita duplicar montos si la fila ya estaba importada).
+                        var docsAnterior  = parseInt($fila.data('docs'))  || 0;
+                        var netoAnterior  = parseInt($fila.data('neto'))  || 0;
+                        var ivaAnterior   = parseInt($fila.data('iva'))   || 0;
+                        var totalAnterior = parseInt($fila.data('total')) || 0;
+
+                        $fila.find('.celda-docs').text(docsNuevo);
+                        $fila.find('.celda-neto').html('<span class="grey-text">' + fmt(netoNuevo) + '</span>');
+                        $fila.find('.celda-iva').html('<span class="grey-text">' + fmt(ivaNuevo) + '</span>');
+                        $fila.find('.celda-total').html('<strong style="color:#039B7B;">' + fmt(totalNuevo) + '</strong>');
                         $fila.find('.celda-accion').html(
                             '<a href="' + urlDetalle + '" class="btn-flat btn-small waves-effect" style="color:#039B7B; font-size:12px;">'
                             + 'Ver detalle <i class="material-icons tiny right">arrow_forward</i></a>'
@@ -262,10 +278,15 @@ $(function () {
                             + '<i class="material-icons tiny left">sync</i> Re-sincronizar</button>'
                         );
                         $fila.attr('data-importado', '1');
-                        pieDocs  += resp.importados || 0;
-                        pieNeto  += resp.neto  || 0;
-                        pieIva   += resp.iva   || 0;
-                        pieTotal += resp.total || 0;
+                        $fila.attr('data-docs', docsNuevo);
+                        $fila.attr('data-neto', netoNuevo);
+                        $fila.attr('data-iva', ivaNuevo);
+                        $fila.attr('data-total', totalNuevo);
+
+                        pieDocs  += (docsNuevo  - docsAnterior);
+                        pieNeto  += (netoNuevo  - netoAnterior);
+                        pieIva   += (ivaNuevo   - ivaAnterior);
+                        pieTotal += (totalNuevo - totalAnterior);
                         $('#pie-docs').text(pieDocs);
                         $('#pie-neto').text(fmt(pieNeto));
                         $('#pie-iva').text(fmt(pieIva));
@@ -310,16 +331,23 @@ $(function () {
                 }
 
                 var urlDetalle = urlDetalleMes + '?mes=' + mes + '&anio=' + anio;
-                var totalFmt   = fmt(resp.total);
-                var netoFmt    = fmt(resp.neto   || 0);
-                var ivaFmt     = fmt(resp.iva    || 0);
-                // Usar docs reales desde DB; si no viene, sumar importados + omitidos
-                var docsN      = resp.docs || (resp.importados + resp.omitidos);
+                // Usar docs/montos reales desde BD (siempre reflejan la fuente de verdad)
+                var docsNuevo  = resp.docs || (resp.importados + resp.omitidos);
+                var netoNuevo  = resp.neto  || 0;
+                var ivaNuevo   = resp.iva   || 0;
+                var totalNuevo = resp.total || 0;
 
-                $fila.find('.celda-docs').text(docsN);
-                $fila.find('.celda-neto').html('<span class="grey-text">' + netoFmt + '</span>');
-                $fila.find('.celda-iva').html('<span class="grey-text">' + ivaFmt + '</span>');
-                $fila.find('.celda-total').html('<strong style="color:#039B7B;">' + totalFmt + '</strong>');
+                // Delta respecto al aporte previo de esta fila al pie de tabla
+                // (evita duplicar montos si la fila ya estaba importada, p.ej. al re-sincronizar).
+                var docsAnterior  = parseInt($fila.data('docs'))  || 0;
+                var netoAnterior  = parseInt($fila.data('neto'))  || 0;
+                var ivaAnterior   = parseInt($fila.data('iva'))   || 0;
+                var totalAnterior = parseInt($fila.data('total')) || 0;
+
+                $fila.find('.celda-docs').text(docsNuevo);
+                $fila.find('.celda-neto').html('<span class="grey-text">' + fmt(netoNuevo) + '</span>');
+                $fila.find('.celda-iva').html('<span class="grey-text">' + fmt(ivaNuevo) + '</span>');
+                $fila.find('.celda-total').html('<strong style="color:#039B7B;">' + fmt(totalNuevo) + '</strong>');
                 $fila.find('.celda-accion').html(
                     '<a href="' + urlDetalle + '" class="btn-flat btn-small waves-effect" style="color:#039B7B; font-size:12px;">'
                     + 'Ver detalle <i class="material-icons tiny right">arrow_forward</i></a>'
@@ -328,11 +356,15 @@ $(function () {
                     + '<i class="material-icons tiny left">sync</i> Re-sincronizar</button>'
                 );
                 $fila.attr('data-importado', '1');
+                $fila.attr('data-docs', docsNuevo);
+                $fila.attr('data-neto', netoNuevo);
+                $fila.attr('data-iva', ivaNuevo);
+                $fila.attr('data-total', totalNuevo);
 
-                pieDocs  += resp.importados;
-                pieNeto  += (resp.neto  || 0);
-                pieIva   += (resp.iva   || 0);
-                pieTotal += resp.total;
+                pieDocs  += (docsNuevo  - docsAnterior);
+                pieNeto  += (netoNuevo  - netoAnterior);
+                pieIva   += (ivaNuevo   - ivaAnterior);
+                pieTotal += (totalNuevo - totalAnterior);
                 $('#pie-docs').text(pieDocs);
                 $('#pie-neto').text(fmt(pieNeto));
                 $('#pie-iva').text(fmt(pieIva));

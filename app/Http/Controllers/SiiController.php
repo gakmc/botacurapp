@@ -548,14 +548,27 @@ class SiiController extends Controller
             return response()->json(['ok' => false, 'error' => $e->getMessage()], 500);
         }
 
+        // Los totales/docs se recalculan SIEMPRE desde la BD (fuente de verdad),
+        // nunca sumando la respuesta cruda de la API SII. La API puede devolver
+        // documentos duplicados entre los distintos "tipos" consultados (33/34/46/56/61),
+        // y sumar esos duplicados sobre $totalNeto/$totalIva/$totalMonto infla los
+        // montos cada vez que se reintenta la importación (aunque el INSERT en BD
+        // sí deduplica correctamente por numero_documento). Al re-consultar la BD
+        // garantizamos que /sii/resumen siempre coincida con /sii/detalle-mes.
+        $reales = Egreso::where('fuente', 'sii')
+            ->whereYear('fecha_egreso', $anio)
+            ->whereMonth('fecha_egreso', $mes)
+            ->selectRaw('COUNT(*) as documentos, SUM(COALESCE(neto,0)) as neto, SUM(COALESCE(iva,0)) as iva, SUM(total) as total')
+            ->first();
+
         return response()->json([
             'ok'         => true,
             'importados' => $importados,
             'omitidos'   => $omitidos,
-            'docs'       => $importados + $omitidos,
-            'neto'       => $totalNeto,
-            'iva'        => $totalIva,
-            'total'      => $totalMonto,
+            'docs'       => (int) ($reales->documentos ?? 0),
+            'neto'       => (int) ($reales->neto ?? 0),
+            'iva'        => (int) ($reales->iva ?? 0),
+            'total'      => (int) ($reales->total ?? 0),
         ]);
     }
 
