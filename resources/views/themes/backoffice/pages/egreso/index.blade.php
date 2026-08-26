@@ -9,6 +9,7 @@
 @section('dropdown_settings')
 <li><a href="{{ route('backoffice.egreso.create') }}" class="grey-text text-darken-2">Crear Egreso</a></li>
 <li><a href="{{ route('backoffice.proveedor.index') }}" class="grey-text text-darken-2">Proveedores</a></li>
+<li><a href="{{ route('backoffice.sii.resumen') }}" class="grey-text text-darken-2">Sincronizar SII</a></li>
 @endsection
 
 @section('content')

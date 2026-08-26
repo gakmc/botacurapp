@@ -117,6 +117,14 @@
                                class="btn-flat btn-small waves-effect" style="color:#039B7B; font-size:12px;">
                                 Ver detalle <i class="material-icons tiny right">arrow_forward</i>
                             </a>
+                            <button type="button"
+                                class="btn-importar-mes btn-flat btn-small waves-effect"
+                                data-mes="{{ $fila['mes'] }}"
+                                data-anio="{{ $anio }}"
+                                title="Vuelve a consultar el SII por si hay facturas nuevas de este mes"
+                                style="color:#607d8b; font-size:11px; margin-left:4px;">
+                                <i class="material-icons tiny left">sync</i> Re-sincronizar
+                            </button>
                             @else
                             <button type="button"
                                 class="btn-importar-mes btn-flat btn-small waves-effect"
@@ -249,6 +257,9 @@ $(function () {
                         $fila.find('.celda-accion').html(
                             '<a href="' + urlDetalle + '" class="btn-flat btn-small waves-effect" style="color:#039B7B; font-size:12px;">'
                             + 'Ver detalle <i class="material-icons tiny right">arrow_forward</i></a>'
+                            + '<button type="button" class="btn-importar-mes btn-flat btn-small waves-effect" data-mes="' + item.mes + '" data-anio="' + item.anio + '" '
+                            + 'title="Vuelve a consultar el SII por si hay facturas nuevas de este mes" style="color:#607d8b; font-size:11px; margin-left:4px;">'
+                            + '<i class="material-icons tiny left">sync</i> Re-sincronizar</button>'
                         );
                         $fila.attr('data-importado', '1');
                         pieDocs  += resp.importados || 0;
@@ -312,7 +323,11 @@ $(function () {
                 $fila.find('.celda-accion').html(
                     '<a href="' + urlDetalle + '" class="btn-flat btn-small waves-effect" style="color:#039B7B; font-size:12px;">'
                     + 'Ver detalle <i class="material-icons tiny right">arrow_forward</i></a>'
+                    + '<button type="button" class="btn-importar-mes btn-flat btn-small waves-effect" data-mes="' + mes + '" data-anio="' + anio + '" '
+                    + 'title="Vuelve a consultar el SII por si hay facturas nuevas de este mes" style="color:#607d8b; font-size:11px; margin-left:4px;">'
+                    + '<i class="material-icons tiny left">sync</i> Re-sincronizar</button>'
                 );
+                $fila.attr('data-importado', '1');
 
                 pieDocs  += resp.importados;
                 pieNeto  += (resp.neto  || 0);
