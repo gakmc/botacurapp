@@ -23,6 +23,14 @@ use Illuminate\Support\Facades\Log;
  */
 class WhatsAppWebhookController extends Controller
 {
+    /**
+     * phone_number_id del número de Meta que recibió el mensaje actual
+     * (metadata.phone_number_id del webhook). Se usa para responder desde
+     * el mismo número al que escribió el cliente, en vez de un número fijo.
+     * Si no viene en el payload, cae a env('META_PHONE_NUMBER_ID').
+     */
+    private $phoneNumberId = null;
+
     // ─────────────────────────────────────────────────────────────────────────
     // GET /api/whatsapp/webhook  — verificación Meta
     // ─────────────────────────────────────────────────────────────────────────
@@ -64,6 +72,10 @@ class WhatsAppWebhookController extends Controller
             if (!$value) {
                 return response()->json(['ok' => true]);
             }
+
+            // Número de Meta que recibió este mensaje — las respuestas salen
+            // por este mismo número (fallback al fijo de .env si no viene).
+            $this->phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
 
             $messages = $value['messages'] ?? [];
             if (empty($messages)) {
@@ -399,7 +411,7 @@ class WhatsAppWebhookController extends Controller
 
     private function enviarMensaje(string $telefono, string $texto)
     {
-        $phoneId = env('META_PHONE_NUMBER_ID');
+        $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
         $version = env('META_API_VERSION', 'v19.0');
 
@@ -430,7 +442,7 @@ class WhatsAppWebhookController extends Controller
 
     private function enviarDocumento(string $telefono, string $url, string $nombre)
     {
-        $phoneId = env('META_PHONE_NUMBER_ID');
+        $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
         $version = env('META_API_VERSION', 'v19.0');
 
