@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\AbonoExtra;
 use App\Egreso;
 use App\GiftCard;
 use App\PagoEgreso;
@@ -33,6 +34,15 @@ class ReporteFinancieroController extends Controller
             ->whereYear('reservas.fecha_visita', $anio)
             ->groupBy('mes')
             ->get();
+
+        // ABONOS EXTRA (se contabilizan en el mes en que realmente se registraron, fecha_abono)
+        $abonosExtra = DB::table('abonos_extra')
+            ->selectRaw('MONTH(fecha_abono) as mes, SUM(monto) as total')
+            ->whereYear('fecha_abono', $anio)
+            ->groupBy('mes')
+            ->get();
+
+        $abonos = $this->mergeTotalesPorMes($abonos, $abonosExtra);
 
         $diferencias = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
@@ -135,6 +145,17 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
+
+        // ABONOS EXTRA (se contabilizan en la fecha en que realmente se registraron, fecha_abono)
+        $abonosExtra = DB::table('abonos_extra')
+            ->selectRaw('YEARWEEK(fecha_abono, 1) as yearweek, DATE(fecha_abono) as fecha, SUM(monto) as total')
+            ->whereYear('fecha_abono', $anio)
+            ->whereMonth('fecha_abono', $mes)
+            ->groupBy('yearweek', 'fecha')
+            ->orderBy('fecha')
+            ->get();
+
+        $abonos = $this->mergeTotalesPorFecha($abonos, $abonosExtra);
 
         // DIFERENCIAS
         $diferencias = DB::table('ventas')
@@ -242,6 +263,17 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
+        // ABONOS EXTRA (fechados por cuándo se recibieron realmente, vía fecha_abono)
+        $abonosExtra = DB::table('abonos_extra')
+            ->selectRaw('YEARWEEK(fecha_abono, 1) as yearweek, DATE(fecha_abono) as fecha, SUM(monto) as total')
+            ->whereYear('fecha_abono', $anio)
+            ->whereMonth('fecha_abono', $mes)
+            ->groupBy('yearweek', 'fecha')
+            ->orderBy('fecha')
+            ->get();
+
+        $abonos = $this->mergeTotalesPorFecha($abonos, $abonosExtra);
+
         // DIFERENCIAS
         $diferencias = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
@@ -330,6 +362,11 @@ class ReporteFinancieroController extends Controller
             }
         }
 
+        // Abonos extra recibidos en el período (fechados por fecha_abono, no por la reserva)
+        $ingresosVentas += AbonoExtra::whereYear('fecha_abono', $anio)
+            ->whereMonth('fecha_abono', $mes)
+            ->sum('monto');
+
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
                 ->whereHas('reserva', function ($query) use ($anio, $mes) {
@@ -337,6 +374,11 @@ class ReporteFinancieroController extends Controller
                         ->whereMonth('created_at', $mes);
                 })
                 ->sum('abono_programa');
+
+            $abonoExtra = AbonoExtra::where('id_tipo_transaccion', $tipo->id)
+                ->whereYear('fecha_abono', $anio)
+                ->whereMonth('fecha_abono', $mes)
+                ->sum('monto');
 
             $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
                 ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
@@ -363,7 +405,7 @@ class ReporteFinancieroController extends Controller
                 ->whereMonth('created_at', $mes)
                 ->sum('total');
 
-            $tipo->total_abonos      = $abono;
+            $tipo->total_abonos      = $abono + $abonoExtra;
             $tipo->total_diferencias = $total_pago1 + $total_pago2;
             $tipo->venta_directa     = $ventaDirecta;
             $tipo->poro              = $poroPoro;
@@ -371,15 +413,22 @@ class ReporteFinancieroController extends Controller
             return $tipo;
         });
 
-        $programas = Programa::all()->map(function ($programa) use ($mes, $anio) {
-            $cuenta = Reserva::where('id_programa', $programa->id)
-                ->whereMonth('created_at', $mes)
-                ->whereYear('created_at', $anio)
-                ->count();
+        $programas = Programa::where(function ($q) {
+                $q->where('estado', 'activo')->orWhereNull('estado');
+            })
+            ->orWhereHas('reservas', function ($q) use ($mes, $anio) {
+                $q->whereMonth('created_at', $mes)->whereYear('created_at', $anio);
+            })
+            ->get()
+            ->map(function ($programa) use ($mes, $anio) {
+                $cuenta = Reserva::where('id_programa', $programa->id)
+                    ->whereMonth('created_at', $mes)
+                    ->whereYear('created_at', $anio)
+                    ->count();
 
-            $programa->total_programas = $cuenta;
-            return $programa;
-        });
+                $programa->total_programas = $cuenta;
+                return $programa;
+            });
 
 
 
@@ -673,6 +722,11 @@ class ReporteFinancieroController extends Controller
             ->whereBetween('reservas.created_at', [$desde, $hasta])
             ->sum(DB::raw('COALESCE(ventas.abono_programa,0) + COALESCE(ventas.diferencia_programa,0)'));
 
+        // Abonos extra (registrados aparte, fechados por cuándo se recibieron)
+        $abonosExtra = DB::table('abonos_extra')
+            ->whereBetween('fecha_abono', [$desde, $hasta])
+            ->sum(DB::raw('COALESCE(monto,0)'));
+
         // Consumos: detalles_consumos -> consumos -> ventas -> reservas
         $consumos = DB::table('detalles_consumos')
             ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
@@ -694,7 +748,45 @@ class ReporteFinancieroController extends Controller
             ->whereBetween('ventas_directas.created_at', [$desde, $hasta])
             ->sum(DB::raw('COALESCE(ventas_directas.subtotal,0)'));
 
-        return (int) ($ingresosVentas + $consumos + $serviciosExtra + $ventaDirecta);
+        return (int) ($ingresosVentas + $abonosExtra + $consumos + $serviciosExtra + $ventaDirecta);
     }
-    
+
+    /**
+     * Combina dos colecciones {yearweek, fecha, total} (mismo shape que arman las
+     * consultas de este controlador), sumando 'total' cuando coincide 'fecha'.
+     */
+    private function mergeTotalesPorFecha($base, $extra)
+    {
+        $porFecha = collect($base)->keyBy('fecha');
+
+        foreach ($extra as $fila) {
+            if ($porFecha->has($fila->fecha)) {
+                $porFecha[$fila->fecha]->total += $fila->total;
+            } else {
+                $porFecha->put($fila->fecha, $fila);
+            }
+        }
+
+        return $porFecha->values()->sortBy('fecha')->values();
+    }
+
+    /**
+     * Igual que mergeTotalesPorFecha(), pero para colecciones {mes, total}
+     * (el shape que usa el resumen anual, sin desglose por día/semana).
+     */
+    private function mergeTotalesPorMes($base, $extra)
+    {
+        $porMes = collect($base)->keyBy('mes');
+
+        foreach ($extra as $fila) {
+            if ($porMes->has($fila->mes)) {
+                $porMes[$fila->mes]->total += $fila->total;
+            } else {
+                $porMes->put($fila->mes, $fila);
+            }
+        }
+
+        return $porMes->values()->sortBy('mes')->values();
+    }
+
 }

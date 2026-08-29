@@ -16,7 +16,7 @@
 @section('content')
 
 <div class="section">
-    <p class="caption"><strong>Ingresos</strong></p>
+    <p class="caption"><strong>Cierre de caja</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">

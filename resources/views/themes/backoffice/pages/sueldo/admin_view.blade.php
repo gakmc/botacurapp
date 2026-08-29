@@ -120,6 +120,11 @@
     @endphp
     @php
         $bonoMes = 0;
+        $mesesEnEs = [
+            'Jan' => 'Ene', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Abr',
+            'May' => 'May', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+            'Sep' => 'Sep', 'Oct' => 'Oct', 'Nov' => 'Nov', 'Dec' => 'Dic',
+        ];
     @endphp
     @foreach($sueldosAgrupados as $semana => $sueldosSemana)
         @php
@@ -128,7 +133,7 @@
             $bonoMes += $bonoSemana;
         @endphp
         <tr style="background-color: #f2f2f2;">
-            <td colspan="3"><strong>Semana: {{ $semana }}</strong></td>
+            <td colspan="3"><strong>Semana: {{ strtr($semana, $mesesEnEs) }}</strong></td>
             <td>
                 @if($bonoSemana > 0)
                     <strong>${{ number_format($bonoSemana, 0, '', '.') }}</strong>

@@ -68,9 +68,16 @@
                                 </thead>
                                 <tbody>
                                     @if ($sueldosAgrupados->isNotEmpty())
+                                    @php
+                                        $mesesEnEs = [
+                                            'Jan' => 'Ene', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Abr',
+                                            'May' => 'May', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+                                            'Sep' => 'Sep', 'Oct' => 'Oct', 'Nov' => 'Nov', 'Dec' => 'Dic',
+                                        ];
+                                    @endphp
                                     @foreach($sueldosAgrupados as $rangoSemana => $sueldos)
                                     <tr>
-                                        <td>{{ $rangoSemana }}</td>
+                                        <td>{{ strtr($rangoSemana, $mesesEnEs) }}</td>
                                         @php
                                         foreach ($sueldos as $index => $sueldo){
                                         $diasTrabajados = $index+1;

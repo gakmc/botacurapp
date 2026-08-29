@@ -32,6 +32,14 @@
         <a class="collection-item center-align valign-wrapper left">
             Abono: ${{number_format($reserva->venta->abono_programa,0,'','.')}}
         </a>
+        @php
+            $totalAbonosExtra = $reserva->venta->abonosExtra()->sum('monto');
+        @endphp
+        @if ($totalAbonosExtra > 0)
+            <a href="{{ route('backoffice.reserva.abonos.index', $reserva) }}" class="collection-item center-align valign-wrapper left">
+                Abonado extra: ${{ number_format($totalAbonosExtra,0,'','.') }}
+            </a>
+        @endif
         <a class="collection-item center-align valign-wrapper left">
             Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Cierre Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
         </a>

@@ -448,252 +448,239 @@ class VisitaController extends Controller
 
     public function edit(Reserva $reserva, Visita $visita)
     {
-        //  $reserva = Reserva::with(['venta', 'programa.servicios'])->findOrFail($reserva);
+        $reserva->load(['venta', 'programa.servicios', 'menus']);
 
-        // $almuerzosExtra = false;
+        $almuerzosExtra = false;
 
-        // $ventaId = optional($reserva->venta)->id;
-        // if ($ventaId) {
-        //     $consumoId = Consumo::where('id_venta', $ventaId)->value('id');
-        //     if ($consumoId) {
-        //         $idServicioAlmuerzo = Servicio::whereIn('nombre_servicio', ['Almuerzo', 'Almuerzos', 'almuerzo', 'almuerzos'])->value('id');
-        //         if ($idServicioAlmuerzo) {
-        //             $almuerzosExtra = DetalleServiciosExtra::where('id_consumo', $consumoId)
-        //                 ->where('id_servicio_extra', $idServicioAlmuerzo)
-        //                 ->exists();
-        //         }
-        //     }
-        // }
+        $ventaId = optional($reserva->venta)->id;
+        if ($ventaId) {
+            $consumoId = Consumo::where('id_venta', $ventaId)->value('id');
+            if ($consumoId) {
+                $idServicioAlmuerzo = Servicio::whereIn('nombre_servicio', ['Almuerzo', 'Almuerzos', 'almuerzo', 'almuerzos'])->value('id');
+                if ($idServicioAlmuerzo) {
+                    $almuerzosExtra = DetalleServiciosExtra::where('id_consumo', $consumoId)
+                        ->where('id_servicio_extra', $idServicioAlmuerzo)
+                        ->exists();
+                }
+            }
+        }
 
-        // $masajesExtra         = (int) ($reserva->cantidad_masajes_extra ?? 0) > 0;
-        // $cantidadMasajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0);
+        $masajesExtra         = (int) ($reserva->cantidad_masajes_extra ?? 0) > 0;
+        $cantidadMasajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0);
 
-        // // Incluye masaje en el programa (acepta "Masaje" o "Masajes")
-        // $incluyeMasajePrograma = $reserva->programa
-        // && $reserva->programa->servicios
-        // && $reserva->programa->servicios->contains(function ($s) {
-        //     $nombre = mb_strtolower(trim($s->nombre_servicio));
-        //     return in_array($nombre, ['masaje', 'masajes']);
-        // });
+        // Incluye masaje en el programa (acepta "Masaje" o "Masajes")
+        $incluyeMasajePrograma = $reserva->programa
+        && $reserva->programa->servicios
+        && $reserva->programa->servicios->contains(function ($s) {
+            $nombre = mb_strtolower(trim($s->nombre_servicio));
+            return in_array($nombre, ['masaje', 'masajes']);
+        });
 
-        //                     // Regla: nunca ambos a la vez
-        // $modoMasaje = null; // 'extra' | 'programa' | null
+        // Regla: nunca ambos a la vez
+        $modoMasaje = null; // 'extra' | 'programa' | null
 
-        // if ($masajesExtra) {
-        //     $modoMasaje = 'extra';
-        // } elseif ($incluyeMasajePrograma) {
-        //     $modoMasaje = 'programa';
-        // }
+        if ($masajesExtra) {
+            $modoMasaje = 'extra';
+        } elseif ($incluyeMasajePrograma) {
+            $modoMasaje = 'programa';
+        }
 
-        // // cantidad de slots según modo
-        // $cantidadSlotsMasaje = 0;
+        // cantidad de slots según modo
+        $cantidadSlotsMasaje = 0;
 
-        // if ($modoMasaje === 'extra') {
-        //     // 1 masaje = 1 slot
-        //     $cantidadSlotsMasaje = (int) $cantidadMasajesExtra;
-        // } elseif ($modoMasaje === 'programa') {
-        //     // 2 personas por slot (último puede ser 1)
-        //     $cantidadSlotsMasaje = (int) ceil(((int) $reserva->cantidad_personas) / 2);
-        // }
+        if ($modoMasaje === 'extra') {
+            // 1 masaje = 1 slot
+            $cantidadSlotsMasaje = (int) $cantidadMasajesExtra;
+        } elseif ($modoMasaje === 'programa') {
+            // 2 personas por slot (último puede ser 1)
+            $cantidadSlotsMasaje = (int) ceil(((int) $reserva->cantidad_personas) / 2);
+        }
 
-        // $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
 
-        // // Obtenemos la fecha seleccionada del formulario
-        // // $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
-        // $fechaSeleccionada = $reserva->fecha_visita;
+        // Obtenemos la fecha seleccionada del formulario
+        $fechaSeleccionada = $reserva->fecha_visita;
 
-        // $ubicacionesOcupadas = DB::table('visitas')
-        //     ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-        //     ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-        //     ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-        //     ->pluck('ubicaciones.nombre')
-        //     ->map(function ($nombre) {
-        //         return $nombre;
-        //     })
-        //     ->toArray();
+        $ubicacionesOcupadas = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
+            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
+            ->pluck('ubicaciones.nombre')
+            ->map(function ($nombre) {
+                return $nombre;
+            })
+            ->toArray();
 
-        // $ubicacionesAll = DB::table('ubicaciones')
-        //     ->select('id', 'nombre')
-        //     ->get();
+        $ubicacionesAll = DB::table('ubicaciones')
+            ->select('id', 'nombre')
+            ->get();
 
-        // $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-        //     return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
-        // })->values();
+        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
+        })->values();
 
-        // // ===============================HORAS=SPA==============================================
-        // // Horarios disponibles de 10:00 a 18:30 SPA
-        // $horaInicio = new \DateTime('10:00');
-        // $horaFin    = new \DateTime('18:30');
-        // $intervalo  = new \DateInterval('PT30M');
-        // $horarios   = [];
+        // ===============================HORAS=SPA==============================================
+        // Horarios disponibles de 10:00 a 18:30 SPA
+        $horaInicio = new \DateTime('10:00');
+        $horaFin    = new \DateTime('18:30');
+        $intervalo  = new \DateInterval('PT30M');
+        $horarios   = [];
 
-        // while ($horaInicio <= $horaFin) {
-        //     $horarios[] = $horaInicio->format('H:i');
-        //     $horaInicio->add($intervalo);
-        // }
+        while ($horaInicio <= $horaFin) {
+            $horarios[] = $horaInicio->format('H:i');
+            $horaInicio->add($intervalo);
+        }
 
-        // // Obtener horarios ocupados de la tabla 'visitas'
-        // $horariosOcupados = DB::table('visitas')
-        //     ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-        //     ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-        //     ->pluck('visitas.horario_sauna')
-        //     ->filter(function ($hora) {
-        //         // Filtrar valores nulos o vacíos
-        //         return ! is_null($hora) && $hora !== '';
-        //     })
-        //     ->map(function ($hora) {
-        //         // Formatear solo los horarios válidos
-        //         return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-        //     })
-        //     ->toArray();
+        // Obtener horarios ocupados de la tabla 'visitas'
+        $horariosOcupados = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
+            ->pluck('visitas.horario_sauna')
+            ->filter(function ($hora) {
+                // Filtrar valores nulos o vacíos
+                return ! is_null($hora) && $hora !== '';
+            })
+            ->map(function ($hora) {
+                // Formatear solo los horarios válidos
+                return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+            })
+            ->toArray();
 
-        // // Filtrar horarios disponibles
-        // $horariosDisponiblesSPA = array_diff($horarios, $horariosOcupados);
+        // Filtrar horarios disponibles
+        $horariosDisponiblesSPA = array_diff($horarios, $horariosOcupados);
 
-        // //=================================HORAS=MASAJES=========================================
+        //=================================HORAS=MASAJES=========================================
 
-        // // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
-        // $horaInicioMasajes = new \DateTime('10:20');
-        // $horaFinMasajes    = new \DateTime('18:30');
-        // $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
-        // $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
-        // $horarios          = [];
+        // Horarios disponibles de 10:20 a 19:00 con intervalos de 10 minutos entre sesiones de masaje
+        $horaInicioMasajes = new \DateTime('10:20');
+        $horaFinMasajes    = new \DateTime('18:30');
+        $duracionMasaje    = new \DateInterval('PT30M'); // 30 minutos de duración
+        $intervalos        = new \DateInterval('PT10M'); // 10 minutos de intervalos entre sesiones
+        $horarios          = [];
 
-        // while ($horaInicioMasajes <= $horaFinMasajes) {
-        //     $horarios[] = $horaInicioMasajes->format('H:i');
-        //     $horaInicioMasajes->add($duracionMasaje);
-        //     $horaInicioMasajes->add($intervalos);
-        // }
+        while ($horaInicioMasajes <= $horaFinMasajes) {
+            $horarios[] = $horaInicioMasajes->format('H:i');
+            $horaInicioMasajes->add($duracionMasaje);
+            $horaInicioMasajes->add($intervalos);
+        }
 
-        // // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
-        // $horariosOcupadosMasajes = DB::table('visitas')
-        //     ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-        //     ->join('masajes as m', 'm.id_reserva', '=', 'reservas.id')
-        //     ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-        //     ->whereNotNull('m.horario_masaje')
-        //     ->select('m.horario_masaje', 'm.id_lugar_masaje')
-        //     ->get()
-        //     ->groupBy('id_lugar_masaje');
+        // Obtener las horas de inicio ocupadas de la tabla 'visitas' para masajes
+        $horariosOcupadosMasajes = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('masajes as m', 'm.id_reserva', '=', 'reservas.id')
+            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
+            ->whereNotNull('m.horario_masaje')
+            ->select('m.horario_masaje', 'm.id_lugar_masaje')
+            ->get()
+            ->groupBy('id_lugar_masaje');
 
-        // // Procesar horarios ocupados
-        // $ocupadosPorLugar = [
-        //     1 => [], // Containers
-        //     2 => [], // Toldos
-        // ];
+        // Procesar horarios ocupados
+        $ocupadosPorLugar = [
+            1 => [], // Containers
+            2 => [], // Toldos
+        ];
 
-        // foreach ($horariosOcupadosMasajes as $lugar => $visitas) {
-        //     $ocupadosPorLugar[$lugar] = $visitas->pluck('horario_masaje')
-        //         ->map(function ($hora) {
-        //             return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
-        //         })
-        //         ->toArray();
-        // }
+        foreach ($horariosOcupadosMasajes as $lugar => $visitas) {
+            $ocupadosPorLugar[$lugar] = $visitas->pluck('horario_masaje')
+                ->map(function ($hora) {
+                    return \Carbon\Carbon::createFromFormat('H:i:s', $hora)->format('H:i');
+                })
+                ->toArray();
+        }
 
-        // // Filtrar horarios disponibles por lugar
-        // $horariosDisponiblesMasajes = [
-        //     1 => array_values(array_diff($horarios, $ocupadosPorLugar[1])), // Containers
-        //     2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
-        // ];
+        // Filtrar horarios disponibles por lugar
+        $horariosDisponiblesMasajes = [
+            1 => array_values(array_diff($horarios, $ocupadosPorLugar[1])), // Containers
+            2 => array_values(array_diff($horarios, $ocupadosPorLugar[2])), // Toldos
+        ];
 
-        // // // Filtrar horarios disponibles (ajusta si ocupas rangos completos)
-        // // $horariosDisponiblesMasajes = array_diff($horarios, $horariosOcupadosMasajes);
+        // Obtener productos de tipo "entrada"
+        $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'entrada');
+        })->get();
 
-        // // Obtener productos de tipo "entrada"
-        // $entradas = Producto::activos()->whereHas('tipoProducto', function ($query) {
-        //     $query->where('nombre', 'entrada');
-        // })->get();
+        // Obtener productos de tipo "fondo"
+        $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'fondo');
+        })->get();
 
-        // // Obtener productos de tipo "fondo"
-        // $fondos = Producto::activos()->whereHas('tipoProducto', function ($query) {
-        //     $query->where('nombre', 'fondo');
-        // })->get();
+        // Obtener productos de tipo "postre"
+        $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
+            $query->where('nombre', 'acompañamiento');
+        })->get();
 
-        // // Obtener productos de tipo "postre"
-        // $acompañamientos = Producto::activos()->whereHas('tipoProducto', function ($query) {
-        //     $query->where('nombre', 'acompañamiento');
-        // })->get();
+        $catalogoMasajes = collect();
 
-        // $catalogoMasajes = collect();
+        // Catálogo: Categoría -> Tipos (activos) -> Precios
+        if ($modoMasaje === 'extra') {
+            $catalogoMasajes = CategoriaMasaje::query()
+                ->select('id', 'nombre', 'slug')
+                ->with(['tipos' => function ($q) {
+                    $q->select('id', 'id_categoria_masaje', 'nombre', 'slug', 'activo')
+                        ->where('activo', 1)
+                        ->orderBy('nombre', 'asc')
+                        ->with(['precios' => function ($p) {
+                            $p->select('id', 'id_tipo_masaje', 'duracion_minutos', 'precio_unitario', 'precio_pareja')
+                                ->orderBy('duracion_minutos', 'asc');
+                        }]);
+                }])
+                ->orderBy('nombre', 'asc')
+                ->get()
+                ->map(function ($cat) {
+                    return [
+                        'id'     => $cat->id,
+                        'nombre' => $cat->nombre,
+                        'slug'   => $cat->slug ?: Str::slug($cat->nombre),
+                        'tipos'  => $cat->tipos->map(function ($t) {
+                            return [
+                                'id'      => $t->id,
+                                'nombre'  => $t->nombre,
+                                'slug'    => $t->slug ?: Str::slug($t->nombre),
+                                'precios' => $t->precios->map(function ($p) {
+                                    return [
+                                        'id'               => $p->id,
+                                        'duracion_minutos' => (int) $p->duracion_minutos,
+                                        'precio_unitario'  => (int) $p->precio_unitario,
+                                        'precio_pareja'    => is_null($p->precio_pareja) ? null : (int) $p->precio_pareja,
+                                    ];
+                                })->values(),
+                            ];
+                        })->values(),
+                    ];
+                })
+                ->values();
+        }
 
-        // // Catálogo: Categoría -> Tipos (activos) -> Precios
-        // if ($modoMasaje === 'extra') {
-        //     $catalogoMasajes = CategoriaMasaje::query()
-        //         ->select('id', 'nombre', 'slug')
-        //         ->with(['tipos' => function ($q) {
-        //             $q->select('id', 'id_categoria_masaje', 'nombre', 'slug', 'activo')
-        //                 ->where('activo', 1)
-        //                 ->orderBy('nombre', 'asc')
-        //                 ->with(['precios' => function ($p) {
-        //                     $p->select('id', 'id_tipo_masaje', 'duracion_minutos', 'precio_unitario', 'precio_pareja')
-        //                         ->orderBy('duracion_minutos', 'asc');
-        //                 }]);
-        //         }])
-        //         ->orderBy('nombre', 'asc')
-        //         ->get()
-        //         ->map(function ($cat) {
-        //             return [
-        //                 'id'     => $cat->id,
-        //                 'nombre' => $cat->nombre,
-        //                 'slug'   => $cat->slug ?: Str::slug($cat->nombre),
-        //                 'tipos'  => $cat->tipos->map(function ($t) {
-        //                     return [
-        //                         'id'      => $t->id,
-        //                         'nombre'  => $t->nombre,
-        //                         'slug'    => $t->slug ?: Str::slug($t->nombre),
-        //                         'precios' => $t->precios->map(function ($p) {
-        //                             return [
-        //                                 'id'               => $p->id,
-        //                                 'duracion_minutos' => (int) $p->duracion_minutos,
-        //                                 'precio_unitario'  => (int) $p->precio_unitario,
-        //                                 'precio_pareja'    => is_null($p->precio_pareja) ? null : (int) $p->precio_pareja,
-        //                             ];
-        //                         })->values(),
-        //                     ];
-        //                 })->values(),
-        //             ];
-        //         })
-        //         ->values();
-        // }
+        $tipoDesayunoOnceActual = $reserva->desayunoOnce()->whereIn('tipo', ['desayuno', 'once'])->pluck('tipo')->first();
 
-        //         dd([
-        //                         'reserva'               => $reserva,
-        //     'ubicaciones'           => $ubicaciones,
-        //     'lugares'               => LugarMasaje::all(),
-        //     'servicios'             => $serviciosDisponibles,
-        //     'horarios'              => $horariosDisponiblesSPA,
-        //     'horasMasaje'           => $horariosDisponiblesMasajes,
-        //     'entradas'              => $entradas,
-        //     'fondos'                => $fondos,
-        //     'acompañamientos'       => $acompañamientos,
-        //     'masajesExtra'          => $masajesExtra,
-        //     'almuerzosExtra'        => $almuerzosExtra,
-        //     'cantidadMasajesExtra'  => $cantidadMasajesExtra,
-        //     'incluyeMasajePrograma' => $incluyeMasajePrograma,
-        //     'modoMasaje'            => $modoMasaje,
-        //     'cantidadSlotsMasaje'   => $cantidadSlotsMasaje,
-        //     'catalogoMasajes'       => $catalogoMasajes,
-        //         ]);
+        $masajesActuales = $reserva->masajes()->orderBy('persona')->get();
+        $visitasActuales = $reserva->visitas()->orderBy('id')->get();
 
-        // return view('themes.backoffice.pages.visita.create', [
-        //     'reserva'               => $reserva,
-        //     'ubicaciones'           => $ubicaciones,
-        //     'lugares'               => LugarMasaje::all(),
-        //     'servicios'             => $serviciosDisponibles,
-        //     'horarios'              => $horariosDisponiblesSPA,
-        //     'horasMasaje'           => $horariosDisponiblesMasajes,
-        //     'entradas'              => $entradas,
-        //     'fondos'                => $fondos,
-        //     'acompañamientos'       => $acompañamientos,
-        //     'masajesExtra'          => $masajesExtra,
-        //     'almuerzosExtra'        => $almuerzosExtra,
-        //     'cantidadMasajesExtra'  => $cantidadMasajesExtra,
-        //     'incluyeMasajePrograma' => $incluyeMasajePrograma,
-        //     'modoMasaje'            => $modoMasaje,
-        //     'cantidadSlotsMasaje'   => $cantidadSlotsMasaje,
-        //     'catalogoMasajes'       => $catalogoMasajes,
-        // ]);
-
+        return view('themes.backoffice.pages.visita.edit', [
+            'reserva'               => $reserva,
+            'visita'                => $visita,
+            'ubicaciones'           => $ubicaciones,
+            'lugares'               => LugarMasaje::all(),
+            'servicios'             => $serviciosDisponibles,
+            'horarios'              => $horariosDisponiblesSPA,
+            'horasMasaje'           => $horariosDisponiblesMasajes,
+            'entradas'              => $entradas,
+            'fondos'                => $fondos,
+            'acompañamientos'       => $acompañamientos,
+            'masajesExtra'          => $masajesExtra,
+            'almuerzosExtra'        => $almuerzosExtra,
+            'cantidadMasajesExtra'  => $cantidadMasajesExtra,
+            'incluyeMasajePrograma' => $incluyeMasajePrograma,
+            'modoMasaje'            => $modoMasaje,
+            'cantidadSlotsMasaje'   => $cantidadSlotsMasaje,
+            'catalogoMasajes'       => $catalogoMasajes,
+            'tipoDesayunoOnceActual' => $tipoDesayunoOnceActual,
+            'masajesActuales'       => $masajesActuales,
+            'menusActuales'         => $reserva->menus,
+            'visitasActuales'       => $visitasActuales,
+        ]);
     }
+
 
     public function update(UpdateRequest $request, Reserva $reserva)
     {

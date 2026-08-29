@@ -6,7 +6,7 @@
 @endsection
 
 @section('breadcrumbs')
-<li>Ingresos</li>
+<li>Programas contratados</li>
 @endsection
 
 
@@ -16,7 +16,7 @@
 @section('content')
 
 <div class="section">
-    <p class="caption"><strong>Ingresos</strong></p>
+    <p class="caption"><strong>Programas contratados</strong></p>
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
@@ -28,13 +28,14 @@
 
                             <div class="card-content">
 
-                                <span class="card-title">Movimientos recientes !!!</span>
+                                <span class="card-title">Movimientos recientes</span>
                                 <table class="responsive-table">
                                     <thead>
                                         <tr>
                                             <th>Mes</th>
                                             <th>Programas contratados</th>
                                             <th>Abonos</th>
+                                            <th>Abonos Extra</th>
                                             <th>Montos Pendientes</th>
                                             <th>Consumos</th>
                                             <th>Servicios Extra</th>
@@ -63,11 +64,12 @@
                                                 <td>{{ ucfirst($nombreMes) }}</td>
                                                 <td>{{ $resumen->total_ventas }}</td>
                                                 <td>${{ number_format($resumen->total_abonos, 0, ',', '.') }}</td>
+                                                <td>${{ number_format($resumen->total_abonos_extra, 0, ',', '.') }}</td>
                                                 <td>${{ number_format($resumen->por_pagar, 0, ',', '.') }}</td>
                                                 <td>${{number_format($consumoSinPropina,0,'','.')}}</td>
                                                 <td>${{number_format($serviciosExtras,0,'','.')}}</td>
                                                 <td>${{ number_format($resumen->giftcards, 0, ',', '.') }}</td>
-                                                <td>${{ number_format($resumen->total_abonos+$resumen->por_pagar + $consumoSinPropina + $serviciosExtras + $resumen->giftcards, 0, ',', '.') }}</td>
+                                                <td>${{ number_format($resumen->total_abonos + $resumen->total_abonos_extra + $resumen->por_pagar + $consumoSinPropina + $serviciosExtras + $resumen->giftcards, 0, ',', '.') }}</td>
                                                 <td>
                                                     <a href="{{ route('backoffice.admin.ingresos.detalleMes', [$resumen->anio, $resumen->mes]) }}" class="btn-small" style="background-color: #039B7B">
                                                         Ver detalle
@@ -78,7 +80,7 @@
                                     </tbody>
                                 </table>
                                 
-                                {{ $estadoMensual->links() }}
+                                {{ $estadoMensual->links('vendor.pagination.materialize') }}
                             </div>
 
 
