@@ -121,10 +121,12 @@ class WhatsAppWebhookController extends Controller
 
             // ── Llamar al bot ──────────────────────────────────────────────
             $secret = config('services.bot.secret');
+            $botToken = env('BOT_API_TOKEN');
             $client = new GuzzleClient(['timeout' => 35, 'http_errors' => false]);
             $botRes = $client->post(url('/api/bot-ai/message'), [
                 'headers' => [
                     'X-Bot-Secret' => $secret,
+                    'X-Bot-Token'  => $botToken,
                     'Content-Type' => 'application/json',
                 ],
                 'json' => [
