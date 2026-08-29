@@ -82,9 +82,16 @@
         $sueldoMes = 0;
         $diasTrabajados = 0;
     @endphp
+    @php
+        $mesesEnEs = [
+            'Jan' => 'Ene', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Abr',
+            'May' => 'May', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+            'Sep' => 'Sep', 'Oct' => 'Oct', 'Nov' => 'Nov', 'Dec' => 'Dic',
+        ];
+    @endphp
     @foreach($sueldosAgrupados as $semana => $sueldosSemana)
         <tr style="background-color: #f2f2f2;">
-            <td colspan=""><strong>Semana: {{ $semana }}</strong></td>
+            <td colspan=""><strong>Semana: {{ strtr($semana, $mesesEnEs) }}</strong></td>
         </tr>
         @foreach($sueldosSemana as $sueldo)
             @php

@@ -25,6 +25,7 @@ use App\TipoTransaccion;
 use App\Ubicacion;
 use App\User;
 use App\Venta;
+use App\Visita;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -1068,15 +1069,40 @@ class ReservaController extends Controller
         $visita    = $reserva->visitas->first();
         $programas = Programa::activos()->with('servicios')->get();
         $tipos     = TipoTransaccion::all();
+
+        $habilitadas = FechaDisponible::where('habilitada', true)
+            ->where('fecha', '>=', today())
+            ->pluck('fecha')
+            ->map(function ($f) { return $f->format('Y-m-d'); })
+            ->toArray();
+
+        // Misma lógica que ReservaController::create(), pero sin deshabilitar la
+        // fecha_visita actual de la reserva: aunque ese día ya no acepte reservas
+        // nuevas, esta reserva ya es parte de él y debe poder conservarse.
+        $fechaActualReserva = Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+
+        $fechasDeshabilitadas = [];
+        $cursor  = today()->addDay();
+        $maxDate = today()->addDays(120);
+
+        while ($cursor <= $maxDate) {
+            $fechaCursor = $cursor->format('Y-m-d');
+            if (! in_array($fechaCursor, $habilitadas) && $fechaCursor !== $fechaActualReserva) {
+                $fechasDeshabilitadas[] = [(int) $cursor->year, (int) $cursor->month - 1, (int) $cursor->day];
+            }
+            $cursor->addDay();
+        }
+
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
         return view('themes.backoffice.pages.reserva.edit', [
-            'reserva'        => $reserva,
-            'venta'          => $venta,
-            'cliente'        => $cliente,
-            'programas'      => $programas,
-            'tipos'          => $tipos,
-            'visita'         => $visita,
-            'cantidadMasaje' => $cantidadExtraMasaje,
+            'reserva'              => $reserva,
+            'venta'                => $venta,
+            'cliente'              => $cliente,
+            'programas'            => $programas,
+            'tipos'                => $tipos,
+            'visita'               => $visita,
+            'cantidadMasaje'       => $cantidadExtraMasaje,
+            'fechasDeshabilitadas' => $fechasDeshabilitadas,
         ]);
     }
 
@@ -1165,6 +1191,12 @@ class ReservaController extends Controller
                     'total_pagar'               => $request->total_pagar,
                 ])->save();
 
+                // El total_pagar recién calculado solo considera programa/personas/abono inicial;
+                // hay que volver a descontar los abonos extra ya cobrados para esta venta.
+                $abonosExtra = $venta->abonosExtra()->sum('monto');
+                if ($abonosExtra > 0) {
+                    $venta->decrement('total_pagar', $abonosExtra);
+                }
 
                 // Manejar los servicios extra
                 if ($request->filled('cantidad_masajes_extra')) {
@@ -1183,11 +1215,40 @@ class ReservaController extends Controller
                 'almuerzosExtra' => $almuerzosExtra,
             ]);
 
-            
-            return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()])->with('success', 'La reserva fue actualizada exitosamente.');
+            $camposQueAfectanVisita = ['id_programa', 'cantidad_personas', 'fecha_visita', 'cantidad_masajes_extra'];
+            $afectaVisita           = count(array_intersect(array_keys($changes), $camposQueAfectanVisita)) > 0
+                || $request->filled('agregar_almuerzos');
+
+            if (! $afectaVisita) {
+                return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id])->with('success', 'La reserva fue actualizada exitosamente.');
+            }
+
+            $reserva->refresh();
+            $visita = $reserva->visitas->first();
+
+            if (! $visita) {
+                return redirect()->route('backoffice.reserva.visitas.create', ['reserva' => $reserva->id])->with('success', 'La reserva fue actualizada exitosamente.');
+            }
+
+            if (! $this->visitaEstaCompleta($reserva, $visita)) {
+                return redirect()->route('backoffice.visita.registrar', $reserva)->with('success', 'La reserva fue actualizada exitosamente.');
+            }
+
+            return redirect()->route('backoffice.reserva.visitas.edit', ['reserva' => $reserva, 'visita' => $visita])->with('success', 'La reserva fue actualizada exitosamente.');
         } catch (\Error $e) {
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. ' . $e);
         }
+    }
+
+    private function visitaEstaCompleta(Reserva $reserva, Visita $visita): bool
+    {
+        $core = ! is_null($visita->id_ubicacion) || ! is_null($visita->horario_sauna);
+
+        $servicios            = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $requiereDesayunoOnce = in_array('Desayuno y Once', $servicios) || in_array('Desayuno u Once', $servicios);
+        $desayunoOnceOk       = ! $requiereDesayunoOnce || $reserva->desayunoOnce()->exists();
+
+        return $core && $desayunoOnceOk;
     }
 
     private function manipularMasajesExtra($request, $venta)

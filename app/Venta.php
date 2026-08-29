@@ -54,6 +54,16 @@ class Venta extends Model
         return $this->hasOne(PagoConsumo::class, 'id_venta');
     }
 
+    public function abonosExtra()
+    {
+        return $this->hasMany(AbonoExtra::class, 'id_venta');
+    }
+
+    public function getTotalAbonadoAttribute()
+    {
+        return (int) $this->abono_programa + (int) $this->abonosExtra()->sum('monto');
+    }
+
 
     public function getPendienteDePagoAttribute()
     {

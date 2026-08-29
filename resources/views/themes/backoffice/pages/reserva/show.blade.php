@@ -13,8 +13,12 @@
 @section('dropdown_settings')
 
   <li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
-    
+
   <li><a href="{{ route('backoffice.reserva.visitas.spa', ['reserva' => $reserva, 'visita' => $reserva->visitas->first()]) }}" class="grey-text text-darken-2">Editar Spa</a></li>
+
+  @if (! is_null($reserva->venta) && (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role'))))
+    <li><a href="{{ route('backoffice.reserva.abonos.index', $reserva) }}" class="grey-text text-darken-2">Abonos</a></li>
+  @endif
 
     
   @if ($reserva->programa->incluye_masajes || $reserva->incluye_masajes_extra)

@@ -850,6 +850,12 @@ class AdminController extends Controller
                 ->whereYear('created_at', $venta->anio)
                 ->whereMonth('created_at', $venta->mes)
                 ->sum('monto');
+
+            // Abonos extra registrados ese mes (por fecha_abono, no por fecha_visita)
+            $venta->total_abonos_extra = DB::table('abonos_extra')
+                ->whereYear('fecha_abono', $venta->anio)
+                ->whereMonth('fecha_abono', $venta->mes)
+                ->sum('monto');
         }
 
         return view('themes.backoffice.pages.admin.finanzas.ingresos', [
@@ -1234,19 +1240,26 @@ class AdminController extends Controller
             return $tipo;
         });
 
-        $programas = Programa::all()->map(function ($programa) use ($dia, $mes, $anio) {
-            $cuenta = Reserva::where('id_programa', $programa->id)
-                ->whereHas('programa', function ($query) use ($dia, $mes, $anio) {
-                    $query->whereDay('fecha_visita', $dia)
-                        ->whereMonth('fecha_visita', $mes)
-                        ->whereYear('fecha_visita', $anio);
-                })
-                ->count();
+        $programas = Programa::where(function ($q) {
+                $q->where('estado', 'activo')->orWhereNull('estado');
+            })
+            ->orWhereHas('reservas', function ($q) use ($dia, $mes, $anio) {
+                $q->whereDay('fecha_visita', $dia)
+                    ->whereMonth('fecha_visita', $mes)
+                    ->whereYear('fecha_visita', $anio);
+            })
+            ->get()
+            ->map(function ($programa) use ($dia, $mes, $anio) {
+                $cuenta = Reserva::where('id_programa', $programa->id)
+                    ->whereDay('fecha_visita', $dia)
+                    ->whereMonth('fecha_visita', $mes)
+                    ->whereYear('fecha_visita', $anio)
+                    ->count();
 
-            $programa->total_programas = $cuenta;
+                $programa->total_programas = $cuenta;
 
-            return $programa;
-        });
+                return $programa;
+            });
 
         foreach ($ventas as $venta) {
             $ingresosVentas += $venta->abono_programa;

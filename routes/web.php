@@ -445,6 +445,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
     Route::get('reserva/{reserva}/consumo', 'ReservaController@showConsumoImage')->name('reserva.consumo.imagen');
 
+    Route::get('reserva/{reserva}/abonos', 'AbonoExtraController@index')->name('reserva.abonos.index');
+    Route::post('reserva/{reserva}/abonos', 'AbonoExtraController@store')->name('reserva.abonos.store');
+    Route::delete('abonos/{abonoExtra}', 'AbonoExtraController@destroy')->name('abonos.destroy');
+
     // Metodos Complementos CREAR
     Route::get('sectores/create', function () {
         return view('themes.backoffice.pages.sector.create');

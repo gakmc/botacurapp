@@ -81,9 +81,17 @@
                     <div>
 
 
+    @php
+        $mesesEnEs = [
+            'Jan' => 'Ene', 'Feb' => 'Feb', 'Mar' => 'Mar', 'Apr' => 'Abr',
+            'May' => 'May', 'Jun' => 'Jun', 'Jul' => 'Jul', 'Aug' => 'Ago',
+            'Sep' => 'Sep', 'Oct' => 'Oct', 'Nov' => 'Nov', 'Dec' => 'Dic',
+        ];
+    @endphp
     @forelse ($semanas as $rango => $usuariosSemana)
         @php
             $semanaId = Str::slug($rango); // por ejemplo: "09-jun-15-jun"
+            $rangoEs  = strtr($rango, $mesesEnEs);
         @endphp
 
         @if(Auth::user()->has_role(config('app.admin_role')))
@@ -92,7 +100,7 @@
                 @csrf
         @endif
 
-        <h5><strong>{{ $rango }}</strong></h5>
+        <h5><strong>{{ $rangoEs }}</strong></h5>
 
         {{-- <div class="row">
             <div class="input-field col s12 m2 right">

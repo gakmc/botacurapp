@@ -524,14 +524,14 @@
                             <div class="row">
                                 <div class="col s12">
                                     <h6><strong>Desayuno u Once</strong></h6>
-                                    <p>Seleccione la opción para los {{ $reserva->cantidad_personas }} asistentes:</p>
+                                    <p>Seleccione la opción para los {{ $reserva->cantidad_personas }} asistentes (si el cliente aún no lo define, puede dejarlo sin seleccionar y completarlo más adelante):</p>
                                     <label>
-                                        <input name="desayuno_once" type="radio" class="with-gap" value="desayuno" required
+                                        <input name="desayuno_once" type="radio" class="with-gap" value="desayuno"
                                             {{ old('desayuno_once') === 'desayuno' ? 'checked' : '' }} />
                                         <span class="black-text">Desayuno</span>
                                     </label>
                                     <label style="margin-left: 20px;">
-                                        <input name="desayuno_once" type="radio" class="with-gap" value="once" required
+                                        <input name="desayuno_once" type="radio" class="with-gap" value="once"
                                             {{ old('desayuno_once') === 'once' ? 'checked' : '' }} />
                                         <span class="black-text">Once</span>
                                     </label>

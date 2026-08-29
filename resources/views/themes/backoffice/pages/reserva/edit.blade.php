@@ -1,8 +1,11 @@
 @extends('themes.backoffice.layouts.admin')
 
-@section('title','Crear reserva')
+@section('title','Editar reserva')
 
 @section('head')
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.date.css') }}">
+<link rel="stylesheet" href="{{ asset('assets/pickadate/lib/themes/default.time.css') }}">
 @endsection
 
 @section('breadcrumbs')
@@ -83,6 +86,22 @@
               </div>
 
 
+              @php
+                $totalAbonosExtra = $venta->abonosExtra()->sum('monto');
+              @endphp
+              @if ($totalAbonosExtra > 0)
+                <div class="row">
+                  <div class="col s12">
+                    <div class="card-panel amber lighten-4" style="padding: 10px 15px; margin-bottom: 10px;">
+                      <i class="material-icons left">info</i>
+                      Esta reserva ya tiene <strong>${{ number_format($totalAbonosExtra, 0, '', '.') }}</strong>
+                      en abonos extra registrados aparte de este abono inicial.
+                      <a href="{{ route('backoffice.reserva.abonos.index', $reserva) }}">Ver historial de abonos</a>.
+                    </div>
+                  </div>
+                </div>
+              @endif
+
               <div class="row">
 
                 <div class="input-field col s12 m4">
@@ -136,7 +155,7 @@
 
               <div class="row">
                 <div class="input-field col s12 m3">
-                  <input id="fecha_visita" type="text" name="fecha_visita" class="datepicker" value="{{ $reserva->fecha_visita ?? old('fecha_visita') }}"
+                  <input id="fecha_visita" type="text" name="fecha_visita" class="" value="{{ $reserva->fecha_visita ?? old('fecha_visita') }}"
                   placeholder="fecha Visita">
                   <label for="fecha_visita">Fecha Visita</label>
                   @error('fecha_visita')
@@ -229,30 +248,29 @@
 
 @section('foot')
 
+<script src="{{ asset('assets/pickadate/lib/picker.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.date.js') }}"></script>
+<script src="{{ asset('assets/pickadate/lib/picker.time.js') }}"></script>
+
 <script>
   $(document).ready(function () {
     $('select').material_select();
   });
   
   $(document).ready(function(){
-    $('.datepicker').datepicker({
-      format:'dd-mm-yyyy',
-
-      defaultDate: new Date(),
-      i18n: {
-          cancel: 'Cancelar',
-        },
-      buttons: [
-          {
-            text: 'Now',
-            class: 'btn-flat',
-            onClick: (picker) => {
-              const now = new Date();
-              picker.setDate(now);
-              picker.close();
-            }
-          }
-        ]
+    $('#fecha_visita').pickadate({
+      format: 'dd-mm-yyyy',
+      min: true,
+      disable: @json($fechasDeshabilitadas),
+      monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
+      monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
+      weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
+      weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
+      weekdaysLetter: ['D','L','M','M','J','V','S'],
+      today: 'Hoy',
+      clear: 'Limpiar',
+      close: 'Cerrar',
+      firstDay: 1,
     });
   });
 
