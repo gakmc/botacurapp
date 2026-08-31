@@ -331,6 +331,14 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/sincronizar', 'ImpuestoController@sincronizar')->name('sincronizar');
     });
 
+    // Verificación visual de comprobantes de transferencia (bot WhatsApp)
+    Route::prefix('verificacion-pago')->name('verificacion-pago.')->group(function () {
+        Route::get('/',                    'VerificacionPagoController@index')->name('index');
+        Route::get('/{venta}/imagen',      'VerificacionPagoController@imagen')->name('imagen');
+        Route::post('/{venta}/aprobar',    'VerificacionPagoController@aprobar')->name('aprobar');
+        Route::post('/{venta}/rechazar',   'VerificacionPagoController@rechazar')->name('rechazar');
+    });
+
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');

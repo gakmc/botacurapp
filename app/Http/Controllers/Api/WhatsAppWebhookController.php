@@ -6,7 +6,9 @@ use App\Http\Controllers\Controller;
 use App\Services\WhisperService;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Storage;
 
 /**
  * WhatsAppWebhookController
@@ -230,7 +232,32 @@ class WhatsAppWebhookController extends Controller
             return null;
         }
 
-        // Describir con Claude Vision
+        // Si el cliente tiene una venta pendiente de pago, tratamos esta imagen
+        // como comprobante de transferencia: se guarda el archivo real y queda
+        // en revision manual del staff (backoffice > verificacion de pagos).
+        // El bot NUNCA confirma la reserva ni valida montos/fechas por su cuenta.
+        $ventaPendiente = $this->buscarVentaPendiente($telefono);
+        if ($ventaPendiente) {
+            $guardado = $this->guardarComprobante($rutaTemp, $ventaPendiente->venta_id);
+            if (file_exists($rutaTemp)) {
+                @unlink($rutaTemp);
+            }
+            if ($guardado) {
+                Log::info('[WhatsApp] Comprobante guardado para revision', [
+                    'venta_id'   => $ventaPendiente->venta_id,
+                    'reserva_id' => $ventaPendiente->reserva_id,
+                ]);
+                return "[Sistema-comprobante: Se recibió y guardó la foto del comprobante de "
+                    . "transferencia para la reserva N°{$ventaPendiente->reserva_id}. Quedó en "
+                    . "revisión manual del equipo de Botacura — el sistema NO valida montos, "
+                    . "nombres ni fechas automáticamente. Responde SOLO agradeciendo la foto y "
+                    . "explicando que el equipo la revisará y te confirmará el pago a la brevedad. "
+                    . "NUNCA digas que la reserva quedó \"confirmada\" o \"asegurada\", ni apruebes "
+                    . "ni niegues montos o diferencias — eso lo define el equipo, no tú.]";
+            }
+        }
+
+        // Describir con Claude Vision (caso general: no hay venta pendiente de pago)
         $descripcion = $this->describirConClaude($rutaTemp, $caption);
 
         if (file_exists($rutaTemp)) {
@@ -251,6 +278,47 @@ class WhatsAppWebhookController extends Controller
         }
 
         return $texto;
+    }
+
+    private function buscarVentaPendiente(string $telefono)
+    {
+        $telefonoNorm = $this->normalizarTelefono($telefono);
+
+        return DB::table('ventas')
+            ->join('reservas', 'reservas.id', '=', 'ventas.id_reserva')
+            ->join('clientes', 'clientes.id', '=', 'reservas.cliente_id')
+            ->where('clientes.whatsapp_cliente', $telefonoNorm)
+            ->where('ventas.estado_pago', 'pendiente')
+            ->orderBy('ventas.id', 'desc')
+            ->select('ventas.id as venta_id', 'reservas.id as reserva_id')
+            ->first();
+    }
+
+    private function guardarComprobante(string $rutaTemp, int $ventaId): bool
+    {
+        try {
+            $nombreArchivo = 'venta_' . $ventaId . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.jpg';
+            Storage::disk('comprobante_transferencia')->put($nombreArchivo, file_get_contents($rutaTemp));
+
+            DB::table('ventas')->where('id', $ventaId)->update([
+                'comprobante_transferencia' => $nombreArchivo,
+                'estado_pago'               => 'pendiente_verificacion',
+                'updated_at'                => now(),
+            ]);
+            return true;
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] Error guardando comprobante: ' . $e->getMessage(), ['venta_id' => $ventaId]);
+            return false;
+        }
+    }
+
+    private function normalizarTelefono(string $telefono)
+    {
+        $limpio = preg_replace('/[^0-9]/', '', $telefono);
+        if (strlen($limpio) === 9 && substr($limpio, 0, 1) === '9') {
+            $limpio = '56' . $limpio;
+        }
+        return $limpio;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
