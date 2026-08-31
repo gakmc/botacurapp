@@ -29,6 +29,20 @@ class BotPromptService
         $fechaHoyLarga = $ahora->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY');
         $fechaHoyIso   = $ahora->format('Y-m-d');
 
+        // Precalcula los proximos dias operativos (jue/vie/sab/dom) con su dia de la
+        // semana correcto, para que Claude nunca tenga que calcular el dia a mano.
+        $diasOperativosProximos = [];
+        $cursor = $ahora->copy()->startOfDay();
+        for ($i = 0; $i < 60 && count($diasOperativosProximos) < 10; $i++) {
+            if (in_array($cursor->dayOfWeek, [0, 4, 5, 6])) {
+                $diasOperativosProximos[] = $cursor->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $cursor->format('Y-m-d');
+            }
+            $cursor = $cursor->copy()->addDay();
+        }
+        $bloqueDiasOperativos = implode("\n", array_map(function ($d) {
+            return "- {$d}";
+        }, $diasOperativosProximos));
+
         return <<<PROMPT
 Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo.
 Hablas en español chileno, de forma cálida, cercana y directa.
@@ -52,7 +66,13 @@ REGLAS DE FECHAS — OBLIGATORIAS. NUNCA calcules ni asumas fechas de memoria:
 - Botacura opera SOLO jueves, viernes, sábado, domingo y festivos. Si la fecha calculada cae
   lunes, martes o miércoles no festivo, avísale al cliente y ofrece el día operativo más cercano.
 - En datos.fecha SIEMPRE usa formato YYYY-MM-DD (calculado correctamente). En el mensaje al
-  cliente usa formato natural en español (ej: "sábado 5 de septiembre").
+  cliente usa formato natural en español CON AÑO (ej: "sábado 5 de septiembre de 2026").
+
+PRÓXIMOS DÍAS OPERATIVOS (usa EXACTAMENTE estos nombres de día — no los recalcules):
+{$bloqueDiasOperativos}
+Si mencionas cualquiera de estas fechas (para sugerir, confirmar o comparar), usa el nombre de
+día tal como aparece en esta lista. Solo calcula tú mismo el día de la semana si la fecha que
+necesitas mencionar NO aparece en esta lista.
 
 PERSONALIZACIÓN: Una vez que sepas el nombre del cliente, úsalo en las respuestas.
 
@@ -446,15 +466,18 @@ ACCIONES DISPONIBLES:
   → Respuesta informativa o pregunta del flujo. datos: {}
 
 "verificar_disponibilidad"
-  → Verificar cupo para una fecha y programa específicos.
-  → datos: { "fecha": "YYYY-MM-DD", "programa_id": N, "personas": N }
-  → SOLO cuando tengas fecha Y programa_id concretos.
-  → IMPORTANTE: en cuanto tengas fecha Y programa_id, dispara esta acción DE INMEDIATO en el
-    mismo turno. NUNCA respondas primero con un mensaje tipo "dame un momento" o "estoy
-    verificando" usando accion:"responder" — el sistema no tiene forma de continuar solo
-    después de esa frase y la conversación queda colgada. El chequeo real ocurre automáticamente
-    al usar esta acción; el resultado real se te entrega para que armes la respuesta al cliente
-    en el turno siguiente.
+  → Verificar cupo para una fecha (y opcionalmente un programa específico).
+  → datos: { "fecha": "YYYY-MM-DD", "programa_id": N o null, "personas": N }
+  → Dispara esta acción en cuanto tengas una FECHA concreta, aunque el cliente todavía no haya
+    elegido programa. Si NO sabes el programa_id, envíalo como null — el sistema hará un chequeo
+    general de cupos para esa fecha. Cuando ya sepas el programa, puedes volver a verificar con
+    programa_id para un chequeo más específico, pero no es obligatorio: la creación de la reserva
+    (accion "crear_reserva") vuelve a validar la disponibilidad automáticamente antes de confirmar.
+  → IMPORTANTE: en cuanto tengas la fecha, dispara esta acción DE INMEDIATO en el mismo turno.
+    NUNCA respondas primero con un mensaje tipo "dame un momento" o "estoy verificando" usando
+    accion:"responder" — el sistema no tiene forma de continuar solo después de esa frase y la
+    conversación queda colgada. El chequeo real ocurre automáticamente al usar esta acción; el
+    resultado real se te entrega para que armes la respuesta al cliente en el turno siguiente.
 
 "solicitar_datos"
   → Necesitas más info para avanzar en el flujo.

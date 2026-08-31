@@ -632,11 +632,28 @@ class BotController extends Controller
 
             $body    = json_decode((string) $response->getBody(), true) ?? [];
             $content = $body['content'][0]['text'] ?? '';
-            $content = trim(preg_replace(['/^```json\s*/i', '/\s*```$/'], '', trim($content)));
-            $parsed  = json_decode($content, true);
+            $content = trim($content);
+            $content = preg_replace('/^```json\s*/i', '', $content);
+            $content = preg_replace('/```\s*$/', '', $content);
+            $content = trim($content);
+
+            // Extraer SOLO el bloque JSON aunque el modelo agregue texto antes/despues
+            // (evita que texto o backticks sueltos se filtren al cliente como mensaje).
+            $firstBrace = strpos($content, '{');
+            $lastBrace  = strrpos($content, '}');
+            $jsonCandidate = ($firstBrace !== false && $lastBrace !== false && $lastBrace > $firstBrace)
+                ? substr($content, $firstBrace, $lastBrace - $firstBrace + 1)
+                : $content;
+
+            $parsed = json_decode($jsonCandidate, true);
 
             if (!$parsed || !isset($parsed['accion'], $parsed['mensaje'])) {
-                return ['accion' => 'responder', 'mensaje' => $content, 'datos' => []];
+                Log::warning('[Bot] No se pudo parsear respuesta de Claude como JSON', ['raw' => substr($content, 0, 500)]);
+                return [
+                    'accion'  => 'responder',
+                    'mensaje' => 'Disculpa, tuve un problema procesando tu mensaje 🙏 ¿Puedes repetirlo?',
+                    'datos'   => [],
+                ];
             }
             return $parsed;
 
@@ -686,23 +703,26 @@ class BotController extends Controller
     private function procesarDisponibilidad(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
     {
         $datos = $respuesta['datos'] ?? [];
-        if (empty($datos['fecha']) || empty($datos['programa_id'])) {
+        if (empty($datos['fecha'])) {
             return $respuesta;
         }
         try {
             $secret   = config('services.bot.secret');
             $botToken = env('BOT_API_TOKEN');
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $query = [
+                'fecha'    => $datos['fecha'],
+                'personas' => $datos['personas'] ?? 1,
+            ];
+            if (!empty($datos['programa_id'])) {
+                $query['programa_id'] = $datos['programa_id'];
+            }
             $disp   = $client->get(url('/api/bot-ai/disponibilidad'), [
                 'headers' => [
                     self::BOT_SECRET_HEADER => $secret,
                     'X-Bot-Token'           => $botToken,
                 ],
-                'query' => [
-                    'fecha'       => $datos['fecha'],
-                    'programa_id' => $datos['programa_id'],
-                    'personas'    => $datos['personas'] ?? 1,
-                ],
+                'query' => $query,
             ]);
             $ctx = '[Sistema-disponibilidad: ' . json_encode(json_decode((string) $disp->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
             $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
