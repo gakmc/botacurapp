@@ -28,8 +28,10 @@ class VerificacionPagoController extends Controller
             ->leftJoin('programas as p', 'p.id', '=', 'r.id_programa')
             ->where('v.estado_pago', 'pendiente_verificacion')
             ->select(
-                'v.id as venta_id', 'v.total_pagar', 'v.abono_programa',
-                'v.comprobante_transferencia', 'v.created_at',
+                'v.id as venta_id', 'v.total_pagar', 'v.abono_programa', 'v.diferencia_programa',
+                'v.comprobante_transferencia', 'v.comprobante_monto', 'v.comprobante_fecha',
+                'v.comprobante_hora', 'v.comprobante_numero_operacion', 'v.comprobante_nombre_origen',
+                'v.comprobante_tipo_detectado', 'v.comprobante_alerta', 'v.created_at',
                 'r.id as reserva_id', 'r.fecha_visita',
                 'c.nombre_cliente as cliente_nombre', 'c.whatsapp_cliente as numero_contacto',
                 'p.nombre_programa'

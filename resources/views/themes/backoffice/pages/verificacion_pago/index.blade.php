@@ -71,6 +71,47 @@
                         Abono: <strong>${{ number_format($p->abono_programa ?? $p->total_pagar, 0, ',', '.') }}</strong>
                     </p>
 
+                    @if($p->comprobante_monto || $p->comprobante_fecha || $p->comprobante_numero_operacion)
+                    <div style="background:#f5f5f5; border-radius:4px; padding:8px 10px; margin-bottom:8px; font-size:12px">
+                        <p style="margin:0 0 4px; font-weight:700; color:#555">
+                            <i class="material-icons tiny" style="vertical-align:middle; font-size:14px">smart_toy</i>
+                            Lectura automática del comprobante
+                        </p>
+                        <p style="margin:0">
+                            Monto:
+                            @if($p->comprobante_monto)
+                                <strong>${{ number_format($p->comprobante_monto, 0, ',', '.') }}</strong>
+                                @if($p->comprobante_tipo_detectado === 'total')
+                                    <span style="background:#c8e6c9; color:#256029; padding:1px 6px; border-radius:3px; font-size:10px">TOTAL</span>
+                                @elseif($p->comprobante_tipo_detectado === 'abono_50')
+                                    <span style="background:#bbdefb; color:#0d47a1; padding:1px 6px; border-radius:3px; font-size:10px">ABONO 50%</span>
+                                @elseif($p->comprobante_tipo_detectado === 'monto_insuficiente')
+                                    <span style="background:#ffcdd2; color:#b71c1c; padding:1px 6px; border-radius:3px; font-size:10px">MONTO NO CALZA</span>
+                                @endif
+                            @else
+                                <em>no legible</em>
+                            @endif
+                        </p>
+                        <p style="margin:2px 0 0">
+                            Fecha/hora: {{ $p->comprobante_fecha ? \Carbon\Carbon::parse($p->comprobante_fecha)->format('d/m/Y') : 'no legible' }}
+                            {{ $p->comprobante_hora ?? '' }}
+                        </p>
+                        <p style="margin:2px 0 0">
+                            N° operación: {{ $p->comprobante_numero_operacion ?? 'no legible' }}
+                        </p>
+                        <p style="margin:2px 0 0">
+                            Origen: {{ $p->comprobante_nombre_origen ?? 'no legible' }}
+                        </p>
+                    </div>
+                    @endif
+
+                    @if($p->comprobante_alerta)
+                    <div style="background:#fff3e0; border-left:3px solid #f57c00; border-radius:2px; padding:6px 10px; margin-bottom:8px; font-size:12px; color:#e65100">
+                        <i class="material-icons tiny" style="vertical-align:middle; font-size:14px">warning</i>
+                        {{ $p->comprobante_alerta }}
+                    </div>
+                    @endif
+
                     @if($p->comprobante_transferencia)
                     <a href="{{ route('backoffice.verificacion-pago.imagen', $p->venta_id) }}" target="_blank">
                         <img src="{{ route('backoffice.verificacion-pago.imagen', $p->venta_id) }}"

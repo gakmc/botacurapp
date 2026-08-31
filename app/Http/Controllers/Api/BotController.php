@@ -553,8 +553,29 @@ class BotController extends Controller
         $conv = $this->obtenerConversacion($usuarioId, $nombre);
 
         // Historial para Claude
-        $historial   = json_decode($conv->historial_json ?? '[]', true) ?: [];
-        $historial[] = ['role' => 'user', 'content' => $mensaje];
+        $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
+
+        $contenidoParaHistorial = $mensaje;
+
+        // Si es el primer mensaje de una conversación nueva, revisar si el número
+        // ya es cliente conocido (evita re-pedir nombre/correo a quien ya reservó antes).
+        if (empty($historial)) {
+            $clienteConocido = DB::table('clientes')->where('whatsapp_cliente', $usuarioId)->first();
+            if ($clienteConocido) {
+                $ctxCliente = "[Sistema: Este número ya es cliente de Botacura — nombre: "
+                    . "{$clienteConocido->nombre_cliente}"
+                    . (!empty($clienteConocido->correo) ? ", correo: {$clienteConocido->correo}" : '')
+                    . ". Salúdalo como cliente que vuelve, usando su nombre. Ya tienes su nombre"
+                    . (!empty($clienteConocido->correo) ? ' y correo' : '')
+                    . " — no se los vuelvas a pedir desde cero, solo confírmaselos brevemente "
+                    . "salvo que él mismo diga que cambiaron. El resto del proceso de reserva "
+                    . "(fecha, programa, personas, políticas, pago) sigue igual — cada visita es "
+                    . "una reserva nueva.]";
+                $contenidoParaHistorial = $mensaje . "\n\n" . $ctxCliente;
+            }
+        }
+
+        $historial[] = ['role' => 'user', 'content' => $contenidoParaHistorial];
 
         // System prompt con programas y menú dinámicos desde BD
         $programas    = $this->cargarProgramasBd();
