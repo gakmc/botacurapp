@@ -117,14 +117,19 @@ class BotReservaController extends Controller
         $precioDyO = $servicioDyO ? (int) $servicioDyO->valor_servicio : 10000;
 
         // ── 4. Calcular totales reales ────────────────────────────────────────
-        $programa          = DB::table('programas')->where('id', $programaId)->first();
-        $valorProgramaUnit = $programa ? (int) $programa->valor_programa : 0;
-        $totalPrograma     = $valorProgramaUnit * $personas;
-        $totalMasajes      = $masajesExtra * $precioMasaje;
-        $totalDyO          = $desayunoOnce  * $precioDyO;
-        $valorTotal        = $totalPrograma + $totalMasajes + $totalDyO;
-        $abono50           = (int) ceil($valorTotal / 2);
-        $diferencia        = $valorTotal - $abono50;
+        // IMPORTANTE: usar precio - descuento, igual que cargarProgramasBd() en
+        // BotController (que es lo que se le muestra al cliente en el resumen).
+        // Antes este calculo ignoraba el descuento y cobraba el valor sin rebaja,
+        // causando una diferencia entre el precio mostrado y el precio cobrado.
+        $programa           = DB::table('programas')->where('id', $programaId)->first();
+        $descuentoPrograma  = $programa ? (int) ($programa->descuento ?? 0) : 0;
+        $valorProgramaUnit  = $programa ? ((int) $programa->valor_programa - $descuentoPrograma) : 0;
+        $totalPrograma      = $valorProgramaUnit * $personas;
+        $totalMasajes       = $masajesExtra * $precioMasaje;
+        $totalDyO           = $desayunoOnce  * $precioDyO;
+        $valorTotal         = $totalPrograma + $totalMasajes + $totalDyO;
+        $abono50            = (int) ceil($valorTotal / 2);
+        $diferencia         = $valorTotal - $abono50;
 
         // ── 5. Crear reserva ──────────────────────────────────────────────────
         $notaBot = 'Reserva creada por bot WhatsApp';
@@ -246,33 +251,57 @@ class BotReservaController extends Controller
                            : ($desayunoTipo === 'once'    ? 'Once (17:00–18:15)'
                            : 'Desayuno u Once');
 
-        // ── 9. Iniciar transacción Webpay Plus ───────────────────────────────
-        $webpayUrl = null;
-        try {
-            $webpay      = new WebpayService();
-            $returnUrl   = url('/pago/webpay/retorno');
-            $wpResult    = $webpay->iniciarTransaccion($ventaId, $reservaId, $abono50, $returnUrl);
+        // ── 9. Iniciar pago: Webpay (debito/credito) o datos bancarios (transferencia) ──
+        $tipoPagoNorm    = mb_strtolower(trim($tipoPago));
+        $esTransferencia = (strpos($tipoPagoNorm, 'transf') !== false);
 
-            if ($wpResult) {
-                $webpayUrl = $wpResult['url'];
-                // Guardar token en la venta para confirmación posterior
-                DB::table('ventas')->where('id', $ventaId)->update([
-                    'webpay_token' => $wpResult['token'],
-                    'webpay_url'   => $webpayUrl,
-                    'estado_pago'  => 'pendiente',
-                    'updated_at'   => now(),
-                ]);
-                Log::info('[BotReserva] Webpay iniciado', ['venta_id' => $ventaId, 'url' => $webpayUrl]);
-            } else {
-                Log::warning('[BotReserva] Webpay no disponible, retornando sin link de pago', ['venta_id' => $ventaId]);
+        $webpayUrl      = null;
+        $datosBancarios = null;
+
+        if (!$esTransferencia) {
+            try {
+                $webpay      = new WebpayService();
+                $returnUrl   = url('/pago/webpay/retorno');
+                $wpResult    = $webpay->iniciarTransaccion($ventaId, $reservaId, $abono50, $returnUrl);
+
+                if ($wpResult) {
+                    $webpayUrl = $wpResult['url'];
+                    // Guardar token en la venta para confirmación posterior
+                    DB::table('ventas')->where('id', $ventaId)->update([
+                        'webpay_token' => $wpResult['token'],
+                        'webpay_url'   => $webpayUrl,
+                        'estado_pago'  => 'pendiente',
+                        'updated_at'   => now(),
+                    ]);
+                    Log::info('[BotReserva] Webpay iniciado', ['venta_id' => $ventaId, 'url' => $webpayUrl]);
+                } else {
+                    Log::warning('[BotReserva] Webpay no disponible, retornando sin link de pago', ['venta_id' => $ventaId]);
+                }
+            } catch (\Exception $e) {
+                Log::error('[BotReserva] Error Webpay: ' . $e->getMessage());
             }
-        } catch (\Exception $e) {
-            Log::error('[BotReserva] Error Webpay: ' . $e->getMessage());
+        } else {
+            // Transferencia: no se usa Webpay. Se entregan los datos bancarios reales
+            // de Botacura para que el cliente haga el abono (50%) y envíe comprobante.
+            $datosBancarios = [
+                'titular'            => 'CENTRO RECREATIVO BOTACURA LIMITADA',
+                'rut'                => '77.848.621-0',
+                'banco'              => 'Banco Estado',
+                'tipo_cuenta'        => 'Cuenta Vista / Electrónica',
+                'numero_cuenta'      => '36072963894',
+                'correo_comprobante' => 'hola@botacura.cl',
+            ];
+            DB::table('ventas')->where('id', $ventaId)->update([
+                'estado_pago' => 'pendiente',
+                'updated_at'  => now(),
+            ]);
         }
 
-        $mensajePago = $webpayUrl
-            ? "Para confirmar tu reserva N°{$reservaId}, haz clic aquí para pagar el abono de \$" . number_format($abono50, 0, ',', '.') . " de forma segura con tarjeta:\n{$webpayUrl}"
-            : "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Envía el comprobante al +56974484112 indicando tu nombre y N° de reserva.";
+        $mensajePago = $esTransferencia
+            ? "Para confirmar tu reserva N°{$reservaId}, transfiere el abono de \$" . number_format($abono50, 0, ',', '.') . " a la cuenta de Botacura (Banco Estado, N° 36072963894, RUT 77.848.621-0) y envíanos la foto del comprobante por este mismo chat."
+            : ($webpayUrl
+                ? "Para confirmar tu reserva N°{$reservaId}, haz clic aquí para pagar el abono de \$" . number_format($abono50, 0, ',', '.') . " de forma segura con tarjeta:\n{$webpayUrl}"
+                : "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Contáctanos para coordinar el pago.");
 
         return response()->json([
             'ok'                   => true,
@@ -296,7 +325,9 @@ class BotReservaController extends Controller
             'diferencia'           => $diferencia,
             'diferencia_formato'   => '$' . number_format($diferencia, 0, ',', '.'),
             'incluye_menu'         => ($desayunoOnce > 0),
+            'tipo_pago'            => $tipoPago,
             'webpay_url'           => $webpayUrl,
+            'datos_bancarios'      => $datosBancarios,
             'mensaje_siguiente'    => $mensajePago,
         ]);
     }
