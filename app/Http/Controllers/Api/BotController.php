@@ -604,7 +604,7 @@ class BotController extends Controller
     // INTERNOS — Claude
     // ─────────────────────────────────────────────────────────────
 
-    private function llamarClaude(string $systemPrompt, array $historial, string $nombre)
+    private function llamarClaude(string $systemPrompt, array $historial, string $nombre, int $intento = 1)
     {
         $apiKey = config('services.anthropic.key');
         $model  = config('services.anthropic.model', 'claude-haiku-4-5-20251001');
@@ -648,7 +648,20 @@ class BotController extends Controller
             $parsed = json_decode($jsonCandidate, true);
 
             if (!$parsed || !isset($parsed['accion'], $parsed['mensaje'])) {
-                Log::warning('[Bot] No se pudo parsear respuesta de Claude como JSON', ['raw' => substr($content, 0, 500)]);
+                Log::warning('[Bot] No se pudo parsear respuesta de Claude como JSON (intento ' . $intento . ')', ['raw' => substr($content, 0, 500)]);
+
+                // Reintenta UNA vez pidiendole explicitamente formato JSON valido, antes
+                // de mostrarle al cliente un mensaje generico de error.
+                if ($intento < 2) {
+                    $historialReintento   = $historial;
+                    $historialReintento[] = ['role' => 'assistant', 'content' => $content];
+                    $historialReintento[] = [
+                        'role'    => 'user',
+                        'content' => '[Sistema: tu respuesta anterior no fue un JSON válido. Responde ÚNICAMENTE con el objeto JSON {"accion":..., "mensaje":..., "datos":...} tal como se especifica en tus instrucciones, sin texto antes ni después, sin backticks ni explicaciones adicionales.]',
+                    ];
+                    return $this->llamarClaude($systemPrompt, $historialReintento, $nombre, $intento + 1);
+                }
+
                 return [
                     'accion'  => 'responder',
                     'mensaje' => 'Disculpa, tuve un problema procesando tu mensaje 🙏 ¿Puedes repetirlo?',
