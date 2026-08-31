@@ -117,13 +117,11 @@ class BotReservaController extends Controller
         $precioDyO = $servicioDyO ? (int) $servicioDyO->valor_servicio : 10000;
 
         // ── 4. Calcular totales reales ────────────────────────────────────────
-        // IMPORTANTE: usar precio - descuento, igual que cargarProgramasBd() en
-        // BotController (que es lo que se le muestra al cliente en el resumen).
-        // Antes este calculo ignoraba el descuento y cobraba el valor sin rebaja,
-        // causando una diferencia entre el precio mostrado y el precio cobrado.
+        // NOTA (confirmado por el cliente 31-08-2026): valor_programa YA es el
+        // precio final del programa; la columna descuento NO debe restarse de
+        // nuevo (es un campo antiguo que no representa un descuento activo).
         $programa           = DB::table('programas')->where('id', $programaId)->first();
-        $descuentoPrograma  = $programa ? (int) ($programa->descuento ?? 0) : 0;
-        $valorProgramaUnit  = $programa ? ((int) $programa->valor_programa - $descuentoPrograma) : 0;
+        $valorProgramaUnit  = $programa ? (int) $programa->valor_programa : 0;
         $totalPrograma      = $valorProgramaUnit * $personas;
         $totalMasajes       = $masajesExtra * $precioMasaje;
         $totalDyO           = $desayunoOnce  * $precioDyO;

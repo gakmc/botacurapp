@@ -828,9 +828,9 @@ class BotController extends Controller
 
             $resultado = [];
             foreach ($programas as $programa) {
-                $base   = (int) ($programa->valor_programa ?? 0);
-                $desc   = (int) ($programa->descuento ?? 0);
-                $precio = $base - $desc;
+                // NOTA (confirmado 31-08-2026): valor_programa ya es el precio final,
+                // no se resta descuento (esa columna no representa un descuento activo).
+                $precio = (int) ($programa->valor_programa ?? 0);
 
                 $resultado[] = [
                     'id'                => $programa->id,
