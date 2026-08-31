@@ -127,14 +127,14 @@ class PagoController extends Controller
             }
 
             $cliente = DB::table('clientes')->where('id', $reserva->cliente_id)->first();
-            if (!$cliente || empty($cliente->numero_contacto)) {
+            if (!$cliente || empty($cliente->whatsapp_cliente)) {
                 return;
             }
 
             $programa = DB::table('programas')->where('id', $reserva->id_programa)->first();
 
-            $telefono   = $cliente->numero_contacto;
-            $nombre     = $cliente->nombre ?? 'Cliente';
+            $telefono   = $cliente->whatsapp_cliente;
+            $nombre     = $cliente->nombre_cliente ?? 'Cliente';
             $nombreProg = $programa ? $programa->nombre_programa : 'tu programa';
             $fecha      = $reserva->fecha_visita ?? '';
             $monto      = number_format($confirmacion['amount'] ?? 0, 0, ',', '.');
@@ -145,8 +145,16 @@ class PagoController extends Controller
                 . "🌿 {$nombreProg}\n\n"
                 . "Nos contactaremos contigo los días previos a tu visita para coordinar los horarios del spa. ¡Te esperamos! 🏔️";
 
-            // También enviar PDF del menú si la reserva incluye desayuno/once
             $this->enviarMensajeWhatsApp($telefono, $mensaje);
+
+            // Pago confirmado: ahora sí corresponde pedir la selección de menú,
+            // adjuntando el PDF real del menú de otoño.
+            $mensajeMenu = "🌿 Te compartimos las opciones de menú para que puedas elegir.\n"
+                . "Un día antes de tu reserva te enviaremos los horarios disponibles de spa, siempre que ya tengamos tus opciones de menú confirmadas.\n"
+                . "Si no recibimos la selección a tiempo, se asignará el horario disponible sin posibilidad de modificación.\n"
+                . "Quedamos atentas 🙏";
+            $this->enviarMensajeWhatsApp($telefono, $mensajeMenu);
+            $this->enviarDocumentoWhatsApp($telefono, url('/docs/menu-otono-2026.pdf'), 'Menu-Otono-2026.pdf');
 
         } catch (\Exception $e) {
             Log::error('[Pago] Error notificando pago: ' . $e->getMessage());
@@ -182,6 +190,38 @@ class PagoController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('[Pago] Excepción enviando WhatsApp: ' . $e->getMessage());
+        }
+    }
+
+    private function enviarDocumentoWhatsApp(string $telefono, string $url, string $nombre)
+    {
+        $phoneId = env('META_PHONE_NUMBER_ID');
+        $token   = env('META_WHATSAPP_TOKEN');
+        $version = env('META_API_VERSION', 'v19.0');
+
+        try {
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $res    = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+                'headers' => [
+                    'Authorization' => 'Bearer ' . $token,
+                    'Content-Type'  => 'application/json',
+                ],
+                'json' => [
+                    'messaging_product' => 'whatsapp',
+                    'to'                => $telefono,
+                    'type'              => 'document',
+                    'document'          => ['link' => $url, 'filename' => $nombre],
+                ],
+            ]);
+
+            if ($res->getStatusCode() >= 300) {
+                Log::error('[Pago] Error enviando documento WhatsApp post-pago', [
+                    'status' => $res->getStatusCode(),
+                    'body'   => (string) $res->getBody(),
+                ]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[Pago] Excepción enviando documento WhatsApp: ' . $e->getMessage());
         }
     }
 }
