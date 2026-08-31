@@ -653,11 +653,13 @@ class BotController extends Controller
             return $respuesta;
         }
         try {
-            $secret = config('services.bot.secret');
+            $secret   = config('services.bot.secret');
+            $botToken = env('BOT_API_TOKEN');
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
             $res    = $client->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
                 'headers' => [
                     self::BOT_SECRET_HEADER => $secret,
+                    'X-Bot-Token'           => $botToken,
                     'content-type'          => 'application/json',
                 ],
                 'json' => ['selecciones' => $datos['selecciones'] ?? []],
@@ -688,8 +690,14 @@ class BotController extends Controller
             return $respuesta;
         }
         try {
+            $secret   = config('services.bot.secret');
+            $botToken = env('BOT_API_TOKEN');
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
-            $disp   = $client->get(url('/api/disponibilidad'), [
+            $disp   = $client->get(url('/api/bot-ai/disponibilidad'), [
+                'headers' => [
+                    self::BOT_SECRET_HEADER => $secret,
+                    'X-Bot-Token'           => $botToken,
+                ],
                 'query' => [
                     'fecha'       => $datos['fecha'],
                     'programa_id' => $datos['programa_id'],
@@ -714,11 +722,13 @@ class BotController extends Controller
             }
         }
         try {
-            $secret = config('services.bot.secret');
+            $secret   = config('services.bot.secret');
+            $botToken = env('BOT_API_TOKEN');
             $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
             $res    = $client->post(url('/api/bot-ai/reserva'), [
                 'headers' => [
                     self::BOT_SECRET_HEADER => $secret,
+                    'X-Bot-Token'           => $botToken,
                     'content-type'          => 'application/json',
                 ],
                 'json' => [
