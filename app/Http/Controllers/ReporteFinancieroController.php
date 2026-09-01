@@ -195,9 +195,13 @@ class ReporteFinancieroController extends Controller
             $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
             $finMes = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
             
-        $egresos = DB::table('pagos_egresos')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        // NOTA (confirmado por el cliente): en Botacura todo se factura en el
+        // momento en que se cancela, asi que fecha_egreso/total en "egresos" YA
+        // representan el pago real — no se usa "pagos_egresos" (nunca se ha
+        // registrado un pago ahi, ni siquiera para los egresos del SII).
+        $egresos = DB::table('egresos')
+            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(neto, total - COALESCE(iva, 0), total, 0)) as total')
+            ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -227,9 +231,9 @@ class ReporteFinancieroController extends Controller
             ->get();
 
         // IMPUESTOS
-        $impuestos = DB::table('pagos_egresos')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        $impuestos = DB::table('egresos')
+            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(iva, 0)) as total')
+            ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();

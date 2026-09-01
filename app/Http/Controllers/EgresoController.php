@@ -21,18 +21,22 @@ class EgresoController extends Controller
         $mesActual = (int) $hoy->month;
         $anioActual = (int) $hoy->year;
 
-        // Meses que tienen pagos (agregados por mes/año)
-        $egresos = DB::table('pagos_egresos as p')
-            ->join('egresos as e', 'e.id', '=', 'p.egreso_id')
+        // Meses que tienen egresos (agregados por mes/año). NOTA (confirmado
+        // por el cliente): en Botacura todo se factura en el momento en que se
+        // cancela — no existe una etapa separada de "pendiente de pago" para
+        // boletas/facturas del SII u otras fuentes. Por eso se cuenta
+        // directamente desde "egresos" (fecha_egreso/total), no desde
+        // "pagos_egresos", que en la practica nunca se ha usado.
+        $egresos = DB::table('egresos as e')
             ->selectRaw('
-                MONTH(p.fecha_pago) as mes,
-                YEAR(p.fecha_pago)  as anio,
-                SUM(p.monto)        as total_mes,
-                COUNT(p.id)         as cantidad,
+                MONTH(e.fecha_egreso) as mes,
+                YEAR(e.fecha_egreso)  as anio,
+                SUM(e.total)          as total_mes,
+                COUNT(e.id)           as cantidad,
                 SUM(CASE WHEN e.tipo_documento_id = 2 THEN 1 ELSE 0 END) as cantidad_facturas,
                 SUM(CASE WHEN e.tipo_documento_id = 1 THEN 1 ELSE 0 END) as cantidad_boletas
             ')
-            ->whereYear('p.fecha_pago', $anio)
+            ->whereYear('e.fecha_egreso', $anio)
             ->groupBy('mes','anio')
             ->orderBy('mes')
             ->get();
@@ -51,9 +55,9 @@ class EgresoController extends Controller
             $egresos = $egresos->sortBy('mes')->values();
         }
 
-        // Años disponibles (según pagos realizados) + asegurar el año actual
-        $añosDisponibles = DB::table('pagos_egresos')
-            ->selectRaw('YEAR(fecha_pago) as anio')
+        // Años disponibles (según egresos registrados) + asegurar el año actual
+        $añosDisponibles = DB::table('egresos')
+            ->selectRaw('YEAR(fecha_egreso) as anio')
             ->groupBy('anio')
             ->orderBy('anio', 'desc')
             ->pluck('anio');
