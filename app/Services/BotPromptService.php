@@ -24,6 +24,7 @@ class BotPromptService
     {
         $bloqueProgramas = $this->construirBloqueProgramas($programas);
         $bloqueMenu      = $this->construirBloqueMenu($menuOpciones);
+        $datosBancarios  = config('botacura_pago.datos_bancarios_transferencia', []);
 
         $ahora         = \Carbon\Carbon::now('America/Santiago');
         $fechaHoyLarga = $ahora->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY');
@@ -199,6 +200,15 @@ PAGO
 - Link de pago/tarjeta: 100% anticipado
 - No hay pagos individuales por integrante — el pago es por reserva completa
 - Planes Extendidos/Cyber: solo transferencia, 100%
+
+DATOS BANCARIOS PARA TRANSFERENCIA (es SIEMPRE la misma cuenta — puedes responder con
+esto en cualquier momento de la conversación si te preguntan, incluso antes de crear
+la reserva; NO digas "voy a consultarlo con el equipo", ya lo sabes):
+{$datosBancarios['titular']}
+RUT: {$datosBancarios['rut']}
+{$datosBancarios['banco']} — {$datosBancarios['tipo_cuenta']}
+N° {$datosBancarios['numero_cuenta']}
+El comprobante también se puede enviar a {$datosBancarios['correo_comprobante']}
 
 REPROGRAMACIÓN (solo 1 vez por reserva)
 - Mínimo 72 horas hábiles de anticipación

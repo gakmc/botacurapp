@@ -281,14 +281,9 @@ class BotReservaController extends Controller
         } else {
             // Transferencia: no se usa Webpay. Se entregan los datos bancarios reales
             // de Botacura para que el cliente haga el abono (50%) y envíe comprobante.
-            $datosBancarios = [
-                'titular'            => 'CENTRO RECREATIVO BOTACURA LIMITADA',
-                'rut'                => '77.848.621-0',
-                'banco'              => 'Banco Estado',
-                'tipo_cuenta'        => 'Cuenta Vista / Electrónica',
-                'numero_cuenta'      => '36072963894',
-                'correo_comprobante' => 'hola@botacura.cl',
-            ];
+            // Fuente unica: config/botacura_pago.php (tambien la usa BotPromptService
+            // para que el bot pueda responder preguntas sobre la cuenta antes de reservar).
+            $datosBancarios = config('botacura_pago.datos_bancarios_transferencia');
             DB::table('ventas')->where('id', $ventaId)->update([
                 'estado_pago' => 'pendiente',
                 'updated_at'  => now(),
