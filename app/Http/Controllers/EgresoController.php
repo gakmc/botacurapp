@@ -151,10 +151,13 @@ class EgresoController extends Controller
             },
         ];
 
-        $egresos = Egreso::with($withPeriodo)->get();
+        $egresos = Egreso::with($withPeriodo)
+            ->whereBetween('fecha_egreso', [$desde, $hasta])
+            ->get();
 
         $fijos = Egreso::with($withPeriodo)
             ->where('egresos.categoria_id', 1)
+            ->whereBetween('egresos.fecha_egreso', [$desde, $hasta])
             ->leftJoin('subcategorias_compras as sc', 'egresos.subcategoria_id', '=', 'sc.id')
             ->orderBy('sc.nombre', 'asc')
             ->select('egresos.*')
@@ -162,6 +165,7 @@ class EgresoController extends Controller
 
         $variables = Egreso::with($withPeriodo)
             ->where('egresos.categoria_id', 2)
+            ->whereBetween('egresos.fecha_egreso', [$desde, $hasta])
             ->leftJoin('subcategorias_compras as sc', 'egresos.subcategoria_id', '=', 'sc.id')
             ->orderBy('sc.nombre', 'asc')
             ->select('egresos.*')
@@ -250,7 +254,10 @@ class EgresoController extends Controller
      */
     public function show($id)
     {
-        //
+        $egreso = Egreso::with(['categoria', 'subcategoria', 'proveedor', 'tipo_documento', 'pagos'])
+            ->findOrFail($id);
+
+        return view('themes.backoffice.pages.egreso.show', compact('egreso'));
     }
 
     /**
