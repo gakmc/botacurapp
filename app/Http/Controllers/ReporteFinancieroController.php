@@ -78,7 +78,7 @@ class ReporteFinancieroController extends Controller
         $egresos = DB::table('egresos')
         ->selectRaw('
             MONTH(fecha_egreso) as mes,
-            SUM(COALESCE(neto, total - COALESCE(iva, 0), total, 0)) as total
+            SUM(total - COALESCE(iva, 0)) as total
         ')
         ->whereYear('fecha_egreso', $anio)
         ->whereNull('reconciliado_con_id')
@@ -202,7 +202,7 @@ class ReporteFinancieroController extends Controller
         // representan el pago real — no se usa "pagos_egresos" (nunca se ha
         // registrado un pago ahi, ni siquiera para los egresos del SII).
         $egresos = DB::table('egresos')
-            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(neto, total - COALESCE(iva, 0), total, 0)) as total')
+            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(total - COALESCE(iva, 0)) as total')
             ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
             ->whereNull('reconciliado_con_id')
             ->groupBy('yearweek', 'fecha')
