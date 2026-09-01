@@ -75,12 +75,13 @@ class ReporteFinancieroController extends Controller
         //     ->groupBy('mes')
         //     ->get();
 
-        $egresos = DB::table('pagos_egresos')
+        $egresos = DB::table('egresos')
         ->selectRaw('
-            MONTH(fecha_pago) as mes,
-            SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total
+            MONTH(fecha_egreso) as mes,
+            SUM(COALESCE(neto, total - COALESCE(iva, 0), total, 0)) as total
         ')
-        ->whereYear('fecha_pago', $anio)
+        ->whereYear('fecha_egreso', $anio)
+        ->whereNull('reconciliado_con_id')
         ->groupBy('mes')
         ->orderBy('mes')
         ->get();
@@ -112,14 +113,15 @@ class ReporteFinancieroController extends Controller
         //     ->groupBy('mes')
         //     ->get();
 
-        $impuestos = DB::table('pagos_egresos')
+        $impuestos = DB::table('egresos')
         ->selectRaw('
-            MONTH(fecha_pago) AS mes,
-            SUM(COALESCE(iva, 0))                 AS total_iva,
-            SUM(COALESCE(impuesto_incluido, 0))   AS total_imp_adic,
-            SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) AS total
+            MONTH(fecha_egreso) AS mes,
+            SUM(COALESCE(iva, 0)) AS total_iva,
+            0                     AS total_imp_adic,
+            SUM(COALESCE(iva, 0)) AS total
         ')
-        ->whereYear('fecha_pago', $anio)
+        ->whereYear('fecha_egreso', $anio)
+        ->whereNull('reconciliado_con_id')
         ->groupBy('mes')
         ->orderBy('mes')
         ->get();
