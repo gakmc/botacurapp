@@ -94,16 +94,16 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mes')
             ->get();
 
-        $sueldos = DB::table('sueldos_pagados')
-            ->selectRaw('MONTH(fecha_pago) as mes, SUM(monto) as total')
-            ->whereYear('fecha_pago', $anio)
+        $sueldos = DB::table('sueldos')
+            ->selectRaw('MONTH(dia_trabajado) as mes, SUM(total_pagar) as total')
+            ->whereYear('dia_trabajado', $anio)
             ->groupBy('mes')
             ->get();
 
-                // BONOS
+                // BONOS (atribuidos a la semana trabajada, no a la fecha de pago)
         $bonos = DB::table('sueldos_pagados')
-            ->selectRaw('MONTH(fecha_pago) as mes, SUM(bono) as total')
-            ->whereYear('fecha_pago', $anio)
+            ->selectRaw('MONTH(semana_inicio) as mes, SUM(bono) as total')
+            ->whereYear('semana_inicio', $anio)
             ->groupBy('mes')
             ->get();
 
@@ -217,18 +217,18 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // SUELDOS
-        $sueldos = DB::table('sueldos_pagados')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(monto) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        // SUELDOS (trabajo realizado, dia_trabajado)
+        $sueldos = DB::table('sueldos')
+            ->selectRaw('YEARWEEK(dia_trabajado, 1) as yearweek, DATE(dia_trabajado) as fecha, SUM(total_pagar) as total')
+            ->whereBetween('dia_trabajado', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
 
-        // BONOS
+        // BONOS (atribuidos a la semana trabajada, no a la fecha de pago)
         $bonos = DB::table('sueldos_pagados')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(bono) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+            ->selectRaw('YEARWEEK(semana_inicio, 1) as yearweek, DATE(semana_inicio) as fecha, SUM(bono) as total')
+            ->whereBetween('semana_inicio', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
