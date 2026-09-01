@@ -152,7 +152,10 @@
                   </td>
 
                   <td>
-                    <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
+                    <a href="{{ route('backoffice.egreso.show', $e->id) }}" class="btn-floating btn-small blue">
+                      <i class='material-icons'>visibility</i>
+                    </a>
+                  <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
                       <i class='material-icons'>edit</i>
                     </a>
 
@@ -310,7 +313,10 @@
                     {{-- <td><strong>${{ number_format($e->total, 0, ',', '.') }}</strong></td> --}}
 
                     <td>
-                      <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
+                      <a href="{{ route('backoffice.egreso.show', $e->id) }}" class="btn-floating btn-small blue">
+                        <i class="material-icons">visibility</i>
+                      </a>
+                  <a href="{{ route('backoffice.egreso.edit', $e->id) }}" class="btn-floating btn-small purple">
                         <i class="material-icons">edit</i>
                       </a>
 
