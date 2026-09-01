@@ -259,7 +259,7 @@
                   @endphp
 
                   <tr>
-                    <td class="tipo-egreso" data-tipo="{{$e->tipo_documento->nombre}}">{{ $e->tipo_documento->nombre ?? '-' }}</td>
+                    <td class="tipo-egreso" data-tipo="{{ $e->tipo_documento->nombre ?? '-' }}">{{ $e->tipo_documento->nombre ?? '-' }}</td>
                     <td>{{ $e->subcategoria->nombre ?? '-' }}</td>
                     <td>{{ $e->proveedor->nombre ?? '-' }}</td>
                     <td>
@@ -378,7 +378,7 @@
                             @foreach ($pagos as $pago)
                             <li class="collection-item avatar">
                               <i class="material-icons circle green">monetization_on</i>
-                              <span class="title">{{$e->subcategoria->nombre}}</span>
+                              <span class="title">{{ $e->subcategoria->nombre ?? '-' }}</span>
                               <p>{{$pago->fecha_pago->format('d-m-Y')}} <br>
                                 Neto: ${{number_format($pago->neto,0,'','.')}} /
                                 IVA (19%): ${{number_format($pago->iva,0,'','.')}} /
