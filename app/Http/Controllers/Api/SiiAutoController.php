@@ -145,6 +145,14 @@ class SiiAutoController extends Controller
             ], 500);
         }
 
+        // Reconciliar compras de gas registradas via IoT contra la factura real
+        // del proveedor de gas, si vino en esta importacion.
+        try {
+            app(\App\Services\GasReconciliacionService::class)->reconciliarPeriodo(65, $anio, $mes);
+        } catch (\Throwable $e) {
+            \Illuminate\Support\Facades\Log::warning('[Egresos] Error reconciliando gas tras import SII: ' . $e->getMessage());
+        }
+
         return response()->json([
             'ok'         => true,
             'periodo'    => $anio . '-' . str_pad($mes, 2, '0', STR_PAD_LEFT),

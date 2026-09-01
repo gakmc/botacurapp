@@ -37,6 +37,7 @@ class EgresoController extends Controller
                 SUM(CASE WHEN e.tipo_documento_id = 1 THEN 1 ELSE 0 END) as cantidad_boletas
             ')
             ->whereYear('e.fecha_egreso', $anio)
+            ->whereNull('e.reconciliado_con_id')
             ->groupBy('mes','anio')
             ->orderBy('mes')
             ->get();

@@ -202,6 +202,7 @@ class ReporteFinancieroController extends Controller
         $egresos = DB::table('egresos')
             ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(neto, total - COALESCE(iva, 0), total, 0)) as total')
             ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
+            ->whereNull('reconciliado_con_id')
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -234,6 +235,7 @@ class ReporteFinancieroController extends Controller
         $impuestos = DB::table('egresos')
             ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(iva, 0)) as total')
             ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
+            ->whereNull('reconciliado_con_id')
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();

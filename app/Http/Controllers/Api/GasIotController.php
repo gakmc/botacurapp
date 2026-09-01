@@ -80,6 +80,9 @@ class GasIotController extends Controller
             $egreso = DB::table('egresos')->insertGetId([
                 'categoria_id'     => 2,  // Gastos Variables
                 'subcategoria_id'  => 9,  // Gas
+                'proveedor_id'     => 65, // JORGE ANTONIO PIERATTINI SANDOVAL — mismo proveedor
+                                          // que factura via SII, para poder reconciliar el estimado
+                                          // IoT contra la factura real del mismo periodo.
                 'descripcion'      => "Compra gas – {$proveedor} ({$cantidad} cilindro(s) × \${$valorUnit})",
                 'total'            => $totalClp,
                 'fecha_egreso'     => $fecha,
