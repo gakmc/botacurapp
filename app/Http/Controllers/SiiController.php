@@ -42,9 +42,9 @@ class SiiController extends Controller
         $anio = (int) $request->input('anio', now()->year);
         $mes  = (int) $request->input('mes', now()->month);
 
-        $credencialesOk = $this->sii->credencialesConfiguradas();
-
-        return view('themes.backoffice.pages.sii.index', compact('anio', 'mes', 'credencialesOk'));
+        // La vista themes.backoffice.pages.sii.index nunca existio (bug
+        // preexistente, causaba 500 en /sii). Redirige al dashboard real.
+        return redirect()->route('backoffice.sii.resumen', ['anio' => $anio, 'mes' => $mes]);
     }
 
     // -------------------------------------------------------------------------
