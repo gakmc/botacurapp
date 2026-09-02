@@ -97,7 +97,7 @@
                                     ['Consumos (bar/spa)',   $consumos],
                                     ['Servicios Extra',      $servicios],
                                     ['Venta Directa',        $directas],
-                                    ['Poro Poro',            $poro],
+                                    
                                 ];
                             @endphp
                             @foreach($ingRows as $row)

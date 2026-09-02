@@ -548,13 +548,9 @@ class ReporteFinancieroController extends Controller
             ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
             ->sum('subtotal');
 
-        $poro = Schema::hasTable('poro_poro_ventas')
-            ? (int) DB::table('poro_poro_ventas')
-                ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
-                ->sum('total')
-            : 0;
-
-        $totalIngresos = $abonos + $consumos + $servicios + $directas + $poro;
+        // Poro Poro NO se contabiliza aqui: va a otro fondo, la app solo se usa
+        // para registrarlo (confirmado por el cliente, no es ingreso de Botacura).
+        $totalIngresos = $abonos + $consumos + $servicios + $directas;
 
         // ── Egresos del mes ───────────────────────────────────────────────────
         // 1. Facturas SII (fuente=sii, neto = monto sin IVA)
@@ -651,7 +647,7 @@ class ReporteFinancieroController extends Controller
 
         return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
             'anio', 'mes', 'nombreMes', 'mesesNombres',
-            'abonos', 'consumos', 'servicios', 'directas', 'poro',
+            'abonos', 'consumos', 'servicios', 'directas',
             'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
             'facturasSii', 'honorariosRetencion', 'honorariosNeto',
             'sueldosPagados', 'ppm', 'breakdown',
