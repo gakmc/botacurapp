@@ -656,7 +656,7 @@ class ReporteFinancieroController extends Controller
             'anio', 'mes', 'nombreMes', 'mesesNombres',
             'abonos', 'consumos', 'servicios', 'directas',
             'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
-            'facturasSii', 'honorariosRetencion', 'honorariosNeto',
+            'facturasSii', 'ivaSii', 'honorariosRetencion', 'honorariosNeto',
             'sueldosPagados', 'ppm', 'breakdown',
             'ventasSii', 'resumenAnual'
         ));
