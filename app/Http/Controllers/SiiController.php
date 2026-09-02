@@ -462,29 +462,20 @@ class SiiController extends Controller
         // ── Categoría/subcategoría por defecto (Gastos Variables) ─────────────
         // categoria_id es NOT NULL en la BD; sin esto el INSERT falla con
         // "Field 'categoria_id' doesn't have a default value".
-        $catDefault    = DB::table('categorias_compras')->where('nombre', 'Gastos Variables')->first();
-        $subCatDefault = $catDefault
-            ? DB::table('subcategorias_compras')->where('categoria_id', $catDefault->id)->first()
+        $subCatDefault = DB::table('subcategorias_compras')->where('nombre', 'Otros / Varios')->first();
+        $catDefault    = $subCatDefault
+            ? DB::table('categorias_compras')->where('id', $subCatDefault->categoria_id)->first()
             : null;
 
         if (!$catDefault || !$subCatDefault) {
             return response()->json([
                 'ok'    => false,
-                'error' => 'No existe categoría "Gastos Variables" o no tiene subcategorías. Corre el seeder primero.',
+                'error' => 'No existe la subcategoría "Otros / Varios". Corre el seeder primero.',
             ], 500);
         }
 
         $catIdDef    = $catDefault->id;
         $subCatIdDef = $subCatDefault->id;
-
-        // Mapa auto-match nombre_proveedor → subcategoría (mismo criterio que
-        // SiiAutoController/SiiImportarSemana, para mantener consistencia).
-        $mapaSub = DB::table('subcategorias_compras as sc')
-            ->join('categorias_compras as c', 'c.id', '=', 'sc.categoria_id')
-            ->select('sc.id as subcategoria_id', 'sc.categoria_id')
-            ->addSelect(DB::raw('LOWER(TRIM(sc.nombre)) AS nombre_key'))
-            ->get()
-            ->keyBy('nombre_key');
 
         DB::beginTransaction();
         try {
@@ -515,10 +506,14 @@ class SiiController extends Controller
                 $proveedor = $rut ? $this->resolverProveedor($rut, $razonSocial) : null;
                 $tipoDocId = $this->resolverTipoDocumento($tipoDocCodigo);
 
-                $key   = mb_strtolower(trim($razonSocial ?? ''));
-                $match = isset($mapaSub[$key]) ? $mapaSub[$key] : null;
-                $catId    = $match ? $match->categoria_id    : $catIdDef;
-                $subCatId = $match ? $match->subcategoria_id : $subCatIdDef;
+                if ($proveedor && $proveedor->subcategoria_id) {
+                    $subCatRow = DB::table('subcategorias_compras')->where('id', $proveedor->subcategoria_id)->first();
+                    $catId     = $subCatRow ? $subCatRow->categoria_id : $catIdDef;
+                    $subCatId  = $proveedor->subcategoria_id;
+                } else {
+                    $catId    = $catIdDef;
+                    $subCatId = $subCatIdDef;
+                }
 
                 Egreso::create([
                     'tipo_documento_id' => $tipoDocId,

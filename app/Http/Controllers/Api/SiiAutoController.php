@@ -45,28 +45,20 @@ class SiiAutoController extends Controller
         $mes  = (int) ($request->input('mes',  now()->month));
 
         // ── Categoría por defecto (Gastos Variables) ──────────────────────────
-        $catDefault    = DB::table('categorias_compras')->where('nombre', 'Gastos Variables')->first();
-        $subCatDefault = $catDefault
-            ? DB::table('subcategorias_compras')->where('categoria_id', $catDefault->id)->first()
+        $subCatDefault = DB::table('subcategorias_compras')->where('nombre', 'Otros / Varios')->first();
+        $catDefault    = $subCatDefault
+            ? DB::table('categorias_compras')->where('id', $subCatDefault->categoria_id)->first()
             : null;
 
         if (!$catDefault || !$subCatDefault) {
             return response()->json([
                 'ok'    => false,
-                'error' => 'No existe categoría "Gastos Variables" o no tiene subcategorías. Corre el seeder primero.',
+                'error' => 'No existe la subcategoría "Otros / Varios". Corre el seeder primero.',
             ], 500);
         }
 
         $catIdDef    = $catDefault->id;
         $subCatIdDef = $subCatDefault->id;
-
-        // ── Mapa auto-match nombre_proveedor → subcategoría ───────────────────
-        $mapaSub = DB::table('subcategorias_compras as sc')
-            ->join('categorias_compras as c', 'c.id', '=', 'sc.categoria_id')
-            ->select('sc.id as subcategoria_id', 'sc.categoria_id')
-            ->addSelect(DB::raw('LOWER(TRIM(sc.nombre)) AS nombre_key'))
-            ->get()
-            ->keyBy('nombre_key');
 
         // ── Consultar RCV SII ─────────────────────────────────────────────────
         $resultado = $this->sii->listarCompras($anio, $mes);
@@ -96,25 +88,24 @@ class SiiAutoController extends Controller
                     continue;
                 }
 
-                // Auto-match proveedor → subcategoría
-                $key   = mb_strtolower(trim($doc['razon_social'] ?? ''));
-                $match = isset($mapaSub[$key]) ? $mapaSub[$key] : null;
+                // Resolver proveedor
+                $proveedor = $this->resolverProveedor(
+                    $doc['rut_emisor'],
+                    $doc['razon_social'] ?? null
+                );
 
-                if ($match) {
-                    $catId    = $match->categoria_id;
-                    $subCatId = $match->subcategoria_id;
+                // Categoria/subcategoria: usar el mapeo del proveedor (subcategoria_id
+                // en la ficha de Proveedor) si existe; si no, caer al default.
+                if ($proveedor && $proveedor->subcategoria_id) {
+                    $subCatRow = DB::table('subcategorias_compras')->where('id', $proveedor->subcategoria_id)->first();
+                    $catId     = $subCatRow ? $subCatRow->categoria_id : $catIdDef;
+                    $subCatId  = $proveedor->subcategoria_id;
                     $autoMatch++;
                 } else {
                     $catId    = $catIdDef;
                     $subCatId = $subCatIdDef;
                     $sinMatch++;
                 }
-
-                // Resolver proveedor
-                $proveedor = $this->resolverProveedor(
-                    $doc['rut_emisor'],
-                    $doc['razon_social'] ?? null
-                );
 
                 $tipoDocId = $this->resolverTipoDocumento($doc['tipo_documento']);
 
