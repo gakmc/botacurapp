@@ -18,7 +18,7 @@
                 Utilidad — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                Ingresos de la app vs Egresos SII. Utilidad = Ingresos − (Facturas + Honorarios + PPM).
+                Ingresos de la app vs Egresos SII. Utilidad = Ingresos − (Facturas + IVA + Honorarios + PPM).
             </p>
         </div>
         <div class="col s12 m5" style="text-align:right">
@@ -135,7 +135,7 @@
                     {{-- Facturas SII --}}
                     <div style="margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
-                            <a href="{{ route('backoffice.sii.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Facturas SII (compras)</a>
+                            <a href="{{ route('backoffice.sii.detalleMes', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Facturas SII (compras)</a>
                             <span>
                                 <strong>${{ number_format($facturasSii,0,',','.') }}</strong>
                                 <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[0]['pct'] }}%</span>
@@ -200,6 +200,19 @@
                         @endif
                     </div>
 
+                    {{-- IVA compras SII --}}
+                    <div style="margin-bottom:14px">
+                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
+                            <a href="{{ route('backoffice.sii.detalleMes', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">IVA compras (SII)</a>
+                            <span>
+                                <strong>${{ number_format($ivaSii,0,',','.') }}</strong>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[4]['pct'] }}%</span>
+                            </span>
+                        </div>
+                        <div style="background:#e0e0e0;border-radius:4px;height:6px">
+                            <div style="background:#7E57C2;border-radius:4px;height:6px;width:{{ min($breakdown[4]['pct'],100) }}%"></div>
+                        </div>
+                    </div>
                     <div style="border-top:2px solid #ffcdd2;padding-top:10px">
                         <div style="display:flex;justify-content:space-between;font-size:.95rem;font-weight:700">
                             <span style="color:#B71C1C">Total Egresos</span>

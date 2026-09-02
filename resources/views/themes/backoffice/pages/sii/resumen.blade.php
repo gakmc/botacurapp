@@ -82,7 +82,7 @@
                     data-iva="{{ $fila['importado'] ? $fila['iva'] : 0 }}"
                     data-total="{{ $fila['importado'] ? $fila['total'] : 0 }}">
 
-                    <td style="font-weight:500;">{{ $fila['nombre'] }} {{ $anio }}</td>
+                    <td style="font-weight:500;">{{ $fila['nombre'] }}</td>
 
                     <td class="center grey-text celda-docs">
                         {{ $fila['importado'] ? $fila['documentos'] : '—' }}
