@@ -553,19 +553,17 @@ class ReporteFinancieroController extends Controller
         $totalIngresos = $abonos + $consumos + $servicios + $directas;
 
         // ── Egresos del mes ───────────────────────────────────────────────────
-        // 1. Facturas SII (fuente=sii, neto = monto sin IVA)
+        // 1. Facturas SII (fuente=sii). Usa fecha_egreso (fecha real de la
+        // factura), no periodo_sii (fecha de declaracion SII, que se atrasa) -
+        // mismo criterio que resumenMensual/resumenAnual/detalle-mes.
+        // Formula total-iva: neto no siempre suma con iva para dar total.
         $facturasSii = (int) DB::table('egresos')
             ->where('fuente', 'sii')
-            ->where('periodo_sii', $periodoKey)
-            ->sum('neto');
-
-        // Fallback: si no hay columna neto, usar total
-        if ($facturasSii === 0) {
-            $facturasSii = (int) DB::table('egresos')
-                ->where('fuente', 'sii')
-                ->where('periodo_sii', $periodoKey)
-                ->sum('total');
-        }
+            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereNull('reconciliado_con_id')
+            ->selectRaw('SUM(total - COALESCE(iva, 0)) as t')
+            ->value('t');
+        $facturasSii = (int) $facturasSii;
 
         // 2. Honorarios BTE (retenciones)
         $honorariosRetencion = 0;
@@ -622,10 +620,13 @@ class ReporteFinancieroController extends Controller
                 ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
             $ing += (int) DB::table('ventas_directas')->whereBetween('fecha', [$ini, $fin_m])->sum('subtotal');
 
-            $egr = (int) DB::table('egresos')->where('fuente', 'sii')->where('periodo_sii', $per_k)->sum('neto');
-            if ($egr === 0) {
-                $egr = (int) DB::table('egresos')->where('fuente', 'sii')->where('periodo_sii', $per_k)->sum('total');
-            }
+            $egr = (int) DB::table('egresos')
+                ->where('fuente', 'sii')
+                ->whereBetween('fecha_egreso', [$ini, $fin_m])
+                ->whereNull('reconciliado_con_id')
+                ->selectRaw('SUM(total - COALESCE(iva, 0)) as t')
+                ->value('t');
+            $egr = (int) $egr;
             if (Schema::hasTable('honorarios_bte')) {
                 $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
             }
