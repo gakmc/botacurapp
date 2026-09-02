@@ -241,6 +241,40 @@
 
     </div>
 
+    <div class="card" style="border-radius:8px;margin-top:12px;border-left:4px solid #6A1B9A">
+        <div class="card-content" style="padding:16px 20px">
+            <p class="grey-text text-darken-2" style="font-weight:600;margin:0 0 4px;font-size:.95rem">
+                <i class="material-icons tiny">receipt_long</i> IVA segun SII (oficial) &mdash; {{ ucfirst($nombreMes) }}
+            </p>
+            <p class="grey-text" style="margin:0 0 12px;font-size:.78rem">
+                Dato exacto del RCV sincronizado con el SII. Es la antesala de lo que hay que declarar/pagar en el F29 &mdash; no afecta el calculo de Utilidad Neta de arriba (que usa fecha de pago).
+                @if($ultimaSyncSii)
+                    <br>Ultima sincronizacion: {{ $ultimaSyncSii->format('d/m/Y H:i') }}
+                @else
+                    <br><span class="orange-text">Sin sincronizar este periodo &mdash; ve a <a href="{{ route('backoffice.impuesto.index', ['anio'=>$anio,'mes'=>$mes]) }}">F29 Estimado</a> y presiona "Sincronizar Ventas SII".</span>
+                @endif
+            </p>
+            <div class="row" style="margin-bottom:0">
+                <div class="col s6 m3">
+                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA Debito (ventas)</span>
+                    <span style="font-size:1.1rem;font-weight:700;color:#C62828">${{ number_format($ivaDebitoSii,0,',','.') }}</span>
+                </div>
+                <div class="col s6 m3">
+                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA Credito (compras)</span>
+                    <span style="font-size:1.1rem;font-weight:700;color:#388E3C">${{ number_format($ivaCreditoSii,0,',','.') }}</span>
+                </div>
+                <div class="col s12 m6">
+                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA a pagar (Codigo 089)</span>
+                    @if($ivaAPagarSii > 0)
+                        <span style="font-size:1.2rem;font-weight:700;color:#B71C1C">${{ number_format($ivaAPagarSii,0,',','.') }}</span>
+                    @else
+                        <span style="font-size:1.1rem;font-weight:700;color:#2E7D32">Remanente a favor ${{ number_format($ivaRemanenteSii,0,',','.') }}</span>
+                    @endif
+                </div>
+            </div>
+        </div>
+    </div>
+
     {{-- ═══ GRÁFICO ANUAL ═══ --}}
     <div class="card" style="border-radius:8px;margin-top:12px">
         <div class="card-content" style="padding:16px 20px">
