@@ -565,6 +565,13 @@ class ReporteFinancieroController extends Controller
             ->value('t');
         $facturasSii = (int) $facturasSii;
 
+        // 1b. IVA de las facturas SII (impuesto a pagar por las compras)
+        $ivaSii = (int) DB::table('egresos')
+            ->where('fuente', 'sii')
+            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereNull('reconciliado_con_id')
+            ->sum('iva');
+
         // 2. Honorarios BTE (retenciones)
         $honorariosRetencion = 0;
         $honorariosNeto      = 0;
@@ -588,7 +595,7 @@ class ReporteFinancieroController extends Controller
         // 4. PPM estimado (1.5% del total ventas en app — aproximado)
         $ppm = (int) round($totalIngresos * 0.015);
 
-        $totalEgresos = $facturasSii + $honorariosRetencion + $sueldosPagados + $ppm;
+        $totalEgresos = $facturasSii + $ivaSii + $honorariosRetencion + $sueldosPagados + $ppm;
         $utilidad     = $totalIngresos - $totalEgresos;
         $margen       = $totalIngresos > 0 ? round(($utilidad / $totalIngresos) * 100, 1) : 0;
 
@@ -598,6 +605,7 @@ class ReporteFinancieroController extends Controller
             ['label' => 'Honorarios (ret.)',  'monto' => $honorariosRetencion,  'pct' => $totalIngresos > 0 ? round(($honorariosRetencion / $totalIngresos) * 100, 1) : 0],
             ['label' => 'Sueldos',            'monto' => $sueldosPagados,       'pct' => $totalIngresos > 0 ? round(($sueldosPagados / $totalIngresos) * 100, 1) : 0],
             ['label' => 'PPM est.',           'monto' => $ppm,                  'pct' => $totalIngresos > 0 ? round(($ppm / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'IVA compras (SII)',   'monto' => $ivaSii,               'pct' => $totalIngresos > 0 ? round(($ivaSii / $totalIngresos) * 100, 1) : 0],
         ];
 
         // ── Ventas SII del período ────────────────────────────────────────────
@@ -624,9 +632,7 @@ class ReporteFinancieroController extends Controller
                 ->where('fuente', 'sii')
                 ->whereBetween('fecha_egreso', [$ini, $fin_m])
                 ->whereNull('reconciliado_con_id')
-                ->selectRaw('SUM(total - COALESCE(iva, 0)) as t')
-                ->value('t');
-            $egr = (int) $egr;
+                ->sum('total');
             if (Schema::hasTable('honorarios_bte')) {
                 $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
             }

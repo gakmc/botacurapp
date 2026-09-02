@@ -343,7 +343,8 @@ class SiiController extends Controller
         // Datos importados por mes desde egresos con fuente=sii
         $importadosPorMes = Egreso::where('fuente', 'sii')
             ->whereYear('fecha_egreso', $anio)
-            ->selectRaw('MONTH(fecha_egreso) as mes, COUNT(*) as documentos, SUM(COALESCE(neto,0)) as neto, SUM(COALESCE(iva,0)) as iva, SUM(total) as total')
+            ->whereNull('reconciliado_con_id')
+            ->selectRaw('MONTH(fecha_egreso) as mes, COUNT(*) as documentos, SUM(total - COALESCE(iva,0)) as neto, SUM(COALESCE(iva,0)) as iva, SUM(total) as total')
             ->groupBy(DB::raw('MONTH(fecha_egreso)'))
             ->get()
             ->keyBy('mes');
