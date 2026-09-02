@@ -666,13 +666,23 @@ class ReporteFinancieroController extends Controller
             }
         }
 
+        // ── IVA segun SII (RCV oficial, para registro/pre-pago; no afecta Utilidad Neta) ──
+        $resumenSii = \App\SiiResumenMensual::where('periodo', $periodo)->first();
+        $ivaDebitoSii     = $resumenSii ? (int) $resumenSii->iva_debito     : 0;
+        $ivaCreditoSii    = $resumenSii ? (int) $resumenSii->iva_credito    : 0;
+        $ivaDiferenciaSii = $resumenSii ? (int) $resumenSii->iva_diferencia : 0;
+        $ivaAPagarSii     = $ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0;
+        $ivaRemanenteSii  = $ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0;
+        $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
+
         return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
             'anio', 'mes', 'nombreMes', 'mesesNombres',
             'abonos', 'consumos', 'servicios', 'directas',
             'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
             'facturasSii', 'ivaSii', 'honorariosRetencion', 'honorariosNeto',
             'sueldosPagados', 'ppm', 'breakdown',
-            'ventasSii', 'resumenAnual'
+            'ventasSii', 'resumenAnual',
+            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'ultimaSyncSii'
         ));
     }
 
