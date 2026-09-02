@@ -626,6 +626,20 @@ class ReporteFinancieroController extends Controller
                 ->whereYear('reservas.fecha_visita', $anio)
                 ->whereMonth('reservas.fecha_visita', $m)
                 ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
+            $ing += (int) DB::table('detalles_consumos')
+                ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum('detalles_consumos.subtotal');
+            $ing += (int) DB::table('detalle_servicios_extra')
+                ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum('detalle_servicios_extra.subtotal');
             $ing += (int) DB::table('ventas_directas')->whereBetween('fecha', [$ini, $fin_m])->sum('subtotal');
 
             $egr = (int) DB::table('egresos')
