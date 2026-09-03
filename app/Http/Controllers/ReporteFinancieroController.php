@@ -526,7 +526,7 @@ class ReporteFinancieroController extends Controller
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->whereYear('reservas.fecha_visita', $anio)
             ->whereMonth('reservas.fecha_visita', $mes)
-            ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
+            ->sum(DB::raw('ventas.abono_programa + COALESCE(ventas.diferencia_programa,0)'));
 
         $consumos = (int) DB::table('detalles_consumos')
             ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
@@ -625,7 +625,7 @@ class ReporteFinancieroController extends Controller
                 ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
                 ->whereYear('reservas.fecha_visita', $anio)
                 ->whereMonth('reservas.fecha_visita', $m)
-                ->sum(DB::raw('ventas.abono_programa + ventas.diferencia_programa'));
+                ->sum(DB::raw('ventas.abono_programa + COALESCE(ventas.diferencia_programa,0)'));
             $ing += (int) DB::table('detalles_consumos')
                 ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
                 ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
