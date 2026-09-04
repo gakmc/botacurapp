@@ -54,6 +54,7 @@ class BotController extends Controller
     public function programas()
     {
         $rows = DB::table('programas as p')
+            ->where('p.estado', 'activo')
             ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
             ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
             ->select('p.id', 'p.nombre_programa', 'p.slug', 'p.valor_programa', 'p.descuento', 's.nombre_servicio', 's.duracion')
