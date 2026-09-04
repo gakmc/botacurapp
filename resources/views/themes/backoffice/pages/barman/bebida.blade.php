@@ -126,6 +126,42 @@
 <script src='{{ asset('assets/sortable/Sortable.min.js')}}'></script>
 
 <script>
+    // El flujo del garzon (que confirma "entregado") aun no esta en uso, asi que
+    // nada saca los pedidos de "Completado" y la columna crece sin limite. Para no
+    // saturarla: se muestran maximo 3 tarjetas, y si pasan 10 min sin un completado
+    // nuevo (en cualquier dispositivo, via el socket), se limpia la zona.
+    let timerLimpiezaCompletado = null;
+
+    function recortarCompletado() {
+        const lista = document.querySelector('#completado .pedidos');
+        if (!lista) return;
+        while (lista.children.length > 3) {
+            lista.removeChild(lista.firstElementChild);
+        }
+    }
+
+    function reiniciarTimerLimpiezaCompletado() {
+        if (timerLimpiezaCompletado) clearTimeout(timerLimpiezaCompletado);
+        timerLimpiezaCompletado = setTimeout(function () {
+            const lista = document.querySelector('#completado .pedidos');
+            if (lista) lista.innerHTML = '';
+        }, 10 * 60 * 1000);
+    }
+
+    function registrarLlegadaACompletado() {
+        recortarCompletado();
+        reiniciarTimerLimpiezaCompletado();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const lista = document.querySelector('#completado .pedidos');
+        if (lista && lista.children.length) {
+            reiniciarTimerLimpiezaCompletado();
+        }
+    });
+</script>
+
+<script>
 ['completado', 'entregado'].forEach(function (colId) {
 
     const ul = document.querySelector(`#${colId} .pedidos`);
@@ -151,14 +187,28 @@
                 },
                 body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado, origen: origen })
             }).catch(console.error);
+
+            if (nuevoEstado === 'completado') {
+                registrarLlegadaACompletado();
+            }
         }
     });
 });
 </script>
 <script>
-    document.addEventListener('DOMContentLoaded', function () { 
+    document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.Echo !== 'undefined') {
-            // Escuchar cambios de estado            
+            // Si el socket se reconecta (no la conexion inicial), recargamos para
+            // recuperar cualquier evento que se haya perdido mientras estuvo caido.
+            let conectadoAntes = false;
+            window.Echo.connector.pusher.connection.bind('connected', () => {
+                if (conectadoAntes) {
+                    location.reload();
+                }
+                conectadoAntes = true;
+            });
+
+            // Escuchar cambios de estado
             window.Echo.channel('consumo-canal-actualizar')
             .listen('Consumos.EstadoConsumoActualizado', (e) => {
 
@@ -207,6 +257,10 @@
 
                 // mover a la columna destino
                 nuevaLista.appendChild(pedidoEl);
+
+                if (nuevoEstado === 'completado') {
+                    registrarLlegadaACompletado();
+                }
 
                 estado = "";
 
@@ -280,79 +334,6 @@
 </script>
 
 
-{{-- <script>
-    document.addEventListener('DOMContentLoaded', function () { 
-        if (typeof window.Echo !== 'undefined') {
-            // Escuchar cambios de estado            
-            window.Echo.channel('consumo-canal-actualizar')
-            .listen('Consumos.EstadoConsumoActualizado', (e) => {
-                const audio = new Audio('/sounds/notificacionv2.mp3');
-
-                // const pedidoId    = e.detalleId; // en tu evento ahora viaja id_consumo
-                const nuevoEstado = e.estado;
-
-                const pedidoKey = e.detalleId;
-
-                const pedidoEl = document.querySelector(`[data-pedido-key="${pedidoKey}"]`);
-                const nuevaLista = document.querySelector(`#${nuevoEstado} .pedidos`);
-
-                if (!pedidoEl || !nuevaLista) return;
-
-                // Si el garzón marca entregado, en barman debe desaparecer:
-                if (nuevoEstado === 'entregado') {
-                    pedidoEl.remove();
-                    return;
-                }
-
-                nuevaLista.appendChild(pedidoEl);
-
-                audio.play();
-
-                // Mostrar un toast
-                const Toast = Swal.mixin({
-                    toast: true,
-                    position: "top-right",
-                    showConfirmButton: false,
-                    timer: 3000,
-                    timerProgressBar: true,
-                    didOpen: (toast) => {
-                        toast.onmouseenter = Swal.stopTimer;
-                        toast.onmouseleave = Swal.resumeTimer;
-                    }
-                });
-
-                let estado = "";
-                switch (nuevoEstado) {
-                    case 'por-procesar':
-                        estado = 'Pedido por procesar';
-                        break;
-
-                    case 'en-preparacion':
-                        estado = 'Preparando pedido';
-                        break;
-
-                    case 'completado':
-                        estado = 'Pedido completado';
-                        break;
-
-                    case 'entregado':
-                        estado = 'Pedido entregado al cliente';
-                        break;
-                        
-                    default:
-                        estado = 'Estado desconocido';
-                        break;
-                }
-
-                Toast.fire({
-                    icon: "success",
-                    title: estado
-                });
-            });
-        }
-    });
-</script> --}}
-
 <script>
     $(document).ready(function () {
         
@@ -364,66 +345,4 @@
     
     });
 </script>
-
-{{-- <script>
-    document.addEventListener('DOMContentLoaded', function () { 
-        if (typeof window.Echo !== 'undefined') {
-            // Escuchar cambios de estado            
-            window.Echo.channel('consumo-canal-actualizar')
-            .listen('Consumos.EstadoConsumoActualizado', (e) => {
-
-                const detalleId = e.detalleId;
-                const nuevoEstado = e.estado;
-                
-
-
-                // Encontrar el elemento actual
-                const elemento = document.querySelector(`[data-id="${detalleId}"]`);
-                
-                if (elemento) {
-                    // Mover el elemento a la nueva lista
-                    const nuevaLista = document.querySelector(`#${nuevoEstado} .collection`);
-                    nuevaLista.appendChild(elemento);
-                }
-
-                estado = "";
-
-                switch (nuevoEstado) {
-                    case 'completado':
-                        estado = 'Pedido completado';
-                        break;
-
-                    case 'entregado':
-                        estado = 'Pedido Entregado';
-                        break;
-                
-                    default:
-                        estado = 'Estado desconocido';
-                        break;
-                }
-                
-
-                const Toast = Swal.mixin({
-                        toast: true,
-                        position: "top-right",
-                        showConfirmButton: false,
-                        timer: 3000,
-                        timerProgressBar: true,
-                        didOpen: (toast) => {
-                            toast.onmouseenter = Swal.stopTimer;
-                            toast.onmouseleave = Swal.resumeTimer;
-                        }
-                    });
-            
-                    Toast.fire({
-                        icon: "success",
-                        title: estado
-                    });
-
-
-            });
-
-        }
-     });
-</script> --}}
 @endsection

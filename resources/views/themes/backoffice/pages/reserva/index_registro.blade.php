@@ -40,6 +40,20 @@
             <div id="work-collections">
                 <div class="row">
 
+                  @php
+                      $totalDesayunos = 0;
+                      $totalOnces = 0;
+                      foreach ($reservas as $reservaBuffet) {
+                          foreach ($reservaBuffet->desayunoOnce as $itemBuffet) {
+                              if ($itemBuffet->tipo === 'desayuno') {
+                                  $totalDesayunos += (int) ($reservaBuffet->cantidad_personas ?? 0);
+                              } elseif ($itemBuffet->tipo === 'once') {
+                                  $totalOnces += (int) ($reservaBuffet->cantidad_personas ?? 0);
+                              }
+                          }
+                      }
+                  @endphp
+
                   <div class="col s12 m4 l4">
                     <ul class="collection">
                         <li class="collection-item avatar">
@@ -60,6 +74,24 @@
                   </div>
 
                 </div>
+
+                @if ($totalDesayunos > 0 || $totalOnces > 0)
+                <div class="row">
+
+                  @if ($totalDesayunos > 0)
+                  <div class="col s12 m4 l4">
+                    @include('themes.backoffice.pages.reserva.includes.desayuno_once_card', ['titulo' => 'Desayuno', 'total' => $totalDesayunos])
+                  </div>
+                  @endif
+
+                  @if ($totalOnces > 0)
+                  <div class="col s12 m4 l4 offset-m4">
+                    @include('themes.backoffice.pages.reserva.includes.desayuno_once_card', ['titulo' => 'Once', 'total' => $totalOnces])
+                  </div>
+                  @endif
+
+                </div>
+                @endif
                                 <a href="#modalSaunaDisponible" data-target="modal-sauna-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Horas Disponibles <i class='material-icons right'>access_time</i></a>
                                 <a href="#modalLugaresDisponible" data-target="modal-lugares-disponible" class="waves-effect waves-light btn modal-trigger right hide-on-small-only hide-on-med-only">Lugares Disponibles <i class='material-icons right'>beach_access</i></a>
             </div>

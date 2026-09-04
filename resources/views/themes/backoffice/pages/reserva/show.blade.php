@@ -31,6 +31,14 @@
     <li><a href="{{ route('backoffice.reserva.menus', $reserva) }}" class="grey-text text-darken-2">Editar Menú</a></li>
   @endif
 
+  @php
+    $serviciosPrograma = $reserva->programa->servicios->pluck('nombre_servicio');
+    $incluyeUnoBuffet = $serviciosPrograma->contains('Desayuno u Once');
+  @endphp
+  @if ($incluyeUnoBuffet)
+    <li><a href="{{ route('backoffice.reserva.desayuno_once', $reserva) }}" class="grey-text text-darken-2">Editar Desayuno/Once</a></li>
+  @endif
+
 
 
   @if (Auth::user()->has_role(config('app.admin_role')))

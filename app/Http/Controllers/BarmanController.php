@@ -41,6 +41,7 @@ class BarmanController extends Controller
                 'detalles_consumos.id as id',
                 'detalles_consumos.subtotal',
                 'detalles_consumos.created_at as creado',
+                'detalles_consumos.updated_at as actualizado',
                 'productos.nombre as producto',
                 'reservas.fecha_visita',
                 'tipos_productos.nombre as categoria',
@@ -69,11 +70,42 @@ class BarmanController extends Controller
                 return $porEstado->groupBy('pedido_key');
             });
 
+        if (isset($pedidos['completado'])) {
+            $pedidos['completado'] = $this->limitarUltimosCompletados($pedidos['completado']);
+        }
+
         return view('themes.backoffice.pages.barman.index', [
             'productos' => $productos,
             'pedidos' => $pedidos,
         ]);
 
+    }
+
+    /**
+     * Mientras el flujo del garzon (que confirma "entregado") no este en uso, nada saca
+     * los pedidos de "completado" y la columna crece sin limite. Para no saturar la
+     * pantalla de la barra: se muestran solo los ultimos 3 pedidos completados, y si el
+     * mas reciente ya tiene mas de 10 minutos, se considera inactivo y se limpia la zona.
+     *
+     * @param \Illuminate\Support\Collection $completadosPorPedidoKey
+     */
+    private function limitarUltimosCompletados($completadosPorPedidoKey)
+    {
+        if ($completadosPorPedidoKey->isEmpty()) {
+            return $completadosPorPedidoKey;
+        }
+
+        $ordenados = $completadosPorPedidoKey->sortByDesc(function ($items) {
+            return $items->max('actualizado');
+        });
+
+        $masReciente = Carbon::parse($ordenados->first()->max('actualizado'));
+
+        if ($masReciente->lt(Carbon::now()->subMinutes(10))) {
+            return collect();
+        }
+
+        return $ordenados->take(3);
     }
 
     /**
@@ -97,6 +129,7 @@ class BarmanController extends Controller
                 'detalles_ventas_directas.estado as estado',
                 'detalles_ventas_directas.subtotal',
                 'detalles_ventas_directas.created_at as creado',
+                'detalles_ventas_directas.updated_at as actualizado',
                 'productos.nombre as producto',
                 'tipos_productos.nombre as categoria',
                 'ventas_directas.id as venta_directa_id'
@@ -335,6 +368,7 @@ class BarmanController extends Controller
                 'detalles_consumos.id as id',
                 'detalles_consumos.subtotal',
                 'detalles_consumos.created_at as creado',
+                'detalles_consumos.updated_at as actualizado',
                 'productos.nombre as producto',
                 'reservas.fecha_visita',
                 'tipos_productos.nombre as categoria',
@@ -365,6 +399,10 @@ class BarmanController extends Controller
             ->map(function ($porEstado) {
                 return $porEstado->groupBy('pedido_key');
             });
+
+        if (isset($pedidos['completado'])) {
+            $pedidos['completado'] = $this->limitarUltimosCompletados($pedidos['completado']);
+        }
 
         return view('themes.backoffice.pages.barman.bebida', [
             'productos' => $productos,

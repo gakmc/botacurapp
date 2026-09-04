@@ -178,7 +178,7 @@
 
                             <div class="row">
                                 <div class="input-field col s12">
-                                    <button class="btn waves-effect waves-light right" type="submit">Generar
+                                    <button id="btn-guardar-venta" class="btn waves-effect waves-light right" type="submit">Generar
                                         <i class="material-icons right">send</i>
                                     </button>
                                 </div>
@@ -199,6 +199,16 @@
     $(document).ready(function() {
         $('select').material_select();
     });
+</script>
+
+<script>
+  $(document).ready(function () {
+    $('form').on('submit', function () {
+      const $btn = $('#btn-guardar-venta');
+      $btn.prop('disabled', true);
+      $btn.html('<i class="material-icons left">hourglass_empty</i>Generando...');
+    });
+  });
 </script>
 
 <script>
