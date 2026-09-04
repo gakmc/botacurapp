@@ -366,6 +366,14 @@ class BotReservaController extends Controller
      */
     private function verificarDisponibilidad(string $fecha, int $programaId, int $personas)
     {
+        // Criterio 0: la fecha debe estar habilitada por el staff (calendario
+        // admin, tabla fecha_disponibles). Sin este check el bot podia crear
+        // reservas para dias marcados como no disponibles.
+        $habilitada = \App\FechaDisponible::where('fecha', $fecha)->where('habilitada', true)->exists();
+        if (!$habilitada) {
+            return ['disponible' => false, 'motivo' => 'Ese día no está habilitado para reservas.'];
+        }
+
         $capacidad = [
             'estacion_economico'  => 2,
             'estacion_intermedio' => 2,

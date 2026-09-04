@@ -126,6 +126,21 @@ class BotController extends Controller
             ]);
         }
 
+        // Verificar que el dia este habilitado por el staff (calendario admin,
+        // tabla fecha_disponibles). Antes de este fix el bot ignoraba por
+        // completo los dias marcados como no habilitados (mantencion, feriados
+        // internos, etc) y podia seguir tomando reservas para esas fechas.
+        $habilitada = \App\FechaDisponible::where('fecha', $fecha)->where('habilitada', true)->exists();
+        if (!$habilitada) {
+            return response()->json([
+                'disponible'        => false,
+                'fecha'             => $fecha,
+                'mensaje'           => 'Ese día no está habilitado para reservas.',
+                'cupos_disponibles' => 0,
+                'reservas_actuales' => 0,
+            ]);
+        }
+
         // Si viene programa_id, usar la lógica de DisponibilidadController
         if ($request->filled('programa_id')) {
             return app(DisponibilidadController::class)->check($request);
