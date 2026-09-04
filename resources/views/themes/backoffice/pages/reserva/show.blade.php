@@ -249,6 +249,7 @@
                   @endif
                   @if ($reserva->visitas->isEmpty())
                       <h6>Aún no se registra la visita para esta reserva</h6>
+                      <a href="{{ route('backoffice.reserva.visitas.create', $reserva) }}" class="btn waves-effect waves-light">Crear Visita (horarios y menú)</a>
                   @else
                       @php
                         $mostrados = [];
