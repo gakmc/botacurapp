@@ -19,6 +19,7 @@ use App\Programa;
 use App\Propina;
 use App\Reagendamiento;
 use App\Reserva;
+use App\ReservaDesayunoOnce;
 use App\Servicio;
 use App\TipoMasaje;
 use App\TipoTransaccion;
@@ -1462,6 +1463,7 @@ class ReservaController extends Controller
                 'menus',
                 'programa',
                 'venta',
+                'desayunoOnce',
             ])
             ->when($fechaFiltro, function ($query, $fechaFiltro) {
                 return $query->whereDate('fecha_visita', Carbon::parse($fechaFiltro)->format('Y-m-d'));
@@ -1791,6 +1793,56 @@ class ReservaController extends Controller
             ]);
 
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar los menús. '.$e->getMessage());
+        }
+    }
+
+    public function desayunoOnce(Reserva $reserva)
+    {
+        $servicios    = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $incluyeUno   = in_array('Desayuno u Once', $servicios);
+
+        if (! $incluyeUno) {
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])
+                ->with('info', 'El programa no incluye la opción Desayuno u Once para esta reserva.');
+        }
+
+        $tipoActual = $reserva->desayunoOnce()->whereIn('tipo', ['desayuno', 'once'])->pluck('tipo')->first();
+
+        return view('themes.backoffice.pages.reserva.desayuno_once.edit', [
+            'reserva'    => $reserva,
+            'tipoActual' => $tipoActual,
+        ]);
+    }
+
+    public function desayunoOnceUpdate(Request $request, Reserva $reserva)
+    {
+        $servicios  = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $incluyeUno = in_array('Desayuno u Once', $servicios);
+
+        if (! $incluyeUno) {
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])
+                ->with('info', 'El programa no incluye la opción Desayuno u Once para esta reserva.');
+        }
+
+        $request->validate([
+            'desayuno_once' => 'required|in:desayuno,once',
+        ], [
+            'desayuno_once.required' => 'Debes seleccionar Desayuno u Once.',
+            'desayuno_once.in'       => 'La opción seleccionada no es válida.',
+        ]);
+
+        try {
+            $reserva->desayunoOnce()->delete();
+
+            ReservaDesayunoOnce::create([
+                'id_reserva' => $reserva->id,
+                'tipo'       => $request->input('desayuno_once'),
+            ]);
+
+            return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Desayuno/Once actualizado correctamente.');
+
+        } catch (\Exception $e) {
+            return redirect()->back()->with('error', 'Ocurrió un error al actualizar Desayuno/Once.');
         }
     }
 

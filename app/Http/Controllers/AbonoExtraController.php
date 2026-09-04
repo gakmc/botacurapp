@@ -2,10 +2,13 @@
 namespace App\Http\Controllers;
 
 use App\AbonoExtra;
+use App\Mail\AbonoExtraEliminadoMailable;
+use App\Mail\AbonoExtraMailable;
 use App\Reserva;
 use App\TipoTransaccion;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Mail;
 
 class AbonoExtraController extends Controller
 {
@@ -32,8 +35,8 @@ class AbonoExtraController extends Controller
             'folio'               => 'nullable|string',
         ]);
 
-        DB::transaction(function () use ($request, $venta) {
-            AbonoExtra::create([
+        $abonoExtra = DB::transaction(function () use ($request, $venta) {
+            $abonoExtra = AbonoExtra::create([
                 'id_venta'             => $venta->id,
                 'monto'                => $request->monto,
                 'fecha_abono'          => $request->fecha_abono,
@@ -43,19 +46,43 @@ class AbonoExtraController extends Controller
             ]);
 
             $venta->decrement('total_pagar', $request->monto);
+
+            return $abonoExtra;
         });
 
-        return redirect()->route('backoffice.reserva.abonos.index', $reserva)->with('success', 'Abono registrado exitosamente.');
+        $cliente = $reserva->cliente;
+
+        if ($cliente && $cliente->correo) {
+            $abonoExtra->load('tipoTransaccion');
+            Mail::to($cliente->correo)->send(new AbonoExtraMailable($abonoExtra, $reserva, $cliente, $venta->fresh()));
+        }
+
+        return redirect()->route('backoffice.reserva.show', $reserva)->with('success', 'Abono registrado exitosamente.');
     }
 
     public function destroy(AbonoExtra $abonoExtra)
     {
-        $reserva = $abonoExtra->venta->reserva;
+        $abonoExtra->load('tipoTransaccion', 'venta.reserva.cliente');
+
+        $venta = $abonoExtra->venta;
+        $reserva = $venta->reserva;
+        $cliente = $reserva->cliente;
+
+        $datosAbono = [
+            'monto'            => $abonoExtra->monto,
+            'fecha_abono'      => $abonoExtra->fecha_abono,
+            'tipo_transaccion' => $abonoExtra->tipoTransaccion->nombre,
+            'folio'            => $abonoExtra->folio,
+        ];
 
         DB::transaction(function () use ($abonoExtra) {
             $abonoExtra->venta->increment('total_pagar', $abonoExtra->monto);
             $abonoExtra->delete();
         });
+
+        if ($cliente && $cliente->correo) {
+            Mail::to($cliente->correo)->send(new AbonoExtraEliminadoMailable($datosAbono, $reserva, $cliente, $venta->fresh()));
+        }
 
         return redirect()->route('backoffice.reserva.abonos.index', $reserva)->with('success', 'Abono eliminado exitosamente.');
     }

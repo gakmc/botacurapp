@@ -88,6 +88,31 @@ class WooCommerceService
     }
 
     /**
+     * Pasa el producto a borrador (draft) en WC, sin borrarlo.
+     * Se usa cuando un programa pasa a "solo_plataforma" pero ya tenía
+     * un producto publicado en WooCommerce de antes.
+     * No hace nada si el programa no tiene wc_product_id.
+     */
+    public function draftProduct(Programa $programa): void
+    {
+        if (!$programa->wc_product_id) {
+            return;
+        }
+
+        try {
+            $this->client->put("products/{$programa->wc_product_id}", [
+                'json' => ['status' => 'draft'],
+            ]);
+
+            Log::info("[WC-Sync] ✓ Producto pasado a borrador | ID WC: {$programa->wc_product_id} | {$programa->nombre_programa}");
+
+        } catch (RequestException $e) {
+            $this->logError('draftProduct', $programa, $e);
+            throw $e;
+        }
+    }
+
+    /**
      * Obtiene los datos actuales de un producto en WC.
      */
     public function getProduct(int $wcProductId): array

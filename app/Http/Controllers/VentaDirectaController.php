@@ -11,6 +11,7 @@ use App\TipoTransaccion;
 use App\VentaDirecta;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use RealRashid\SweetAlert\Facades\Alert;
 
@@ -94,6 +95,15 @@ class VentaDirectaController extends Controller
         $productosAñadidos = array_filter($request->productos, function ($producto) {
             return isset($producto['cantidad']) && $producto['cantidad'] > 0;
         });
+
+        // Evita registrar la misma venta directa dos veces si el formulario se
+        // reenvía por doble clic o por recarga tras una respuesta lenta.
+        $idempotencyKey = 'venta_directa_store_' . auth()->id() . '_' . md5(json_encode($productosAñadidos) . $request->total);
+        if (Cache::has($idempotencyKey)) {
+            Alert::info('Aviso', 'Esta venta ya fue registrada hace unos segundos.', 'Confirmar')->showConfirmButton();
+            return redirect()->route('backoffice.venta_directa.index');
+        }
+        Cache::put($idempotencyKey, true, 10);
 
         $productos=[];
         $cliente=null;

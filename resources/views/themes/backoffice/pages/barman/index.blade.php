@@ -25,26 +25,10 @@
 
                     <div class="row">
                         <!-- Por Procesar -->
-                        {{-- <div class="col s12 m4" id="por-procesar">
-                            <h5>Por Procesar</h5>
-                            <ul class="collection">
-                                @foreach($productos->where('estado', 'por-procesar')->sortBy('creado') as $producto)
-                                    <li class="collection-item avatar" data-id="{{ $producto->id }}">
-                                        <i class="material-icons circle red">local_drink</i>
-                                        <span class="title">{{ $producto->producto }} X{{$producto->cantidad_producto }}</span>
-                                        <p>
-                                            Cliente: {{ $producto->nombre_cliente }} <br>
-                                            Ubicacion: {{ $producto->ubicacion }}
-                                        </p>
-                                    </li>
-                                @endforeach
-                            </ul>
-                        </div> --}}
-
 <div class="col s12 m4" id="por-procesar">
   <h5>Por Procesar</h5>
 
-  {{-- LISTA EXTERNA: pedidos --}}
+  <!-- LISTA EXTERNA: pedidos -->
   <ul class="collection pedidos">
     @foreach(($pedidos['por-procesar'] ?? collect()) as $idConsumo => $items)
         @php 
@@ -62,7 +46,7 @@
             <div style="font-weight:600;">{{ $first->nombre_cliente }} <small class="grey-text">| {{ \Carbon\Carbon::parse($first->creado)->format("H:i")  }}</small></div>
             <div class="grey-text text-darken-1">Ubicación: {{ $first->ubicacion }}</div>
 
-            {{-- LISTA INTERNA: productos --}}
+            <!-- LISTA INTERNA: productos -->
             <ul class="productos">
               @foreach($items as $p)
                 <li data-detalle-id="{{ $p->id }}">
@@ -158,35 +142,40 @@
 @section('foot')
 <script src='{{ asset('assets/sortable/Sortable.min.js')}}'></script>
 
-{{-- <script>
-    ['por-procesar', 'en-preparacion', 'completado'].forEach(function (id) {
-        new Sortable(document.getElementById(id).querySelector('.collection'), {
-            group: 'shared',
-            animation: 150,
-            onEnd: function (evt) {
-                const detalleId = evt.item.getAttribute('data-id');
-                const nuevoEstado = evt.to.parentNode.id;
+<script>
+    /*
+        El flujo del garzon (que confirma "entregado" en /barman/bebidas) aun no esta en uso, asi que nada saca los pedidos de "Completado" en esta pantalla. Para no saturarla: se muestran maximo 3 tarjetas, y si pasan 10 min sin un completado nuevo (en cualquier dispositivo, via el socket), se limpia la zona.
+    */
+    let timerLimpiezaCompletado = null;
 
-                
+    function recortarCompletado() {
+        const lista = document.querySelector('#completado .pedidos');
+        if (!lista) return;
+        while (lista.children.length > 3) {
+            lista.removeChild(lista.firstElementChild);
+        }
+    }
 
-                // Actualizar estado en el servidor
-                fetch('barman/detalles-consumos/' + detalleId + '/actualizar-estado', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': '{{ csrf_token() }}'
-                    },
-                    body: JSON.stringify({ estado: nuevoEstado })
-                }).then(response => {
-                    if (!response.ok) {
-                        console.error('Error al actualizar el estado');
-                    }
-                }).catch(error => console.error(error));
-            }
-        });
+    function reiniciarTimerLimpiezaCompletado() {
+        if (timerLimpiezaCompletado) clearTimeout(timerLimpiezaCompletado);
+        timerLimpiezaCompletado = setTimeout(function () {
+            const lista = document.querySelector('#completado .pedidos');
+            if (lista) lista.innerHTML = '';
+        }, 10 * 60 * 1000);
+    }
+
+    function registrarLlegadaACompletado() {
+        recortarCompletado();
+        reiniciarTimerLimpiezaCompletado();
+    }
+
+    document.addEventListener('DOMContentLoaded', function () {
+        const lista = document.querySelector('#completado .pedidos');
+        if (lista && lista.children.length) {
+            reiniciarTimerLimpiezaCompletado();
+        }
     });
-</script> --}}
-
+</script>
 
 <script>
     ['por-procesar','en-preparacion','completado'].forEach(function(colId){
@@ -214,6 +203,10 @@
                     },
                     body: JSON.stringify({ estado: nuevoEstado, pedido_creado: pedidoCreado, origen: origen })
                 }).catch(console.error);
+
+                if (nuevoEstado === 'completado') {
+                    registrarLlegadaACompletado();
+                }
                 }
             });
         });
@@ -223,6 +216,16 @@
 <script>
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.Echo !== 'undefined') {
+            // Si el socket se reconecta (no la conexion inicial), recargamos para
+            // recuperar cualquier evento que se haya perdido mientras estuvo caido.
+            let conectadoAntes = false;
+            window.Echo.connector.pusher.connection.bind('connected', () => {
+                if (conectadoAntes) {
+                    location.reload();
+                }
+                conectadoAntes = true;
+            });
+
             window.Echo.channel('consumo-canal')
                 .listen('Consumos.NuevoConsumoAgregado', (e) => {
                     // Mostrar el Sweet Alert
@@ -245,15 +248,8 @@
 
                     const audio = new Audio('/sounds/notificacionv2.mp3');
                     audio.play();
-                    
-                    // // Recargar la página después de mostrar el Toast
-                    // setTimeout(() => {
-                    //     location.reload();
-                    // }, 3000); // Espera 3 segundos (3000ms) para recargar la página
-
 
                 // Agregar nuevo consumo a la lista "Por Procesar"
-                // const listaPorProcesar = document.querySelector('#por-procesar .collection');
                 const listaPorProcesar = document.querySelector('#por-procesar .pedidos');
 
                 // OJO: NuevoConsumoAgregado NO trae e.producto, trae e.productos[]
@@ -330,6 +326,9 @@
                 const nuevaLista = document.querySelector(`#${nuevoEstado} .pedidos`);
                 if (nuevaLista) nuevaLista.appendChild(pedidoEl);
 
+                if (nuevoEstado === 'completado') {
+                    registrarLlegadaACompletado();
+                }
 
                 estado = "";
 

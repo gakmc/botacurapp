@@ -235,6 +235,8 @@ Route::get('/prueba-certificado', function () {
 });
 
 Route::get('/email', [EmailPreviewController::class, 'preview']);
+Route::get('/email/abono-extra', [EmailPreviewController::class, 'previewAbonoExtra']);
+Route::get('/email/abono-extra-eliminado', [EmailPreviewController::class, 'previewAbonoExtraEliminado']);
 
 Route::get('/emitir', function () {
     event(new EjemploEvento('Hola, WebSocket!'));
@@ -565,6 +567,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('reserva/{reserva}/masajes', 'ReservaController@masaje')->name('reserva.masajes');
     Route::match(['put', 'patch'], 'reserva/{reserva}/masaje_update', 'ReservaController@masaje_update')->name('reserva.masaje_update');
+
+    Route::get('reserva/{reserva}/desayuno_once', 'ReservaController@desayunoOnce')->name('reserva.desayuno_once');
+    Route::match(['put', 'patch'], 'reserva/{reserva}/desayuno_once_update', 'ReservaController@desayunoOnceUpdate')->name('reserva.desayuno_once_update');
 
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
 
