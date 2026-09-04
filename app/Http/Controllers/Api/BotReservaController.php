@@ -226,6 +226,33 @@ class BotReservaController extends Controller
             }
         }
 
+        // ── 8b. Crear Visita placeholder (horarios/menu editables en backoffice) ──
+        // Replica el mismo flujo que sigue el staff manualmente via
+        // VisitaController@store cuando no ingresa horarios especificos: crea
+        // Visita(s), Masaje(s) y Menu(s) "placeholder" (null/vacios) para que
+        // la reserva quede lista para edicion en el backoffice, igual que una
+        // reserva creada manualmente. Nunca debe afectar la respuesta al bot.
+        try {
+            $visitaRequest = \App\Http\Requests\Visita\StoreRequest::create(
+                '/reserva/' . $reservaId . '/visitas',
+                'POST',
+                ['trago_cortesia' => 'No']
+            );
+            $visitaRequest->setContainer(app());
+            $visitaRequest->setRedirector(app(\Illuminate\Routing\Redirector::class));
+            $visitaRequest->validateResolved();
+
+            $reservaModel = \App\Reserva::find($reservaId);
+            if ($reservaModel) {
+                app(\App\Http\Controllers\VisitaController::class)->store($visitaRequest, $reservaModel);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[BotReserva] No se pudo auto-crear la visita placeholder', [
+                'reserva_id' => $reservaId,
+                'error'      => $e->getMessage(),
+            ]);
+        }
+
         Log::info('BotReservaController: reserva creada', [
             'reserva_id'     => $reservaId,
             'venta_id'       => $ventaId,
