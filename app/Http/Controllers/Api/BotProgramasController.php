@@ -37,6 +37,7 @@ class BotProgramasController extends Controller
     {
         // ── Cargar programas activos con sus servicios ────────────────────────
         $programas = DB::table('programas as p')
+            ->where('p.estado', 'activo')
             ->leftJoin('programa_servicio as ps', 'ps.id_programa', '=', 'p.id')
             ->leftJoin('servicios as s', 's.id', '=', 'ps.id_servicio')
             ->select(
