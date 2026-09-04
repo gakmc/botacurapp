@@ -152,9 +152,9 @@ Route::middleware('auth.apikey')->group(function () {
 
 // -------------------------------------------------------------------------
 // Bot WhatsApp / Instagram — Claude AI (n8n)
-// Protegido por X-Bot-Secret header (validado dentro del controlador)
+// Protegido por middleware bot.token (header X-Bot-Token == BOT_API_TOKEN)
 // -------------------------------------------------------------------------
-Route::prefix('bot-ai')->namespace('Api')->group(function () {
+Route::prefix('bot-ai')->namespace('Api')->middleware('bot.token')->group(function () {
     Route::get('ping', 'BotController@ping')->name('bot-ai.ping');
     Route::get('programas', 'BotProgramasController@index')->name('bot-ai.programas');
     Route::get('disponibilidad', 'BotController@disponibilidad')->name('bot-ai.disponibilidad');
