@@ -156,6 +156,24 @@ class PagoController extends Controller
             $this->enviarMensajeWhatsApp($telefono, $mensajeMenu);
             $this->enviarDocumentoWhatsApp($telefono, url('/docs/menu-otono-2026.pdf'), 'Menu-Otono-2026.pdf');
 
+            // Informacion practica de la visita (que traer, direccion, hora de llegada),
+            // mismo texto probado que usa el equipo manualmente.
+            $mensajeBienvenida = "Para que puedan disfrutar al máximo de su visita, les recomendamos traer lo siguiente:\n\n"
+                . "🩴 Sandalias\n"
+                . "👙 Traje de baño\n"
+                . "🧖‍♀️ Toalla y/o bata\n"
+                . "👕 Ropa de muda\n"
+                . "🧥 Ropa abrigada, mantas o frazadas, especialmente para la mañana y el final de la tarde en días fríos\n\n"
+                . "ℹ️ Información importante:\n\n"
+                . "🕙 Pueden ingresar a partir de las 10:00 am. Les sugerimos llegar 15 minutos antes de su horario agendado para el sauna, tinaja o masaje, para aprovechar al máximo su tiempo y no tener descuentos de minutos en su servicio.\n\n"
+                . "🚫 No está permitido el ingreso de alcohol al recinto.\n"
+                . "💍 Para el ingreso a la sala de masaje, no debe ingresar con collares, anillos o relojes.\n\n"
+                . "📍 Para llegar a Botacura, pueden buscarnos en Google Maps como \"Botacura\", estamos ubicados en el sector El Manzano, antes del Puente Colorado.\n"
+                . "📱 Por favor, avísenos por WhatsApp cuando estén cerca para que nuestras anfitrionas puedan recibirlos con una cálida bienvenida. 😊\n\n"
+                . "¡Esperamos verlos pronto y compartir con ustedes un día lleno de paz y tranquilidad en Botacura! 🌸\n\n"
+                . "📍 Botacura - Cajón del Maipo: https://goo.gl/maps/Nhtf4DdQKSoGDXje7";
+            $this->enviarMensajeWhatsApp($telefono, $mensajeBienvenida);
+
         } catch (\Exception $e) {
             Log::error('[Pago] Error notificando pago: ' . $e->getMessage());
         }

@@ -345,6 +345,11 @@ class WhatsAppWebhookController extends Controller
                     . "\"confirmada\" o \"asegurada\", ni apruebes ni niegues montos o diferencias tú "
                     . "mismo — eso lo define el equipo, no tú.]";
             }
+
+            return "[Sistema-comprobante-error: Tu comprobante para la reserva N°{$ventaPendiente->reserva_id} "
+                . "no se pudo guardar por un problema técnico. Pide al cliente que lo reenvíe en unos minutos, "
+                . "o que lo mande a hola@botacura.cl. NUNCA digas que la reserva quedó confirmada ni que el "
+                . "pago fue recibido mientras esto no se resuelva.]";
         }
 
         // Describir con Claude Vision (caso general: no hay venta pendiente de pago)
