@@ -15,6 +15,7 @@ class Kernel extends ConsoleKernel
     protected $commands = [
         \App\Console\Commands\CerrarSueldosSemanal::class,
         \App\Console\Commands\CerrarSueldosMasoterapeutas::class,
+        \App\Console\Commands\ExpirarReservaHolds::class,
     ];
 
     /**
@@ -38,6 +39,11 @@ class Kernel extends ConsoleKernel
         $schedule->command('reservas:enviar-recordatorios')
                 ->dailyAt('10:00')
                 ->timezone('America/Santiago');
+
+        // Libera cupos "apartados" (hold) por transferencia que nunca
+        // recibieron el comprobante dentro del tiempo limite.
+        $schedule->command('reservaholds:expirar')
+                ->everyFiveMinutes();
 
         // ── Sincronización SII, domingos, terminando antes del cierre de
         //    sueldos de las 21:00. Orden importa: compras y honorarios

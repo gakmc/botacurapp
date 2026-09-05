@@ -232,10 +232,83 @@ class WhatsAppWebhookController extends Controller
             return null;
         }
 
-        // Si el cliente tiene una venta pendiente de pago, tratamos esta imagen
-        // como comprobante de transferencia: se guarda el archivo real, se extraen
-        // datos de referencia (monto, fecha, hora, N° operación) con Claude Vision,
-        // y queda en revision manual del staff (backoffice > verificacion de pagos).
+        // Si el cliente tiene un HOLD activo (reserva por transferencia aun no
+        // materializada, esperando comprobante), esta imagen ES su comprobante:
+        // recien ahora se crea la reserva/venta real y se le adjunta el archivo.
+        // Si el hold ya vencio, se avisa en vez de tratar la imagen como pago valido.
+        $holdPendiente = $this->buscarHoldPendiente($telefono);
+        if ($holdPendiente) {
+            if (\Carbon\Carbon::parse($holdPendiente->expira_en)->isPast()) {
+                DB::table('reserva_holds')->where('id', $holdPendiente->id)->update([
+                    'estado' => 'expirado', 'updated_at' => now(),
+                ]);
+                if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+                Log::info('[WhatsApp] Hold expirado antes de recibir comprobante', ['hold_id' => $holdPendiente->id]);
+                return "[Sistema-hold-expirado: El cupo temporal (hold N°{$holdPendiente->id}) expiró antes de "
+                    . "recibir el comprobante de transferencia. Informa amablemente que el tiempo para confirmar "
+                    . "venció y que su cupo ya no está asegurado — ofrécele volver a verificar disponibilidad "
+                    . "para la misma fecha (accion verificar_disponibilidad) antes de continuar. NO trates esta "
+                    . "imagen como un comprobante válido ni la asocies a ninguna reserva.]";
+            }
+
+            $conversion = app(\App\Http\Controllers\Api\BotReservaController::class)->convertirHoldEnReserva($holdPendiente);
+
+            if (!($conversion['ok'] ?? false)) {
+                if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+                Log::warning('[WhatsApp] No se pudo convertir hold en reserva', ['hold_id' => $holdPendiente->id, 'conversion' => $conversion]);
+                return "[Sistema-hold-error: No se pudo confirmar el cupo temporal (hold N°{$holdPendiente->id}): "
+                    . ($conversion['motivo'] ?? 'sin cupo disponible') . ". Informa al cliente con amabilidad que "
+                    . "su cupo ya no está disponible para esa fecha y ofrécele revisar otras fechas, o escala a "
+                    . "humano si insiste en que ya transfirió.]";
+            }
+
+            $ventaPendienteHold = (object) [
+                'venta_id'            => $conversion['venta_id'],
+                'reserva_id'          => $conversion['reserva_id'],
+                'abono_programa'      => $conversion['abono_50'],
+                'diferencia_programa' => $conversion['diferencia'],
+            ];
+
+            $resultadoHold = $this->guardarComprobante($rutaTemp, $ventaPendienteHold);
+            if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+
+            if ($resultadoHold['ok']) {
+                Log::info('[WhatsApp] Hold confirmado y comprobante guardado', [
+                    'hold_id' => $holdPendiente->id, 'venta_id' => $ventaPendienteHold->venta_id,
+                    'reserva_id' => $ventaPendienteHold->reserva_id, 'extraido' => $resultadoHold,
+                ]);
+
+                $detalleHold = 'Datos detectados en la imagen (lectura automática, puede tener errores): '
+                    . 'monto=' . ($resultadoHold['monto'] !== null ? '$' . number_format($resultadoHold['monto'], 0, ',', '.') : 'no legible')
+                    . ', fecha=' . ($resultadoHold['fecha'] ?? 'no legible')
+                    . ', hora=' . ($resultadoHold['hora'] ?? 'no legible')
+                    . ', N° operación=' . ($resultadoHold['numero_operacion'] ?? 'no legible')
+                    . ', origen=' . ($resultadoHold['nombre_origen'] ?? 'no legible') . '.';
+
+                if (!empty($resultadoHold['alertas'])) {
+                    $detalleHold .= ' Posibles diferencias a revisar: ' . implode('; ', $resultadoHold['alertas']) . '.';
+                }
+
+                return "[Sistema-comprobante: Se recibió el comprobante y se creó la reserva N°{$ventaPendienteHold->reserva_id} "
+                    . "para el cliente. {$detalleHold} Quedó en revisión manual del equipo de Botacura — estos datos "
+                    . "son SOLO una lectura automática de referencia, el sistema NO aprueba ni rechaza el pago. "
+                    . "Responde al cliente confirmando amablemente su reserva N°{$ventaPendienteHold->reserva_id} y "
+                    . "lo que se detectó en el comprobante (para que pueda corregirte si algo está mal leído), y "
+                    . "explica que el equipo lo revisará y confirmará el pago a la brevedad. NUNCA digas que la "
+                    . "reserva quedó \"confirmada\" o \"asegurada\" al 100%, ni apruebes ni niegues montos o "
+                    . "diferencias tú mismo — eso lo define el equipo, no tú.]";
+            }
+
+            return "[Sistema-comprobante-error: Tu reserva N°{$ventaPendienteHold->reserva_id} quedó creada, pero "
+                . "hubo un problema técnico guardando la imagen del comprobante. Pide al cliente que la reenvíe, "
+                . "o que la mande a hola@botacura.cl.]";
+        }
+
+        // Si el cliente tiene una venta pendiente de pago (reserva ya creada, ej.
+        // Débito/Crédito, o saldo restante), tratamos esta imagen como comprobante
+        // de transferencia: se guarda el archivo real, se extraen datos de
+        // referencia (monto, fecha, hora, N° operación) con Claude Vision, y
+        // queda en revision manual del staff (backoffice > verificacion de pagos).
         // El bot NUNCA confirma la reserva ni aprueba montos/fechas por su cuenta —
         // los datos extraidos son solo lectura automatica de referencia.
         $ventaPendiente = $this->buscarVentaPendiente($telefono);
@@ -308,6 +381,21 @@ class WhatsAppWebhookController extends Controller
             ->where('ventas.estado_pago', 'pendiente')
             ->orderBy('ventas.id', 'desc')
             ->select('ventas.id as venta_id', 'reservas.id as reserva_id', 'ventas.abono_programa', 'ventas.diferencia_programa')
+            ->first();
+    }
+
+    /**
+     * Busca un HOLD activo (no vencido) para este telefono — reserva por
+     * transferencia que aun no se materializa en la BD, esperando comprobante.
+     */
+    private function buscarHoldPendiente(string $telefono)
+    {
+        $telefonoNorm = $this->normalizarTelefono($telefono);
+
+        return DB::table('reserva_holds')
+            ->where('telefono', $telefonoNorm)
+            ->where('estado', 'activo')
+            ->orderBy('id', 'desc')
             ->first();
     }
 

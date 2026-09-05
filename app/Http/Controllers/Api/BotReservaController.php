@@ -48,6 +48,10 @@ class BotReservaController extends Controller
     // ID de precios_tipos_masajes para Relajación 30 min (default del bot)
     const MASAJE_PRECIO_TIPO_ID = 1;
 
+    // Minutos que se protege un cupo (hold) mientras el cliente transfiere y
+    // envia el comprobante, antes de crear la reserva/venta real.
+    const HOLD_MINUTOS = 30;
+
     /** ID del usuario sistema. Configurable en .env → BOT_SYSTEM_USER_ID */
     private function getBotUserId()
     {
@@ -96,6 +100,26 @@ class BotReservaController extends Controller
                 'espacio' => $dispCheck['espacio'] ?? null,
                 'tinaja'  => $dispCheck['tinaja']  ?? null,
             ], 409);
+        }
+
+        // ── 1b. Transferencia: NO crear reserva/venta todavia. Solo apartar el
+        //     cupo con un HOLD temporal hasta que llegue el comprobante (ver
+        //     WhatsAppWebhookController::procesarImagen -> convertirHoldEnReserva).
+        //     Evita que el bot diga "reserva confirmada" sin haber recibido pago.
+        if (strpos(mb_strtolower(trim($tipoPago)), 'transf') !== false) {
+            return $this->crearHold([
+                'nombre'        => $nombre,
+                'telefono'      => $telefono,
+                'email'         => $email,
+                'programa_id'   => $programaId,
+                'fecha'         => $fecha,
+                'personas'      => $personas,
+                'masajes_extra' => $masajesExtra,
+                'desayuno_once' => $desayunoOnce,
+                'desayuno_tipo' => $desayunoTipo,
+                'observacion'   => $observacion,
+                'tipo_pago'     => $tipoPago,
+            ]);
         }
 
         // ── 2. Find-or-create cliente ─────────────────────────────────────────
@@ -353,6 +377,265 @@ class BotReservaController extends Controller
     }
 
     // -------------------------------------------------------------------------
+    // HOLD TEMPORAL (transferencia) — crear / convertir
+    // -------------------------------------------------------------------------
+
+    /**
+     * Crea un HOLD temporal (sin escribir reserva/venta) cuando tipo_pago es
+     * Transferencia. El cupo queda protegido por HOLD_MINUTOS hasta que llegue
+     * el comprobante (ver convertirHoldEnReserva). Devuelve la respuesta JSON
+     * que el bot usa para pedir la transferencia SIN decir "reserva confirmada".
+     */
+    private function crearHold(array $datos)
+    {
+        $servicioMasaje = DB::table('servicios')->where('slug', self::SLUG_MASAJE)->first();
+        $servicioDyO    = DB::table('servicios')->where('slug', self::SLUG_DESAYUNO_OCE)->first();
+        $precioTipoMasaje = DB::table('precios_tipos_masajes')->where('id', self::MASAJE_PRECIO_TIPO_ID)->first();
+        $precioMasaje = $precioTipoMasaje ? (int) $precioTipoMasaje->precio_unitario : ($servicioMasaje ? (int) $servicioMasaje->valor_servicio : 25000);
+        $precioDyO    = $servicioDyO ? (int) $servicioDyO->valor_servicio : 10000;
+
+        $programa          = DB::table('programas')->where('id', $datos['programa_id'])->first();
+        $valorProgramaUnit = $programa ? (int) $programa->valor_programa : 0;
+        $totalPrograma     = $valorProgramaUnit * $datos['personas'];
+        $totalMasajes      = $datos['masajes_extra'] * $precioMasaje;
+        $totalDyO          = $datos['desayuno_once']  * $precioDyO;
+        $valorTotal        = $totalPrograma + $totalMasajes + $totalDyO;
+        $abono50           = (int) ceil($valorTotal / 2);
+        $diferencia        = $valorTotal - $abono50;
+
+        $expiraEn = now()->addMinutes(self::HOLD_MINUTOS);
+
+        $holdId = DB::table('reserva_holds')->insertGetId([
+            'telefono'      => $datos['telefono'],
+            'nombre'        => $datos['nombre'],
+            'email'         => $datos['email'],
+            'programa_id'   => $datos['programa_id'],
+            'fecha'         => $datos['fecha'],
+            'personas'      => $datos['personas'],
+            'masajes_extra' => $datos['masajes_extra'],
+            'desayuno_once' => $datos['desayuno_once'],
+            'desayuno_tipo' => $datos['desayuno_tipo'],
+            'observacion'   => $datos['observacion'],
+            'tipo_pago'     => $datos['tipo_pago'],
+            'valor_total'   => $valorTotal,
+            'abono_50'      => $abono50,
+            'diferencia'    => $diferencia,
+            'estado'        => 'activo',
+            'expira_en'     => $expiraEn,
+            'datos_json'    => json_encode($datos),
+            'created_at'    => now(),
+            'updated_at'    => now(),
+        ]);
+
+        Log::info('[BotReserva] Hold creado (transferencia, esperando comprobante)', [
+            'hold_id' => $holdId, 'telefono' => $datos['telefono'], 'fecha' => $datos['fecha'],
+            'expira_en' => $expiraEn->toDateTimeString(),
+        ]);
+
+        $datosBancarios = config('botacura_pago.datos_bancarios_transferencia');
+        $desayunoTipoLabel = $datos['desayuno_tipo'] === 'desayuno' ? 'Desayuno (10:30–12:00)'
+                           : ($datos['desayuno_tipo'] === 'once'    ? 'Once (17:00–18:15)'
+                           : 'Desayuno u Once');
+
+        return response()->json([
+            'ok'                  => true,
+            'es_hold'             => true,
+            'hold_id'             => $holdId,
+            'reserva_id'          => null,
+            'programa'            => $programa ? $programa->nombre_programa : 'Programa',
+            'fecha'               => $datos['fecha'],
+            'personas'            => $datos['personas'],
+            'masajes_extra'       => $datos['masajes_extra'],
+            'desayuno_once'       => $datos['desayuno_once'],
+            'desayuno_tipo'       => $datos['desayuno_tipo'],
+            'desayuno_tipo_label' => $desayunoTipoLabel,
+            'observacion'         => $datos['observacion'],
+            'valor_total'         => $valorTotal,
+            'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
+            'abono_50'            => $abono50,
+            'abono_50_formato'    => '$' . number_format($abono50, 0, ',', '.'),
+            'diferencia'          => $diferencia,
+            'diferencia_formato'  => '$' . number_format($diferencia, 0, ',', '.'),
+            'incluye_menu'        => ($datos['desayuno_once'] > 0),
+            'tipo_pago'           => $datos['tipo_pago'],
+            'webpay_url'          => null,
+            'datos_bancarios'     => $datosBancarios,
+            'hold_minutos'        => self::HOLD_MINUTOS,
+            'hold_expira_en'      => $expiraEn->toIso8601String(),
+        ]);
+    }
+
+    /**
+     * Convierte un hold activo en una reserva/venta real. Se llama SOLO cuando
+     * llega el comprobante de transferencia (WhatsAppWebhookController). Antes
+     * de este punto NO existe reserva ni venta para ese hold — recien aqui se
+     * escribe todo, replicando la misma logica de creacion de store() (cliente,
+     * reserva, venta, consumo/extras, menus, visita placeholder).
+     *
+     * @param  object $hold  fila de reserva_holds (stdClass via DB::table)
+     * @return array  ['ok'=>bool, 'reserva_id'=>, 'venta_id'=>, 'abono_50'=>, 'diferencia'=>, ...] o ['ok'=>false,'motivo'=>...]
+     */
+    public function convertirHoldEnReserva($hold): array
+    {
+        $fecha        = $hold->fecha;
+        $programaId   = (int) $hold->programa_id;
+        $personas     = (int) $hold->personas;
+        $nombre       = $hold->nombre;
+        $telefono     = $hold->telefono;
+        $email        = $hold->email;
+        $masajesExtra = (int) $hold->masajes_extra;
+        $desayunoOnce = (int) $hold->desayuno_once;
+        $desayunoTipo = $hold->desayuno_tipo;
+        $observacion  = $hold->observacion;
+        $tipoPago     = $hold->tipo_pago;
+
+        // Revalidar disponibilidad real (excluyendo este mismo hold del conteo) —
+        // puede haber cambiado desde que se creo el hold (otro hold/reserva tomo
+        // el cupo mientras tanto, o el dia se deshabilito).
+        $dispCheck = $this->verificarDisponibilidad($fecha, $programaId, $personas, (int) $hold->id);
+        if (!$dispCheck['disponible']) {
+            DB::table('reserva_holds')->where('id', $hold->id)->update([
+                'estado' => 'cancelado', 'updated_at' => now(),
+            ]);
+            Log::warning('[BotReserva] Hold no se pudo convertir: cupo ya no disponible', [
+                'hold_id' => $hold->id, 'motivo' => $dispCheck['motivo'] ?? null,
+            ]);
+            return ['ok' => false, 'motivo' => $dispCheck['motivo'] ?? 'Cupo ya no disponible.'];
+        }
+
+        // Si el hold ya fue convertido antes (ej: doble llamada), no duplicar.
+        if ($hold->estado === 'confirmado' && $hold->id_reserva) {
+            $ventaExistente = DB::table('ventas')->where('id_reserva', $hold->id_reserva)->first();
+            return [
+                'ok'         => true,
+                'reserva_id' => $hold->id_reserva,
+                'venta_id'   => $ventaExistente->id ?? null,
+                'abono_50'   => $ventaExistente->abono_programa ?? $hold->abono_50,
+                'diferencia' => $ventaExistente->diferencia_programa ?? $hold->diferencia,
+            ];
+        }
+
+        $clienteId = $this->obtenerOCrearCliente($nombre, $telefono, $email);
+
+        $servicioMasaje = DB::table('servicios')->where('slug', self::SLUG_MASAJE)->first();
+        $servicioDyO    = DB::table('servicios')->where('slug', self::SLUG_DESAYUNO_OCE)->first();
+
+        $precioTipoMasaje = DB::table('precios_tipos_masajes')->where('id', self::MASAJE_PRECIO_TIPO_ID)->first();
+        $precioMasaje = $precioTipoMasaje ? (int) $precioTipoMasaje->precio_unitario : ($servicioMasaje ? (int) $servicioMasaje->valor_servicio : 25000);
+        $precioDyO    = $servicioDyO ? (int) $servicioDyO->valor_servicio : 10000;
+
+        $programa          = DB::table('programas')->where('id', $programaId)->first();
+        $valorProgramaUnit = $programa ? (int) $programa->valor_programa : 0;
+        $totalPrograma     = $valorProgramaUnit * $personas;
+        $totalMasajes      = $masajesExtra * $precioMasaje;
+        $totalDyO          = $desayunoOnce  * $precioDyO;
+        $valorTotal        = $totalPrograma + $totalMasajes + $totalDyO;
+        $abono50           = (int) ceil($valorTotal / 2);
+        $diferencia        = $valorTotal - $abono50;
+
+        $notaBot = 'Reserva creada por bot WhatsApp (transferencia, confirmada tras comprobante)';
+        if ($observacion) {
+            $notaBot .= " | Ocasión: {$observacion}";
+        }
+
+        $reservaId = DB::table('reservas')->insertGetId([
+            'cliente_id'             => $clienteId,
+            'cantidad_personas'      => $personas,
+            'cantidad_masajes'       => 0,
+            'cantidad_masajes_extra' => $masajesExtra,
+            'fecha_visita'           => $fecha,
+            'observacion'            => $notaBot,
+            'id_programa'            => $programaId,
+            'user_id'                => $this->getBotUserId(),
+            'estado'                 => 'pendiente_pago',
+            'fuente'                 => 'bot_whatsapp',
+            'menu_recibido'          => ($desayunoOnce > 0) ? 1 : 0,
+            'created_at'             => now(),
+            'updated_at'             => now(),
+        ]);
+
+        $tipoTransaccionId = $this->buscarTipoTransaccion($tipoPago);
+
+        $ventaId = DB::table('ventas')->insertGetId([
+            'id_reserva'                => $reservaId,
+            'abono_programa'            => $abono50,
+            'folio_abono'               => $tipoPago ?: null,
+            'diferencia_programa'       => $diferencia,
+            'total_pagar'               => $diferencia,
+            'descuento'                 => 0,
+            'id_tipo_transaccion_abono' => $tipoTransaccionId,
+            'estado_pago'               => 'pendiente',
+            'created_at'                => now(),
+            'updated_at'                => now(),
+        ]);
+
+        $consumoId = null;
+        if (($masajesExtra > 0 && $servicioMasaje) || ($desayunoOnce > 0 && $servicioDyO)) {
+            $totalExtras = $totalMasajes + $totalDyO;
+            $consumoId = DB::table('consumos')->insertGetId([
+                'id_venta' => $ventaId, 'subtotal' => $totalExtras, 'total_consumo' => $totalExtras,
+                'created_at' => now(), 'updated_at' => now(),
+            ]);
+            if ($masajesExtra > 0 && $servicioMasaje) {
+                DB::table('detalle_servicios_extra')->insert([
+                    'id_consumo' => $consumoId, 'id_servicio_extra' => $servicioMasaje->id,
+                    'cantidad_servicio' => $masajesExtra, 'subtotal' => $totalMasajes,
+                    'id_precio_tipo_masaje' => self::MASAJE_PRECIO_TIPO_ID,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+            if ($desayunoOnce > 0 && $servicioDyO) {
+                DB::table('detalle_servicios_extra')->insert([
+                    'id_consumo' => $consumoId, 'id_servicio_extra' => $servicioDyO->id,
+                    'cantidad_servicio' => $desayunoOnce, 'subtotal' => $totalDyO,
+                    'id_precio_tipo_masaje' => null,
+                    'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        }
+
+        if ($desayunoOnce > 0) {
+            for ($i = 0; $i < $desayunoOnce; $i++) {
+                DB::table('menus')->insert([
+                    'id_reserva' => $reservaId, 'id_producto_entrada' => null, 'id_producto_fondo' => null,
+                    'id_producto_acompanamiento' => null, 'alergias' => null, 'tipo_servicio' => $desayunoTipo,
+                    'observacion' => null, 'created_at' => now(), 'updated_at' => now(),
+                ]);
+            }
+        }
+
+        try {
+            $visitaRequest = \App\Http\Requests\Visita\StoreRequest::create(
+                '/reserva/' . $reservaId . '/visitas', 'POST', ['trago_cortesia' => 'No']
+            );
+            $visitaRequest->setContainer(app());
+            $visitaRequest->setRedirector(app(\Illuminate\Routing\Redirector::class));
+            $visitaRequest->validateResolved();
+            $reservaModel = \App\Reserva::find($reservaId);
+            if ($reservaModel) {
+                app(\App\Http\Controllers\VisitaController::class)->store($visitaRequest, $reservaModel);
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[BotReserva] No se pudo auto-crear la visita placeholder (hold)', [
+                'reserva_id' => $reservaId, 'error' => $e->getMessage(),
+            ]);
+        }
+
+        DB::table('reserva_holds')->where('id', $hold->id)->update([
+            'estado' => 'confirmado', 'id_reserva' => $reservaId, 'updated_at' => now(),
+        ]);
+
+        Log::info('[BotReserva] Hold convertido en reserva real (comprobante recibido)', [
+            'hold_id' => $hold->id, 'reserva_id' => $reservaId, 'venta_id' => $ventaId,
+        ]);
+
+        return [
+            'ok' => true, 'reserva_id' => $reservaId, 'venta_id' => $ventaId,
+            'abono_50' => $abono50, 'diferencia' => $diferencia,
+        ];
+    }
+
+    // -------------------------------------------------------------------------
     // HELPERS
     // -------------------------------------------------------------------------
 
@@ -364,7 +647,7 @@ class BotReservaController extends Controller
      * @param  int    $personas
      * @return array  ['disponible' => bool, 'motivo' => string|null, ...]
      */
-    private function verificarDisponibilidad(string $fecha, int $programaId, int $personas)
+    private function verificarDisponibilidad(string $fecha, int $programaId, int $personas, ?int $excluirHoldId = null)
     {
         // Criterio 0: la fecha debe estar habilitada por el staff (calendario
         // admin, tabla fecha_disponibles). Sin este check el bot podia crear
@@ -389,12 +672,27 @@ class BotReservaController extends Controller
             return ['disponible' => false, 'motivo' => 'Programa no encontrado.'];
         }
 
-        // Slots tinaja
+        // Slots tinaja — reservas reales
         $reservas    = DB::table('reservas')->where('fecha_visita', $fecha)->pluck('cantidad_personas');
         $slotsUsados = 0;
         foreach ($reservas as $cp) {
             $slotsUsados += ((int) $cp >= 5) ? 2 : 1;
         }
+
+        // Slots tinaja — holds activos (transferencia esperando comprobante).
+        // Sin esto, dos clientes podrian "apartar" el mismo cupo mientras uno
+        // de ellos esta transfiriendo y aun no llega su comprobante.
+        $holdsQuery = DB::table('reserva_holds')
+            ->where('fecha', $fecha)
+            ->where('estado', 'activo')
+            ->where('expira_en', '>', now());
+        if ($excluirHoldId) {
+            $holdsQuery->where('id', '<>', $excluirHoldId);
+        }
+        foreach ($holdsQuery->pluck('personas') as $cp) {
+            $slotsUsados += ((int) $cp >= 5) ? 2 : 1;
+        }
+
         $slotsNuevos = ($personas >= 5) ? 2 : 1;
         $tinajaOk    = ($slotsUsados + $slotsNuevos) <= $maxSlotsTinaja;
 
