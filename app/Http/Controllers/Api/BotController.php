@@ -803,7 +803,7 @@ class BotController extends Controller
                 ],
                 'json' => [
                     'nombre'         => $datos['nombre'],
-                    'telefono'       => $datos['telefono'] ?? $usuarioId,
+                    'telefono'       => !empty($datos['telefono']) ? $datos['telefono'] : $usuarioId,
                     'email'          => $datos['email'],
                     'programa_id'    => $datos['programa_id'],
                     'fecha'          => $datos['fecha'],
