@@ -18,6 +18,7 @@ use App\Venta;
 use App\Visita;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Validation\ValidationException;
 use RealRashid\SweetAlert\Facades\Alert;
@@ -944,6 +945,15 @@ class ConsumoController extends Controller
         $productosAñadidos = array_filter($request->productos, function ($producto) {
             return isset($producto['cantidad']) && $producto['cantidad'] > 0;
         });
+
+        // Evita registrar el mismo pedido dos veces si el formulario se reenvía
+        // por doble clic o por recarga tras una respuesta lenta (conexión inestable).
+        $idempotencyKey = 'consumo_store_' . $venta->id . '_' . md5(json_encode($productosAñadidos));
+        if (Cache::has($idempotencyKey)) {
+            Alert::info('Aviso', 'Este pedido ya fue registrado hace unos segundos.', 'Confirmar')->showConfirmButton();
+            return redirect()->route('backoffice.reserva.show', $venta->reserva->id);
+        }
+        Cache::put($idempotencyKey, true, 10);
 
         $productos       = [];
         $cliente         = null;

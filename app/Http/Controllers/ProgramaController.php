@@ -110,10 +110,12 @@ class ProgramaController extends Controller
         $programa->update(['estado' => $data['estado']]);
 
         // Solo actualiza estado en WC — no se tocan las imágenes (images omitido)
-        try {
-            $this->wc->updateProduct($programa->fresh());
-        } catch (\Exception $e) {
-            Log::warning("[WC-Sync] cambiarEstado: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
+        if (!$programa->solo_plataforma) {
+            try {
+                $this->wc->updateProduct($programa->fresh());
+            } catch (\Exception $e) {
+                Log::warning("[WC-Sync] cambiarEstado: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
+            }
         }
 
         return response()->json([
@@ -128,7 +130,9 @@ class ProgramaController extends Controller
      */
     public function syncUnlinked()
     {
-        $sinVincular = Programa::whereNull('wc_product_id')->get();
+        $sinVincular = Programa::whereNull('wc_product_id')
+            ->where('solo_plataforma', false)
+            ->get();
         $vinculados  = 0;
         $errores     = 0;
 
@@ -188,6 +192,13 @@ class ProgramaController extends Controller
     private function syncToWc(Programa $programa, Request $request): void
     {
         if ($programa->solo_plataforma) {
+            if ($programa->wc_product_id) {
+                try {
+                    $this->wc->draftProduct($programa);
+                } catch (\Exception $e) {
+                    Log::warning("[WC-Sync] syncToWc: no se pudo pasar a borrador el programa #{$programa->id}: " . $e->getMessage());
+                }
+            }
             return;
         }
 
