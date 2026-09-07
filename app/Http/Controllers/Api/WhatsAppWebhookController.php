@@ -292,9 +292,10 @@ class WhatsAppWebhookController extends Controller
                 return "[Sistema-comprobante: Se recibió el comprobante y se creó la reserva N°{$ventaPendienteHold->reserva_id} "
                     . "para el cliente. {$detalleHold} Quedó en revisión manual del equipo de Botacura — estos datos "
                     . "son SOLO una lectura automática de referencia, el sistema NO aprueba ni rechaza el pago. "
-                    . "Responde al cliente confirmando amablemente su reserva N°{$ventaPendienteHold->reserva_id} y "
-                    . "lo que se detectó en el comprobante (para que pueda corregirte si algo está mal leído), y "
-                    . "explica que el equipo lo revisará y confirmará el pago a la brevedad. NUNCA digas que la "
+                    . "Esta información (monto, fecha, hora, N° operación) es SOLO para uso interno del equipo — "
+                    . "NUNCA se la reveles ni la repitas al cliente. Responde al cliente de forma genérica: "
+                    . "agradece el comprobante, confirma su reserva N°{$ventaPendienteHold->reserva_id} y explica "
+                    . "que el equipo revisará y confirmará el pago a la brevedad. NUNCA digas que la "
                     . "reserva quedó \"confirmada\" o \"asegurada\" al 100%, ni apruebes ni niegues montos o "
                     . "diferencias tú mismo — eso lo define el equipo, no tú.]";
             }
@@ -339,9 +340,11 @@ class WhatsAppWebhookController extends Controller
                     . "transferencia para la reserva N°{$ventaPendiente->reserva_id}. {$detalle} "
                     . "Quedó en revisión manual del equipo de Botacura — estos datos son SOLO una "
                     . "lectura automática de referencia, el sistema NO aprueba ni rechaza el pago. "
-                    . "Responde al cliente confirmando amablemente lo que se detectó (para que pueda "
-                    . "corregirte si algo está mal leído) y explica que el equipo lo revisará y "
-                    . "confirmará el pago a la brevedad. NUNCA digas que la reserva quedó "
+                    . "Esta información (monto, fecha, hora, N° operación) es SOLO para uso interno del "
+                    . "equipo — NUNCA se la reveles ni la repitas al cliente. Responde al cliente de forma "
+                    . "genérica: agradece el comprobante, confirma su reserva N°{$ventaPendiente->reserva_id} "
+                    . "y explica que el equipo revisará y confirmará el pago a la brevedad. NUNCA digas que "
+                    . "la reserva quedó "
                     . "\"confirmada\" o \"asegurada\", ni apruebes ni niegues montos o diferencias tú "
                     . "mismo — eso lo define el equipo, no tú.]";
             }
@@ -413,14 +416,18 @@ class WhatsAppWebhookController extends Controller
 
             $datos = $this->extraerDatosComprobante($rutaTemp) ?? [];
 
-            $monto           = isset($datos['monto']) && is_numeric($datos['monto']) ? (int) $datos['monto'] : null;
-            $fecha           = (!empty($datos['fecha']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $datos['fecha'])) ? $datos['fecha'] : null;
-            $hora            = !empty($datos['hora']) ? substr($datos['hora'], 0, 10) : null;
-            $numeroOperacion = !empty($datos['numero_operacion']) ? substr($datos['numero_operacion'], 0, 100) : null;
-            $nombreOrigen    = !empty($datos['nombre_origen']) ? substr($datos['nombre_origen'], 0, 200) : null;
+            $esComprobante      = $datos['es_comprobante'] ?? true;
+            $monto              = ($esComprobante !== false && isset($datos['monto']) && is_numeric($datos['monto'])) ? (int) $datos['monto'] : null;
+            $fecha              = (!empty($datos['fecha']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $datos['fecha'])) ? $datos['fecha'] : null;
+            $hora               = !empty($datos['hora']) ? substr($datos['hora'], 0, 10) : null;
+            $numeroOperacion    = !empty($datos['numero_operacion']) ? substr($datos['numero_operacion'], 0, 100) : null;
+            $nombreOrigen       = !empty($datos['nombre_origen']) ? substr($datos['nombre_origen'], 0, 200) : null;
+            $destinatarioNombre = !empty($datos['destinatario_nombre']) ? substr($datos['destinatario_nombre'], 0, 200) : null;
+            $destinatarioRut    = !empty($datos['destinatario_rut']) ? substr($datos['destinatario_rut'], 0, 20) : null;
+            $destinatarioCuenta = !empty($datos['destinatario_cuenta']) ? substr($datos['destinatario_cuenta'], 0, 50) : null;
 
-            $abono = (int) ($ventaPendiente->abono_programa ?? 0);
-            $total = $abono + (int) ($ventaPendiente->diferencia_programa ?? 0);
+            $abonoTeorico = (int) ($ventaPendiente->abono_programa ?? 0);
+            $total        = $abonoTeorico + (int) ($ventaPendiente->diferencia_programa ?? 0);
 
             $tipoDetectado = 'no_detectado';
             $alertas = [];
@@ -428,24 +435,44 @@ class WhatsAppWebhookController extends Controller
             if ($monto !== null) {
                 if ($total > 0 && $monto >= $total * 0.97) {
                     $tipoDetectado = 'total';
-                } elseif ($abono > 0 && $monto >= $abono * 0.97) {
+                } elseif ($abonoTeorico > 0 && $monto >= $abonoTeorico * 0.97) {
                     $tipoDetectado = 'abono_50';
                 } else {
                     $tipoDetectado = 'monto_insuficiente';
-                    $alertas[] = "monto detectado (\${$monto}) no coincide con el abono (\${$abono}) ni el total (\${$total})";
+                    $alertas[] = "monto detectado (\${$monto}) no coincide con el abono (\${$abonoTeorico}) ni el total (\${$total})";
                 }
             } else {
                 $alertas[] = 'no se pudo leer el monto en la imagen';
             }
 
             if ($fecha !== null) {
-                $dias = now()->startOfDay()->diffInDays(\Carbon\Carbon::parse($fecha)->startOfDay());
-                if ($dias > 1) {
-                    $alertas[] = "la fecha de la transferencia ({$fecha}) no coincide con hoy";
+                $momentoTransferencia = $hora
+                    ? \Carbon\Carbon::parse("{$fecha} {$hora}", 'America/Santiago')
+                    : \Carbon\Carbon::parse($fecha, 'America/Santiago')->startOfDay();
+                $horasDiferencia = abs($momentoTransferencia->diffInMinutes(now())) / 60;
+                if ($horasDiferencia > 6) {
+                    $alertas[] = "la fecha/hora de la transferencia ({$fecha} {$hora}) esta muy alejada del momento en que se envio el comprobante";
                 }
             } else {
                 $alertas[] = 'no se pudo leer la fecha en la imagen';
             }
+
+            $datosBancarios = config('botacura_pago.datos_bancarios_transferencia', []);
+            $normalizar = function ($v) {
+                return $v ? strtoupper(preg_replace('/[^A-Z0-9]/i', '', $v)) : '';
+            };
+            if ($destinatarioRut !== null && $normalizar($destinatarioRut) !== $normalizar($datosBancarios['rut'] ?? '')) {
+                $alertas[] = "el RUT del destinatario en el comprobante ({$destinatarioRut}) no coincide con el de Botacura";
+            }
+            if ($destinatarioCuenta !== null && $normalizar($destinatarioCuenta) !== $normalizar($datosBancarios['numero_cuenta'] ?? '')) {
+                $alertas[] = "el N° de cuenta destino en el comprobante ({$destinatarioCuenta}) no coincide con la cuenta de Botacura";
+            }
+            if ($destinatarioNombre !== null && strpos($normalizar($destinatarioNombre), 'BOTACURA') === false) {
+                $alertas[] = "el nombre del destinatario en el comprobante ({$destinatarioNombre}) no coincide con Botacura";
+            }
+
+            $abonoReal      = $monto !== null ? $monto : $abonoTeorico;
+            $diferenciaReal = max(0, $total - $abonoReal);
 
             DB::table('ventas')->where('id', $ventaId)->update([
                 'comprobante_transferencia'    => $nombreArchivo,
@@ -456,6 +483,9 @@ class WhatsAppWebhookController extends Controller
                 'comprobante_nombre_origen'    => $nombreOrigen,
                 'comprobante_tipo_detectado'   => $tipoDetectado,
                 'comprobante_alerta'           => $alertas ? implode(' | ', $alertas) : null,
+                'abono_programa'               => $abonoReal,
+                'diferencia_programa'          => $diferenciaReal,
+                'total_pagar'                  => $diferenciaReal,
                 'estado_pago'                  => 'pendiente_verificacion',
                 'updated_at'                   => now(),
             ]);
@@ -509,7 +539,12 @@ class WhatsAppWebhookController extends Controller
                 . "  \"numero_operacion\": el numero/folio/ID de la transaccion tal como aparece "
                 . "(cualquier formato, con o sin simbolos) o null,\n"
                 . "  \"nombre_origen\": nombre de quien envia la plata, o null,\n"
-                . "  \"banco_o_app_origen\": banco o app usada, o null\n"
+                . "  \"banco_o_app_origen\": banco o app usada, o null,\n"
+                . "  \"destinatario_nombre\": nombre o razon social de quien RECIBE la plata "
+                . "(destinatario/beneficiario), o null,\n"
+                . "  \"destinatario_rut\": RUT del destinatario/beneficiario tal como aparece, o null,\n"
+                . "  \"destinatario_banco\": banco del destinatario/beneficiario, o null,\n"
+                . "  \"destinatario_cuenta\": numero de cuenta del destinatario/beneficiario, o null\n"
                 . "}\n"
                 . "No inventes datos. Si algo no se lee con certeza, usa null en ese campo.";
 

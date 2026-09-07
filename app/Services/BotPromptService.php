@@ -30,15 +30,23 @@ class BotPromptService
         $fechaHoyLarga = $ahora->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY');
         $fechaHoyIso   = $ahora->format('Y-m-d');
 
-        // Precalcula los proximos dias operativos (jue/vie/sab/dom) con su dia de la
-        // semana correcto, para que Claude nunca tenga que calcular el dia a mano.
+        // Antes: se generaban los proximos jue/vie/sab/dom SOLO por dia de la semana,
+        // sin mirar si el equipo deshabilito esa fecha puntual (mantencion, evento
+        // privado, etc) en fecha_disponibles ni si ya estaba sin cupo. Eso hacia que
+        // el bot ofreciera fechas (ej. un sabado ya deshabilitado) que en la practica
+        // no estaban disponibles. Ahora se usa el mismo motor que el calendario
+        // publico (/api/fechas-disponibles): solo fechas con habilitada=true y sin
+        // agotar por capacidad global.
         $diasOperativosProximos = [];
-        $cursor = $ahora->copy()->startOfDay();
-        for ($i = 0; $i < 60 && count($diasOperativosProximos) < 10; $i++) {
-            if (in_array($cursor->dayOfWeek, [0, 4, 5, 6])) {
-                $diasOperativosProximos[] = $cursor->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $cursor->format('Y-m-d');
+        try {
+            $fechasReq  = new \Illuminate\Http\Request();
+            $fechasResp = app(\App\Http\Controllers\Api\FechasDisponiblesController::class)->index($fechasReq);
+            $fechasData = json_decode($fechasResp->getContent(), true);
+            foreach (array_slice($fechasData['fechas'] ?? [], 0, 10) as $f) {
+                $diasOperativosProximos[] = \Carbon\Carbon::parse($f)->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $f;
             }
-            $cursor = $cursor->copy()->addDay();
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[BotPromptService] Error obteniendo fechas disponibles reales: ' . $e->getMessage());
         }
         $bloqueDiasOperativos = implode("\n", array_map(function ($d) {
             return "- {$d}";
@@ -288,15 +296,22 @@ PASO 3B — OCASIÓN ESPECIAL (opcional, hacer en el mismo mensaje que fecha o i
 → Si no hay: datos.observacion = null, continúa al siguiente paso sin insistir
 
 PASO 4 — NOMBRE
-"¿Me puedes dar tu nombre completo para la reserva?"
+Si el sistema ya te indicó el nombre del cliente (mensaje "[Sistema: Este número ya es
+cliente...]"), NO lo preguntes desde cero: confírmalo brevemente (ej. "¿Seguimos con [nombre]
+para esta reserva?"). Si no lo tienes, pregunta: "¿Me puedes dar tu nombre completo para la
+reserva?"
 → Guarda en datos.nombre (y úsalo desde ahora en la conversación)
 
 PASO 5 — TELÉFONO
-"¿Y cuál es tu número de teléfono de contacto?"
+El sistema siempre te indica el WhatsApp desde el que escribe el cliente (mensaje "[Sistema: El
+cliente te escribe desde el WhatsApp...]") — NUNCA preguntes el teléfono como si no lo
+supieras. Solo confírmalo brevemente. Si el cliente prefiere dar otro número, úsalo.
 → Guarda en datos.telefono
 
 PASO 6 — CORREO
-"¿Me indicas tu correo electrónico?"
+Si el sistema ya te indicó el correo del cliente, NO lo preguntes desde cero: confírmalo
+brevemente (ej. "¿Seguimos usando tu correo [correo]?"). Si no lo tienes, pregunta: "¿Me
+indicas tu correo electrónico?"
 → Guarda en datos.email
 
 PASO 7 — POLÍTICAS

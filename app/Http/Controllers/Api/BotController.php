@@ -576,6 +576,14 @@ class BotController extends Controller
         // Si es el primer mensaje de una conversación nueva, revisar si el número
         // ya es cliente conocido (evita re-pedir nombre/correo a quien ya reservó antes).
         if (empty($historial)) {
+            // El cliente escribe desde WhatsApp, asi que su telefono de contacto YA es
+            // conocido (es $usuarioId) — antes el PASO 5 del prompt lo preguntaba desde
+            // cero igual, generando una pregunta redundante e irritante.
+            $ctxTelefono = "[Sistema: El cliente te escribe desde el WhatsApp {$usuarioId} — "
+                . "ese ES su teléfono de contacto, ya lo tienes. En el paso de teléfono NO lo "
+                . "preguntes desde cero: solo confírmalo brevemente (ej. \"¿Dejamos este mismo "
+                . "WhatsApp como tu teléfono de contacto?\"), salvo que el cliente prefiera dar "
+                . "otro número.]";
             $clienteConocido = DB::table('clientes')->where('whatsapp_cliente', $usuarioId)->first();
             if ($clienteConocido) {
                 $ctxCliente = "[Sistema: Este número ya es cliente de Botacura — nombre: "
@@ -587,7 +595,9 @@ class BotController extends Controller
                     . "salvo que él mismo diga que cambiaron. El resto del proceso de reserva "
                     . "(fecha, programa, personas, políticas, pago) sigue igual — cada visita es "
                     . "una reserva nueva.]";
-                $contenidoParaHistorial = $mensaje . "\n\n" . $ctxCliente;
+                $contenidoParaHistorial = $mensaje . "\n\n" . $ctxCliente . "\n\n" . $ctxTelefono;
+            } else {
+                $contenidoParaHistorial = $mensaje . "\n\n" . $ctxTelefono;
             }
         }
 
@@ -892,6 +902,7 @@ class BotController extends Controller
             // se derivan en vivo desde la relación programa_servicio -> servicios
             // (ver Programa::getIncluyeMasajesAttribute / getIncluyeAlmuerzosAttribute).
             $programas = Programa::where('estado', 'activo')
+                ->where('solo_plataforma', 0)
                 ->with('servicios')
                 ->orderBy('valor_programa')
                 ->get();
