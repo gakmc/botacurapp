@@ -45,6 +45,7 @@ class CotizacionController extends Controller
             'cliente' => 'required|string|max:255',
             'solicitante' => 'required|string|max:255',
             'correo' => 'nullable|email',
+            'observaciones' => 'nullable|string',
             'validez_dias' => 'required|integer|min:1',
             'fecha_reserva' => 'required|date',
             'programas' => 'nullable|array',
@@ -83,6 +84,7 @@ class CotizacionController extends Controller
                 'fecha_reserva' => Carbon::parse($request->fecha_reserva)->format('Y-m-d'),
                 'validez_dias' => $request->validez_dias,
                 'correo' => $request->correo,
+                'observaciones' => $request->observaciones,
             ]);
 
 
@@ -158,6 +160,7 @@ class CotizacionController extends Controller
             'cliente' => 'required|string|max:255',
             'solicitante' => 'required|string|max:255',
             'correo' => 'nullable|email',
+            'observaciones' => 'nullable|string',
             'validez_dias' => 'required|integer|min:1',
             'fecha_reserva' => 'required|date',
             'programas' => 'nullable|array',
@@ -196,6 +199,7 @@ class CotizacionController extends Controller
                 'fecha_reserva' => Carbon::parse($request->fecha_reserva)->format('Y-m-d'),
                 'validez_dias' => $request->validez_dias,
                 'correo' => $request->correo,
+                'observaciones' => $request->observaciones,
             ]);
 
             $cotizacion->items()->delete();

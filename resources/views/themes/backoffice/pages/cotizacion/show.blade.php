@@ -78,6 +78,12 @@
                                 <h6 class="" style=""><strong>Emitida: </strong>{{ $cotizacion->fecha_emision->isoFormat('D [de] MMMM') }}</h6>
                                 <h6 class="" style=""><strong>Fecha reserva: </strong>{{ $cotizacion->fecha_reserva->isoFormat('D [de] MMMM') }}</h6>
                             </div>
+
+                            @if($cotizacion->observaciones)
+                            <div class="col s12">
+                                <h6 class="" style=""><strong>Observaciones: </strong>{{ $cotizacion->observaciones }}</h6>
+                            </div>
+                            @endif
                             
                         </div>
                     </div>

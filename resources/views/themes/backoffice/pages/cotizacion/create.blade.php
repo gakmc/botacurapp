@@ -90,6 +90,17 @@
                                         @enderror
                                     </div>
 
+                                    <div class="input-field col s12">
+                                        <textarea id="observaciones" class="materialize-textarea @error('observaciones') is-invalid @enderror" name="observaciones">{{ old('observaciones') }}</textarea>
+                                        <label for="observaciones">Observaciones</label>
+
+                                        @error('observaciones')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+
 
                                 </div>
                                 

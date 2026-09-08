@@ -85,6 +85,11 @@
             <td class="text-left"><strong>Correo:</strong> {{ $cotizacion->correo }}</td>
             <td class="text-right"><strong>Validez:</strong> {{ $cotizacion->validez_dias }} días</td>
         </tr>
+        @if($cotizacion->observaciones)
+        <tr>
+            <td class="text-left" colspan="2"><strong>Observaciones:</strong> {{ $cotizacion->observaciones }}</td>
+        </tr>
+        @endif
     </table>
 
     <h3 class="highlight">Detalle de Cotización</h3>
