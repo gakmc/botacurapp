@@ -105,6 +105,9 @@
                         <span class="highlight">
                             {{ $item->itemable->nombre_programa ?? $item->itemable->nombre_servicio ?? $item->itemable->nombre }}
                         </span>
+                        @if ($item->itemable_type === 'App\Servicio' && $item->itemable->duracion > 0)
+                            <br><span style="color:#777;font-size:10px;">({{ $item->itemable->duracion }} min)</span>
+                        @endif
                     </td>
                     <td class="text-right">{{ $item->cantidad }}</td>
                     <td class="text-right">${{ number_format($item->valor_neto, 0, ',', '.') }}</td>
@@ -115,7 +118,7 @@
                 @if ($item->itemable_type === 'App\Programa' && $item->itemable->servicios)
                     @foreach ($item->itemable->servicios as $servicio)
                         <tr>
-                            <td>{{ $servicio->nombre_servicio }}</td>
+                            <td>{{ $servicio->nombre_servicio }}{{ $servicio->duracion > 0 ? ' ('.$servicio->duracion.' min)' : '' }}</td>
                             <td></td><td></td><td></td>
                         </tr>
                     @endforeach

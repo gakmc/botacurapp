@@ -128,10 +128,13 @@
                                             @forelse($servicios as $servicio)
                                             <a href="#!" class="collection-item servicio-item"
                                                 data-id="{{ $servicio->id }}"
-                                                data-nombre="{{ $servicio->nombre_servicio }}"
+                                                data-nombre="{{ $servicio->nombre_servicio }}{{ $servicio->duracion > 0 ? ' ('.$servicio->duracion.' min)' : '' }}"
                                                 data-valor="{{ $servicio->valor_servicio }}">
                                                 {{ $servicio->nombre_servicio }} - ${{
                                                 number_format($servicio->valor_servicio, 0, ',', '.') }}
+                                                @if($servicio->duracion > 0)
+                                                    <span style="color:#777;">({{ $servicio->duracion }} min)</span>
+                                                @endif
                                             </a>
                                             @empty
                                             <a class="collection-item">No existen productos registrados</a>
@@ -162,7 +165,7 @@
                                                 <tr>
                                                     <th>Producto</th>
                                                     <th>Cantidad</th>
-                                                    <th>Subtotal</th>
+                                                    <th>Subtotal <span style="font-weight:normal;color:#777;">(editable)</span></th>
                                                     <th></th>
                                                 </tr>
                                             </thead>
@@ -467,7 +470,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 row.innerHTML = `
                     <td>${nombre}</td>
                     <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
-                    <td><input type="text" class="subtotal" style="width:60px;" value="$${valor.toLocaleString()}"></td>
+                    <td><input type="text" class="subtotal" title="Puedes editar este valor manualmente" style="width:90px;border:1px dashed #039B7B;background:#FFFDE7;" value="$${valor.toLocaleString()}"></td>
                     <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
                 `;
                 tabla.appendChild(row);
