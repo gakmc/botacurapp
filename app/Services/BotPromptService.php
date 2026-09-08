@@ -319,38 +319,23 @@ Informa: "Para continuar, necesito que revises nuestras políticas del recinto �
 https://botacura.cl/politicas — Una vez leídas, avísame para seguir."
 → Cuando confirme, guarda datos.acepta_politicas = true
 
-PASO 8 — MASAJES EXTRA
-⚠️ CONDICIONAL — revisa el programa elegido:
-  • Si el programa YA INCLUYE masajes (incluye_masajes = true):
-    → masajes_extra = 0 por defecto.
-    → Acláraselo SIEMPRE al cliente con esta idea (adapta el tono, no la copies literal):
-      "Tu programa ya contempla masaje 💆, pero si quisieras extenderlo a 60 minutos son
-      $25.000 adicionales por persona. ¿Te gustaría extenderlo?"
-    → Si el cliente quiere extenderlo: pregunta para cuántas personas y guarda ese número en datos.masajes_extra.
-    → Si no quiere extenderlo: datos.masajes_extra = 0
-  • Si el programa NO incluye masajes (incluye_masajes = false):
-    → Pregunta: "¿Les gustaría agregar masajes de relajación (30 min)? Son $25.000 adicionales por persona 💆"
-    → Si sí: "¿Para cuántas personas?" → guarda en datos.masajes_extra (número entero)
-    → Si no quieren: datos.masajes_extra = 0
-
-PASO 9 — DESAYUNO U ONCE
-⚠️ CONDICIONAL — revisa el programa elegido:
-  • Si el programa YA INCLUYE almuerzo (incluye_almuerzos = true):
-    → desayuno_once = 0 y desayuno_tipo = null por defecto.
-    → Acláraselo SIEMPRE al cliente con esta idea (adapta el tono, no la copies literal):
-      "Tu programa ya contempla almuerzo 🍽️, pero si quieres ampliar la experiencia con
-      Desayuno u Once para alguien que no tenga almuerzo incluido, son $10.000 por persona.
-      ¿Quieres agregarlo?"
-    → Si sí: "¿Desayuno o once? ¿Y para cuántas personas?" → guarda datos.desayuno_tipo y datos.desayuno_once
-    → Si no: datos.desayuno_once = 0, datos.desayuno_tipo = null
-  • Si el programa NO incluye almuerzo (incluye_almuerzos = false):
-    → Pregunta: "¿Agregarán Desayuno u Once durante su visita? Son $10.000 por persona 🥐
-      • Desayuno: 10:30 – 12:00
-      • Once: 17:00 – 18:15"
-    → Si sí: "¿Desayuno o once? ¿Y para cuántas personas?"
-      → guarda datos.desayuno_tipo ("desayuno" o "once")
-      → guarda datos.desayuno_once (número entero, cantidad de personas)
-    → Si no quieren: datos.desayuno_once = 0, datos.desayuno_tipo = null
+PASO 8 — SERVICIOS INCLUIDOS Y EXTRAS (UN SOLO mensaje)
+⚠️ Todo esto se calcula EN VIVO desde la base de datos — revisa la línea "PASO 8 (EXTRAS...)"
+del programa elegido (la viste en el PASO 2, junto a "Incluye:"). Nunca asumas ni inventes qué
+incluye o no incluye un programa.
+  • Si esa línea indica extras para ofrecer: en UN ÚNICO mensaje (1) menciona brevemente lo que
+    el programa YA incluye (usa la lista real de "Incluye:") y (2) ofrece SOLO los extras
+    indicados ahí — nunca ofrezcas algo que el programa ya trae.
+    Ejemplo de tono (adáptalo, no lo copies literal): "Tu programa ya incluye [lista real de
+    'Incluye:'], así que solo faltaría ver si quieren agregar [extra 1] y/o [extra 2]. ¿Les
+    interesa alguno?"
+    → Si quieren masaje extra: pregunta para cuántas personas → guarda en datos.masajes_extra.
+    → Si quieren Desayuno u Once: pregunta "¿Desayuno o once? ¿Para cuántas personas?" → guarda
+      datos.desayuno_tipo ("desayuno" o "once") y datos.desayuno_once (número entero).
+    → Lo que no pidan queda en 0 / null.
+  • Si esa línea indica que el programa YA incluye masaje y Desayuno u Once: NO ofrezcas ningún
+    extra de este tipo, pasa directo al PASO 10. datos.masajes_extra = 0, datos.desayuno_once = 0,
+    datos.desayuno_tipo = null.
 
 PASO 10 — MEDIO DE PAGO
 "¿Cómo prefieren realizar el pago del abono? Puedes pagar con débito, crédito o transferencia bancaria 💳"
@@ -684,31 +669,40 @@ PROMPT;
             $precio   = isset($p['precio_formato'])
                 ? $p['precio_formato']
                 : ('$' . number_format($p['precio'] ?? 0, 0, ',', '.'));
-            $servicios = isset($p['servicios']) && is_array($p['servicios'])
-                ? implode(', ', $p['servicios'])
+            $serviciosArray = isset($p['servicios']) && is_array($p['servicios']) ? $p['servicios'] : [];
+            $servicios = $serviciosArray
+                ? implode(', ', $serviciosArray)
                 : (is_string($p['servicios'] ?? null) ? $p['servicios'] : '—');
 
-            $incluyeMasaje   = !empty($p['incluye_masajes']);
-            $incluyeAlmuerzo = !empty($p['incluye_almuerzos']);
+            // Antes se usaba un booleano precalculado (incluye_masajes / incluye_almuerzos)
+            // que solo reconocia el nombre exacto "Almuerzo" en la BD y no detectaba
+            // "Desayuno u Once" como equivalente — eso generaba mensajes contradictorios
+            // ("ya incluye almuerzo" y a la vez ofrecer Desayuno u Once como si fuera otra
+            // cosa). Ahora se revisa DIRECTO la lista real de servicios del programa, sin
+            // asumir nada, en cada mensaje.
+            $incluyeMasaje = collect($serviciosArray)->contains(function ($s) {
+                return stripos($s, 'masaje') !== false;
+            });
+            $incluyeDesayunoOnce = collect($serviciosArray)->contains(function ($s) {
+                return stripos($s, 'desayuno') !== false || stripos($s, 'once') !== false || stripos($s, 'almuerzo') !== false;
+            });
 
-            // Etiquetas para que Claude sepa qué pasos saltar
-            $tagMasaje   = $incluyeMasaje   ? 'MASAJE_INCLUIDO'   : 'SIN_MASAJE';
-            $tagAlmuerzo = $incluyeAlmuerzo ? 'ALMUERZO_INCLUIDO' : 'SIN_ALMUERZO';
-
-            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona  [{$tagMasaje}] [{$tagAlmuerzo}]";
+            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona";
             if ($servicios) {
-                $lineas[] = "  Incluye: {$servicios}";
+                $lineas[] = "  Incluye (real, desde la BD): {$servicios}";
             }
-            // Instrucción explícita para Claude
-            if ($incluyeMasaje) {
-                $lineas[] = "  → PASO 8: masaje ya incluido, NO ofrecer masajes_extra (solo si el cliente pide más).";
-            } else {
-                $lineas[] = "  → PASO 8: ofrecer masajes de relajación extra ($25.000/persona).";
+
+            $extras = [];
+            if (!$incluyeMasaje) {
+                $extras[] = 'masaje de relajación 30 min ($25.000/persona)';
             }
-            if ($incluyeAlmuerzo) {
-                $lineas[] = "  → PASO 9: almuerzo ya incluido, NO ofrecer desayuno/once.";
+            if (!$incluyeDesayunoOnce) {
+                $extras[] = 'Desayuno u Once ($10.000/persona)';
+            }
+            if ($extras) {
+                $lineas[] = "  → PASO 8 (EXTRAS, en UN SOLO mensaje): ofrecer " . implode(' y ', $extras) . ".";
             } else {
-                $lineas[] = "  → PASO 9: ofrecer Desayuno u Once extra ($10.000/persona).";
+                $lineas[] = "  → PASO 8 (EXTRAS): este programa YA incluye masaje y Desayuno u Once — NO ofrezcas ninguno de los dos como extra pagado.";
             }
         }
 
