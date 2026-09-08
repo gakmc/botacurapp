@@ -467,7 +467,7 @@ class WhatsAppWebhookController extends Controller
             if ($destinatarioCuenta !== null && $normalizar($destinatarioCuenta) !== $normalizar($datosBancarios['numero_cuenta'] ?? '')) {
                 $alertas[] = "el N° de cuenta destino en el comprobante ({$destinatarioCuenta}) no coincide con la cuenta de Botacura";
             }
-            if ($destinatarioNombre !== null && strpos($normalizar($destinatarioNombre), 'BOTACURA') === false) {
+            if ($destinatarioNombre !== null && strpos($normalizar($destinatarioNombre), 'BOTACUR') === false) {
                 $alertas[] = "el nombre del destinatario en el comprobante ({$destinatarioNombre}) no coincide con Botacura";
             }
 
