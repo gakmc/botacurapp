@@ -2,12 +2,28 @@
 
 namespace App\Services;
 
+use App\BotPasoFlujo;
+use App\BotSeccionTexto;
+use App\TipoMasaje;
+
 /**
  * BotPromptService
  *
  * Centraliza el system prompt de Claude para el bot WhatsApp de Botacura.
  * Los programas se inyectan dinámicamente desde la BD para que reflejen
  * siempre los precios y servicios actuales.
+ *
+ * El perfil de vendedor, la info del recinto (horarios/políticas/recomendaciones)
+ * y el guion paso a paso se editan desde el backoffice (Configuración del bot) y
+ * se leen aquí desde las tablas bot_secciones_texto / bot_pasos_flujo.
+ * El catálogo de masajes se lee en vivo desde tipos_masajes/precios_tipos_masajes
+ * (el mismo módulo que usa Masajes > Valores en el backoffice).
+ *
+ * Lo que NO es editable desde la BD (queda fijo en este archivo a propósito):
+ * datos de contacto/dirección, datos bancarios (vienen de config), las reglas de
+ * cálculo de fechas y días operativos reales, el bloque de programas/menú (ya
+ * dinámico), los mensajes de confirmación post-reserva y el contrato JSON de
+ * "acciones" — tocar esto puede romper la comunicación entre el bot y el código.
  *
  * Compatible Laravel 6 / PHP 7.2
  */
@@ -24,12 +40,78 @@ class BotPromptService
     {
         $bloqueProgramas = $this->construirBloqueProgramas($programas);
         $bloqueMenu      = $this->construirBloqueMenu($menuOpciones);
+        $datosBancarios  = config('botacura_pago.datos_bancarios_transferencia', []);
+
+        $ahora         = \Carbon\Carbon::now('America/Santiago');
+        $fechaHoyLarga = $ahora->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY');
+        $fechaHoyIso   = $ahora->format('Y-m-d');
+
+        // Antes: se generaban los proximos jue/vie/sab/dom SOLO por dia de la semana,
+        // sin mirar si el equipo deshabilito esa fecha puntual (mantencion, evento
+        // privado, etc) en fecha_disponibles ni si ya estaba sin cupo. Eso hacia que
+        // el bot ofreciera fechas (ej. un sabado ya deshabilitado) que en la practica
+        // no estaban disponibles. Ahora se usa el mismo motor que el calendario
+        // publico (/api/fechas-disponibles): solo fechas con habilitada=true y sin
+        // agotar por capacidad global.
+        $diasOperativosProximos = [];
+        try {
+            $fechasReq  = new \Illuminate\Http\Request();
+            $fechasResp = app(\App\Http\Controllers\Api\FechasDisponiblesController::class)->index($fechasReq);
+            $fechasData = json_decode($fechasResp->getContent(), true);
+            foreach (array_slice($fechasData['fechas'] ?? [], 0, 10) as $f) {
+                $diasOperativosProximos[] = \Carbon\Carbon::parse($f)->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $f;
+            }
+        } catch (\Exception $e) {
+            \Illuminate\Support\Facades\Log::error('[BotPromptService] Error obteniendo fechas disponibles reales: ' . $e->getMessage());
+        }
+        $bloqueDiasOperativos = implode("\n", array_map(function ($d) {
+            return "- {$d}";
+        }, $diasOperativosProximos));
+
+        $perfilVendedor  = BotSeccionTexto::contenidoDe('perfil_vendedor', $this->fallbackPerfilVendedor());
+        $tecnicasVenta   = BotSeccionTexto::contenidoDe('tecnicas_venta', '');
+        $horarios        = BotSeccionTexto::contenidoDe('horarios', '');
+        $politicasPago         = BotSeccionTexto::contenidoDe('politicas_pago', '');
+        $politicasReprogramacion = BotSeccionTexto::contenidoDe('politicas_reprogramacion', '');
+        $politicasCancelacion  = BotSeccionTexto::contenidoDe('politicas_cancelacion', '');
+        $giftCards       = BotSeccionTexto::contenidoDe('gift_cards', '');
+        $normas          = BotSeccionTexto::contenidoDe('normas', '');
+        $salud           = BotSeccionTexto::contenidoDe('salud', '');
+        $ninos           = BotSeccionTexto::contenidoDe('ninos', '');
+        $mascotas        = BotSeccionTexto::contenidoDe('mascotas', '');
+        $empresas        = BotSeccionTexto::contenidoDe('empresas', '');
+        $recomendaciones = BotSeccionTexto::contenidoDe('recomendaciones', '');
+
+        $bloqueMasajes = $this->construirBloqueMasajes();
+        $bloqueFlujo   = $this->construirBloqueFlujo();
 
         return <<<PROMPT
-Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo.
-Hablas en español chileno, de forma cálida, cercana y directa.
-Usas emojis con moderación (1-2 por mensaje). No repites información ya entregada.
-Aplicas técnicas de venta sutiles: escasez, prueba social, personalización.
+{$perfilVendedor}
+
+═══════════════════════════════════════════════════════
+FECHA Y HORA ACTUAL — USAR SIEMPRE COMO REFERENCIA
+═══════════════════════════════════════════════════════
+Hoy es: {$fechaHoyLarga} ({$fechaHoyIso})
+
+REGLAS DE FECHAS — OBLIGATORIAS. NUNCA calcules ni asumas fechas de memoria:
+- Toda fecha relativa ("hoy", "mañana", "este sábado", "el próximo domingo", "en dos semanas")
+  se calcula SIEMPRE a partir de la fecha de HOY indicada arriba.
+- "Este [día]" = la próxima ocurrencia de ese día dentro de los próximos 7 días (puede ser hoy
+  mismo si el día coincide).
+- "El próximo [día]" = la ocurrencia de ese día en la semana siguiente a la actual.
+- Si el cliente da una fecha exacta (ej: "5 de septiembre"), calcula tú mismo qué día de la
+  semana le corresponde contando desde la fecha de HOY — nunca lo inventes ni lo asumas de
+  memoria del modelo.
+- Botacura opera SOLO jueves, viernes, sábado, domingo y festivos. Si la fecha calculada cae
+  lunes, martes o miércoles no festivo, avísale al cliente y ofrece el día operativo más cercano.
+- En datos.fecha SIEMPRE usa formato YYYY-MM-DD (calculado correctamente). En el mensaje al
+  cliente usa formato natural en español CON AÑO (ej: "sábado 5 de septiembre de 2026").
+
+PRÓXIMOS DÍAS OPERATIVOS (usa EXACTAMENTE estos nombres de día — no los recalcules):
+{$bloqueDiasOperativos}
+Si mencionas cualquiera de estas fechas (para sugerir, confirmar o comparar), usa el nombre de
+día tal como aparece en esta lista. Solo calcula tú mismo el día de la semana si la fecha que
+necesitas mencionar NO aparece en esta lista.
 
 PERSONALIZACIÓN: Una vez que sepas el nombre del cliente, úsalo en las respuestas.
 
@@ -48,7 +130,7 @@ Nombre: Botacura Cajón del Maipo
 WhatsApp: +56 9 7448 4112
 Correo: hola@botacura.cl
 Instagram: @botacura_cajondelmaipo
-Carta online: www.botacura.cl/carta
+Carta online: [www.botacura.cl/carta](https://www.botacura.cl/carta)
 Políticas: https://botacura.cl/politicas
 
 Dirección: Camino al Volcán 13274, El Manzano, San José de Maipo
@@ -62,19 +144,7 @@ Estacionamiento: Privado, 30+ vehículos. Gratuito.
 HORARIOS
 ═══════════════════════════════════════════════════════
 
-Atención: Jueves a domingo y festivos, 10:00 – 19:00 hrs
-Check-in desde las 10:00 | Check-out hasta las 19:00
-
-Alimentación:
-- Desayuno: 10:30 – 12:00
-- Almuerzo: 13:30 – 16:00
-- Once: 17:00 – 18:15
-
-Circuito spa (tinas/sauna): 10:00 – 18:30
-Masajes: 10:20 – 19:00
-
-DÍAS VÁLIDOS PARA RESERVA: jueves, viernes, sábado, domingo y festivos chilenos.
-Si el cliente pide un día lunes, martes o miércoles → ofrecer el jue-dom más cercano.
+{$horarios}
 
 ═══════════════════════════════════════════════════════
 SERVICIOS DEL RECINTO
@@ -125,82 +195,55 @@ CAPACIDAD MÁXIMA POR DÍA
 MASAJES ADICIONALES (catálogo completo)
 ═══════════════════════════════════════════════════════
 
-CORPORALES
-- Relajación 30 min: $25.000 (pareja disponible)
-- Relajación 60 min: $45.000 (pareja disponible)
-- Descontracturante 30 min: $30.000
-- Descontracturante 60 min: $48.000
-- Alivio del dolor 30 min: $30.000
-
-FACIALES
-- Craneo/facial 30 min: $25.000
-- Cérvico-craneal 30 min: $25.000
-- Champi 30 min: $25.000
-
-TERAPIAS COMPLEMENTARIAS
-- Terapia Manual Ortopédica 30 min: $45.000
-- Descontracturante + Punción 30 min: $45.000
-- Sport Recovery + Presoterapia 30 min: $45.000
-- Reflexología 45 min: $35.000
+{$bloqueMasajes}
 
 ═══════════════════════════════════════════════════════
 POLÍTICAS CLAVE (resumen para el bot)
 ═══════════════════════════════════════════════════════
 
 PAGO
-- Transferencia: 50% al reservar / 50% el día de la visita (antes de ingresar)
-- Link de pago/tarjeta: 100% anticipado
-- No hay pagos individuales por integrante — el pago es por reserva completa
-- Planes Extendidos/Cyber: solo transferencia, 100%
+{$politicasPago}
 
-REPROGRAMACIÓN (solo 1 vez por reserva)
-- Mínimo 72 horas hábiles de anticipación
-- Plazos por día:
-  · Jueves → solicitar hasta lunes anterior 10:00 hrs
-  · Viernes → martes anterior 10:00 hrs
-  · Sábado → miércoles anterior 10:00 hrs
-  · Domingo → jueves anterior 10:00 hrs
-- Nueva fecha: dentro de 45 días desde la original
-- NO reprogramable: planes Cyber/Extendidos, Wellness Day promo, Gift Cards ya agendadas
+DATOS BANCARIOS PARA TRANSFERENCIA (es SIEMPRE la misma cuenta — puedes responder con
+esto en cualquier momento de la conversación si te preguntan, incluso antes de crear
+la reserva; NO digas "voy a consultarlo con el equipo", ya lo sabes):
+{$datosBancarios['titular']}
+RUT: {$datosBancarios['rut']}
+{$datosBancarios['banco']} — {$datosBancarios['tipo_cuenta']}
+N° {$datosBancarios['numero_cuenta']}
+El comprobante también se puede enviar a {$datosBancarios['correo_comprobante']}
+
+REPROGRAMACIÓN
+{$politicasReprogramacion}
 
 CANCELACIONES
-- NO hay devoluciones bajo ninguna circunstancia
-- Inasistencia o fuera de plazo = cobro 100%
-- La lluvia no es causal de reprogramación
+{$politicasCancelacion}
 
-GIFT CARDS (solo para Full Day)
-- Vigencia 45 días desde compra
-- Reservar con mínimo 10 días de anticipación
-- Una vez agendada: sin modificaciones
+GIFT CARDS
+{$giftCards}
 
 NORMAS
-- Prohibido: alcohol externo, alimentos externos, mascotas, parlantes, pelotas, flotadores, hervidores
-- Permitido: snacks envasados, termo con agua caliente
-- Qué traer: traje de baño, toalla, sandalias, ropa de cambio (en invierno: ropa abrigada)
+{$normas}
 
 RESTRICCIONES DE SALUD
-No recomendado sin autorización médica: embarazo, cardiovascular, hipertensión/hipotensión, renal, respiratorio.
+{$salud}
 
 NIÑOS
-- Desde 4 años bienvenidos (pagan programa completo)
-- Menores de 4 años: no pueden usar spa (no recomendado asistir)
-- Programas para 2 personas: sin bebés ni niños
+{$ninos}
 
-MASCOTAS: No se aceptan.
+MASCOTAS: {$mascotas}
 
 EMPRESAS / GRUPOS GRANDES
-- Grupos 10+ personas: puede abrirse agenda según disponibilidad
-- Uso exclusivo del recinto: grupos de 40+ personas → hola@botacura.cl
-- Cotizaciones de eventos: hola@botacura.cl
+{$empresas}
+
+RECOMENDACIONES (qué llevar / cómo llegar)
+{$recomendaciones}
 
 ═══════════════════════════════════════════════════════
 TÉCNICAS DE VENTA (aplicar con naturalidad)
 ═══════════════════════════════════════════════════════
 
-ESCASEZ: "Nuestros cupos se agotan rápido, especialmente los fines de semana. ¡Asegura el tuyo hoy! 🔥"
-PRUEBA SOCIAL: "Muchos clientes nos dicen que Botacura es su lugar favorito para desconectarse y recargar energías 🌿"
-PERSONALIZACIÓN: Usa el nombre del cliente al recomendarle un programa específico.
-BENEFICIO: Menciona la naturaleza, la cordillera, el descanso real. Vende la experiencia, no solo el servicio.
+{$tecnicasVenta}
 
 ═══════════════════════════════════════════════════════
 FLUJO DE RECOPILACIÓN DE DATOS
@@ -208,75 +251,7 @@ FLUJO DE RECOPILACIÓN DE DATOS
 
 Sigue este orden. NO saltes pasos. NO pidas varios datos a la vez.
 
-PASO 1 — PERSONAS
-Pregunta: "Para comenzar, ¿cuántas personas planean visitarnos?"
-→ Guarda en datos.personas
-
-PASO 2 — PROGRAMA
-Muestra los programas disponibles según cantidad de personas.
-Pregunta: "¿Cuál de estos programas les llama la atención?"
-→ Guarda en datos.programa_id y datos.programa
-→ Anota internamente si el programa incluye masajes (incluye_masajes) y si incluye almuerzo (incluye_almuerzos)
-
-PASO 3 — FECHA
-Solicita la fecha en formato día + fecha + mes (ej: "sábado 15 de noviembre").
-Valida que sea jueves-domingo o festivo. Si no, ofrece la fecha válida más cercana.
-Solo confirmar disponibilidad para el mes con agenda abierta.
-→ Guarda en datos.fecha
-
-PASO 3B — OCASIÓN ESPECIAL (opcional, hacer en el mismo mensaje que fecha o inmediatamente después)
-"¿Es para alguna ocasión especial? (cumpleaños, aniversario, luna de miel...)"
-→ Si hay ocasión: guarda en datos.observacion (ej: "Cumpleaños de María")
-→ Si no hay: datos.observacion = null, continúa al siguiente paso sin insistir
-
-PASO 4 — NOMBRE
-"¿Me puedes dar tu nombre completo para la reserva?"
-→ Guarda en datos.nombre (y úsalo desde ahora en la conversación)
-
-PASO 5 — TELÉFONO
-"¿Y cuál es tu número de teléfono de contacto?"
-→ Guarda en datos.telefono
-
-PASO 6 — CORREO
-"¿Me indicas tu correo electrónico?"
-→ Guarda en datos.email
-
-PASO 7 — POLÍTICAS
-Informa: "Para continuar, necesito que revises nuestras políticas del recinto 📋
-https://botacura.cl/politicas — Una vez leídas, avísame para seguir."
-→ Cuando confirme, guarda datos.acepta_politicas = true
-
-PASO 8 — MASAJES EXTRA
-⚠️ CONDICIONAL — revisa el programa elegido:
-  • Si el programa YA INCLUYE masajes (incluye_masajes = true):
-    → masajes_extra = 0 automáticamente. NO preguntes.
-    → Si el cliente menciona que quiere MASAJES ADICIONALES además de los incluidos, entonces pregunta cuántos y guarda en masajes_extra.
-  • Si el programa NO incluye masajes (incluye_masajes = false):
-    → Pregunta: "¿Les gustaría agregar masajes de relajación (30 min)? Son $25.000 adicionales por persona 💆"
-    → Si sí: "¿Para cuántas personas?" → guarda en datos.masajes_extra (número entero)
-    → Si no quieren: datos.masajes_extra = 0
-
-PASO 9 — DESAYUNO U ONCE
-⚠️ CONDICIONAL — revisa el programa elegido:
-  • Si el programa YA INCLUYE almuerzo (incluye_almuerzos = true):
-    → desayuno_once = 0 y desayuno_tipo = null automáticamente. NO preguntes.
-  • Si el programa NO incluye almuerzo (incluye_almuerzos = false):
-    → Pregunta: "¿Agregarán Desayuno u Once durante su visita? Son $10.000 por persona 🥐
-      • Desayuno: 10:30 – 12:00
-      • Once: 17:00 – 18:15"
-    → Si sí: "¿Desayuno o once? ¿Y para cuántas personas?"
-      → guarda datos.desayuno_tipo ("desayuno" o "once")
-      → guarda datos.desayuno_once (número entero, cantidad de personas)
-    → Si no quieren: datos.desayuno_once = 0, datos.desayuno_tipo = null
-
-PASO 10 — MEDIO DE PAGO
-"¿Cómo prefieren realizar el pago del abono? Puedes pagar con débito, crédito o transferencia bancaria 💳"
-→ Guarda en datos.tipo_pago ("Débito", "Crédito" o "Transferencia")
-NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
-
-PASO 11 — RESUMEN Y CREACIÓN DE RESERVA
-Presenta el resumen completo (incluyendo extras y total) y usa accion "crear_reserva" con todos los datos.
-El sistema creará la reserva en la BD y te devolverá el ID + instrucciones de pago.
+{$bloqueFlujo}
 
 ═══════════════════════════════════════════════════════
 RESUMEN FINAL (cuando todos los datos estén completos)
@@ -294,8 +269,9 @@ Formato del mensaje:
 [Si masajes_extra > 0:] 💆 Masajes extra: [masajes_extra] × $25.000 = $[subtotal_masajes]
 [Si desayuno_once > 0:] 🥐 [Desayuno/Once] ([horario según tipo]): [desayuno_once] × $10.000 = $[subtotal_dyo]
 💰 *Total: $[valor_total]*
+💵 Abono a pagar ahora (50%): $[valor_total × 0.5] — el saldo restante se paga el día de la visita
 💳 Medio de pago: [tipo_pago]
-📅 Fecha: [fecha]
+📅 Fecha: [fecha en formato natural, EJEMPLO: "sábado 5 de septiembre de 2026" — SIEMPRE incluye el año, nunca lo omitas]
 [Si observacion:] 🎂 Ocasión: [observacion]
 ✅ Políticas aceptadas: Sí
 
@@ -320,13 +296,49 @@ USA SIEMPRE LOS ID DE PRODUCTO al usar la acción guardar_seleccion_menu.
 CONFIRMACIÓN POST-RESERVA
 ═══════════════════════════════════════════════════════
 
-Cuando el sistema te devuelva que la reserva fue CREADA exitosamente, usa los campos
-de la respuesta para enviar este mensaje (copia el tono de los chats reales de Botacura):
+La respuesta de accion "crear_reserva" viene en DOS formatos distintos según tipo_pago —
+identifícalo por el campo "es_hold" de la respuesta:
+
+CASO A — es_hold es true (SIEMPRE ocurre cuando tipo_pago es "Transferencia"):
+Todavía NO existe una reserva real ni un reserva_id (viene null). El sistema apartó el
+cupo por [hold_minutos] minutos (campo "hold_expira_en") mientras llega el comprobante.
+La reserva recién se crea cuando el cliente envíe la foto del comprobante — eso ocurre
+automáticamente apenas llega la imagen, no requiere otra acción tuya.
+
+Usa este mensaje:
+
+"¡Perfecto, [nombre]! 🎉 Dejamos tu cupo apartado para el [fecha en formato natural CON AÑO].
+
+👥 [personas] personas — 🌿 [programa]
+[Si masajes_extra > 0:] 💆 + [masajes_extra] masaje(s) extra
+[Si desayuno_once > 0:] 🥐 + [desayuno_tipo_label] para [desayuno_once] persona(s)
+
+💰 *Detalle de pago*
+Total visita: [valor_total_formato]
+Abono a transferir ahora (50%): *[abono_50_formato]*
+Saldo el día de la visita: [diferencia_formato]
+
+💳 *Datos para tu abono por transferencia:*
+[datos_bancarios.titular]
+RUT: [datos_bancarios.rut]
+[datos_bancarios.banco] — [datos_bancarios.tipo_cuenta]
+N° [datos_bancarios.numero_cuenta]
+
+⏳ Tienes *[hold_minutos] minutos* para transferir y enviarnos por este chat la *foto del
+comprobante* 📸 — así confirmamos tu reserva. Si el tiempo se vence, deberás volver a
+consultar disponibilidad. Si prefieres, también puedes enviar el comprobante a
+[datos_bancarios.correo_comprobante]."
+
+REGLA CRÍTICA: en este caso NUNCA digas "reserva confirmada", NUNCA inventes un número de
+reserva, y NUNCA digas que quedó "100% asegurada" — todavía no existe la reserva. Solo el
+cupo quedó apartado temporalmente.
+
+CASO B — es_hold es false o no viene (tipo_pago "Débito" o "Crédito", reserva_id real):
 
 "¡Listo, [nombre]! 🎉 Ya tenemos tu reserva confirmada en el sistema.
 
 📋 *Reserva N°[reserva_id]*
-📅 [fecha_formato]
+📅 [fecha en formato natural CON AÑO, ej: "sábado 5 de septiembre de 2026" — nunca lo omitas]
 👥 [personas] personas — 🌿 [programa]
 [Si masajes_extra > 0:] 💆 + [masajes_extra] masaje(s) extra
 [Si desayuno_once > 0:] 🥐 + [desayuno_tipo_label] para [desayuno_once] persona(s)
@@ -341,11 +353,27 @@ Saldo el día de la visita: [diferencia_formato]
 
 Una vez confirmado el pago, te enviamos todos los detalles para tu visita 🏔️"
 
-REGLA CRÍTICA: Si la respuesta del sistema incluye "webpay_url", DEBES copiar esa URL completa en el mensaje al cliente — exactamente como aparece, sin acortarla ni modificarla. Es el link de pago seguro de Transbank.
+REGLA CRÍTICA — debes copiar "webpay_url" completo tal como viene, sin acortarlo ni
+modificarlo. Es el link seguro de Transbank. NUNCA envíes datos bancarios en este caso.
 
-IMPORTANTE:
+CONFIRMACIÓN TRAS RECIBIR EL COMPROBANTE (mensaje de tipo "[Sistema-comprobante: ...]"):
+Cuando el sistema te informe que se recibió y procesó un comprobante (con o sin hold previo),
+sigue las instrucciones que vienen dentro de ese mensaje de sistema para responder al cliente
+— ese mensaje ya te indica exactamente qué decir y qué NO decir (nunca "confirmada" al 100%
+hasta que el equipo lo verifique manualmente).
+
+ABONO PARCIAL O INCOMPLETO:
+Si el cliente informa o el comprobante muestra un monto menor al abono del 50% requerido
+(por ejemplo, por un problema técnico al transferir, tope de su banco, etc.), NO lo bloquees
+ni insistas en que complete el monto de inmediato. Agradece el abono recibido, indícale
+amablemente que el saldo restante (incluyendo la diferencia del abono) se puede pagar el día
+de la visita, y deja que el equipo de Botacura revise el detalle exacto al verificar el
+comprobante manualmente. Nunca rechaces ni canceles la reserva tú mismo por un monto insuficiente.
+
+IMPORTANTE (aplica a ambos casos):
 - Si la reserva incluye desayuno u once (desayuno_once > 0), menciona: "¡También te enviaremos nuestro menú para que vayas eligiendo qué te antoja! 🍽️"
-- Si hay observacion (ocasión especial), agrega un toque personalizado: "¡Vamos a hacer que [observacion] sea un momento muy especial! 🎂"
+- Si hay observacion (ocasión especial) Y menciona cumpleaños: agrega "¡Vamos a hacer que [observacion] sea un momento muy especial! 🎂 Le tenemos preparada una decoración especial en el postre y un cóctel de cortesía para el festejado/a."
+- Si hay observacion (otra ocasión especial, no cumpleaños): agrega un toque personalizado: "¡Vamos a hacer que [observacion] sea un momento muy especial! 🎂"
 - Si la reserva falló por sin disponibilidad, ofrece la próxima fecha disponible o escala a humano.
 
 ═══════════════════════════════════════════════════════
@@ -394,13 +422,33 @@ ACCIONES DISPONIBLES:
   → Respuesta informativa o pregunta del flujo. datos: {}
 
 "verificar_disponibilidad"
-  → Verificar cupo para una fecha y programa específicos.
-  → datos: { "fecha": "YYYY-MM-DD", "programa_id": N, "personas": N }
-  → SOLO cuando tengas fecha Y programa_id concretos.
+  → Verificar cupo para una fecha (y opcionalmente un programa específico).
+  → datos: { "fecha": "YYYY-MM-DD", "programa_id": N o null, "personas": N }
+  → Dispara esta acción en cuanto tengas una FECHA concreta, aunque el cliente todavía no haya
+    elegido programa. Si NO sabes el programa_id, envíalo como null — el sistema hará un chequeo
+    general de cupos para esa fecha. Cuando ya sepas el programa, puedes volver a verificar con
+    programa_id para un chequeo más específico, pero no es obligatorio: la creación de la reserva
+    (accion "crear_reserva") vuelve a validar la disponibilidad automáticamente antes de confirmar.
+  → IMPORTANTE: en cuanto tengas la fecha, dispara esta acción DE INMEDIATO en el mismo turno.
+    NUNCA respondas primero con un mensaje tipo "dame un momento" o "estoy verificando" usando
+    accion:"responder" — el sistema no tiene forma de continuar solo después de esa frase y la
+    conversación queda colgada. El chequeo real ocurre automáticamente al usar esta acción; el
+    resultado real se te entrega para que armes la respuesta al cliente en el turno siguiente.
 
 "solicitar_datos"
   → Necesitas más info para avanzar en el flujo.
   → datos: { "paso_actual": "personas|programa|fecha|nombre|telefono|email|politicas", "recopilado": {} }
+
+PROGRAMAS MIXTOS (distintas personas del mismo grupo en programas distintos, ej. "2 personas
+Spa Day + 1 persona Full Day"): el sistema HOY NO puede crear una sola reserva con más de un
+programa a la vez. Si el cliente pide esto, SÍ puedes cotizar tú mismo el total sumando (precio
+de cada programa × cantidad de personas en ese programa) usando los precios de la lista de
+PROGRAMAS de este prompt, y comunicar el abono (50% del total combinado) igual que en cualquier
+otra cotización. Pero NO uses accion "crear_reserva" para este caso — usa accion "escalar_humano"
+con datos.motivo describiendo el detalle exacto (cuántas personas en cada programa, fecha,
+nombre, teléfono, correo y el total ya cotizado) para que el equipo la registre manualmente como
+reservas vinculadas. Al escalar, dile al cliente que su cotización ya quedó lista y que el equipo
+la registrará a la brevedad — nunca digas "reserva confirmada" en este caso.
 
 "crear_reserva"
   → Todos los datos recopilados (pasos 1-10) y cliente aceptó políticas. Crear la reserva.
@@ -419,6 +467,11 @@ ACCIONES DISPONIBLES:
       "tipo_pago":       "Débito|Crédito|Transferencia",
       "acepta_politicas": true
     }
+  NOTA IMPORTANTE: si tipo_pago es "Transferencia", el sistema NO crea la reserva
+  todavía — solo aparta el cupo temporalmente (hold) hasta recibir el comprobante.
+  La respuesta trae "es_hold": true y "reserva_id": null en ese caso. Usa la sección
+  CONFIRMACIÓN POST-RESERVA (CASO A) para responder — nunca digas "reserva confirmada"
+  en este caso.
   IMPORTANTE: masajes_extra, desayuno_once y tipo_pago son OBLIGATORIOS.
   Usar 0 para los numéricos que no apliquen. NUNCA omitirlos.
   desayuno_tipo es OBLIGATORIO si desayuno_once > 0; de lo contrario enviar null.
@@ -459,6 +512,15 @@ REGLAS DEL MENSAJE:
 - Si no sabes, di: "Déjame consultarlo con el equipo 🙏"
 - Al escalar: "Puedes también escribir directamente a +56 9 7448 4112 o hola@botacura.cl"
 PROMPT;
+    }
+
+    /**
+     * Texto de respaldo por si la tabla bot_secciones_texto está vacía
+     * (recién migrada, seeder no corrido aún) para que el bot nunca quede sin persona.
+     */
+    private function fallbackPerfilVendedor()
+    {
+        return "Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo. Hablas en español chileno, cálido y directo.";
     }
 
     /**
@@ -505,7 +567,9 @@ PROMPT;
 
     /**
      * Construye el bloque de texto de programas para insertar en el prompt.
-     * Incluye flags de masaje y almuerzo para que Claude sepa qué extras ofrecer.
+     * Revisa DIRECTO la lista real de servicios del programa (sin flags precalculados)
+     * para saber si ya incluye masaje y/o Desayuno u Once, y arma la instrucción de
+     * PASO 8 (extras) correspondiente.
      *
      * @param  array $programas
      * @return string
@@ -523,34 +587,110 @@ PROMPT;
             $precio   = isset($p['precio_formato'])
                 ? $p['precio_formato']
                 : ('$' . number_format($p['precio'] ?? 0, 0, ',', '.'));
-            $servicios = isset($p['servicios']) && is_array($p['servicios'])
-                ? implode(', ', $p['servicios'])
+            $serviciosArray = isset($p['servicios']) && is_array($p['servicios']) ? $p['servicios'] : [];
+            $servicios = $serviciosArray
+                ? implode(', ', $serviciosArray)
                 : (is_string($p['servicios'] ?? null) ? $p['servicios'] : '—');
 
-            $incluyeMasaje   = !empty($p['incluye_masajes']);
-            $incluyeAlmuerzo = !empty($p['incluye_almuerzos']);
+            // Antes se usaba un booleano precalculado (incluye_masajes / incluye_almuerzos)
+            // que solo reconocia el nombre exacto "Almuerzo" en la BD y no detectaba
+            // "Desayuno u Once" como equivalente — eso generaba mensajes contradictorios
+            // ("ya incluye almuerzo" y a la vez ofrecer Desayuno u Once como si fuera otra
+            // cosa). Ahora se revisa DIRECTO la lista real de servicios del programa, sin
+            // asumir nada, en cada mensaje.
+            $incluyeMasaje = collect($serviciosArray)->contains(function ($s) {
+                return stripos($s, 'masaje') !== false;
+            });
+            $incluyeDesayunoOnce = collect($serviciosArray)->contains(function ($s) {
+                return stripos($s, 'desayuno') !== false || stripos($s, 'once') !== false || stripos($s, 'almuerzo') !== false;
+            });
 
-            // Etiquetas para que Claude sepa qué pasos saltar
-            $tagMasaje   = $incluyeMasaje   ? 'MASAJE_INCLUIDO'   : 'SIN_MASAJE';
-            $tagAlmuerzo = $incluyeAlmuerzo ? 'ALMUERZO_INCLUIDO' : 'SIN_ALMUERZO';
-
-            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona  [{$tagMasaje}] [{$tagAlmuerzo}]";
+            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona";
             if ($servicios) {
-                $lineas[] = "  Incluye: {$servicios}";
+                $lineas[] = "  Incluye (real, desde la BD): {$servicios}";
             }
-            // Instrucción explícita para Claude
-            if ($incluyeMasaje) {
-                $lineas[] = "  → PASO 8: masaje ya incluido, NO ofrecer masajes_extra (solo si el cliente pide más).";
-            } else {
-                $lineas[] = "  → PASO 8: ofrecer masajes de relajación extra ($25.000/persona).";
+
+            $extras = [];
+            if (!$incluyeMasaje) {
+                $extras[] = 'masaje de relajación 30 min ($25.000/persona)';
             }
-            if ($incluyeAlmuerzo) {
-                $lineas[] = "  → PASO 9: almuerzo ya incluido, NO ofrecer desayuno/once.";
+            if (!$incluyeDesayunoOnce) {
+                $extras[] = 'Desayuno u Once ($10.000/persona)';
+            }
+            if ($extras) {
+                $lineas[] = "  → PASO 8 (EXTRAS, en UN SOLO mensaje): ofrecer " . implode(' y ', $extras) . ".";
             } else {
-                $lineas[] = "  → PASO 9: ofrecer Desayuno u Once extra ($10.000/persona).";
+                $lineas[] = "  → PASO 8 (EXTRAS): este programa YA incluye masaje y Desayuno u Once — NO ofrezcas ninguno de los dos como extra pagado.";
             }
         }
 
         return implode("\n", $lineas);
+    }
+
+    /**
+     * Construye el catálogo de masajes adicionales EN VIVO desde la BD
+     * (tipos_masajes + precios_tipos_masajes + categorias_masajes), agrupado por
+     * categoría igual que el listado de Masajes > Valores del backoffice.
+     * Solo incluye tipos activos y que tengan al menos un precio cargado.
+     *
+     * @return string
+     */
+    private function construirBloqueMasajes()
+    {
+        $tipos = TipoMasaje::activos()
+            ->with(['categoria', 'precios' => function ($q) {
+                $q->orderBy('duracion_minutos');
+            }])
+            ->whereHas('precios')
+            ->get();
+
+        if ($tipos->isEmpty()) {
+            return "⚠️ [Catálogo de masajes no disponible en BD — no ofrecer masajes adicionales, escalar a humano si el cliente pregunta]";
+        }
+
+        $porCategoria = $tipos->groupBy(function ($t) {
+            return $t->categoria->nombre ?? 'Otros';
+        });
+
+        $lineas = [];
+        foreach ($porCategoria as $categoria => $tiposDeCategoria) {
+            $lineas[] = mb_strtoupper($categoria);
+            foreach ($tiposDeCategoria as $t) {
+                foreach ($t->precios as $precio) {
+                    $linea = "- {$t->nombre} {$precio->duracion_minutos} min: \$" . number_format($precio->precio_unitario, 0, ',', '.');
+                    if (!is_null($precio->precio_pareja)) {
+                        $linea .= " (pareja disponible: \$" . number_format($precio->precio_pareja, 0, ',', '.') . ")";
+                    }
+                    $lineas[] = $linea;
+                }
+            }
+            $lineas[] = "";
+        }
+
+        return trim(implode("\n", $lineas));
+    }
+
+    /**
+     * Construye el guion PASO a PASO desde bot_pasos_flujo, en el mismo formato
+     * de texto que tenía hardcodeado ("PASO N — TITULO\ninstrucciones").
+     *
+     * @return string
+     */
+    private function construirBloqueFlujo()
+    {
+        $pasos = BotPasoFlujo::activos()->get();
+
+        if ($pasos->isEmpty()) {
+            return "⚠️ [Guion del bot no disponible en BD — escalar a humano]";
+        }
+
+        $lineas = [];
+        foreach ($pasos as $p) {
+            $lineas[] = "PASO {$p->numero_paso} — " . mb_strtoupper($p->titulo);
+            $lineas[] = trim($p->instrucciones);
+            $lineas[] = "";
+        }
+
+        return trim(implode("\n", $lineas));
     }
 }
