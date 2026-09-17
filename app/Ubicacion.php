@@ -10,11 +10,22 @@ class Ubicacion extends Model
     protected $table = 'ubicaciones';
 
     protected $fillable = [
-        'nombre'
+        'nombre',
+        'espacio_tipo',
+        'sub_tipo',
+        'capacidad_min',
+        'capacidad_max',
+        'tiene_terraza',
+        'activo',
     ];
 
     public function visitas(){
         return $this->hasMany(Visita::class, 'id_ubicacion');
+    }
+
+    public function reservasAsignadas()
+    {
+        return $this->hasMany(ReservaUbicacion::class, 'id_ubicacion');
     }
 
 

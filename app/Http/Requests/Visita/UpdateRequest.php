@@ -28,7 +28,11 @@ class UpdateRequest extends FormRequest
             'horario_masaje' => 'nullable|string', // Caso de datos simples
             'tipo_masaje' => 'nullable|string',
             'observacion' => 'nullable|string',
-            'id_ubicacion' => 'required|string',
+            'id_ubicacion' => 'nullable|string',
+            'ubicaciones' => 'nullable|array',
+            'ubicaciones.*.id' => 'nullable|integer|exists:ubicaciones,id',
+            'ubicaciones.*.personas' => 'nullable|integer|min:1',
+            'wellness' => 'nullable|in:terraza,reposera',
             'trago_cortesia' => 'required|string',
             'spas.*.horario_sauna' => 'nullable|string', // Para arreglos de SPA
             'masajes.*' => 'nullable',

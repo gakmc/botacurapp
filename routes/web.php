@@ -496,6 +496,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     })->name('ubicacion.edit');
 
+    Route::patch('ubicacion/{id}/toggle-activo', 'ComplementoController@toggleUbicacionActivo')->name('ubicacion.toggle_activo');
+
     Route::get('unidad_medida/{id}/edit', function ($id) {
         $unidad = UnidadMedida::findOrFail($id);
         return view('themes.backoffice.pages.unidad_medida.edit', compact('unidad'));

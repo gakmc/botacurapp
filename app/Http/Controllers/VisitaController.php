@@ -14,6 +14,8 @@ use App\PrecioTipoMasaje;
 use App\Producto;
 use App\Reserva;
 use App\ReservaDesayunoOnce;
+use App\ReservaUbicacion;
+use App\ReservaWellness;
 use App\Servicio;
 use App\TipoMasaje;
 use App\Ubicacion;
@@ -126,23 +128,9 @@ class VisitaController extends Controller
         // $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
         $fechaSeleccionada = $reserva->fecha_visita;
 
-        $ubicacionesOcupadas = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-            ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
-            ->toArray();
-
-        $ubicacionesAll = DB::table('ubicaciones')
-            ->select('id', 'nombre')
-            ->get();
-
-        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
-        })->values();
+        $ubicaciones          = $this->ubicacionesParaAsignacion($reserva);
+        $ubicacionesAsignadas = $this->ubicacionesAsignadasParaFormulario($reserva, $ubicaciones);
+        $wellnessActual       = $this->wellnessActualParaFormulario($reserva);
 
         // ===============================HORAS=SPA==============================================
         // Horarios disponibles de 10:00 a 18:30 SPA
@@ -301,6 +289,8 @@ class VisitaController extends Controller
         return view('themes.backoffice.pages.visita.create', [
             'reserva'               => $reserva,
             'ubicaciones'           => $ubicaciones,
+            'ubicacionesAsignadas'  => $ubicacionesAsignadas,
+            'wellnessActual'        => $wellnessActual,
             'lugares'               => LugarMasaje::all(),
             'servicios'             => $serviciosDisponibles,
             'horarios'              => $horariosDisponiblesSPA,
@@ -501,23 +491,9 @@ class VisitaController extends Controller
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada = $reserva->fecha_visita;
 
-        $ubicacionesOcupadas = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-            ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
-            ->toArray();
-
-        $ubicacionesAll = DB::table('ubicaciones')
-            ->select('id', 'nombre')
-            ->get();
-
-        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
-        })->values();
+        $ubicaciones          = $this->ubicacionesParaAsignacion($reserva);
+        $ubicacionesAsignadas = $this->ubicacionesAsignadasParaFormulario($reserva, $ubicaciones);
+        $wellnessActual       = $this->wellnessActualParaFormulario($reserva);
 
         // ===============================HORAS=SPA==============================================
         // Horarios disponibles de 10:00 a 18:30 SPA
@@ -660,6 +636,8 @@ class VisitaController extends Controller
             'reserva'               => $reserva,
             'visita'                => $visita,
             'ubicaciones'           => $ubicaciones,
+            'ubicacionesAsignadas'  => $ubicacionesAsignadas,
+            'wellnessActual'        => $wellnessActual,
             'lugares'               => LugarMasaje::all(),
             'servicios'             => $serviciosDisponibles,
             'horarios'              => $horariosDisponiblesSPA,
@@ -785,46 +763,254 @@ class VisitaController extends Controller
 
     public function edit_ubicacion(Visita $visitum)
     {
-        $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $visitum->reserva->fecha_visita)->format('Y-m-d');
-        $ubicacionesOcupadas = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-            ->where('reservas.fecha_visita', $fechaSeleccionada)
-            ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
-            ->toArray();
-
-        $ubicacionesAll = DB::table('ubicaciones')
-            ->select('id', 'nombre')
-            ->get();
-
-        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
-        })->values();
+        $reserva = $visitum->reserva;
+        $ubicaciones = $this->ubicacionesParaAsignacion($reserva);
 
         return view('themes.backoffice.pages.visita.edit_ubicacion', [
-            'visita'      => $visitum,
-            'ubicaciones' => $ubicaciones,
+            'visita'               => $visitum,
+            'reserva'              => $reserva,
+            'ubicaciones'          => $ubicaciones,
+            'ubicacionesAsignadas' => $this->ubicacionesAsignadasParaFormulario($reserva, $ubicaciones),
+            'wellnessActual'       => $this->wellnessActualParaFormulario($reserva),
         ]);
 
     }
 
     public function update_ubicacion(Request $request, Visita $visitum)
     {
-        $ubicacionNueva = Ubicacion::where('id', '=', $request->ubicacion)
-            ->first();
         $reserva = $visitum->reserva;
-        $visitas = $reserva->visitas;
-        foreach ($visitas as $visita) {
+
+        $this->sincronizarWellnessReserva($request, $reserva);
+
+        $idPrincipal = $this->sincronizarUbicacionesReserva($request, $reserva);
+        $idPrincipal = $idPrincipal ?? $request->input('ubicacion');
+
+        if (! $idPrincipal) {
+            return redirect()
+                ->route('backoffice.reserva.show', ['reserva' => $visitum->id_reserva])
+                ->with('info', 'No se seleccionó ninguna ubicación. Puedes asignarla más adelante.');
+        }
+
+        $ubicacionNueva = Ubicacion::find($idPrincipal);
+
+        if (! $ubicacionNueva) {
+            return redirect()
+                ->back()
+                ->with('error', 'La ubicación seleccionada ya no existe o no está disponible.');
+        }
+
+        foreach ($reserva->visitas as $visita) {
             $visita->update([
-                'id_ubicacion' => $request->ubicacion,
+                'id_ubicacion' => $idPrincipal,
             ]);
         }
 
         Alert::success('Éxito', 'Ubicacion cambiada a ' . $ubicacionNueva->nombre)->showConfirmButton('Confirmar');
         return redirect()->route('backoffice.reserva.show', ['reserva' => $visitum->id_reserva]);
+    }
+
+    private function subTiposPermitidosParaPrograma(?string $espacioTipoPrograma): ?array
+    {
+        $categoria = app(\App\Services\DisponibilidadService::class)->categoriaDeEspacioTipo($espacioTipoPrograma);
+
+        if ($categoria === 'estacion') {
+            return ['estacion_normal', 'estacion_grupal'];
+        }
+
+        if ($categoria === 'wellness') {
+            return ['terraza', 'reposera', 'estacion_grupal'];
+        }
+
+        return null;
+    }
+
+    private function ubicacionesParaAsignacion(Reserva $reserva)
+    {
+        $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
+
+        $ocupadasLegado = DB::table('visitas')
+            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
+            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->where('visitas.id_reserva', '!=', $reserva->id)
+            ->pluck('ubicaciones.nombre');
+
+        $ocupadasNuevas = DB::table('reserva_ubicaciones')
+            ->join('reservas', 'reserva_ubicaciones.id_reserva', '=', 'reservas.id')
+            ->join('ubicaciones', 'reserva_ubicaciones.id_ubicacion', '=', 'ubicaciones.id')
+            ->where('reservas.fecha_visita', $fechaSeleccionada)
+            ->where('reserva_ubicaciones.id_reserva', '!=', $reserva->id)
+            ->pluck('ubicaciones.nombre');
+
+        $ubicacionesOcupadas = $ocupadasLegado->merge($ocupadasNuevas)->unique()->values()->toArray();
+
+        $ubicaciones = DB::table('ubicaciones')
+            ->select('id', 'nombre', 'espacio_tipo', 'sub_tipo', 'capacidad_min', 'capacidad_max')
+            ->where('activo', true)
+            ->get()
+            ->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
+                return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
+            });
+
+        $subTipos = $this->subTiposPermitidosParaPrograma(optional($reserva->programa)->espacio_tipo);
+        if ($subTipos) {
+            $ubicaciones = $ubicaciones->filter(function ($ubicacion) use ($subTipos) {
+                return in_array($ubicacion->sub_tipo, $subTipos);
+            });
+        }
+
+        return $ubicaciones->values();
+    }
+
+    private function ubicacionesAsignadasParaFormulario(Reserva $reserva, $ubicacionesDisponibles = null)
+    {
+        $asignaciones = $reserva->ubicacionesAsignadas()
+            ->get(['id_ubicacion', 'cantidad_personas'])
+            ->map(function ($ua) {
+                return ['id' => $ua->id_ubicacion, 'personas' => $ua->cantidad_personas];
+            })
+            ->values();
+
+        if ($asignaciones->isNotEmpty()) {
+            return $asignaciones;
+        }
+
+        $idLegado = optional($reserva->visitas->first())->id_ubicacion;
+        if ($idLegado) {
+            return collect([['id' => $idLegado, 'personas' => $reserva->cantidad_personas]]);
+        }
+
+        if ($ubicacionesDisponibles) {
+            $sugerencia = $this->sugerirUbicacionesEstacion($reserva, $ubicacionesDisponibles);
+            if ($sugerencia && $sugerencia->isNotEmpty()) {
+                return $sugerencia;
+            }
+        }
+
+        return $asignaciones;
+    }
+
+    private function sugerirUbicacionesEstacion(Reserva $reserva, $ubicacionesDisponibles)
+    {
+        $espacioTipo = optional($reserva->programa)->espacio_tipo;
+        if (app(\App\Services\DisponibilidadService::class)->categoriaDeEspacioTipo($espacioTipo) !== 'estacion') {
+            return null;
+        }
+
+        $personas = (int) $reserva->cantidad_personas;
+        if ($personas <= 3) {
+            return null;
+        }
+
+        $nisperos = $ubicacionesDisponibles->where('sub_tipo', 'estacion_grupal')->values();
+        $normales = $ubicacionesDisponibles->where('sub_tipo', 'estacion_normal')->values();
+
+        if ($personas <= 5) {
+            if ($nisperos->count() >= 1) {
+                return collect([['id' => $nisperos[0]->id, 'personas' => $personas]]);
+            }
+
+            return $this->repartirEnEstacionesNormales($personas, $normales);
+        }
+
+        $capacidadDosNisperos = 10;
+        if ($personas <= $capacidadDosNisperos && $nisperos->count() >= 2) {
+            $mitad1 = (int) ceil($personas / 2);
+            $mitad2 = $personas - $mitad1;
+
+            if ($mitad1 > 5) {
+                $mitad2 += $mitad1 - 5;
+                $mitad1 = 5;
+            }
+            if ($mitad2 > 5) {
+                $mitad1 += $mitad2 - 5;
+                $mitad2 = 5;
+            }
+
+            return collect([
+                ['id' => $nisperos[0]->id, 'personas' => $mitad1],
+                ['id' => $nisperos[1]->id, 'personas' => $mitad2],
+            ]);
+        }
+
+        if ($nisperos->count() >= 1) {
+            $resto = $personas - 5;
+
+            return collect([['id' => $nisperos[0]->id, 'personas' => 5]])
+                ->merge($this->repartirEnEstacionesNormales($resto, $normales));
+        }
+
+        return $this->repartirEnEstacionesNormales($personas, $normales);
+    }
+
+    private function repartirEnEstacionesNormales(int $personas, $normales)
+    {
+        $sugerencia = collect();
+        $index = 0;
+
+        while ($personas > 0 && $index < $normales->count()) {
+            $asignar = min(3, $personas);
+            $sugerencia->push(['id' => $normales[$index]->id, 'personas' => $asignar]);
+            $personas -= $asignar;
+            $index++;
+        }
+
+        return $sugerencia;
+    }
+
+    private function wellnessActualParaFormulario(Reserva $reserva): ?string
+    {
+        return optional($reserva->wellness)->tipo;
+    }
+
+    private function sincronizarWellnessReserva(Request $request, Reserva $reserva): void
+    {
+        if (optional($reserva->programa)->espacio_tipo !== 'wellness') {
+            return;
+        }
+
+        $tipo = $request->input('wellness');
+        if (! in_array($tipo, ['terraza', 'reposera'], true)) {
+            return;
+        }
+
+        $reserva->wellness()->delete();
+        ReservaWellness::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+    }
+
+    private function sincronizarUbicacionesReserva(Request $request, Reserva $reserva): ?int
+    {
+        if (! $request->has('ubicaciones')) {
+            return null;
+        }
+
+        $filas = collect($request->input('ubicaciones', []))
+            ->filter(function ($fila) {
+                return ! empty($fila['id']);
+            })
+            ->values();
+
+        if ($filas->isEmpty()) {
+            return null;
+        }
+
+        $reserva->ubicacionesAsignadas()->delete();
+
+        $idPrincipal = null;
+
+        foreach ($filas as $fila) {
+            $creada = ReservaUbicacion::create([
+                'id_reserva'        => $reserva->id,
+                'id_ubicacion'      => (int) $fila['id'],
+                'cantidad_personas' => (isset($fila['personas']) && $fila['personas'] !== '') ? (int) $fila['personas'] : null,
+            ]);
+
+            if ($idPrincipal === null) {
+                $idPrincipal = $creada->id_ubicacion;
+            }
+        }
+
+        return $idPrincipal;
     }
 
     public function register(Reserva $reserva, Visita $visita)
@@ -849,6 +1035,7 @@ class VisitaController extends Controller
 
         $ubicacionesAll = DB::table('ubicaciones')
             ->select('id', 'nombre')
+            ->where('activo', true)
             ->get();
 
         $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
@@ -1227,7 +1414,7 @@ class VisitaController extends Controller
             });
 
             if ($cliente && $visita) {
-                Mail::to($cliente->correo)->send(new RegistroReservaMailable($visita, $reserva, $cliente, $programa));
+                Mail::to($cliente->correo)->queue(new RegistroReservaMailable($visita, $reserva, $cliente, $programa));
             }
 
             Alert::success('Éxito', 'Se ha generado la visita')->showConfirmButton();
@@ -1302,23 +1489,9 @@ class VisitaController extends Controller
         // $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
         $fechaSeleccionada = $reserva->fecha_visita;
 
-        $ubicacionesOcupadas = DB::table('visitas')
-            ->join('reservas', 'visitas.id_reserva', '=', 'reservas.id')
-            ->join('ubicaciones', 'visitas.id_ubicacion', '=', 'ubicaciones.id')
-            ->where('reservas.fecha_visita', \Carbon\Carbon::createFromFormat('d-m-Y', $fechaSeleccionada)->format('Y-m-d'))
-            ->pluck('ubicaciones.nombre')
-            ->map(function ($nombre) {
-                return $nombre;
-            })
-            ->toArray();
-
-        $ubicacionesAll = DB::table('ubicaciones')
-            ->select('id', 'nombre')
-            ->get();
-
-        $ubicaciones = $ubicacionesAll->filter(function ($ubicacion) use ($ubicacionesOcupadas) {
-            return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
-        })->values();
+        $ubicaciones          = $this->ubicacionesParaAsignacion($reserva);
+        $ubicacionesAsignadas = $this->ubicacionesAsignadasParaFormulario($reserva, $ubicaciones);
+        $wellnessActual       = $this->wellnessActualParaFormulario($reserva);
 
         // ===============================HORAS=SPA==============================================
         // Horarios disponibles de 10:00 a 18:30 SPA
@@ -1461,6 +1634,8 @@ class VisitaController extends Controller
         return view('themes.backoffice.pages.visita.registrar', [
             'reserva'                => $reserva,
             'ubicaciones'            => $ubicaciones,
+            'ubicacionesAsignadas'   => $ubicacionesAsignadas,
+            'wellnessActual'         => $wellnessActual,
             'lugares'                => LugarMasaje::all(),
             'servicios'              => $serviciosDisponibles,
             'horarios'               => $horariosDisponiblesSPA,
@@ -1482,6 +1657,13 @@ class VisitaController extends Controller
     public function actualizar(UpdateRequest $request, Reserva $reserva)
     {
         $reserva->load(['programa.servicios', 'cliente', 'venta', 'visitas', 'masajes', 'menus']);
+
+        $this->sincronizarWellnessReserva($request, $reserva);
+
+        $idUbicacionPrincipal = $this->sincronizarUbicacionesReserva($request, $reserva);
+        if ($idUbicacionPrincipal !== null) {
+            $request->merge(['id_ubicacion' => $idUbicacionPrincipal]);
+        }
 
         $personasMasaje = session()->get('cantidadMasajesExtra');
         if ($personasMasaje === null) {
@@ -1588,7 +1770,7 @@ class VisitaController extends Controller
             $visitaMail = $visitaMail ?? $reserva->visitas()->latest('id')->first();
 
             if ($cliente && $visitaMail) {
-                Mail::to($cliente->correo)->send(new RegistroReservaMailable($visitaMail, $reserva, $cliente, $programa));
+                Mail::to($cliente->correo)->queue(new RegistroReservaMailable($visitaMail, $reserva, $cliente, $programa));
             }
 
             session()->forget(['masajesExtra', 'almuerzosExtra', 'cantidadMasajesExtra']);
@@ -1976,6 +2158,12 @@ class VisitaController extends Controller
 
     public function store(StoreRequest $request, Reserva $reserva)
     {
+        $this->sincronizarWellnessReserva($request, $reserva);
+
+        $idUbicacionPrincipal = $this->sincronizarUbicacionesReserva($request, $reserva);
+        if ($idUbicacionPrincipal !== null) {
+            $request->merge(['id_ubicacion' => $idUbicacionPrincipal]);
+        }
 
         // ===== Personas para MASAJES (NO confundir con asistentes para MENÚ) =====
         $personasMasaje = $this->resolverCantidadMasajes($reserva);
@@ -2112,7 +2300,7 @@ class VisitaController extends Controller
             $visita  = $visita ?? Visita::where('id_reserva', $reserva->id)->latest('id')->first();
 
             if ($cliente && $visita) {
-                Mail::to($cliente->correo)->send(new RegistroReservaMailable($visita, $reserva, $cliente, $programa));
+                Mail::to($cliente->correo)->queue(new RegistroReservaMailable($visita, $reserva, $cliente, $programa));
             }
 
             return redirect()

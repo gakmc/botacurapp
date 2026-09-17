@@ -67,7 +67,12 @@
 
                                 <ul class="productos">
                                 @foreach($items as $p)
-                                    <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                                    <li data-detalle-id="{{ $p->id }}">
+                  - {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span>
+                  @if(!empty($p->observacion))
+                    <br><small class="orange-text text-darken-2"><i class="material-icons tiny" style="vertical-align:middle;">comment</i> {{ $p->observacion }}</small>
+                  @endif
+                </li>
                                 @endforeach
                                 </ul>
                             </div>
@@ -100,7 +105,12 @@
 
             <ul class="productos">
               @foreach($items as $p)
-                <li data-detalle-id="{{ $p->id }}">- {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span></li>
+                <li data-detalle-id="{{ $p->id }}">
+                  - {{ $p->producto }} <span class="cantidad">X{{ $p->cantidad_producto }}</span>
+                  @if(!empty($p->observacion))
+                    <br><small class="orange-text text-darken-2"><i class="material-icons tiny" style="vertical-align:middle;">comment</i> {{ $p->observacion }}</small>
+                  @endif
+                </li>
               @endforeach
             </ul>
           </div>
@@ -196,6 +206,16 @@
 });
 </script>
 <script>
+    function escapeHtml(str) {
+        if (str === null || str === undefined) return '';
+        return String(str)
+            .replaceAll('&', '&amp;')
+            .replaceAll('<', '&lt;')
+            .replaceAll('>', '&gt;')
+            .replaceAll('"', '&quot;')
+            .replaceAll("'", '&#039;');
+    }
+
     document.addEventListener('DOMContentLoaded', function () {
         if (typeof window.Echo !== 'undefined') {
             // Si el socket se reconecta (no la conexion inicial), recargamos para
@@ -250,7 +270,10 @@
                     (data.items || []).forEach(p => {
                         const li = document.createElement('li');
                         li.setAttribute('data-detalle-id', p.id_detalle);
-                        li.innerHTML = `- ${p.nombre} <span class="cantidad">X${p.cantidad}</span>`;
+                        const obs = p.observacion
+                            ? `<br><small class="orange-text text-darken-2"><i class="material-icons tiny" style="vertical-align:middle;">comment</i> ${escapeHtml(p.observacion)}</small>`
+                            : '';
+                        li.innerHTML = `- ${p.nombre} <span class="cantidad">X${p.cantidad}</span>${obs}`;
                         ulProductos.appendChild(li);
                     });
                 }

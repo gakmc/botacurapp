@@ -248,7 +248,16 @@
                 <li class="collection-item avatar">
                   <i class="material-icons green accent-2 circle">spa</i>
                   <h6 class="collection-header m-0">Visita <a id="btn-ubicacion" class="btn-floating btn waves-effect waves-light right tooltipped" data-position="bottom" data-tooltip="Cambiar Ubicación" href="{{route('backoffice.visita.edit_ubicacion',['visitum'=>$reserva->visitas->first()])}}"><i class="material-icons green accent-2">transfer_within_a_station</i></a></h6>
-                  <p>{{$reserva->visitas->first()->ubicacion->nombre ?? 'Ubicacion no registrada'}}</p>
+                  @if ($reserva->ubicacionesAsignadas->count() > 1)
+                    <p style="margin-bottom: 0">Ubicaciones:</p>
+                    <ul style="margin-top: 0; padding-left: 20px; list-style-type: disc;">
+                      @foreach ($reserva->ubicacionesAsignadas as $ubicacionAsignada)
+                        <li>{{ $ubicacionAsignada->ubicacion->nombre ?? 'Ubicación eliminada' }} ({{ $ubicacionAsignada->cantidad_personas }} personas)</li>
+                      @endforeach
+                    </ul>
+                  @else
+                    <p>{{$reserva->visitas->first()->ubicacion->nombre ?? 'Ubicacion no registrada'}}</p>
+                  @endif
                   @if ($reserva->visitas->isEmpty())
                       <h6>Aún no se registra la visita para esta reserva</h6>
                   @else
@@ -906,7 +915,6 @@
       $('#btn-reagendar').hide();
       $('#btn-servicio').hide();
       $('#btn-producto').hide();
-      $('#icono-eliminar').hide();
       $('#btn-ubicacion').hide();
 
     });

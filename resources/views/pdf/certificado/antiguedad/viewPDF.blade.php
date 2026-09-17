@@ -71,7 +71,7 @@
 </head>
 <body>
         <div class="header">
-        <img src="https://botacura.cl/wp-content/uploads/2024/04/logo.png" alt="Logo Botacura" class="logo">
+        <img src="{{ public_path('images/botacura/logo.png') }}" alt="Logo Botacura" class="logo">
         <p>Cam. Al Volcán 13274, El Manzano, San José de Maipo, Región Metropolitana</p>
         <p>Centro de relajación y descanso</p>
         <h2 class="highlight title">CERTIFICADO DE ANTIGÜEDAD</h2>

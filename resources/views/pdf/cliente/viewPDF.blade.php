@@ -34,7 +34,7 @@
         <div class="row valign-wrapper">
 
             <div class="col s4 left-align">
-                <img class="logo" src="https://botacura.cl/wp-content/uploads/2024/04/294235172_462864912512116_3346235978129441981_n-modified.png"
+                <img class="logo" src="{{ public_path('images/botacura/294235172_462864912512116_3346235978129441981_n-modified.png') }}"
                     alt="botacura logo"/>
 
             </div>

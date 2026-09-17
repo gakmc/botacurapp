@@ -3,6 +3,7 @@
 namespace App\Http\Controllers\Api;
 
 use App\Http\Controllers\Controller;
+use App\Services\DisponibilidadService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 
@@ -29,39 +30,17 @@ use Illuminate\Support\Facades\DB;
  *   "espacio_tipo": "terraza",
  *   "personas": 3,
  *   "tinaja": { "slots_usados": 8, "slots_max": 16, "slots_libres": 8 },
- *   "espacio": { "tipo": "terraza", "usados": 2, "max": 10, "libres": 8 }
+ *   "espacio": { "tipo": "wellness", "usados": 2, "max": 44, "libres": 42 }
  * }
  *
  * Compatible Laravel 6 / PHP 7.2
  */
 class DisponibilidadController extends Controller
 {
-    /**
-     * Capacidad máxima por espacio_tipo.
-     * terraza y reposera se suman (pool compartido para Wellness Day/Plus).
-     * Las estaciones son independientes por nivel.
-     */
-    private $capacidad = [
-        'estacion_economico'  => 2,
-        'estacion_intermedio' => 2,
-        'estacion_full'       => 5,
-        'terraza'             => 6,
-        'reposera'            => 4,
-    ];
-
-    /**
-     * Tipos que comparten pool de disponibilidad (terraza + reposera).
-     * Un programa de tipo "terraza" puede ocupar una reposera si no hay terrazas.
-     */
-    private $poolFlexible = ['terraza', 'reposera'];
-
-    /** Máximo de slots de tinaja por día (8 T1 + 8 T2) */
-    private $maxSlotsTinaja = 16;
-
-    // -------------------------------------------------------------------------
-
     public function check(Request $request)
     {
+        $disponibilidad = app(DisponibilidadService::class);
+
         // ── Validar parámetros ────────────────────────────────────────────────
         $request->validate([
             'fecha'          => 'required|date|after_or_equal:today',
@@ -70,7 +49,7 @@ class DisponibilidadController extends Controller
             'personas'       => 'nullable|integer|min:1|max:20',
         ]);
 
-        $fecha   = $request->fecha;
+        $fecha    = $request->fecha;
         $personas = (int) ($request->personas ?? 1);
 
         // ── Resolver programa ─────────────────────────────────────────────────
@@ -96,110 +75,24 @@ class DisponibilidadController extends Controller
             ], 422);
         }
 
-        // ── 1. Verificar slots de tinaja ──────────────────────────────────────
-        $slotsUsados = $this->contarSlotsUsados($fecha);
-        $slotsNuevos  = $personas >= 5 ? 2 : 1;
-        $slotsLibres  = $this->maxSlotsTinaja - $slotsUsados;
-        $tinajaOk     = ($slotsUsados + $slotsNuevos) <= $this->maxSlotsTinaja;
-
-        // ── 2. Verificar disponibilidad de espacio ────────────────────────────
-        $espacioTipo = $programa->espacio_tipo;
-        $esFlexible  = in_array($espacioTipo, $this->poolFlexible);
-
-        if ($esFlexible) {
-            // Wellness Day / Plus: terraza O reposera → pool combinado
-            $usadosPool = $this->contarEspaciosUsados($fecha, $this->poolFlexible);
-            $maxPool    = $this->capacidad['terraza'] + $this->capacidad['reposera']; // 6+4=10
-            $libresPool = $maxPool - $usadosPool;
-            $espacioOk  = $libresPool > 0;
-
-            $espacioInfo = [
-                'tipo'      => 'terraza + reposera (flexible)',
-                'usados'    => $usadosPool,
-                'max'       => $maxPool,
-                'libres'    => max(0, $libresPool),
-            ];
-        } else {
-            // Full Day / estaciones: tipo fijo
-            $usados    = $this->contarEspaciosUsados($fecha, [$espacioTipo]);
-            $max       = $this->capacidad[$espacioTipo] ?? 0;
-            $libres    = $max - $usados;
-            $espacioOk = $libres > 0;
-
-            $espacioInfo = [
-                'tipo'   => $espacioTipo,
-                'usados' => $usados,
-                'max'    => $max,
-                'libres' => max(0, $libres),
-            ];
-        }
-
-        // ── 3. Disponible si AMBOS recursos tienen cupo ───────────────────────
-        $disponible = $tinajaOk && $espacioOk;
+        $resultado = $disponibilidad->disponible($fecha, $programa->espacio_tipo, $personas);
 
         return response()->json([
-            'ok'          => true,
-            'disponible'  => $disponible,
-            'fecha'       => $fecha,
-            'programa'    => $programa->nombre_programa,
-            'espacio_tipo'=> $espacioTipo,
-            'personas'    => $personas,
-            'tinaja'      => [
-                'slots_usados' => $slotsUsados,
-                'slots_nuevos' => $slotsNuevos,
-                'slots_max'    => $this->maxSlotsTinaja,
-                'slots_libres' => max(0, $slotsLibres),
-                'ok'           => $tinajaOk,
+            'ok'           => true,
+            'disponible'   => $resultado['disponible'],
+            'fecha'        => $fecha,
+            'programa'     => $programa->nombre_programa,
+            'espacio_tipo' => $programa->espacio_tipo,
+            'personas'     => $personas,
+            'tinaja'       => [
+                'slots_usados' => $resultado['tinaja']['usados'],
+                'slots_nuevos' => $resultado['tinaja']['slots_nuevos'],
+                'slots_max'    => $resultado['tinaja']['max_slots'],
+                'slots_libres' => $resultado['tinaja']['disponibles'],
+                'ok'           => $resultado['tinaja']['ok'],
             ],
-            'espacio'     => array_merge($espacioInfo, ['ok' => $espacioOk]),
-            'motivo_no_disponible' => !$disponible ? $this->motivoNoDisponible($tinajaOk, $espacioOk) : null,
+            'espacio' => $resultado['espacio'] ?? null,
+            'motivo_no_disponible' => $resultado['razon'],
         ]);
-    }
-
-    // -------------------------------------------------------------------------
-    // HELPERS
-    // -------------------------------------------------------------------------
-
-    /**
-     * Suma los slots de tinaja consumidos por las reservas del día.
-     * Grupos >= 5 personas consumen 2 slots, los demás 1.
-     */
-    private function contarSlotsUsados(string $fecha): int
-    {
-        $reservas = DB::table('reservas')
-            ->where('fecha_visita', $fecha)
-            ->select('cantidad_personas')
-            ->get();
-
-        $slots = 0;
-        foreach ($reservas as $r) {
-            $slots += ((int) $r->cantidad_personas >= 5) ? 2 : 1;
-        }
-
-        return $slots;
-    }
-
-    /**
-     * Cuenta cuántas reservas del día usan un espacio de los tipos indicados.
-     * Une reservas con programas para saber el espacio_tipo.
-     */
-    private function contarEspaciosUsados(string $fecha, array $tipos): int
-    {
-        return (int) DB::table('reservas as r')
-            ->join('programas as p', 'r.id_programa', '=', 'p.id')
-            ->where('r.fecha_visita', $fecha)
-            ->whereIn('p.espacio_tipo', $tipos)
-            ->count();
-    }
-
-    private function motivoNoDisponible(bool $tinajaOk, bool $espacioOk): string
-    {
-        if (!$tinajaOk && !$espacioOk) {
-            return 'Sin cupo de tinaja ni de espacio para ese día.';
-        }
-        if (!$tinajaOk) {
-            return 'Los horarios de tinaja están completos para ese día.';
-        }
-        return 'No hay espacios disponibles para ese programa en ese día.';
     }
 }

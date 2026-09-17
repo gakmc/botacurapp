@@ -33,7 +33,7 @@ Thanks,<br>
 
 
     <div class="encabezado" style="text-align: center">
-        <img src="https://botacura.cl/wp-content/uploads/2024/04/294235172_462864912512116_3346235978129441981_n-modified.png"
+        <img src="{{ asset('images/botacura/294235172_462864912512116_3346235978129441981_n-modified.png') }}"
             alt="botacura logo" style="height: 200px" />
 
 

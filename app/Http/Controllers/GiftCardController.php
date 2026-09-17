@@ -225,7 +225,7 @@ class GiftCardController extends Controller
         // return $pdfData->inline('GiftCard-'.$gc->id.'.pdf');
 
         Mail::to($gc->correo)
-            ->send(new GiftCardMailable($gc, $pdfData));
+            ->queue(new GiftCardMailable($gc, $pdfData));
 
         return redirect()->back()->with('success', 'Gift Card enviada correctamente a ' . $gc->correo);
     }

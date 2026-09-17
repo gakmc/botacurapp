@@ -39,7 +39,7 @@
 </head>
 <body>
     <div class="ticket">
-        <img src="https://botacura.cl/wp-content/uploads/2024/04/logo_boletas.jpg" alt="botacura logo" style="max-height: 125px; max-width:125px; padding:0px; margin:0px"/>
+        <img src="{{ public_path('images/botacura/logo_boletas.jpg') }}" alt="botacura logo" style="max-height: 125px; max-width:125px; padding:0px; margin:0px"/>
         <div class="title">Centro Recreativo Botacura LTDA.</div>
         <div class="title">Cliente: {{ $nombre }}</div>
         <div>Fecha: {{ date('d/m/Y H:i') }}</div>
