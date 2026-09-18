@@ -54,7 +54,7 @@ class AbonoExtraController extends Controller
 
         if ($cliente && $cliente->correo) {
             $abonoExtra->load('tipoTransaccion');
-            Mail::to($cliente->correo)->send(new AbonoExtraMailable($abonoExtra, $reserva, $cliente, $venta->fresh()));
+            Mail::to($cliente->correo)->queue(new AbonoExtraMailable($abonoExtra, $reserva, $cliente, $venta->fresh()));
         }
 
         return redirect()->route('backoffice.reserva.show', $reserva)->with('success', 'Abono registrado exitosamente.');
@@ -81,7 +81,7 @@ class AbonoExtraController extends Controller
         });
 
         if ($cliente && $cliente->correo) {
-            Mail::to($cliente->correo)->send(new AbonoExtraEliminadoMailable($datosAbono, $reserva, $cliente, $venta->fresh()));
+            Mail::to($cliente->correo)->queue(new AbonoExtraEliminadoMailable($datosAbono, $reserva, $cliente, $venta->fresh()));
         }
 
         return redirect()->route('backoffice.reserva.abonos.index', $reserva)->with('success', 'Abono eliminado exitosamente.');

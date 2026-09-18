@@ -8,7 +8,7 @@ use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
 use Barryvdh\DomPDF\Facade\Pdf;
 
-class GiftCardMailable extends Mailable
+class GiftCardMailable extends Mailable implements ShouldQueue
 {
     use Queueable, SerializesModels;
 

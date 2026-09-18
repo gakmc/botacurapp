@@ -649,96 +649,23 @@ class BotReservaController extends Controller
      */
     private function verificarDisponibilidad(string $fecha, int $programaId, int $personas, ?int $excluirHoldId = null)
     {
-        // Criterio 0: la fecha debe estar habilitada por el staff (calendario
-        // admin, tabla fecha_disponibles). Sin este check el bot podia crear
-        // reservas para dias marcados como no disponibles.
-        $habilitada = \App\FechaDisponible::where('fecha', $fecha)->where('habilitada', true)->exists();
-        if (!$habilitada) {
-            return ['disponible' => false, 'motivo' => 'Ese día no está habilitado para reservas.'];
-        }
-
-        $capacidad = [
-            'estacion_economico'  => 2,
-            'estacion_intermedio' => 2,
-            'estacion_full'       => 5,
-            'terraza'             => 6,
-            'reposera'            => 4,
-        ];
-        $poolFlexible    = ['terraza', 'reposera', 'wellness'];
-        $maxSlotsTinaja  = 16;
-
         $programa = DB::table('programas')->where('id', $programaId)->first();
         if (!$programa) {
             return ['disponible' => false, 'motivo' => 'Programa no encontrado.'];
         }
 
-        // Slots tinaja — reservas reales
-        $reservas    = DB::table('reservas')->where('fecha_visita', $fecha)->pluck('cantidad_personas');
-        $slotsUsados = 0;
-        foreach ($reservas as $cp) {
-            $slotsUsados += ((int) $cp >= 5) ? 2 : 1;
-        }
-
-        // Slots tinaja — holds activos (transferencia esperando comprobante).
-        // Sin esto, dos clientes podrian "apartar" el mismo cupo mientras uno
-        // de ellos esta transfiriendo y aun no llega su comprobante.
-        $holdsQuery = DB::table('reserva_holds')
-            ->where('fecha', $fecha)
-            ->where('estado', 'activo')
-            ->where('expira_en', '>', now());
-        if ($excluirHoldId) {
-            $holdsQuery->where('id', '<>', $excluirHoldId);
-        }
-        foreach ($holdsQuery->pluck('personas') as $cp) {
-            $slotsUsados += ((int) $cp >= 5) ? 2 : 1;
-        }
-
-        $slotsNuevos = ($personas >= 5) ? 2 : 1;
-        $tinajaOk    = ($slotsUsados + $slotsNuevos) <= $maxSlotsTinaja;
-
-        // Espacio
-        $espacioTipo = $programa->espacio_tipo ?? null;
-        $espacioOk   = true;
-        $espacioInfo = [];
-
-        if ($espacioTipo) {
-            $esFlexible = in_array($espacioTipo, $poolFlexible);
-            if ($esFlexible) {
-                $usadosPool = DB::table('reservas as r')
-                    ->join('programas as p', 'r.id_programa', '=', 'p.id')
-                    ->where('r.fecha_visita', $fecha)
-                    ->whereIn('p.espacio_tipo', $poolFlexible)
-                    ->count();
-                $maxPool   = ($capacidad['terraza'] ?? 6) + ($capacidad['reposera'] ?? 4);
-                $espacioOk = $usadosPool < $maxPool;
-                $espacioInfo = ['tipo' => 'terraza+reposera', 'usados' => $usadosPool, 'max' => $maxPool];
-            } else {
-                $usados    = DB::table('reservas as r')
-                    ->join('programas as p', 'r.id_programa', '=', 'p.id')
-                    ->where('r.fecha_visita', $fecha)
-                    ->where('p.espacio_tipo', $espacioTipo)
-                    ->count();
-                $max       = $capacidad[$espacioTipo] ?? 0;
-                $espacioOk = $usados < $max;
-                $espacioInfo = ['tipo' => $espacioTipo, 'usados' => $usados, 'max' => $max];
-            }
-        }
-
-        $disponible = $tinajaOk && $espacioOk;
-        $motivo     = null;
-        if (!$tinajaOk && !$espacioOk) {
-            $motivo = 'Sin cupo de tinaja ni de espacio para ese día.';
-        } elseif (!$tinajaOk) {
-            $motivo = 'Los horarios de tinaja están completos para ese día.';
-        } elseif (!$espacioOk) {
-            $motivo = 'No hay espacios disponibles para ese programa en ese día.';
-        }
+        $resultado = app(\App\Services\DisponibilidadService::class)
+            ->disponible($fecha, $programa->espacio_tipo ?? null, $personas);
 
         return [
-            'disponible' => $disponible,
-            'motivo'     => $motivo,
-            'tinaja'     => ['slots_usados' => $slotsUsados, 'slots_nuevos' => $slotsNuevos, 'slots_max' => $maxSlotsTinaja],
-            'espacio'    => $espacioInfo,
+            'disponible' => $resultado['disponible'],
+            'motivo'     => $resultado['razon'],
+            'tinaja'     => [
+                'slots_usados' => $resultado['tinaja']['usados'],
+                'slots_nuevos' => $resultado['tinaja']['slots_nuevos'],
+                'slots_max'    => $resultado['tinaja']['max_slots'],
+            ],
+            'espacio' => $resultado['espacio'],
         ];
     }
 

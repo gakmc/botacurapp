@@ -1002,12 +1002,15 @@ class ConsumoController extends Controller
 
             // Recorrer los productos válidos y crear los detalles de consumo
             foreach ($productosValidos as $producto_id => $producto) {
+                $observacion = trim($producto['observacion'] ?? '');
+
                 $detalle = DetalleConsumo::create([
                     'id_consumo'        => $consumo->id,
                     'id_producto'       => $producto_id,
                     'cantidad_producto' => $producto['cantidad'],
                     'subtotal'          => $producto['valor'] * $producto['cantidad'], // Calcula el subtotal
                     'genera_propina'    => $generaPropina,
+                    'observacion'       => $observacion !== '' ? $observacion : null,
                 ]);
 
                 $detallesConsumo[] = $detalle;
@@ -1055,6 +1058,7 @@ class ConsumoController extends Controller
                     'pedido_creado'=> $pedidoCreado,
                     'nombre'       => $producto->nombre,
                     'cantidad'     => $detalle->cantidad_producto,
+                    'observacion'  => $detalle->observacion,
                     'cliente'      => $cliente ?? 'Cliente Desconocido',
                     'ubicacion'    => $ubicacion ?? 'Ubicación Desconocida',
                 ];
@@ -1135,7 +1139,20 @@ class ConsumoController extends Controller
         $servicioAlmuerzo = ['almuerzos', 'almuerzo', 'Almuerzos', 'Almuerzo'];
 
         if ($tipo === 'consumo') {
-            $detalle = DetalleConsumo::with(['consumo', 'producto.tipoProducto.sector'])->findOrFail($id);
+            $detalle = DetalleConsumo::with(['consumo.venta.pagoConsumo', 'producto.tipoProducto.sector'])->findOrFail($id);
+            $venta = $detalle->consumo->venta;
+        } elseif ($tipo === 'servicio') {
+            $detalle = DetalleServiciosExtra::with('consumo.venta.pagoConsumo')->findOrFail($id);
+            $venta = $detalle->consumo->venta;
+        } else {
+            $venta = null;
+        }
+
+        if ($venta && !is_null($venta->pagoConsumo) && !$venta->pendiente_de_pago) {
+            return back()->with('error', 'No se puede eliminar: la venta ya está cerrada');
+        }
+
+        if ($tipo === 'consumo') {
             $consumo = $detalle->consumo;
             $consumo->subtotal -= $detalle->subtotal;
             $consumo->total_consumo -= $detalle->subtotal * 1.1;
@@ -1156,7 +1173,6 @@ class ConsumoController extends Controller
             }
 
         } else if ($tipo === 'servicio') {
-            $detalle = DetalleServiciosExtra::with('consumo')->findOrFail($id);
             $consumo = $detalle->consumo;
             $reserva = $consumo->venta->reserva;
 

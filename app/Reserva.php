@@ -62,6 +62,16 @@ class Reserva extends Model
         return $this->hasMany(ReservaDesayunoOnce::class, 'id_reserva');
     }
 
+    public function wellness()
+    {
+        return $this->hasOne(ReservaWellness::class, 'id_reserva');
+    }
+
+    public function ubicacionesAsignadas()
+    {
+        return $this->hasMany(ReservaUbicacion::class, 'id_reserva');
+    }
+
     public function masajes()
     {
         return $this->hasMany(Masaje::class, 'id_reserva')->orderBy('horario_masaje', 'asc');

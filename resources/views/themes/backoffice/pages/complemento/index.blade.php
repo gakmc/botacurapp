@@ -106,7 +106,8 @@
                             <thead>
                                 <tr>
                                     <th>Nombre</th>
-                                    <th colspan="2">Acciones</th>
+                                    <th>Estado</th>
+                                    <th colspan="3">Acciones</th>
                                 </tr>
                             </thead>
                             <tbody>
@@ -118,8 +119,23 @@
 
                                     </td>
                                     <td>
+                                        @if($ubicacion->activo)
+                                        <span class="new badge green" data-badge-caption="">Activa</span>
+                                        @else
+                                        <span class="new badge grey" data-badge-caption="">Inactiva</span>
+                                        @endif
+                                    </td>
+                                    <td>
                                         <a href="{{ route('backoffice.ubicacion.edit', $ubicacion->id) }}">
                                             <i class="material-icons">mode_edit</i> Editar
+                                        </a>
+                                    </td>
+                                    <td>
+
+                                        <a href="#" style="color: {{ $ubicacion->activo ? '#757575' : 'green' }}"
+                                            onclick="enviar_toggle_activo('{{ route('backoffice.ubicacion.toggle_activo', $ubicacion->id) }}')">
+                                            <i class="material-icons">{{ $ubicacion->activo ? 'toggle_off' : 'toggle_on' }}</i>
+                                            {{ $ubicacion->activo ? 'Desactivar' : 'Activar' }}
                                         </a>
                                     </td>
                                     <td>
@@ -524,10 +540,20 @@
     {{ method_field('DELETE') }}
     <input type="hidden" name="table" id="table_name">
 </form>
+<form id="toggle_activo_form" method="post" action="">
+    {{ csrf_field() }}
+    {{ method_field('PATCH') }}
+</form>
 @endsection
 
 @section('foot')
 <script>
+    function enviar_toggle_activo(actionUrl) {
+        const form = document.getElementById('toggle_activo_form');
+        form.action = actionUrl;
+        form.submit();
+    }
+
     function enviar_formulario(actionUrl, table) {
     const form = document.getElementById('delete_form');
     form.action = actionUrl;

@@ -10,7 +10,7 @@
 <body style="background-color: #363636; color:aliceblue; font-family:Arial, Helvetica, sans-serif;">
     <div style="text-align: center;">
 
-        <img src="https://botacura.cl/wp-content/uploads/2024/04/294235172_462864912512116_3346235978129441981_n-modified.png"
+        <img src="{{ asset('images/botacura/294235172_462864912512116_3346235978129441981_n-modified.png') }}"
         alt="botacura logo" style="max-height: 200px; max-width:200px;" />
 
         <h3>Hola {{$data['solicitante']}}</h3>

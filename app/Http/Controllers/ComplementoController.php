@@ -59,7 +59,15 @@ class ComplementoController extends Controller
                 break;
 
             case 'ubicaciones':
-                Ubicacion::create(['nombre' => $request->input('nombre')]);
+                Ubicacion::create([
+                    'nombre' => $request->input('nombre'),
+                    'espacio_tipo' => $request->input('espacio_tipo') ?: null,
+                    'sub_tipo' => $request->input('sub_tipo') ?: null,
+                    'capacidad_min' => $request->input('capacidad_min') ?: null,
+                    'capacidad_max' => $request->input('capacidad_max') ?: null,
+                    'tiene_terraza' => $request->boolean('tiene_terraza'),
+                    'activo' => $request->boolean('activo'),
+                ]);
                 break;
             case 'unidades_medidas':
                 UnidadMedida::create([
@@ -121,6 +129,16 @@ class ComplementoController extends Controller
         //
     }
 
+    public function toggleUbicacionActivo($id)
+    {
+        $ubicacion = Ubicacion::findOrFail($id);
+        $ubicacion->update(['activo' => !$ubicacion->activo]);
+
+        $estado = $ubicacion->activo ? 'activada' : 'desactivada';
+        Alert::success('Éxito', "Ubicación {$ubicacion->nombre} {$estado}")->showConfirmButton();
+        return redirect()->route('backoffice.complemento.index');
+    }
+
     /**
      * Show the form for editing the specified resource.
      *
@@ -151,7 +169,15 @@ class ComplementoController extends Controller
 
             case 'ubicaciones':
                 $actualizar = Ubicacion::findOrFail($id);
-                $actualizar->update($request->all());
+                $actualizar->update([
+                    'nombre' => $request->input('nombre'),
+                    'espacio_tipo' => $request->input('espacio_tipo') ?: null,
+                    'sub_tipo' => $request->input('sub_tipo') ?: null,
+                    'capacidad_min' => $request->input('capacidad_min') ?: null,
+                    'capacidad_max' => $request->input('capacidad_max') ?: null,
+                    'tiene_terraza' => $request->boolean('tiene_terraza'),
+                    'activo' => $request->boolean('activo'),
+                ]);
                 break;
             case 'unidades_medidas':
                 $actualizar = UnidadMedida::findOrFail($id);

@@ -1,3 +1,6 @@
+@php
+    $ventaCerrada = !is_null(optional($reserva->venta)->pagoConsumo) && !$reserva->venta->pendiente_de_pago;
+@endphp
 <div class="collection">
 
 
@@ -28,8 +31,8 @@
             </a> --}}
 
             <div class="valign-wrapper" style="margin: 4px 0;">
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                <a id="icono-eliminar" href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'consumo', 'id' => $detalle->id])}}">
+                @if (!$ventaCerrada && (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role'))))
+                <a href="#" class="btn-flat pink-text btn-eliminar-detalle icono-eliminar" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'consumo', 'id' => $detalle->id])}}">
                     <i class="material-icons">close</i>
                 </a>
 
@@ -57,9 +60,9 @@
 
             <div class="valign-wrapper" style="margin: 4px 0;">
 
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    
-                <a id="icono-eliminar" href="#" class="btn-flat pink-text btn-eliminar-detalle" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'servicio', 'id' => $detalle->id])}}">
+                @if (!$ventaCerrada && (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role'))))
+
+                <a href="#" class="btn-flat pink-text btn-eliminar-detalle icono-eliminar" style="padding: 0; margin-right: 10px;" data-url="{{route('backoffice.consumo.detalle.destroy', ['tipo'=>'servicio', 'id' => $detalle->id])}}">
                     <i class="material-icons">close</i>
                 </a>
 

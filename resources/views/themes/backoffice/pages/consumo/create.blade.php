@@ -3,6 +3,13 @@
 @section('title', 'Ingresar Consumo')
 
 @section('head')
+    <style>
+        .icono:hover {
+            background-color: #039B7B !important;
+            color: white;
+            border-radius: 10%
+        }
+    </style>
 @endsection
 
 @section('breadcrumbs')
@@ -17,7 +24,7 @@
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
-            <div class="col s12 m8 offset-m2">
+            <div class="col s12 m9 offset-m1">
                 <div class="card-panel">
                     <h4 class="header">Consumo para la venta de
                         <strong>{{$venta->reserva->cliente->nombre_cliente}}</strong>
@@ -74,6 +81,7 @@
                                                 <tr>
                                                     <th>Producto</th>
                                                     <th>Cantidad</th>
+                                                    <th>Observación</th>
                                                     <th>Subtotal</th>
                                                     <th></th>
                                                 </tr>
@@ -191,7 +199,13 @@
                 row.setAttribute('data-id', `${tipo}_${id}`);
                 row.innerHTML = `
                     <td>${nombre}</td>
-                    <td><input type="number" min="1" value="1" class="cantidad-input" style="width:60px;"></td>
+                    <td><input type="number" min="1" value="1" class="cantidad-input" style="width:80px;"></td>
+                    <td>
+                        <button type="button" class="btn-flat btn-small observacion-toggle" title="Agregar observación" style="padding:0;">
+                            <i class="icono material-icons">comment</i>
+                        </button>
+                        <input type="text" class="observacion-input" placeholder="Ej: con endulzante" style="width:150px; display:none;" disabled>
+                    </td>
                     <td class="subtotal">$${valor.toLocaleString()}</td>
                     <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
                 `;
@@ -214,6 +228,35 @@
                 formHidden.appendChild(inputValor);
 
 
+                const inputObservacion = document.createElement('input');
+                inputObservacion.type = 'hidden';
+                inputObservacion.name = `productos[${id}][observacion]`;
+                inputObservacion.value = '';
+                inputObservacion.setAttribute('data-id', `observacion_${id}`);
+                formHidden.appendChild(inputObservacion);
+
+                const btnObservacion = row.querySelector('.observacion-toggle');
+                const inputObservacionVisible = row.querySelector('.observacion-input');
+
+                btnObservacion.addEventListener('click', function () {
+                    btnObservacion.style.display = 'none';
+                    inputObservacionVisible.style.display = 'inline-block';
+                    inputObservacionVisible.focus();
+                });
+
+
+                inputObservacionVisible.addEventListener('blur', function () {
+                    if (this.value.trim() === '') {
+                        this.style.display = 'none';
+                        btnObservacion.style.display = 'inline-block';
+                    }
+                });
+
+                inputObservacionVisible.addEventListener('input', function () {
+                    const valorObservacion = this.value.trim();
+                    formHidden.querySelector(`input[data-id="observacion_${id}"]`).value = valorObservacion;
+                });
+
                 row.querySelector('.cantidad-input').addEventListener('input', function () {
                     const nuevaCantidad = parseInt(this.value) || 1;
                     productosAgregados[`${tipo}_${id}`].cantidad = nuevaCantidad;
@@ -228,6 +271,7 @@
                     row.remove();
                     formHidden.querySelector(`input[data-id="cantidad_${id}"]`)?.remove();
                     formHidden.querySelector(`input[data-id="valor_${id}"]`)?.remove();
+                    formHidden.querySelector(`input[data-id="observacion_${id}"]`)?.remove();
 
                     actualizarTotal();
 

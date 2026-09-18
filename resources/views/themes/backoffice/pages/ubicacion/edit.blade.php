@@ -43,13 +43,63 @@
                                       @enderror
                                 </div>
 
-                            </div>     
+                            </div>
 
-                         
-                        
-                         
+                            <div class="row">
 
-                         
+                                <div class="input-field col s12 m6">
+                                  <select name="espacio_tipo" id="espacio_tipo">
+                                    <option value="" {{ $ubicacion->espacio_tipo ? '' : 'selected' }}>-- Sin clasificar --</option>
+                                    <option value="estacion" {{ $ubicacion->espacio_tipo == 'estacion' ? 'selected' : '' }}>Estación</option>
+                                    <option value="wellness" {{ $ubicacion->espacio_tipo == 'wellness' ? 'selected' : '' }}>Wellness</option>
+                                  </select>
+                                  <label for="espacio_tipo">Espacio tipo</label>
+                                </div>
+
+                                <div class="input-field col s12 m6">
+                                  <select name="sub_tipo" id="sub_tipo">
+                                    <option value="" {{ $ubicacion->sub_tipo ? '' : 'selected' }}>-- Sin clasificar --</option>
+                                    <option value="estacion_normal" {{ $ubicacion->sub_tipo == 'estacion_normal' ? 'selected' : '' }}>Estación normal (2-3 personas)</option>
+                                    <option value="estacion_grupal" {{ $ubicacion->sub_tipo == 'estacion_grupal' ? 'selected' : '' }}>Estación grupal (+3 personas)</option>
+                                    <option value="terraza" {{ $ubicacion->sub_tipo == 'terraza' ? 'selected' : '' }}>Terraza</option>
+                                    <option value="reposera" {{ $ubicacion->sub_tipo == 'reposera' ? 'selected' : '' }}>Reposera</option>
+                                  </select>
+                                  <label for="sub_tipo">Sub tipo</label>
+                                </div>
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="input-field col s12 m6">
+                                  <input id="capacidad_min" type="number" min="0" name="capacidad_min" value="{{ $ubicacion->capacidad_min }}">
+                                  <label for="capacidad_min">Capacidad mínima</label>
+                                </div>
+
+                                <div class="input-field col s12 m6">
+                                  <input id="capacidad_max" type="number" min="0" name="capacidad_max" value="{{ $ubicacion->capacidad_max }}">
+                                  <label for="capacidad_max">Capacidad máxima</label>
+                                </div>
+
+                            </div>
+
+                            <div class="row">
+
+                                <div class="col s12 m6">
+                                  <label>
+                                    <input type="checkbox" name="tiene_terraza" value="1" {{ $ubicacion->tiene_terraza ? 'checked' : '' }}>
+                                    <span>Incluye terraza</span>
+                                  </label>
+                                </div>
+
+                                <div class="col s12 m6">
+                                  <label>
+                                    <input type="checkbox" name="activo" value="1" {{ $ubicacion->activo ? 'checked' : '' }}>
+                                    <span>Activa (disponible para asignación)</span>
+                                  </label>
+                                </div>
+
+                            </div>
 
 
                           <div class="row">

@@ -40,6 +40,7 @@ class BarmanController extends Controller
                 'detalles_consumos.estado as estado',
                 'detalles_consumos.id as id',
                 'detalles_consumos.subtotal',
+                'detalles_consumos.observacion',
                 'detalles_consumos.created_at as creado',
                 'detalles_consumos.updated_at as actualizado',
                 'productos.nombre as producto',
@@ -172,7 +173,7 @@ class BarmanController extends Controller
             'nombre'    => $detalle->producto->nombre,
             'cantidad'  => $detalle->cantidad_producto,
             'cliente'   => $detalle->consumo->venta->reserva->cliente->nombre_cliente,
-            'ubicacion' => $visita->ubicacion->nombre,
+            'ubicacion' => optional(optional($visita)->ubicacion)->nombre ?? '',
         ];
 
         // broadcast(new EstadoConsumoActualizado($detalle->id, $detalle->estado, $producto));
@@ -229,7 +230,7 @@ class BarmanController extends Controller
             'origen'    => 'consumo',
             'pedido_id' => $idConsumo,
             'cliente'   => $detalleBase->consumo->venta->reserva->cliente->nombre_cliente,
-            'ubicacion' => $visita ? $visita->ubicacion->nombre : '',
+            'ubicacion' => optional(optional($visita)->ubicacion)->nombre ?? '',
             'pedido_creado'  => $pedidoCreado,
             'pedido_key'     => $pedidoCreado ? ($idConsumo.'|'.$pedidoCreado) : (string)$idConsumo,
         ];
@@ -242,9 +243,10 @@ class BarmanController extends Controller
             ->get()
             ->map(function($d){
                 return [
-                    'id_detalle' => $d->id,
-                    'nombre'     => $d->producto->nombre,
-                    'cantidad'   => $d->cantidad_producto,
+                    'id_detalle'  => $d->id,
+                    'nombre'      => $d->producto->nombre,
+                    'cantidad'    => $d->cantidad_producto,
+                    'observacion' => $d->observacion,
                 ];
             })
             ->values()
@@ -367,6 +369,7 @@ class BarmanController extends Controller
                 'detalles_consumos.estado as estado',
                 'detalles_consumos.id as id',
                 'detalles_consumos.subtotal',
+                'detalles_consumos.observacion',
                 'detalles_consumos.created_at as creado',
                 'detalles_consumos.updated_at as actualizado',
                 'productos.nombre as producto',
