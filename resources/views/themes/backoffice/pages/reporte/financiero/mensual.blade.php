@@ -64,6 +64,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                 @php
                     $ingresosData = 0;
                     $egresosData = 0;
+                      $abonosTotal = 0; $diferenciasTotal = 0; $consumosTotal = 0; $serviciosTotal = 0; $sueldosTotal = 0; $bonosTotal = 0; $egresosTotalCol = 0; $impuestosTotal = 0;
                 @endphp
 
         <h5 class="teal-text">Semana {{ $inicio }} - {{ $fin }}</h5>
@@ -78,7 +79,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                     <th>Servicios</th>
                     <th>Sueldos</th>
                     <th>Bonos</th>
-                    <th>Egresos</th>
+                    <th>Compras Proveedores</th>
                     <th>Impuestos</th>
                 </tr>
             </thead>
@@ -98,6 +99,15 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                                 + (optional($sueldos->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($bonos->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($impuestos->firstWhere('fecha', $fecha))->total ?? 0);
+
+                      $abonosTotal += optional($abonos->firstWhere('fecha', $fecha))->total ?? 0;
+                      $diferenciasTotal += optional($diferencias->firstWhere('fecha', $fecha))->total ?? 0;
+                      $consumosTotal += (optional($consumos->firstWhere('fecha', $fecha))->total ?? 0) + (optional($ventasDirectas->firstWhere('fecha', $fecha))->total ?? 0);
+                      $serviciosTotal += optional($servicios->firstWhere('fecha', $fecha))->total ?? 0;
+                      $sueldosTotal += optional($sueldos->firstWhere('fecha', $fecha))->total ?? 0;
+                      $bonosTotal += optional($bonos->firstWhere('fecha', $fecha))->total ?? 0;
+                      $egresosTotalCol += optional($egresos->firstWhere('fecha', $fecha))->total ?? 0;
+                      $impuestosTotal += optional($impuestos->firstWhere('fecha', $fecha))->total ?? 0;
                 @endphp
                     <tr>
                         <td>{{ \Carbon\Carbon::parse($fecha)->format('d/m/Y') }}</td>
@@ -119,10 +129,10 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="5"></td>
-                    <td><strong>Ingresos: ${{ number_format($ingresosData, 0, ',', '.') }}</strong></td>
-                    <td><strong>Egresos: ${{ number_format($egresosData, 0, ',', '.') }}</strong></td>
-                    <td><strong>Total: ${{ number_format($ingresosData - $egresosData, 0, ',', '.') }}</strong></td>
+                    <td><strong>Totales</strong></td><td><strong>${{ number_format($abonosTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($diferenciasTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($consumosTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($serviciosTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($sueldosTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($bonosTotal, 0, '', '.') }}</strong></td><td><strong>${{ number_format($egresosTotalCol, 0, '', '.') }}</strong></td><td><strong>${{ number_format($impuestosTotal, 0, '', '.') }}</strong></td></tr><tr><td colspan="6"></td>
+                    <td><strong>Total Ingresos: ${{ number_format($ingresosData, 0, ',', '.') }}</strong></td>
+                    <td><strong>Total Egresos: ${{ number_format($egresosData, 0, ',', '.') }}</strong></td>
+                    <td><strong>Utilidad: ${{ number_format($ingresosData - $egresosData, 0, ',', '.') }}</strong></td>
                 </tr>
             </tfoot>
         </table>

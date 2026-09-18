@@ -53,18 +53,27 @@ Route::prefix('bot')->namespace('Api')->middleware('bot.token')->group(function 
 // IoT — Gas (Home Assistant)
 // POST /api/iot/gas/registrar
 //   tipo_operacion: pago_proveedor | instalacion_cilindro
-// No requiere auth: se recomienda validar por token de HA en el controlador
+// Protegido por API key (header X-API-KEY o ?api_key=), validada por
+// auth.apikey (ApiKeyMiddleware) contra config('app.laravel_api_key')
+// [env LARAVEL_API_KEY]. /ping queda fuera de la protección para health-check.
 // -------------------------------------------------------------------------
 Route::prefix('iot')->namespace('Api')->group(function () {
+    // NOTA: auth.apikey (LARAVEL_API_KEY) disponible pero NO activado aqui
+    // todavia -- no confirmado si Home Assistant ya envia la API key.
+    // Ver commit 3f99502 para la version protegida cuando se confirme HA.
     Route::get('ping',                    'IotController@ping')->name('iot.ping');
     Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
     Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
+    Route::post('agua/registrar',         'AguaIotController@registrar')->name('iot.agua.registrar');
     // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
+    // Agenda completa de hoy por tinaja/sauna — para mantener temperatura toda la jornada
+    Route::get('tinajas/agenda-dia',      'TinajaController@agendaDia')->name('iot.tinajas.agenda-dia');
+    // Estado / toggle del swap Tinaja 1 <-> Tinaja 2 (usado por el switch REST de HA)
+    Route::get('tinajas/estado-inversion', 'TinajaController@estadoInversion')->name('iot.tinajas.estado-inversion');
+    Route::post('tinajas/set-inversion',   'TinajaController@setInversion')->name('iot.tinajas.set-inversion');
     // Próximas reservas de servicios (sauna, masaje container, masaje palmeras)
     Route::get('servicios/proximas-reservas', 'ServiciosIotController@proximasReservas')->name('iot.servicios.proximas-reservas');
-
-    // Route::get('/iot/tinajas/proxima-reserva', 'Api\TinajaController@proximaReserva');
 });
 
 // -------------------------------------------------------------------------
@@ -75,13 +84,23 @@ Route::prefix('egresos')->namespace('Api')->group(function () {
     Route::get('form-data',    'EgresoApiController@formData')->name('egresos.form-data');
 
     // Escaneo de factura/boleta con IA
-    Route::post('scan',         'EgresoScanController@scan')->name('egresos.scan');
-    Route::post('scan/confirm', 'EgresoScanController@confirm')->name('egresos.scan.confirm');
+    // Route::post('scan',         'EgresoScanController@scan')->name('egresos.scan'); // deshabilitada: reemplazada por integracion SII
+    // Route::post('scan/confirm', 'EgresoScanController@confirm')->name('egresos.scan.confirm'); // deshabilitada: reemplazada por integracion SII
 
     // Ingreso rápido manual
     Route::post('/',            'EgresoApiController@store')->name('egresos.store');
     Route::get('/',             'EgresoApiController@index')->name('egresos.index');
     Route::get('/{id}',         'EgresoApiController@show')->name('egresos.show');
+});
+
+// -------------------------------------------------------------------------
+// WhatsApp Business — webhook Meta
+// GET  /api/whatsapp/webhook  → verificación
+// POST /api/whatsapp/webhook  → mensajes entrantes
+// -------------------------------------------------------------------------
+Route::prefix('whatsapp')->namespace('Api')->group(function () {
+    Route::get('webhook',  'WhatsAppWebhookController@verify')->name('whatsapp.webhook.verify');
+    Route::post('webhook', 'WhatsAppWebhookController@handle')->name('whatsapp.webhook.handle');
 });
 
 Route::prefix('woocommerce')->namespace('Api')->group(function(){
@@ -133,16 +152,20 @@ Route::middleware('auth.apikey')->group(function () {
 
 // -------------------------------------------------------------------------
 // Bot WhatsApp / Instagram — Claude AI (n8n)
-// Protegido por X-Bot-Secret header (validado dentro del controlador)
+// Protegido por middleware bot.token (header X-Bot-Token == BOT_API_TOKEN)
 // -------------------------------------------------------------------------
-Route::prefix('bot-ai')->namespace('Api')->group(function () {
+Route::prefix('bot-ai')->namespace('Api')->middleware('bot.token')->group(function () {
     Route::get('ping', 'BotController@ping')->name('bot-ai.ping');
     Route::get('programas', 'BotProgramasController@index')->name('bot-ai.programas');
     Route::get('disponibilidad', 'BotController@disponibilidad')->name('bot-ai.disponibilidad');
     Route::post('clientes/buscar-o-crear', 'BotController@buscarOCrearCliente')->name('bot-ai.clientes.buscarOCrear');
     Route::post('reservas', 'BotController@crearReserva')->name('bot-ai.reservas.store');
     Route::post('reservas/{id}/pago', 'BotController@registrarPago')->name('bot-ai.reservas.pago');
+    Route::post('reservas/{id}/cancelar', 'BotController@cancelarReserva')->name('bot-ai.reservas.cancelar');
+    Route::post('reservas/{id}/reprogramar', 'BotController@reprogramarReserva')->name('bot-ai.reservas.reprogramar');
     Route::post('reserva', 'BotReservaController@store')->name('bot-ai.reserva');
+    Route::get('menu-opciones', 'BotController@menuOpciones')->name('bot-ai.menu-opciones');
+    Route::patch('reserva/{id}/menu-seleccion', 'BotReservaController@guardarSeleccionMenu')->name('bot-ai.reserva.menu-seleccion');
     Route::get('conversacion/{usuario_id}', 'BotController@getConversacion')->name('bot-ai.conversacion.get');
     Route::post('conversacion', 'BotController@upsertConversacion')->name('bot-ai.conversacion.upsert');
     Route::post('message', 'BotController@message')->name('bot-ai.message');

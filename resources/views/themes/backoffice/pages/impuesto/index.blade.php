@@ -35,7 +35,7 @@
                 F29 Estimado — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                Empresa exenta de IVA. F29 = PPM (0.25% × ventas SII) + Retenciones BTE.
+                F29 = IVA (Débito - Crédito) + PPM (0.25% x ventas SII) + Retenciones BTE.
                 @if($resumen && $resumen->ultima_sincronizacion)
                     <span>Última sync: {{ $resumen->ultima_sincronizacion->format('d/m/Y H:i') }}</span>
                 @endif
@@ -175,6 +175,30 @@
                                 </td>
                             </tr>
                             <tr style="border-bottom:1px solid #f0f0f0">
+                                <td class="grey-text" style="padding:6px 0">
+                                    IVA Débito Fiscal (ventas SII)
+                                </td>
+                                <td style="text-align:right;color:#C62828">
+                                    @if($ivaDebito > 0)
+                                        ${{ number_format($ivaDebito, 0, ',', '.') }}
+                                    @else
+                                        <span class="grey-text">—</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #f0f0f0;background:#fafafa">
+                                <td style="padding:6px 0">
+                                    <strong>Código 089</strong> — IVA a pagar (Débito - Crédito)
+                                </td>
+                                <td style="text-align:right;font-weight:700">
+                                    @if($ivaAPagar > 0)
+                                        <span style="color:#B71C1C">${{ number_format($ivaAPagar, 0, ',', '.') }}</span>
+                                    @else
+                                        <span style="color:#2E7D32;font-size:.85rem">Remanente a favor ${{ number_format($ivaRemanente, 0, ',', '.') }}</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #f0f0f0">
                                 <td style="padding:6px 0">
                                     <strong>Línea 563</strong> — PPM (0.25%)
                                 </td>
@@ -202,7 +226,7 @@
                     </table>
 
                     <p class="grey-text" style="font-size:.75rem;margin:10px 0 0">
-                        * IVA Crédito no genera reembolso al ser empresa exenta. Se registra como costo.
+                        * IVA a pagar = Débito Fiscal (ventas SII) - Crédito Fiscal (compras SII). Si es negativo, queda como remanente a favor para el próximo período.
                     </p>
                 </div>
             </div>

@@ -13,6 +13,7 @@ class Menu extends Model
         'id_producto_acompanamiento',
         'alergias',
         'observacion',
+        'tipo_servicio',
     ];
 
     // RELACIONES

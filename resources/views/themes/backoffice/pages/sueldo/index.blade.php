@@ -91,6 +91,7 @@
     @forelse ($semanas as $rango => $usuariosSemana)
         @php
             $semanaId = Str::slug($rango); // por ejemplo: "09-jun-15-jun"
+            $primeroSemana = reset($usuariosSemana);
             $rangoEs  = strtr($rango, $mesesEnEs);
         @endphp
 
@@ -269,7 +270,16 @@
                     <td colspan="7" class="right-align">Total semana</td>
                     <td></td>
                     <td class="right-align">${{ number_format($totalSemana, 0, '', '.') }}</td>
-                    <td colspan="2"></td>
+                    <td colspan="2" class="center">
+                        @if(Auth::user()->has_role(config('app.admin_role')))
+                            <a href="{{ route('backoffice.sueldos.exportar-csv-semana', ['inicio' => $primeroSemana['inicio'] ?? '', 'fin' => $primeroSemana['fin'] ?? '']) }}"
+                               target="_blank" rel="noopener"
+                               class="btn-flat waves-effect" style="font-weight:400;"
+                               title="Exporta el CSV bancario con todos los usuarios de esta semana">
+                                <i class="material-icons left" style="margin-right:2px;">file_download</i>CSV
+                            </a>
+                        @endif
+                    </td>
                 </tr>
             </tbody>
         </table>
@@ -352,6 +362,22 @@
                         toast.onmouseenter = Swal.stopTimer;
                         toast.onmouseleave = Swal.resumeTimer;
                     }
+                });
+            @endif
+
+            @if(session('warning'))
+                Swal.fire({
+                    icon: 'warning',
+                    title: 'CSV generado con observaciones',
+                    text: '{{ session('warning') }}',
+                });
+            @endif
+
+            @if(session('error'))
+                Swal.fire({
+                    icon: 'error',
+                    title: 'Error',
+                    text: '{{ session('error') }}',
                 });
             @endif
         });

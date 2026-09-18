@@ -84,6 +84,97 @@ class SiiService
         ];
     }
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PÚBLICO: RCV Ventas — devuelve resumen del período para F29/PPM
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function listarVentas($anio, $mes)
+    {
+        $periodo = sprintf('%04d%02d', $anio, $mes);
+        $rut     = $this->rut;
+
+        try {
+            $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
+
+            // La respuesta real viene como:
+            //   { "data": { "respEstado": {...}, "data": [ {fila por tipo de documento}, ... ] } }
+            // Cada fila trae, por tipo de documento (Factura, Boleta, Nota de
+            // Crédito, etc.), sus propios rsmnMntNeto/rsmnMntIVA/rsmnMntExe/
+            // rsmnMntTotal/rsmnTotDoc. Las Notas de Crédito (tipo 60 y 61)
+            // restan, porque anulan/rebajan ventas ya emitidas.
+            $filas = $resp['data']['data'] ?? [];
+
+            // Fallback por si alguna vez la API devuelve un resumen plano
+            // en vez de la lista de filas por tipo de documento.
+            if (!is_array($filas) || empty($filas)) {
+                $plano = $resp['data'] ?? $resp;
+                if (is_array($plano) && (isset($plano['neto']) || isset($plano['rsmnMntNeto']))) {
+                    $resumen = [
+                        'neto'     => (int) ($plano['neto']     ?? $plano['rsmnMntNeto']  ?? 0),
+                        'iva'      => (int) ($plano['iva']      ?? $plano['rsmnMntIVA']   ?? 0),
+                        'exento'   => (int) ($plano['exento']   ?? $plano['rsmnMntExe']   ?? 0),
+                        'total'    => (int) ($plano['total']    ?? $plano['rsmnMntTotal'] ?? 0),
+                        'cantidad' => (int) ($plano['cantidad'] ?? $plano['rsmnTotDoc']   ?? 0),
+                    ];
+                    return ['ok' => true, 'resumen' => $resumen, 'error' => null];
+                }
+
+                $resumenVacio = ['neto' => 0, 'iva' => 0, 'exento' => 0, 'total' => 0, 'cantidad' => 0];
+                return ['ok' => true, 'resumen' => $resumenVacio, 'error' => null];
+            }
+
+            // Tipos de documento que RESTAN de las ventas (notas de crédito).
+            $tiposQueRestan = [60, 61];
+
+            $neto = 0; $iva = 0; $exento = 0; $total = 0; $cnt = 0;
+
+            foreach ($filas as $fila) {
+                $tipo  = (int) ($fila['rsmnTipoDocInteger'] ?? 0);
+                $signo = in_array($tipo, $tiposQueRestan, true) ? -1 : 1;
+
+                $neto   += $signo * (int) ($fila['rsmnMntNeto']  ?? 0);
+                $iva    += $signo * (int) ($fila['rsmnMntIVA']   ?? 0);
+                $exento += $signo * (int) ($fila['rsmnMntExe']   ?? 0);
+                $total  += $signo * (int) ($fila['rsmnMntTotal'] ?? 0);
+                $cnt    += (int) ($fila['rsmnTotDoc'] ?? 0);
+            }
+
+            return [
+                'ok'      => true,
+                'resumen' => ['neto' => $neto, 'iva' => $iva, 'exento' => $exento,
+                              'total' => $total, 'cantidad' => $cnt],
+                'error'   => null,
+            ];
+
+        } catch (\Throwable $e) {
+            $msg = $e->getMessage();
+            $resumenVacio = ['neto' => 0, 'iva' => 0, 'exento' => 0, 'total' => 0, 'cantidad' => 0];
+            // 404 o sin registros = 0 ventas (no es error)
+            if (strpos($msg, '404') !== false || strpos($msg, 'sin registro') !== false) {
+                return ['ok' => true, 'resumen' => $resumenVacio, 'error' => null];
+            }
+            return ['ok' => false, 'resumen' => $resumenVacio, 'error' => $msg];
+        }
+    }
+
+    /**
+     * Devuelve la respuesta CRUDA (sin normalizar) del resumen de ventas,
+     * solo para diagnóstico: así se puede ver el nombre real de los campos
+     * que manda la API cuando el parseo normal da $0 con documentos > 0.
+     */
+    public function debugVentasResumenCrudo($anio, $mes)
+    {
+        $periodo = sprintf('%04d%02d', $anio, $mes);
+        $rut     = $this->rut;
+
+        try {
+            $resp = $this->postRcv("/rcv/ventas/resumen/{$rut}/{$periodo}");
+            return ['ok' => true, 'raw' => $resp, 'error' => null];
+        } catch (\Throwable $e) {
+            return ['ok' => false, 'raw' => null, 'error' => $e->getMessage()];
+        }
+    }
+
     public function buscarContribuyente($rut)
     {
         try {
@@ -123,10 +214,13 @@ class SiiService
 
     private function postJson($path, $body)
     {
+        // Construir URL absoluta manualmente para evitar que Guzzle descarte
+        // el segmento /api/v2/sii cuando el path empieza con '/'.
+        $url = rtrim($this->baseUrl, '/') . '/' . ltrim($path, '/');
+
         $client = new Client([
-            'base_uri' => $this->baseUrl,
-            'timeout'  => $this->timeout,
-            'headers'  => [
+            'timeout' => $this->timeout,
+            'headers' => [
                 'Authorization' => 'Token ' . $this->token,
                 'Content-Type'  => 'application/json',
                 'Accept'        => 'application/json',
@@ -134,7 +228,9 @@ class SiiService
             'verify' => false,
         ]);
 
-        $response = $client->post($path, ['json' => $body]);
+        \Illuminate\Support\Facades\Log::info('SII API request', ['url' => $url]);
+
+        $response = $client->post($url, ['json' => $body]);
         $body_str = (string) $response->getBody();
         $decoded  = json_decode($body_str, true);
 

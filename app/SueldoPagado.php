@@ -16,7 +16,14 @@ class SueldoPagado extends Model
         'fecha_pago',
         'monto',
         'bono',
-        'motivo'
+        'motivo',
+        'confirmado',
+        'confirmado_at',
+    ];
+
+    protected $casts = [
+        'confirmado' => 'boolean',
+        'confirmado_at' => 'datetime',
     ];
 
     public function user()

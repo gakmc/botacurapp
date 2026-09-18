@@ -2,7 +2,9 @@
 namespace App\Http\Controllers;
 
 use App\Consumo;
+use App\HonorarioBte;
 use App\Propina;
+use App\Services\CsvPagoBancoService;
 use App\Sueldo;
 use App\SueldoPagado;
 use App\User;
@@ -108,8 +110,8 @@ class SueldoController extends Controller
 
         // ordenar las semanas cronológicamente
         uksort($semanas, function ($a, $b) use ($anio) {
-            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
-            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . ' ' . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . ' ' . $anio);
             return $dateA->timestamp <=> $dateB->timestamp;
         });
 
@@ -142,10 +144,24 @@ class SueldoController extends Controller
             ->orderBy('dia_trabajado')
             ->get();
 
+        // BTE (boletas de honorarios) de los usuarios que boletean, agrupadas por rut,
+        // para poder mostrar bruto/retención/neto en la semana donde se emitió cada una.
+        $honorariosPorRut = HonorarioBte::anio($anio)
+            ->whereIn('rut_emisor', User::where('boletea', true)->whereNotNull('rut')->pluck('rut'))
+            ->get()
+            ->groupBy('rut_emisor');
+
         $semanas = [];
 
         foreach ($sueldos as $sueldo) {
-            $fecha        = Carbon::parse($sueldo->dia_trabajado);
+            // Saltar si el usuario fue eliminado o no existe
+            if (! $sueldo->user) {
+                continue;
+            }
+
+            // Usar el valor raw del atributo (sin accessor) para parsear la fecha sin ambigüedad
+            $rawDate      = $sueldo->getAttributes()['dia_trabajado'];
+            $fecha        = Carbon::parse($rawDate);
             $inicioSemana = $fecha->copy()->startOfWeek(Carbon::MONDAY);
             $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
@@ -162,34 +178,40 @@ class SueldoController extends Controller
             }
 
             if (! isset($semanas[$rango][$userId])) {
+                // BTE de este usuario emitida dentro de esta semana (si boletea)
+                $boletea = (bool) $sueldo->user->boletea;
+                $bteRow  = null;
+
+                if ($boletea && $sueldo->user->rut) {
+                    $bteSemana = $honorariosPorRut->get($sueldo->user->rut, collect());
+                    $bteRow    = $bteSemana->first(function ($h) use ($inicioSemana, $finSemana) {
+                        return $h->fecha_emision
+                            && $h->fecha_emision->between($inicioSemana->copy()->startOfDay(), $finSemana->copy()->endOfDay());
+                    });
+                }
+
                 $semanas[$rango][$userId] = [
-                    'role'     => $roles,
-                    'name'     => $userName,
-                    'dias'     => 0, // aquí guardaremos "días" o "masajes" según rol
-                    'sueldos'  => 0,
-                    'propinas' => 0,
-                    'bono'     => 0,
-                    'motivo'   => '',
-                    'total'    => 0,
-                    'user_id'  => $userId,
-                    'inicio'   => $inicioSemana->format('Y-m-d'),
-                    'fin'      => $finSemana->format('Y-m-d'),
+                    'role'          => $roles,
+                    'name'          => $userName,
+                    'dias'          => 0, // aquí guardaremos "días" o "masajes" según rol
+                    'sueldos'       => 0,
+                    'propinas'      => 0,
+                    'bono'          => 0,
+                    'motivo'        => '',
+                    'total'         => 0,
+                    'user_id'       => $userId,
+                    'inicio'        => $inicioSemana->format('Y-m-d'),
+                    'fin'           => $finSemana->format('Y-m-d'),
+                    'boletea'       => $boletea,
+                    'bte_bruto'     => $bteRow->monto_bruto ?? 0,
+                    'bte_retencion' => $bteRow->monto_retenido ?? 0,
+                    'bte_neto'      => $bteRow ? ($bteRow->monto_pagado ?: ($bteRow->monto_bruto - $bteRow->monto_retenido)) : 0,
+                    'bte_estado'    => ($bteRow && $bteRow->estado !== 'Anulada') ? 'emitida' : null,
+                    'bte_folio'     => $bteRow->folio ?? null,
                 ];
 
                 // Si es masoterapeuta, calculamos una sola vez los MASAJES de la semana
                 if ($esMaso) {
-                    // $ini = $inicioSemana->toDateString();
-                    // $fin = $finSemana->toDateString();
-
-                    // // contamos los masajes según proporción total_pagar / valor_dia
-                    // $cantMasajes = DB::table('sueldos')
-                    //     ->whereBetween('dia_trabajado', [$ini, $fin])
-                    //     ->where('id_user', $userId)
-                    //     ->selectRaw('SUM(total_pagar / valor_dia) as cantidad')
-                    //     ->value('cantidad');
-
-                    // $semanas[$rango][$userId]['dias'] = (int) $cantMasajes; // “días” = masajes
-
                     $ini = $inicioSemana->toDateString();
                     $fin = $finSemana->toDateString();
 
@@ -214,8 +236,9 @@ class SueldoController extends Controller
 
         // Orden cronológico de semanas
         uksort($semanas, function ($a, $b) use ($anio) {
-            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . $anio);
-            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . $anio);
+            // "21 Jul - 27 Jul" → "21 Jul 2026"
+            $dateA = Carbon::createFromFormat('d M Y', substr($a, 0, 6) . ' ' . $anio);
+            $dateB = Carbon::createFromFormat('d M Y', substr($b, 0, 6) . ' ' . $anio);
             return $dateA->timestamp <=> $dateB->timestamp;
         });
 
@@ -238,17 +261,207 @@ class SueldoController extends Controller
             $userId = $pago->user_id;
 
             if (isset($semanas[$rango]) && isset($semanas[$rango][$userId])) {
-                $semanas[$rango][$userId]['bono']   = (int) $pago->bono;
-                $semanas[$rango][$userId]['motivo'] = $pago->motivo;
+                // Puede haber más de una fila de sueldos_pagados para la
+                // misma semana/usuario (p. ej. bono agregado después con
+                // un segundo "Pagar seleccionados"), así que se SUMAN en
+                // vez de sobrescribir para no perder el bono más viejo.
+                $semanas[$rango][$userId]['bono'] += (int) $pago->bono;
+                $semanas[$rango][$userId]['motivo'] = trim(
+                    ($semanas[$rango][$userId]['motivo'] ? $semanas[$rango][$userId]['motivo'] . ' + ' : '')
+                    . ($pago->motivo ?? '')
+                , ' +');
 
-                // Si el bono debe sumarse al total de la semana:
                 $semanas[$rango][$userId]['total'] += (int) $pago->bono;
             }
         }
 
+        // Recalcular 'total' = neto + propinas + bono. Hasta acá 'total' se
+        // arrastraba desde total_pagar (que no sabe nada de BTE), así que a
+        // quienes boletean nunca se les estaba descontando la retención del
+        // total a pagar. Acá se corrige usando el neto de BTE cuando aplica.
+        foreach ($semanas as $rango => &$usuariosSemana) {
+            foreach ($usuariosSemana as $userId => &$datos) {
+                $netoBase = ($datos['boletea'] && $datos['bte_bruto'] > 0)
+                    ? $datos['bte_neto']
+                    : $datos['sueldos'];
+
+                $datos['total'] = $netoBase + $datos['propinas'] + $datos['bono'];
+            }
+        }
+        unset($usuariosSemana, $datos);
+
         return view('themes.backoffice.pages.sueldo.index', compact(
             'semanas', 'mes', 'anio', 'fechasDisponibles', 'pagosRealizados'
         ));
+    }
+
+    /**
+     * Exporta el CSV de transferencia a terceros (BancoEstado Empresas)
+     * para los sueldos seleccionados con los checkboxes "Pagar" de la
+     * vista de Remuneraciones (misma selección que sueldo-pagado.store).
+     */
+    public function exportarCsv(Request $request, CsvPagoBancoService $csvService)
+    {
+        if (!auth()->user()->has_role(config('app.admin_role'))) {
+            abort(403);
+        }
+
+        $request->validate([
+            'sueldos_seleccionados' => 'required|array|min:1',
+        ]);
+
+        $seleccionados = array_map(function ($item) {
+            return json_decode($item, true);
+        }, $request->sueldos_seleccionados);
+
+        $resultado = $csvService->generar($seleccionados);
+
+        if (!empty($resultado['omitidos'])) {
+            $nombres = array_map(function ($o) {
+                $nombre = $o['user'] ? $o['user']->name : 'usuario desconocido';
+                return "{$nombre} ({$o['motivo']})";
+            }, $resultado['omitidos']);
+
+            session()->flash('warning', 'Se omitieron del CSV: ' . implode('; ', $nombres));
+        }
+
+        if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
+            return back()->with('error', 'No se pudo generar el CSV: ningún seleccionado tiene datos bancarios completos.');
+        }
+
+        $nombreArchivo = 'pago_sueldos_' . now()->format('Y-m-d_His') . '.csv';
+
+        return response($resultado['csv'], 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$nombreArchivo}\"",
+        ]);
+    }
+
+    /**
+     * Exporta el CSV de transferencia a terceros (BancoEstado Empresas) para
+     * TODOS los usuarios de una semana específica (inicio/fin), sin depender
+     * de qué esté tildado con los checkboxes "Pagar". Es el botón que vive
+     * en la fila "Total semana" de cada tabla en /sueldos.
+     */
+    public function exportarCsvSemana(Request $request, CsvPagoBancoService $csvService)
+    {
+        if (!auth()->user()->has_role(config('app.admin_role'))) {
+            abort(403);
+        }
+
+        $request->validate([
+            'inicio' => 'required|date',
+            'fin'    => 'required|date',
+        ]);
+
+        $inicio = Carbon::parse($request->inicio)->startOfDay();
+        $fin    = Carbon::parse($request->fin)->endOfDay();
+        $anio   = $inicio->year;
+
+        $sueldos = Sueldo::with('user')
+            ->whereBetween('dia_trabajado', [$inicio->toDateString(), $fin->toDateString()])
+            ->get();
+
+        $honorariosPorRut = HonorarioBte::anio($anio)
+            ->whereIn('rut_emisor', User::where('boletea', true)->whereNotNull('rut')->pluck('rut'))
+            ->get()
+            ->groupBy('rut_emisor');
+
+        $usuarios = [];
+
+        foreach ($sueldos as $sueldo) {
+            if (! $sueldo->user) {
+                continue;
+            }
+
+            $userId = $sueldo->user->id;
+            $roles  = $sueldo->user->list_roles();
+            $esMaso = is_array($roles) ? in_array('Masoterapeuta', $roles)
+                : (stripos((string) $roles, 'Masoterapeuta') !== false);
+
+            if (! isset($usuarios[$userId])) {
+                $boletea = (bool) $sueldo->user->boletea;
+                $bteRow  = null;
+
+                if ($boletea && $sueldo->user->rut) {
+                    $bteSemana = $honorariosPorRut->get($sueldo->user->rut, collect());
+                    $bteRow    = $bteSemana->first(function ($h) use ($inicio, $fin) {
+                        return $h->fecha_emision && $h->fecha_emision->between($inicio, $fin);
+                    });
+                }
+
+                $usuarios[$userId] = [
+                    'user_id'       => $userId,
+                    'sueldos'       => 0,
+                    'propinas'      => 0,
+                    'bono'          => 0,
+                    'boletea'       => $boletea,
+                    'bte_bruto'     => $bteRow->monto_bruto ?? 0,
+                    'bte_retencion' => $bteRow->monto_retenido ?? 0,
+                    'bte_neto'      => $bteRow ? ($bteRow->monto_pagado ?: ($bteRow->monto_bruto - $bteRow->monto_retenido)) : 0,
+                ];
+            }
+
+            $usuarios[$userId]['sueldos']  += $esMaso ? $sueldo->total_pagar : $sueldo->valor_dia;
+            $usuarios[$userId]['propinas'] += $esMaso ? 0 : ($sueldo->sub_sueldo - $sueldo->valor_dia);
+        }
+
+        // Bono guardado para esta semana exacta (sueldos_pagados.semana_inicio/fin)
+        $pagos = SueldoPagado::where('semana_inicio', $inicio->toDateString())
+            ->where('semana_fin', $fin->toDateString())
+            ->get();
+
+        foreach ($pagos as $pago) {
+            if (isset($usuarios[$pago->user_id])) {
+                $usuarios[$pago->user_id]['bono'] = (int) $pago->bono;
+            }
+        }
+
+        $seleccionados = [];
+        foreach ($usuarios as $userId => $datos) {
+            $netoBase = ($datos['boletea'] && $datos['bte_bruto'] > 0)
+                ? $datos['bte_neto']
+                : $datos['sueldos'];
+
+            $total = $netoBase + $datos['propinas'] + $datos['bono'];
+
+            if ($total <= 0) {
+                continue;
+            }
+
+            $seleccionados[] = [
+                'user_id' => $userId,
+                'total'   => $total,
+                'inicio'  => $inicio->toDateString(),
+                'fin'     => $fin->toDateString(),
+            ];
+        }
+
+        if (empty($seleccionados)) {
+            return back()->with('error', 'No hay sueldos para exportar en esta semana.');
+        }
+
+        $resultado = $csvService->generar($seleccionados);
+
+        if (!empty($resultado['omitidos'])) {
+            $nombres = array_map(function ($o) {
+                $nombre = $o['user'] ? $o['user']->name : 'usuario desconocido';
+                return "{$nombre} ({$o['motivo']})";
+            }, $resultado['omitidos']);
+
+            session()->flash('warning', 'Se omitieron del CSV: ' . implode('; ', $nombres));
+        }
+
+        if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
+            return back()->with('error', 'No se pudo generar el CSV: nadie con datos bancarios completos en esta semana.');
+        }
+
+        $nombreArchivo = 'pago_sueldos_' . $inicio->format('Y-m-d') . '_al_' . $fin->format('Y-m-d') . '.csv';
+
+        return response($resultado['csv'], 200, [
+            'Content-Type'        => 'text/csv; charset=UTF-8',
+            'Content-Disposition' => "attachment; filename=\"{$nombreArchivo}\"",
+        ]);
     }
 
     public function adminViewSueldos(User $user, $anio, $mes, Request $request)
@@ -295,6 +508,33 @@ class SueldoController extends Controller
             $finSemana    = $fecha->copy()->endOfWeek(Carbon::SUNDAY);
 
             return $inicioSemana->format('d M') . ' - ' . $finSemana->format('d M');
+        });
+
+        // Bono/motivo guardados para este usuario, agregados por semana.
+        // Puede haber más de una fila de sueldos_pagados para la misma
+        // semana (p. ej. se pagó la semana y después se agregó un bono
+        // aparte con un segundo "Pagar seleccionados"), así que hay que
+        // SUMAR todas las filas que caen en esa semana, no quedarse con
+        // una sola — de lo contrario el bono agregado después desaparece.
+        $pagosUsuario = SueldoPagado::where('user_id', $userId)->get();
+
+        $sueldosAgrupados->each(function ($sueldosSemana) use ($pagosUsuario) {
+            $fechaTrabajo = Carbon::parse($sueldosSemana->first()->dia_trabajado)->toDateString();
+
+            $pagosSemana = $pagosUsuario->filter(function ($p) use ($fechaTrabajo) {
+                $ini = Carbon::parse($p->semana_inicio)->toDateString();
+                $fin = Carbon::parse($p->semana_fin)->toDateString();
+
+                return ($fechaTrabajo >= $ini && $fechaTrabajo <= $fin);
+            });
+
+            $bono   = (int) $pagosSemana->sum('bono');
+            $motivo = $pagosSemana->pluck('motivo')->filter()->implode(' + ');
+
+            foreach ($sueldosSemana as $sueldo) {
+                $sueldo->setAttribute('bono', $bono);
+                $sueldo->setAttribute('motivo', $motivo ?: null);
+            }
         });
 
         if ($user->has_role('masoterapeuta')) {

@@ -109,6 +109,17 @@
                                         @enderror
                                     </div>
 
+                                    <div class="input-field col s12">
+                                        <textarea id="observaciones" class="materialize-textarea @error('observaciones') is-invalid @enderror" name="observaciones">{{ old('observaciones', $cotizacion->observaciones) }}</textarea>
+                                        <label for="observaciones">Observaciones</label>
+
+                                        @error('observaciones')
+                                        <span class="invalid-feedback" role="alert">
+                                            <strong style="color:red">{{ $message }}</strong>
+                                        </span>
+                                        @enderror
+                                    </div>
+
 
                                 </div>
 
@@ -147,11 +158,14 @@
                                             <a href="#!"
                                                 class="collection-item servicio-item {{ in_array($key, $seleccionados) ? 'agregado' : '' }}"
                                                 data-id="{{ $servicio->id }}"
-                                                data-nombre="{{ $servicio->nombre_servicio }}"
+                                                data-nombre="{{ $servicio->nombre_servicio }}{{ $servicio->duracion > 0 ? ' ('.$servicio->duracion.' min)' : '' }}"
                                                 data-valor="{{ $servicio->valor_servicio }}"
                                                 style="{{ in_array($key, $seleccionados) ? 'display:none;' : '' }}">
                                                 {{ $servicio->nombre_servicio }} - ${{
                                                 number_format($servicio->valor_servicio, 0, ',', '.') }}
+                                                @if($servicio->duracion > 0)
+                                                    <span style="color:#777;">({{ $servicio->duracion }} min)</span>
+                                                @endif
                                             </a>
                                             @endforeach
                                         </div>
@@ -179,7 +193,7 @@
                                                 <tr>
                                                     <th>Producto</th>
                                                     <th>Cantidad</th>
-                                                    <th>Subtotal</th>
+                                                    <th>Subtotal <span style="font-weight:normal;color:#777;">(editable)</span></th>
                                                     <th></th>
                                                 </tr>
                                             </thead>
@@ -252,6 +266,10 @@ $itemsIniciales = $cotizacion->items->map(function ($item) {
     $nombre = $item->itemable->nombre
         ?? $item->itemable->nombre_programa
         ?? $item->itemable->nombre_servicio;
+
+    if ($item->itemable_type === 'App\Servicio' && $item->itemable->duracion > 0) {
+        $nombre .= ' (' . $item->itemable->duracion . ' min)';
+    }
 
     return [
         'tipo' => strtolower(class_basename($item->itemable_type)),
@@ -328,7 +346,7 @@ document.addEventListener('DOMContentLoaded', function () {
             row.innerHTML = `
                 <td>${item.nombre}</td>
                 <td><input type="number" min="1" value="${item.cantidad}" class="cantidad-input" style="width:60px;"></td>
-                <td><input type="text" class="subtotal" style="width:100px;" value="$${item.subtotal.toLocaleString()}"></td>
+                <td><input type="text" class="subtotal" title="Puedes editar este valor manualmente" style="width:100px;border:1px dashed #039B7B;background:#FFFDE7;" value="$${item.subtotal.toLocaleString()}"></td>
                 <td><button type="button" class="btn-small red eliminar-producto"><i class="material-icons">delete</i></button></td>
             `;
             tabla.appendChild(row);

@@ -9,6 +9,7 @@ use App\PagoEgreso;
 use App\PoroPoroVenta;
 use App\Programa;
 use App\Reserva;
+use App\Services\SueldoDevengadoService;
 use App\TipoTransaccion;
 use App\Venta;
 use App\VentaDirecta;
@@ -16,6 +17,7 @@ use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
 
 class ReporteFinancieroController extends Controller
 {
@@ -73,12 +75,13 @@ class ReporteFinancieroController extends Controller
         //     ->groupBy('mes')
         //     ->get();
 
-        $egresos = DB::table('pagos_egresos')
+        $egresos = DB::table('egresos')
         ->selectRaw('
-            MONTH(fecha_pago) as mes,
-            SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total
+            MONTH(fecha_egreso) as mes,
+            SUM(total - COALESCE(iva, 0)) as total
         ')
-        ->whereYear('fecha_pago', $anio)
+        ->whereYear('fecha_egreso', $anio)
+        ->whereNull('reconciliado_con_id')
         ->groupBy('mes')
         ->orderBy('mes')
         ->get();
@@ -91,16 +94,16 @@ class ReporteFinancieroController extends Controller
             ->groupBy('mes')
             ->get();
 
-        $sueldos = DB::table('sueldos_pagados')
-            ->selectRaw('MONTH(fecha_pago) as mes, SUM(monto) as total')
-            ->whereYear('fecha_pago', $anio)
+        $sueldos = DB::table('sueldos')
+            ->selectRaw('MONTH(dia_trabajado) as mes, SUM(total_pagar) as total')
+            ->whereYear('dia_trabajado', $anio)
             ->groupBy('mes')
             ->get();
 
-                // BONOS
+                // BONOS (atribuidos a la semana trabajada, no a la fecha de pago)
         $bonos = DB::table('sueldos_pagados')
-            ->selectRaw('MONTH(fecha_pago) as mes, SUM(bono) as total')
-            ->whereYear('fecha_pago', $anio)
+            ->selectRaw('MONTH(semana_inicio) as mes, SUM(bono) as total')
+            ->whereYear('semana_inicio', $anio)
             ->groupBy('mes')
             ->get();
 
@@ -110,14 +113,15 @@ class ReporteFinancieroController extends Controller
         //     ->groupBy('mes')
         //     ->get();
 
-        $impuestos = DB::table('pagos_egresos')
+        $impuestos = DB::table('egresos')
         ->selectRaw('
-            MONTH(fecha_pago) AS mes,
-            SUM(COALESCE(iva, 0))                 AS total_iva,
-            SUM(COALESCE(impuesto_incluido, 0))   AS total_imp_adic,
-            SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) AS total
+            MONTH(fecha_egreso) AS mes,
+            SUM(COALESCE(iva, 0)) AS total_iva,
+            0                     AS total_imp_adic,
+            SUM(COALESCE(iva, 0)) AS total
         ')
-        ->whereYear('fecha_pago', $anio)
+        ->whereYear('fecha_egreso', $anio)
+        ->whereNull('reconciliado_con_id')
         ->groupBy('mes')
         ->orderBy('mes')
         ->get();
@@ -193,9 +197,14 @@ class ReporteFinancieroController extends Controller
             $inicioMes = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
             $finMes = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
             
-        $egresos = DB::table('pagos_egresos')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(monto, 0) - COALESCE(iva, 0) - COALESCE(impuesto_incluido, 0)) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        // NOTA (confirmado por el cliente): en Botacura todo se factura en el
+        // momento en que se cancela, asi que fecha_egreso/total en "egresos" YA
+        // representan el pago real — no se usa "pagos_egresos" (nunca se ha
+        // registrado un pago ahi, ni siquiera para los egresos del SII).
+        $egresos = DB::table('egresos')
+            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(total - COALESCE(iva, 0)) as total')
+            ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
+            ->whereNull('reconciliado_con_id')
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -208,26 +217,27 @@ class ReporteFinancieroController extends Controller
             ->orderBy('fecha')
             ->get();
 
-        // SUELDOS
-        $sueldos = DB::table('sueldos_pagados')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(monto) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        // SUELDOS (trabajo realizado, dia_trabajado)
+        $sueldos = DB::table('sueldos')
+            ->selectRaw('YEARWEEK(dia_trabajado, 1) as yearweek, DATE(dia_trabajado) as fecha, SUM(total_pagar) as total')
+            ->whereBetween('dia_trabajado', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
 
-        // BONOS
+        // BONOS (atribuidos a la semana trabajada, no a la fecha de pago)
         $bonos = DB::table('sueldos_pagados')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(bono) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+            ->selectRaw('YEARWEEK(semana_inicio, 1) as yearweek, DATE(semana_inicio) as fecha, SUM(bono) as total')
+            ->whereBetween('semana_inicio', [$inicioMes, $finMes])
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
 
         // IMPUESTOS
-        $impuestos = DB::table('pagos_egresos')
-            ->selectRaw('YEARWEEK(fecha_pago, 1) as yearweek, DATE(fecha_pago) as fecha, SUM(COALESCE(iva, 0) + COALESCE(impuesto_incluido, 0)) as total')
-            ->whereBetween('fecha_pago', [$inicioMes, $finMes])
+        $impuestos = DB::table('egresos')
+            ->selectRaw('YEARWEEK(fecha_egreso, 1) as yearweek, DATE(fecha_egreso) as fecha, SUM(COALESCE(iva, 0)) as total')
+            ->whereBetween('fecha_egreso', [$inicioMes, $finMes])
+            ->whereNull('reconciliado_con_id')
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -490,6 +500,191 @@ class ReporteFinancieroController extends Controller
         ));
     }
 
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // UTILIDAD — Ingresos vs Egresos SII + Honorarios + PPM
+    // ─────────────────────────────────────────────────────────────────────────
+    public function utilidad(Request $request)
+    {
+        $anio = (int) $request->input('anio', now()->year);
+        $mes  = (int) $request->input('mes',  now()->month);
+
+        $inicio    = Carbon::create($anio, $mes, 1)->startOfMonth();
+        $fin       = Carbon::create($anio, $mes, 1)->endOfMonth();
+        $nombreMes = $inicio->locale('es')->isoFormat('MMMM');
+        $periodo   = sprintf('%04d%02d', $anio, $mes);
+        $periodoKey = $anio . '-' . sprintf('%02d', $mes);
+
+        $mesesNombres = [
+            1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
+            5 => 'Mayo',  6 => 'Junio',   7 => 'Julio', 8 => 'Agosto',
+            9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
+        ];
+
+        // ── Ingresos del mes ──────────────────────────────────────────────────
+        $abonos = (int) DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum(DB::raw('ventas.abono_programa + COALESCE(ventas.diferencia_programa,0)'));
+
+        $consumos = (int) DB::table('detalles_consumos')
+            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum('detalles_consumos.subtotal');
+
+        $servicios = (int) DB::table('detalle_servicios_extra')
+            ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum('detalle_servicios_extra.subtotal');
+
+        $directas = (int) DB::table('ventas_directas')
+            ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+            ->sum('subtotal');
+
+        // Poro Poro NO se contabiliza aqui: va a otro fondo, la app solo se usa
+        // para registrarlo (confirmado por el cliente, no es ingreso de Botacura).
+        $totalIngresos = $abonos + $consumos + $servicios + $directas;
+
+        // ── Egresos del mes ───────────────────────────────────────────────────
+        // 1. Facturas SII (fuente=sii). Usa fecha_egreso (fecha real de la
+        // factura), no periodo_sii (fecha de declaracion SII, que se atrasa) -
+        // mismo criterio que resumenMensual/resumenAnual/detalle-mes.
+        // Formula total-iva: neto no siempre suma con iva para dar total.
+        $facturasSii = (int) DB::table('egresos')
+            ->where('fuente', 'sii')
+            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereNull('reconciliado_con_id')
+            ->selectRaw('SUM(total - COALESCE(iva, 0)) as t')
+            ->value('t');
+        $facturasSii = (int) $facturasSii;
+
+        // 1b. IVA de las facturas SII (impuesto a pagar por las compras)
+        $ivaSii = (int) DB::table('egresos')
+            ->where('fuente', 'sii')
+            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereNull('reconciliado_con_id')
+            ->sum('iva');
+
+        // 2. Honorarios BTE (retenciones)
+        $honorariosRetencion = 0;
+        $honorariosNeto      = 0;
+        if (Schema::hasTable('honorarios_bte')) {
+            $honorariosRetencion = (int) DB::table('honorarios_bte')
+                ->where('periodo', $periodo)
+                ->where('estado', '!=', 'Anulada')
+                ->sum('monto_retenido');
+            $honorariosNeto = (int) DB::table('honorarios_bte')
+                ->where('periodo', $periodo)
+                ->where('estado', '!=', 'Anulada')
+                ->sum('monto_pagado');
+        }
+
+        // 3. Sueldos devengados del mes (misma lógica que /sueldos: por semana
+        // trabajada, no por fecha en que se clickeó "Pagar"). Antes esto sumaba
+        // sueldos_pagados.monto por fecha_pago (base caja), lo que generaba un
+        // número distinto al de /sueldos para el mismo mes.
+        $sueldosPagados = (new SueldoDevengadoService())->totalMes($anio, $mes);
+
+        // 4. PPM estimado (1.5% del total ventas en app — aproximado)
+        $ppm = (int) round($totalIngresos * 0.015);
+
+        $totalEgresos = $facturasSii + $ivaSii + $honorariosRetencion + $sueldosPagados + $ppm;
+        $utilidad     = $totalIngresos - $totalEgresos;
+        $margen       = $totalIngresos > 0 ? round(($utilidad / $totalIngresos) * 100, 1) : 0;
+
+        // ── Breakdown egresos ─────────────────────────────────────────────────
+        $breakdown = [
+            ['label' => 'Facturas SII',       'monto' => $facturasSii,          'pct' => $totalIngresos > 0 ? round(($facturasSii / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'Honorarios (ret.)',  'monto' => $honorariosRetencion,  'pct' => $totalIngresos > 0 ? round(($honorariosRetencion / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'Sueldos',            'monto' => $sueldosPagados,       'pct' => $totalIngresos > 0 ? round(($sueldosPagados / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'PPM est.',           'monto' => $ppm,                  'pct' => $totalIngresos > 0 ? round(($ppm / $totalIngresos) * 100, 1) : 0],
+            ['label' => 'IVA compras (SII)',   'monto' => $ivaSii,               'pct' => $totalIngresos > 0 ? round(($ivaSii / $totalIngresos) * 100, 1) : 0],
+        ];
+
+        // ── Ventas SII del período ────────────────────────────────────────────
+        $ventasSii = (int) DB::table('sii_resumen_mensual')
+            ->where('periodo', $periodo)
+            ->value('ventas_total') ?? 0;
+
+        // ── Resumen anual ─────────────────────────────────────────────────────
+        $resumenAnual = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $ini = Carbon::create($anio, $m, 1)->startOfMonth()->toDateString();
+            $fin_m = Carbon::create($anio, $m, 1)->endOfMonth()->toDateString();
+            $per_m = sprintf('%04d%02d', $anio, $m);
+            $per_k = $anio . '-' . sprintf('%02d', $m);
+
+            $ing = (int) DB::table('ventas')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum(DB::raw('ventas.abono_programa + COALESCE(ventas.diferencia_programa,0)'));
+            $ing += (int) DB::table('detalles_consumos')
+                ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum('detalles_consumos.subtotal');
+            $ing += (int) DB::table('detalle_servicios_extra')
+                ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
+                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+                ->whereYear('reservas.fecha_visita', $anio)
+                ->whereMonth('reservas.fecha_visita', $m)
+                ->sum('detalle_servicios_extra.subtotal');
+            $ing += (int) DB::table('ventas_directas')->whereBetween('fecha', [$ini, $fin_m])->sum('subtotal');
+
+            $egr = (int) DB::table('egresos')
+                ->where('fuente', 'sii')
+                ->whereBetween('fecha_egreso', [$ini, $fin_m])
+                ->whereNull('reconciliado_con_id')
+                ->sum('total');
+            if (Schema::hasTable('honorarios_bte')) {
+                $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
+            }
+            $egr += (new SueldoDevengadoService())->totalMes($anio, $m);
+            $egr += (int) round($ing * 0.015);
+
+            if ($ing === 0 && $egr === 0 && Carbon::create($anio, $m, 1)->isFuture()) {
+                $resumenAnual[$m] = null;
+            } else {
+                $util_m = $ing - $egr;
+                $resumenAnual[$m] = [
+                    'ing'     => $ing,
+                    'egr'     => $egr,
+                    'utilidad' => $util_m,
+                    'margen'  => $ing > 0 ? round(($util_m / $ing) * 100, 1) : 0,
+                ];
+            }
+        }
+
+        // ── IVA segun SII (RCV oficial, para registro/pre-pago; no afecta Utilidad Neta) ──
+        $resumenSii = \App\SiiResumenMensual::where('periodo', $periodo)->first();
+        $ivaDebitoSii     = $resumenSii ? (int) $resumenSii->iva_debito     : 0;
+        $ivaCreditoSii    = $resumenSii ? (int) $resumenSii->iva_credito    : 0;
+        $ivaDiferenciaSii = $resumenSii ? (int) $resumenSii->iva_diferencia : 0;
+        $ivaAPagarSii     = $ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0;
+        $ivaRemanenteSii  = $ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0;
+        $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
+
+        return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
+            'anio', 'mes', 'nombreMes', 'mesesNombres',
+            'abonos', 'consumos', 'servicios', 'directas',
+            'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
+            'facturasSii', 'ivaSii', 'honorariosRetencion', 'honorariosNeto',
+            'sueldosPagados', 'ppm', 'breakdown',
+            'ventasSii', 'resumenAnual',
+            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'ultimaSyncSii'
+        ));
+    }
 
     public function comparar(Request $request)
     {

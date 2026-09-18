@@ -1121,7 +1121,7 @@ class AdminController extends Controller
             'programas',
             'propinasVentaDirecta',
             'totalGc',
-            'cantidadGc',
+            'cantidadGc'
         ));
     }
 

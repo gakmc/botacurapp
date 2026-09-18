@@ -27,25 +27,6 @@ use Illuminate\Support\Facades\Route;
 |
  */
 
-Route::get('/test-mail', function () {
-    $data = [
-        'pdfPath' => storage_path('app/temp_pdfs/test.pdf'), // crea un archivo dummy si quieres
-        'correo'  => 'tu_correo@ejemplo.com',
-    ];
-
-    // pruébalo con un mailable simple sin adjunto primero
-    Mail::raw('Prueba de correo desde Laravel', function ($message) {
-        $message->to('tu_correo@ejemplo.com')
-            ->subject('Test mail simple');
-    });
-
-    return 'ok';
-});
-
-Route::get('/prueba-pdf', function () {
-    $pdf = PDF::loadHTML('<h1>Hola desde wkhtmltopdf</h1>');
-    return $pdf->inline('test.pdf'); // o ->download('test.pdf')
-});
 
 Route::middleware('auth')->group(function () {
     Route::post('/push/subscribe', 'PushSubscriptionController@store')->name('push.subscribe');
@@ -344,11 +325,20 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::get('/',             'HonorarioController@index')->name('index');
         Route::post('/sincronizar', 'HonorarioController@sincronizar')->name('sincronizar');
         Route::get('/resumen',      'HonorarioController@resumen')->name('resumen');
+        Route::get('/debug-bte',    'HonorarioController@debugBte')->name('debugBte');
     });
     // F29 / Impuestos — estimación mensual desde datos SII
     Route::prefix('impuesto')->name('impuesto.')->group(function () {
         Route::get('/',             'ImpuestoController@index')->name('index');
         Route::post('/sincronizar', 'ImpuestoController@sincronizar')->name('sincronizar');
+    });
+
+    // Verificación visual de comprobantes de transferencia (bot WhatsApp)
+    Route::prefix('verificacion-pago')->name('verificacion-pago.')->group(function () {
+        Route::get('/',                    'VerificacionPagoController@index')->name('index');
+        Route::get('/{venta}/imagen',      'VerificacionPagoController@imagen')->name('imagen');
+        Route::post('/{venta}/aprobar',    'VerificacionPagoController@aprobar')->name('aprobar');
+        Route::post('/{venta}/rechazar',   'VerificacionPagoController@rechazar')->name('rechazar');
     });
 
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
@@ -369,6 +359,12 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('role', 'RoleController');
     Route::resource('servicio', 'ServicioController');
     Route::resource('subcategoria', 'SubcategoriaController');
+    // Las rutas estáticas van ANTES del resource: Route::resource registra
+    // GET sueldos/{sueldo} (método show, vacío) que si va primero intercepta
+    // "exportar-csv"/"exportar-csv-semana" como si fueran un {sueldo} id,
+    // devolviendo una respuesta HTML vacía con 200 en vez de correr el export.
+    Route::post('sueldos/exportar-csv', 'SueldoController@exportarCsv')->name('sueldos.exportar-csv');
+    Route::get('sueldos/exportar-csv-semana', 'SueldoController@exportarCsvSemana')->name('sueldos.exportar-csv-semana');
     Route::resource('sueldos', 'SueldoController');
     Route::resource('sueldo-pagado', 'SueldoPagadoController');
     Route::resource('tipo-masaje', 'TipoMasajeController');
@@ -394,6 +390,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('user/{user}/assign_role', 'UserController@assign_role')->name('user.assign_role');
     Route::get('user/{user}/assign_permission', 'UserController@assign_permission')->name('user.assign_permission');
     Route::patch('user/{user}/toggle-status', 'UserController@toggleStatus')->name('user.toggle_status');
+
+    Route::get('datos-bancarios', 'DatosBancariosController@index')->name('datos-bancarios.index');
+    Route::get('user/{user}/datos-bancarios', 'DatosBancariosController@edit')->name('datos-bancarios.edit');
+    Route::match(['put', 'patch'], 'user/{user}/datos-bancarios', 'DatosBancariosController@update')->name('datos-bancarios.update');
     Route::get('reserva', 'ReservaController@index')->name('reserva.index');
 
     // NUEVA: contenido (HTML) para cargar por JS
@@ -662,6 +662,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::post('/calendario/festivo',  [CalendarioController::class, 'agregarFestivo'])->name('calendario.festivo');
     Route::delete('/calendario/{fecha}',[CalendarioController::class, 'eliminar'])->name('calendario.eliminar');
 });
+
+// ── Webpay — retorno de pago (sin autenticación) ─────────────────────────────
+Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.webpay.retorno');
 
 // // routes/web.php
 

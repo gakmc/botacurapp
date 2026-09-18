@@ -47,4 +47,9 @@ return [
         'secret' => env('BOT_SECRET'),
     ],
 
+    // ── OpenAI (Whisper — transcripción de audios WhatsApp) ─────────────
+    'openai' => [
+        'key' => env('OPENAI_API_KEY'),
+    ],
+
 ];

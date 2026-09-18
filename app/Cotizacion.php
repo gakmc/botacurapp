@@ -8,7 +8,7 @@ class Cotizacion extends Model
     protected $table = 'cotizaciones';
 
     protected $fillable = [
-        'cliente', 'solicitante', 'fecha_emision', 'fecha_reserva', 'validez_dias', 'correo'
+        'cliente', 'solicitante', 'fecha_emision', 'fecha_reserva', 'validez_dias', 'correo', 'observaciones'
     ];
 
     protected $dates = [

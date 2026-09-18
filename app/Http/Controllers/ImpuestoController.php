@@ -19,8 +19,8 @@ use Illuminate\Support\Facades\Log;
  *   - Compras RCV → IVA Crédito (ya importado en egresos)
  *   - BTE         → Retenciones de honorarios
  *
- * Empresa exenta de IVA: no hay débito fiscal.
- * F29 a pagar = PPM (0.25% × ventas) + Retenciones BTE
+ * La empresa SI genera debito fiscal por ventas (confirmado via RCV/F29 real,
+ * ver carpeta tributaria). F29 a pagar = IVA (Debito - Credito) + PPM (0.25% x ventas) + Retenciones BTE
  *
  * Compatible Laravel 6 / PHP 7.2.
  */
@@ -83,7 +83,13 @@ class ImpuestoController extends Controller
         $ppm     = (int) round($basePpm * self::TASA_PPM);
 
         // ── Total F29 estimado ────────────────────────────────────────────────
-        $totalF29 = $ppm + $retencionBte;
+        $ivaDebito     = $resumen ? (int) $resumen->iva_debito     : 0;
+        $ivaCredito    = $resumen ? (int) $resumen->iva_credito    : 0;
+        $ivaDiferencia = $resumen ? (int) $resumen->iva_diferencia : 0; // negativo = remanente a favor
+        $ivaAPagar     = $ivaDiferencia > 0 ? $ivaDiferencia : 0;
+        $ivaRemanente  = $ivaDiferencia < 0 ? abs($ivaDiferencia) : 0;
+
+        $totalF29 = $ppm + $retencionBte + $ivaAPagar;
 
         // ── Proyección si es mes actual (histórico de últimos 3 meses) ────────
         $proyeccion = null;
@@ -117,6 +123,7 @@ class ImpuestoController extends Controller
             'credencialesOk', 'resumen',
             'ventasTotal', 'ventasNeto', 'ventasExento', 'ventasCant',
             'creditoFiscal', 'retencionBte', 'bteCantidad',
+            'ivaDebito', 'ivaCredito', 'ivaDiferencia', 'ivaAPagar', 'ivaRemanente',
             'basePpm', 'ppm', 'totalF29',
             'proyeccion', 'bteSemanales', 'resumenAnual'
         ));

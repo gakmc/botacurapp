@@ -78,6 +78,12 @@
                                 <h6 class="" style=""><strong>Emitida: </strong>{{ $cotizacion->fecha_emision->isoFormat('D [de] MMMM') }}</h6>
                                 <h6 class="" style=""><strong>Fecha reserva: </strong>{{ $cotizacion->fecha_reserva->isoFormat('D [de] MMMM') }}</h6>
                             </div>
+
+                            @if($cotizacion->observaciones)
+                            <div class="col s12">
+                                <h6 class="" style=""><strong>Observaciones: </strong>{{ $cotizacion->observaciones }}</h6>
+                            </div>
+                            @endif
                             
                         </div>
                     </div>
@@ -108,7 +114,7 @@
 
                                                 @foreach ($item->itemable->servicios as $servicio)
                                                     <tr>
-                                                        <td>{{ $servicio->nombre_servicio }}</td>
+                                                        <td>{{ $servicio->nombre_servicio }}{{ $servicio->duracion > 0 ? ' ('.$servicio->duracion.' min)' : '' }}</td>
                                                         <td></td>
                                                         <td></td>
                                                         <td></td>
@@ -119,7 +125,7 @@
 
                                             @if ($item->itemable_type == 'App\Servicio')
                                                 <tr>
-                                                    <td style="color: #039B7B">{{$item->itemable->nombre_servicio}}</td>
+                                                    <td style="color: #039B7B">{{$item->itemable->nombre_servicio}}{{ $item->itemable->duracion > 0 ? ' ('.$item->itemable->duracion.' min)' : '' }}</td>
                                                     <td>{{$item->cantidad}}</td>
                                                     <td>${{number_format($item->valor_neto,0,',','.')}}</td>
                                                     <td>${{number_format($item->total,0,',','.')}}</td>
