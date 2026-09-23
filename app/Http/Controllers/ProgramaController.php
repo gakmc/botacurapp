@@ -4,12 +4,14 @@ namespace App\Http\Controllers;
 
 use App\Programa;
 use App\Servicio;
+use App\Exceptions\WooCommerceProductNotFoundException;
 use App\Http\Requests\Programa\StoreRequest;
 use App\Http\Requests\Programa\UpdateRequest;
 use App\Services\WooCommerceService;
 use App\Services\WooCommerceImageService;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Log;
+use RealRashid\SweetAlert\Facades\Alert;
 
 class ProgramaController extends Controller
 {
@@ -58,7 +60,9 @@ class ProgramaController extends Controller
     {
         $programa = $programa->store($request);
 
-        $this->syncToWc($programa, $request);
+        if (!$this->syncToWc($programa, $request)) {
+            Alert::warning('Guardado con advertencia', 'El programa se guardó, pero no se pudo sincronizar con WooCommerce. Revisa los logs e inténtalo de nuevo desde "Editar".')->showConfirmButton();
+        }
 
         return redirect()->route('backoffice.programa.show', $programa);
     }
@@ -85,7 +89,9 @@ class ProgramaController extends Controller
 
         $fresh = $programa->fresh();
 
-        $this->syncToWc($fresh, $request);
+        if (!$this->syncToWc($fresh, $request)) {
+            Alert::warning('Guardado con advertencia', 'El programa se actualizó, pero no se pudo sincronizar con WooCommerce. Revisa los logs e inténtalo de nuevo.')->showConfirmButton();
+        }
 
         return redirect()->route('backoffice.programa.show', $programa);
     }
@@ -113,6 +119,11 @@ class ProgramaController extends Controller
         if (!$programa->solo_plataforma) {
             try {
                 $this->wc->updateProduct($programa->fresh());
+            } catch (WooCommerceProductNotFoundException $e) {
+                Log::warning("[WC-Sync] cambiarEstado: producto WC #{$e->wcProductId} ya no existe, se desvincula el programa #{$programa->id}. Hay que reeditarlo para recrearlo en WC.");
+                Programa::withoutEvents(function () use ($programa) {
+                    $programa->update(['wc_product_id' => null]);
+                });
             } catch (\Exception $e) {
                 Log::warning("[WC-Sync] cambiarEstado: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
             }
@@ -188,18 +199,27 @@ class ProgramaController extends Controller
      * duplicado si ya existiera del lado de WC por alguna otra vía; si lo
      * encuentra, solo vincula el ID (igual que syncUnlinked) en vez de crear
      * uno nuevo.
+     *
+     * Devuelve false si algo falló al hablar con WooCommerce, para que el
+     * llamador pueda avisarle al usuario en vez de mostrar éxito a ciegas.
      */
-    private function syncToWc(Programa $programa, Request $request): void
+    private function syncToWc(Programa $programa, Request $request): bool
     {
         if ($programa->solo_plataforma) {
             if ($programa->wc_product_id) {
                 try {
                     $this->wc->draftProduct($programa);
+                } catch (WooCommerceProductNotFoundException $e) {
+                    Log::info("[WC-Sync] syncToWc: producto WC #{$e->wcProductId} ya no existe, se desvincula el programa #{$programa->id} (solo_plataforma, nada que pasar a borrador)");
+                    Programa::withoutEvents(function () use ($programa) {
+                        $programa->update(['wc_product_id' => null]);
+                    });
                 } catch (\Exception $e) {
                     Log::warning("[WC-Sync] syncToWc: no se pudo pasar a borrador el programa #{$programa->id}: " . $e->getMessage());
+                    return false;
                 }
             }
-            return;
+            return true;
         }
 
         try {
@@ -216,9 +236,16 @@ class ProgramaController extends Controller
             $serviceUrls = $this->wcImage->getServiceImageIds($programa->servicios);
 
             if ($programa->wc_product_id) {
-                $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls);
-                $this->wc->updateProduct($programa, $images);
-                return;
+                try {
+                    $images = $this->wcImage->buildImagesPayload($mainImageIds, $serviceUrls);
+                    $this->wc->updateProduct($programa, $images);
+                    return true;
+                } catch (WooCommerceProductNotFoundException $e) {
+                    Log::warning("[WC-Sync] syncToWc: producto WC #{$e->wcProductId} ya no existe, se desvincula el programa #{$programa->id} y se intenta re-crear");
+                    Programa::withoutEvents(function () use ($programa) {
+                        $programa->update(['wc_product_id' => null]);
+                    });
+                }
             }
 
             $wcId = $this->wc->findByName($programa->nombre_programa);
@@ -228,7 +255,7 @@ class ProgramaController extends Controller
                     $programa->update(['wc_product_id' => $wcId]);
                 });
                 Log::info("[WC-Sync] syncToWc: programa #{$programa->id} vinculado a producto WC existente #{$wcId}, no se creó uno nuevo");
-                return;
+                return true;
             }
 
             // Sin imágenes principales, se permite que las de servicios ocupen
@@ -243,8 +270,11 @@ class ProgramaController extends Controller
                 ]);
             });
 
+            return true;
+
         } catch (\Exception $e) {
             Log::warning("[WC-Sync] syncToWc: no se pudo sincronizar programa #{$programa->id}: " . $e->getMessage());
+            return false;
         }
     }
 }

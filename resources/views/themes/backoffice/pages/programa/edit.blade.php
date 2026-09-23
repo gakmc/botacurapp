@@ -5,6 +5,8 @@
 @endsection
 
 @section('breadcrumbs')
+<li><a href="{{route('backoffice.programa.index')}}">Programas</a></li>
+<li>{{$programa->nombre_programa}}</li>
 @endsection
 
 @section('dropdown_settings')
@@ -43,8 +45,7 @@
                     <option value="estacion_economico"  {{ $programa->espacio_tipo === 'estacion_economico'  ? 'selected' : '' }}>Estación Económica</option>
                     <option value="estacion_intermedio" {{ $programa->espacio_tipo === 'estacion_intermedio' ? 'selected' : '' }}>Estación Intermedia</option>
                     <option value="estacion_full"       {{ $programa->espacio_tipo === 'estacion_full'       ? 'selected' : '' }}>Estación Full</option>
-                    <option value="terraza"             {{ $programa->espacio_tipo === 'terraza'             ? 'selected' : '' }}>Terraza</option>
-                    <option value="reposera"            {{ $programa->espacio_tipo === 'reposera'            ? 'selected' : '' }}>Reposera</option>
+                    <option value="wellness"             {{ in_array($programa->espacio_tipo, ['terraza', 'reposera', 'wellness']) ? 'selected' : '' }}>Wellness</option>
                   </select>
                   <label for="espacio_tipo">Tipo de espacio</label>
                   @error('espacio_tipo')
@@ -186,7 +187,10 @@
       $('#valor_programa').val(total);
     }
 
-    calcularTotal();
+    // No se llama calcularTotal() al cargar: el valor guardado debe
+    // permanecer intacto hasta que el usuario modifique servicios o
+    // descuento a propósito (evita reescribir el precio — y empujarlo
+    // a WooCommerce — solo por abrir y guardar el formulario).
 
     $('input[name="servicios[]"]').change(function() {
       calcularTotal();
@@ -194,6 +198,18 @@
 
     $('#descuento').change(function() {
       calcularTotal();
+    });
+
+    // Evita doble envío: deshabilita el botón apenas se manda el form la primera vez.
+    $('form').on('submit', function () {
+      var $form = $(this);
+
+      if ($form.data('submitted')) {
+        return false;
+      }
+
+      $form.data('submitted', true);
+      $form.find('button[type="submit"]').prop('disabled', true);
     });
   });
 </script>

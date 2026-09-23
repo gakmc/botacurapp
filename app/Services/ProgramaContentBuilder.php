@@ -89,7 +89,7 @@ class ProgramaContentBuilder
 
         $html .= "<p><strong>IMPORTANTE!</strong></p>\n";
 
-        $html .= "<p><strong>👀Cupos diarios limitados. Consultar disponibilidad antes de comprar.</strong></p>\n";
+        $html .= "<p><strong>👀Cupos diarios limitados. Consultar disponibilidad antes de comprar vía WhatsApp.</strong></p>\n";
 
         $html .= "<p>";
         $html .= "<strong>✅Al momento de realizar la compra, usted acepta políticas y condiciones del establecimiento ";

@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Exceptions\WooCommerceProductNotFoundException;
 use App\Programa;
 use GuzzleHttp\Client;
 use GuzzleHttp\Exception\RequestException;
@@ -44,14 +45,18 @@ class WooCommerceService
      */
     public function createProduct(Programa $programa, array $images = []): int
     {
+        $payload = $this->buildPayload($programa, $images);
+
         try {
             $response = $this->client->post('products', [
-                'json' => $this->buildPayload($programa, $images),
+                'json' => $payload,
             ]);
 
             $data = json_decode($response->getBody(), true);
 
             Log::info("[WC-Sync] ✓ Producto creado | ID WC: {$data['id']} | {$data['name']}");
+
+            $this->verificarPrecioAplicado($programa, $payload, $response);
 
             return (int) $data['id'];
 
@@ -74,15 +79,24 @@ class WooCommerceService
             return;
         }
 
+        $payload = $this->buildPayload($programa, $images);
+
         try {
-            $this->client->put("products/{$programa->wc_product_id}", [
-                'json' => $this->buildPayload($programa, $images),
+            $response = $this->client->put("products/{$programa->wc_product_id}", [
+                'json' => $payload,
             ]);
 
             Log::info("[WC-Sync] ✓ Producto actualizado | ID WC: {$programa->wc_product_id} | {$programa->nombre_programa}");
 
+            $this->verificarPrecioAplicado($programa, $payload, $response);
+
         } catch (RequestException $e) {
             $this->logError('updateProduct', $programa, $e);
+
+            if ($this->isProductNotFoundError($e)) {
+                throw new WooCommerceProductNotFoundException((int) $programa->wc_product_id, $e);
+            }
+
             throw $e;
         }
     }
@@ -108,6 +122,11 @@ class WooCommerceService
 
         } catch (RequestException $e) {
             $this->logError('draftProduct', $programa, $e);
+
+            if ($this->isProductNotFoundError($e)) {
+                throw new WooCommerceProductNotFoundException((int) $programa->wc_product_id, $e);
+            }
+
             throw $e;
         }
     }
@@ -164,6 +183,11 @@ class WooCommerceService
             'status'        => $this->resolveStatus($programa),
             'description'   => $this->builder->build($programa),
             'regular_price' => (string) $programa->valor_programa,
+            // Se limpia explícitamente: si el producto tenía un precio de
+            // oferta cargado manualmente en WC, seguiría mostrándose en la
+            // tienda por sobre el regular_price y el valor visible nunca
+            // coincidiría con el de Laravel.
+            'sale_price'    => '',
             'sku'           => $programa->slug,
             'categories'    => [['id' => self::SPA_DAY_CATEGORY_ID]],
         ];
@@ -186,6 +210,44 @@ class WooCommerceService
     // ─────────────────────────────────────────────────────────────
     //  HELPERS
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Compara el regular_price devuelto por WC contra el enviado.
+     * Si no coincide, WC lo transformó/rechazó silenciosamente (ej. algún
+     * plugin de precios, o el valor fue clampeado) — se deja registrado
+     * porque de otro modo Laravel cree que quedó sincronizado sin estarlo.
+     */
+    private function verificarPrecioAplicado(Programa $programa, array $payload, $response): void
+    {
+        $data = json_decode($response->getBody(), true);
+
+        $enviado  = $payload['regular_price']    ?? null;
+        $aplicado = $data['regular_price'] ?? null;
+
+        if ($enviado !== null && $aplicado !== null && (string) $enviado !== (string) $aplicado) {
+            Log::warning(
+                "[WC-Sync] ⚠ Precio no coincide tras sincronizar | Programa #{$programa->id} | " .
+                "ID WC: {$programa->wc_product_id} | Enviado: {$enviado} | WC devolvió: {$aplicado}"
+            );
+        }
+    }
+
+    /**
+     * true solo si WC respondió específicamente "producto inexistente"
+     * (404 + woocommerce_rest_product_invalid_id) — nunca para timeouts,
+     * errores de auth u otros fallos, que deben seguir tratándose como
+     * error genérico de sincronización y no como "hay que desvincular".
+     */
+    private function isProductNotFoundError(RequestException $e): bool
+    {
+        if (!$e->hasResponse() || $e->getResponse()->getStatusCode() !== 404) {
+            return false;
+        }
+
+        $body = json_decode((string) $e->getResponse()->getBody(), true);
+
+        return ($body['code'] ?? null) === 'woocommerce_rest_product_invalid_id';
+    }
 
     private function logError(string $metodo, Programa $programa, RequestException $e): void
     {

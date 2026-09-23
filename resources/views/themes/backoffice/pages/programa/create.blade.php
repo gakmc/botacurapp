@@ -47,8 +47,7 @@
                     <option value="estacion_economico">Estación Económica</option>
                     <option value="estacion_intermedio">Estación Intermedia</option>
                     <option value="estacion_full">Estación Full</option>
-                    <option value="terraza">Terraza</option>
-                    <option value="reposera">Reposera</option>
+                    <option value="wellness">Wellness</option>
                   </select>
                   <label for="espacio_tipo">Tipo de espacio</label>
                   @error('espacio_tipo')
@@ -209,8 +208,20 @@
           calcularTotal();
       });
 
-      $('#descuento').change(function () { 
+      $('#descuento').change(function () {
         calcularTotal();
+      });
+
+      // Evita doble envío: deshabilita el botón apenas se manda el form la primera vez.
+      $('form').on('submit', function () {
+        var $form = $(this);
+
+        if ($form.data('submitted')) {
+          return false;
+        }
+
+        $form.data('submitted', true);
+        $form.find('button[type="submit"]').prop('disabled', true);
       });
   });
 </script>

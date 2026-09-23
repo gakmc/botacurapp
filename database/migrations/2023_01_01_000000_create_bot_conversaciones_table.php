@@ -7,8 +7,14 @@ use Illuminate\Support\Facades\Schema;
 /**
  * Tabla bot_conversaciones — sesiones del bot WhatsApp/Instagram.
  * Creada desde schema de producción.
+ *
+ * Nombre de clase con sufijo porque 2026_05_27_141054_create_bot_conversaciones_table
+ * define la misma tabla con class CreateBotConversacionesTable — dos migraciones no
+ * pueden declarar la misma clase PHP sin romper "php artisan migrate" con un fatal
+ * "Cannot declare class ... already in use". Esta es la que corre primero (por fecha)
+ * y ya trae guard de Schema::hasTable(), por lo que es segura de dejar como no-op.
  */
-class CreateBotConversacionesTable extends Migration
+class CreateBotConversacionesTableLegacy20230101 extends Migration
 {
     public function up()
     {
