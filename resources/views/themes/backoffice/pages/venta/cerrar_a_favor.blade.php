@@ -49,8 +49,16 @@
                     $diferenciaFinal = 0; // Ya no hay "diferencia pendiente"
                     $totalPagar = $restanteServicio + $restanteConsumo; // 0 + 10000 = 10000
 
+                    // Propina (opcional): se sugiere sobre el consumo total y se cubre primero
+                    // con el saldo a favor que quede después de servicios y consumo
+                    $saldoRestante   = max(0, $excedente - $totalConsumo);
+                    $propinaSugerida = round($totalConsumo * 0.1);
+                    $propinaACobrar  = max(0, $propinaSugerida - $saldoRestante);
+
                 @endphp
 
+                  {{-- La propina es opcional y solo se ofrece si hay productos consumidos --}}
+                  @if ($totalConsumo > 0)
                   <div class="row">
                     <div class="col s12">
                       <p>
@@ -65,6 +73,7 @@
                   <div class="row">
                     <br>
                   </div>
+                  @endif
 
                     <div class="row" id="seccionPropina">
                       <div class="input-field col s12 m4">
@@ -74,19 +83,24 @@
                         <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" value="${{number_format($restanteConsumo, 0, ',', '.')}}" data-consumo_bruto="{{$restanteConsumo}}" readonly>
                       </div>
 
+                      @if ($totalConsumo > 0)
                       <div class="input-field col s12 m4" id="propinaBruta" hidden>
                         <label for="propinaValue">Ingrese Propina</label>
                         {{-- <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}"> --}}
                       
-                        <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$restanteConsumo*0.1}}" value="${{number_format($restanteConsumo*0.1,0,'','.')}}">
+                        <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$propinaSugerida}}" data-saldo_restante="{{$saldoRestante}}" value="${{number_format($propinaSugerida,0,'','.')}}">
+                        @if ($saldoRestante > 0)
+                          <span class="helper-text">Saldo a favor disponible para propina: ${{number_format($saldoRestante,0,'','.')}}</span>
+                        @endif
                       </div>
 
                       <div class="input-field col s12 m4" id="siPropina" hidden>
                         <label for="conPropina">Consumo con Propina</label>
                         {{-- <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly> --}}
                         
-                        <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$restanteConsumo*1.1}}" value="${{number_format($restanteConsumo*1.1,0,'','.')}}" readonly>
+                        <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$restanteConsumo + $propinaACobrar}}" value="${{number_format($restanteConsumo + $propinaACobrar,0,'','.')}}" readonly>
                       </div>
+                      @endif
                     </div>
 
                     <div class="row">
@@ -355,7 +369,11 @@
     const propinaInput = parseCurrency($('#propinaValue').val());
     const servicios = obtenerValorData('#servicio_bruto', 'servicio_bruto');
 
-    let consumoConPropina = consumoBruto + (propinaActiva ? propinaInput : 0);
+    // La propina se cubre primero con el saldo a favor restante; solo se cobra el excedente
+    const saldoRestante = obtenerValorData('#propinaValue', 'saldo_restante');
+    const propinaACobrar = Math.max(0, propinaInput - saldoRestante);
+
+    let consumoConPropina = consumoBruto + (propinaActiva ? propinaACobrar : 0);
     // let totalServiciosConsumo = servicios + consumoConPropina;
 
     let consumoFinal = propinaActiva ? consumoConPropina : consumoBruto;

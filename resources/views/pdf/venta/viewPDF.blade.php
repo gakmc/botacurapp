@@ -111,10 +111,15 @@
             @else
 
                 @php
-                    $propina = 0;
                     $valor = 0;
+                    // Solo se considera propina si efectivamente se pagó (monto numérico)
+                    $propinaCobrada = (isset($propinaPagada) && is_numeric($propinaPagada)) ? (float) $propinaPagada : null;
                 @endphp
 
+                @if ($consumo->detallesConsumos->isEmpty())
+                <h6 class="left"><span class="primario">Productos:</span> No se registran productos consumidos</h6>
+                <br>
+                @else
                 <table class="striped centered">
                     <thead>
                         <tr>
@@ -133,7 +138,6 @@
                                 <td>${{number_format($detalles->producto->valor,0,'','.')}}</td>
                                 <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
                                 @php
-                                    $propina += $detalles->subtotal*0.1;
                                     $valor += $detalles->subtotal;
                                 @endphp
 
@@ -150,15 +154,21 @@
                     </tr>
                     <tr>
                         <td colspan="3"></td>
-                        <td style="font-weight: bold; text-align:right; padding-top:0%;">Propina sugerida (10%):
-                            ${{number_format($propina,0,'','.')}}</td>
+                        <td style="font-weight: bold; text-align:right; padding-top:0%;">Propina:
+                            @if (!is_null($propinaCobrada))
+                                ${{number_format($propinaCobrada,0,'','.')}}
+                            @else
+                                No Aplica
+                            @endif
+                        </td>
                     </tr>
                     <tr>
                         <td colspan="3"></td>
-                        <td style="font-weight: bold; text-align:right; padding-top:0%;">Total consumo: ${{number_format($valor+$propina,0,'','.')}}</td>
+                        <td style="font-weight: bold; text-align:right; padding-top:0%;">Total consumo: ${{number_format($valor + ($propinaCobrada ?? 0),0,'','.')}}</td>
                     </tr>
 
                 </table>
+                @endif
 
             @endif
         </div>

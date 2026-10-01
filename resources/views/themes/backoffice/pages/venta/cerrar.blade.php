@@ -31,6 +31,8 @@
                   $subtotalServicios = $reserva->venta->consumo->detalleServiciosExtra->sum('subtotal');
                 @endphp
 
+              {{-- La propina es opcional y solo se ofrece si hay productos consumidos --}}
+              @if ($totalSubtotal > 0)
               <div class="row">
                 <div class="col s12">
                   <p>
@@ -45,6 +47,7 @@
               <div class="row">
                 <br>
               </div>
+              @endif
 
                 <div class="row" id="seccionPropina">
                   <div class="input-field col s12 m4">
@@ -52,6 +55,7 @@
                     <input id="consumo_bruto" type="text" name="consumo_bruto" class="money-format" data-consumo_bruto="{{$totalSubtotal}}" value="${{number_format($totalSubtotal,0,'','.')}}" readonly>
                   </div>
 
+                  @if ($totalSubtotal > 0)
                   <div class="input-field col s12 m4" id="propinaBruta" hidden>
                     <label for="propinaValue">Ingrese Propina</label>
                     <input id="propinaValue" type="text" name="propinaValue" class="money-format" data-propinavalue="{{$totalSubtotal*0.1}}" value="${{number_format($totalSubtotal*0.1,0,'','.')}}">
@@ -61,6 +65,7 @@
                     <label for="conPropina">Consumo con Propina</label>
                     <input id="conPropina" type="text" name="conPropina" class="money-format" data-conpropina="{{$totalSubtotal*1.1}}" value="${{number_format($totalSubtotal*1.1,0,'','.')}}" readonly>
                   </div>
+                  @endif
                 </div>
 
                 <div class="row">

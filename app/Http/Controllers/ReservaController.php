@@ -27,6 +27,7 @@ use App\Ubicacion;
 use App\User;
 use App\Venta;
 use App\Visita;
+use App\WoocommerceOrder;
 use Barryvdh\DomPDF\Facade\Pdf;
 use Carbon\Carbon;
 use Illuminate\Database\Eloquent\Relations\Relation;
@@ -1096,19 +1097,25 @@ class ReservaController extends Controller
 
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
         return view('themes.backoffice.pages.reserva.edit', [
-            'reserva'              => $reserva,
-            'venta'                => $venta,
-            'cliente'              => $cliente,
-            'programas'            => $programas,
-            'tipos'                => $tipos,
-            'visita'               => $visita,
-            'cantidadMasaje'       => $cantidadExtraMasaje,
-            'fechasDeshabilitadas' => $fechasDeshabilitadas,
+            'reserva'                => $reserva,
+            'venta'                  => $venta,
+            'cliente'                => $cliente,
+            'programas'              => $programas,
+            'tipos'                  => $tipos,
+            'visita'                 => $visita,
+            'cantidadMasaje'         => $cantidadExtraMasaje,
+            'fechasDeshabilitadas'   => $fechasDeshabilitadas,
+            'precioUnitarioOriginal' => $this->precioUnitarioOriginal($reserva, $venta, (int) $reserva->cantidad_personas),
+            'abonosExtraVenta'       => (int) $venta->abonosExtra()->sum('monto'),
         ]);
     }
 
     public function update(UpdateRequest $request, Reserva $reserva)
     {
+        $request->merge([
+            'abono_programa' => (int) str_replace(['$', '.', ','], '', $request->abono_programa),
+        ]);
+
         $masajesExtra   = null;
         $almuerzosExtra = null;
         $data           = $request->all();
@@ -1184,20 +1191,37 @@ class ReservaController extends Controller
                 // Actualizar la venta relacionada con la reserva
                 $venta = $reserva->venta ?? new Venta();
 
+                // El total_pagar guardado ya viene neto de abonos extra (AbonoExtraController lo
+                // descuenta al registrarlos). El formulario de edición solo lo recalcula desde cero
+                // (valor × personas − abono) cuando cambia programa, personas o abono; en cualquier
+                // otro caso se conserva el guardado para no volver a descontar los abonos extra.
+                $totalRecalculado = ! $venta->exists
+                    || (int) ($originalArray['id_programa'] ?? 0) !== (int) $request->id_programa
+                    || (int) ($originalArray['cantidad_personas'] ?? 0) !== (int) $request->cantidad_personas
+                    || (int) ($originalArray['abono_programa'] ?? 0) !== (int) $request->abono_programa;
+
+                $totalPagar = $venta->total_pagar;
+
+                if ($totalRecalculado) {
+                    // Mismo programa: se respeta el precio por persona con que se creó la reserva,
+                    // aunque el programa haya cambiado de valor después. Programa distinto (o sin
+                    // venta previa): se usa el valor actual del nuevo programa.
+                    $precioUnitario = (int) ($originalArray['id_programa'] ?? 0) === (int) $request->id_programa
+                        ? $this->precioUnitarioOriginal($reserva, $venta, (int) ($originalArray['cantidad_personas'] ?? 0))
+                        : null;
+                    $precioUnitario = $precioUnitario ?? (int) $programa->valor_programa;
+
+                    $totalPagar = (int) round($precioUnitario * (int) $request->cantidad_personas)
+                        - (int) $request->abono_programa
+                        - (int) $venta->abonosExtra()->sum('monto');
+                }
 
                 $venta->fill([
                     'abono_programa'            => $request->abono_programa,
                     'folio_abono'              => $folio_abono ?? $venta->folio_abono,
                     'id_tipo_transaccion_abono' => $request->tipo_transaccion,
-                    'total_pagar'               => $request->total_pagar,
+                    'total_pagar'               => $totalPagar,
                 ])->save();
-
-                // El total_pagar recién calculado solo considera programa/personas/abono inicial;
-                // hay que volver a descontar los abonos extra ya cobrados para esta venta.
-                $abonosExtra = $venta->abonosExtra()->sum('monto');
-                if ($abonosExtra > 0) {
-                    $venta->decrement('total_pagar', $abonosExtra);
-                }
 
                 // Manejar los servicios extra
                 if ($request->filled('cantidad_masajes_extra')) {
@@ -1239,6 +1263,36 @@ class ReservaController extends Controller
         } catch (\Error $e) {
             return redirect()->back()->with('error', 'Ocurrió un error al actualizar la reserva. ' . $e);
         }
+    }
+
+    /**
+     * Precio por persona con que se registró la venta, deducido de los montos guardados
+     * (la tabla ventas no almacena el precio unitario). Se usa al editar para no tomar
+     * el valor actual del programa, que puede haber cambiado desde la creación.
+     */
+    private function precioUnitarioOriginal(Reserva $reserva, Venta $venta, int $personas): ?float
+    {
+        if (! $venta->exists || $personas <= 0) {
+            return null;
+        }
+
+        // Al cerrar la venta, total_pagar queda en 0 y lo cobrado pasa a diferencia_programa.
+        $cerrada = (int) $venta->total_pagar === 0 && ! is_null($venta->diferencia_programa);
+        $saldo   = $cerrada ? (int) $venta->diferencia_programa : (int) $venta->total_pagar;
+
+        $total = (int) $venta->abono_programa + $saldo + (int) $venta->abonosExtra()->sum('monto');
+
+        // WooCommerce registra el pago completo en abono_programa y en total_pagar a la vez.
+        if (WoocommerceOrder::where('reserva_id', $reserva->id)->exists()) {
+            $total = (int) $venta->abono_programa;
+        }
+
+        // El bot suma los masajes y desayunos/onces extra al total de la venta.
+        if ($reserva->fuente === 'bot_whatsapp' && $venta->consumo) {
+            $total -= (int) $venta->consumo->detalleServiciosExtra()->sum('subtotal');
+        }
+
+        return $total > 0 ? $total / $personas : null;
     }
 
     private function visitaEstaCompleta(Reserva $reserva, Visita $visita): bool

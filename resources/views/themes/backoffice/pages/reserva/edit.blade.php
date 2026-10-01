@@ -45,7 +45,7 @@
                       selected
                       @else
 
-                      @endif data-valor="{{$programa->valor_programa}}"
+                      @endif data-valor="{{ ($programa->id === $reserva->id_programa && $precioUnitarioOriginal) ? $precioUnitarioOriginal : $programa->valor_programa }}"
                       data-incluye-masajes="{{ $programa->incluye_masajes ? '1' : '0' }}"
                       data-incluye-almuerzos="{{ $programa->incluye_almuerzos ? '1' : '0' }}"
                       >{{$programa->nombre_programa}}</option>
@@ -281,7 +281,9 @@
   var valorPrograma = $('#id_programa').find(':selected').data('valor');
   var cantidadPersonas = $('#cantidad_personas').val();
   var abono = $('#abono_programa').val();
-  
+  // Abonos extra ya cobrados: el servidor también los descuenta al recalcular.
+  var abonosExtra = {{ (int) $abonosExtraVenta }};
+
 
 $('#id_programa').on('change', function(){
   valorPrograma = $(this).find(':selected').data('valor');
@@ -300,7 +302,7 @@ $('#abono_programa').on('change', function(){
 
 function calcularValorTotal(){
 
-  var total = (valorPrograma * cantidadPersonas)-abono;
+  var total = Math.round(valorPrograma * cantidadPersonas) - abono - abonosExtra;
   $('#total_pagar').val(total);
 }
 

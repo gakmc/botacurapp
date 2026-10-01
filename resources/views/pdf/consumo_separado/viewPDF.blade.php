@@ -64,7 +64,8 @@
         @else
 
 @php
-    $propina = 0;
+    // Solo se considera propina si efectivamente se pagó (monto numérico)
+    $propinaCobrada = (isset($propinaPagada) && is_numeric($propinaPagada)) ? (float) $propinaPagada : null;
 @endphp
 
         <table class="striped">
@@ -86,10 +87,6 @@
                         <td>${{number_format($detalles->producto->valor,0,'','.')}}</td>
                         <td>X{{$detalles->cantidad_producto}}</td>
                         <td>${{number_format($detalles->subtotal,0,'','.')}}</td>
-                        @php
-                            $propina += $detalles->subtotal*0.1;
-                        @endphp
-
                     </tr>
                     @endforeach
                     @foreach ($consumo->detalleServiciosExtra as $servicios)
@@ -108,12 +105,17 @@
                 </tr>
                 <tr>
                     <td colspan="3"></td>
-                    <td style="font-weight: bold; text-align:right;">Propinas 10%:
-                        ${{number_format($propina,0,'','.')}}</td>
+                    <td style="font-weight: bold; text-align:right;">Propina:
+                        @if (!is_null($propinaCobrada))
+                            ${{number_format($propinaCobrada,0,'','.')}}
+                        @else
+                            No Aplica
+                        @endif
+                    </td>
                 </tr>
                 <tr>
                     <td colspan="3"></td>
-                    <td style="font-weight: bold; text-align:right;">Total: ${{number_format($total,0,'','.')}}</td>
+                    <td style="font-weight: bold; text-align:right;">Total: ${{number_format($consumo->subtotal + ($propinaCobrada ?? 0),0,'','.')}}</td>
                 </tr>
 
             </tbody>
@@ -123,49 +125,22 @@
 
     <br>
 
+    @if (!is_null($consumo))
     <div>
         <h5 class="primario">Información de Pagos</h5>
-        <h6 class="left"><span class="primario">Propina Sugerida:</span>${{number_format($propina,0,'','.')}}</h6>
-        <h6 class="right"><span class="primario">Propina Pagada:</span>
-
-            {{-- @if ($propinaPagada == "No Aplica")
-                {{$propinaPagada}}
-            @else
-                ${{number_format($propinaPagada,0,'','.')}}</h6>
-            @endif --}}
-
-            @if (is_numeric($propinaPagada))
-                ${{ number_format($propinaPagada, 0, ',', '.') }}
-            @else
-                {{ $propinaPagada }}
-            @endif
-
-        <h6 class="center">  </h6>
-    </div>
-<br>
-    @php
-        $montoTotal = is_numeric($propinaPagada) 
-            ? $consumo->subtotal + $propinaPagada 
-            : $consumo->subtotal;
-    @endphp
-    <div>
         <h6 class="left"><span class="primario">Subtotal: </span> ${{number_format($consumo->subtotal,0,'','.')}}</h6>
         <h6 class="right"><span class="primario">Total: </span>
-            ${{number_format($montoTotal,0,'','.')}}</h6>
-            @if ($total !== 0)
-            <h6 class="center "><span class="primario">Propina: </span>
-                @if (is_numeric($propinaPagada))
-                    ${{ number_format($propinaPagada, 0, ',', '.') }}
-                @else
-                    {{ $propinaPagada }}
-                @endif
-            </h6>
+            ${{number_format($consumo->subtotal + ($propinaCobrada ?? 0),0,'','.')}}</h6>
+        <h6 class="center"><span class="primario">Propina: </span>
+            @if (!is_null($propinaCobrada))
+                ${{ number_format($propinaCobrada, 0, ',', '.') }}
             @else
-                
-            
+                No Aplica
             @endif
+        </h6>
     </div>
     <br>
+    @endif
 
 
     <script src="https://cdnjs.cloudflare.com/ajax/libs/materialize/1.0.0/js/materialize.min.js"></script>

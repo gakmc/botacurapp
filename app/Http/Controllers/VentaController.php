@@ -555,18 +555,13 @@ class VentaController extends Controller
                 $pagoConsumo->save();
                 $venta->save();
 
-                // 4) Propinas (si hay consumo)
-                if (!is_null($consumo)) {
+                // 4) Propinas (opcional, solo si hay productos consumidos)
+                if (!is_null($consumo) && $consumo->detallesConsumos->isNotEmpty()) {
 
-                    if ($consumo->detallesConsumos->isEmpty()) {
-                        throw new \Exception('No se puede generar propina porque no hay consumo registrado o equipo asignado en esta venta.');
-                    }
-
-                    if ($request->has('propina')) {
-                        // tu lógica actual de asignar propinas
+                    if ($request->has('propina') && $request->propinaValue > 0) {
                         $this->asignarPropinas($consumo, $reserva, $request);
                     } else {
-                        // marcar que no generan propina
+                        // el cliente no incluyó propina: marcar que no generan propina
                         DetalleConsumo::where('id_consumo', $consumo->id)
                             ->update(['genera_propina' => 0]);
                     }
@@ -581,27 +576,21 @@ class VentaController extends Controller
             $pagoConsumo = $venta->pagoConsumo ?? $venta->pagoConsumos()->latest()->first(); // según tu relación
             $consumo     = $venta->consumo; // recargar por seguridad
 
-            $idConsumo = $consumo ? $consumo->id : null;
-            $tienePropina = false;
             $total   = 0;
             $propina = 'No Aplica';
             $cantidadPropina = 'No Aplica';
 
             if ($consumo) {
-                $tienePropina = $consumo->detallesConsumos->contains('genera_propina', 1);
+                // subtotal incluye productos y servicios extra (sin propina)
+                $total = $consumo->subtotal;
 
-                if ($tienePropina && $request->has('propina')) {
-                    $propina = 'Si';
-                    $total   = $consumo->total_consumo;
+                // Solo existe registro de propina si el cliente decidió pagarla
+                $propinaModel = $consumo->propina;
 
-                    $propinaModel = Propina::where('propinable_id', $idConsumo)
-                        ->where('propinable_type', Consumo::class)
-                        ->first();
-
-                    $cantidadPropina = $propinaModel ? $propinaModel->cantidad : 'No Aplica';
-                } else {
-                    $propina = $tienePropina ? 'No' : 'No Aplica';
-                    $total   = $consumo->subtotal;
+                if ($propinaModel) {
+                    $propina         = 'Si';
+                    $cantidadPropina = $propinaModel->cantidad;
+                    $total          += $propinaModel->cantidad;
                 }
             }
 
