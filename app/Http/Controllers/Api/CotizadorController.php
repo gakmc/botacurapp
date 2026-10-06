@@ -41,6 +41,7 @@ class CotizadorController extends Controller
             'validez_dias' => 'nullable|integer|min:1|max:90',
             'observaciones' => 'nullable|string|max:2000',
             'incluir_pdf' => 'nullable|boolean',
+            'incluir_catalogo' => 'nullable|boolean',
             'items' => 'required|array|min:1',
             'items.*.tipo' => 'required|in:programa,servicio,producto',
             'items.*.id' => 'required|integer',
@@ -84,6 +85,14 @@ class CotizadorController extends Controller
         $respuesta = $this->resumen($cotizacion);
         if (!empty($data['incluir_pdf'])) {
             $respuesta['pdf_base64'] = base64_encode($this->generarPdf($cotizacion)->output());
+        }
+
+        if (!empty($data['incluir_catalogo'])) {
+            $ruta = storage_path('app/catalogo/Catalogo_Botacura.pdf');
+            if (is_file($ruta)) {
+                $respuesta['catalogo_base64'] = base64_encode(file_get_contents($ruta));
+                $respuesta['catalogo_archivo'] = 'Catalogo_Botacura.pdf';
+            }
         }
 
         return response()->json($respuesta, 201);
