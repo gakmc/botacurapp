@@ -170,3 +170,19 @@ Route::prefix('bot-ai')->namespace('Api')->middleware('bot.token')->group(functi
     Route::post('conversacion', 'BotController@upsertConversacion')->name('bot-ai.conversacion.upsert');
     Route::post('message', 'BotController@message')->name('bot-ai.message');
 });
+// Cotizador para la tarea programada de correos (token COTIZADOR_API_TOKEN)
+Route::prefix('cotizador')->namespace('Api')->middleware('cotizador.token')->group(function () {
+    Route::get('catalogo', 'CotizadorController@catalogo')->name('cotizador.catalogo');
+    Route::post('cotizaciones', 'CotizadorController@store')->name('cotizador.store');
+    Route::get('cotizaciones/{id}/pdf', 'CotizadorController@pdf')->name('cotizador.pdf');
+});
+
+// Cotizador para la tarea programada de correos (token COTIZADOR_API_TOKEN)
+Route::prefix('cotizador')->namespace('Api')->middleware('cotizador.token')->group(function () {
+    Route::get('catalogo', 'CotizadorController@catalogo')->name('cotizador.catalogo');
+    Route::post('cotizaciones', 'CotizadorController@store')->name('cotizador.store');
+    Route::get('cotizaciones/{id}/pdf', 'CotizadorController@pdf')->name('cotizador.pdf');
+});
+
+// Enlace firmado (sin token) para que el cliente descargue el PDF; vence a los 30 días
+Route::get('cotizador/publico/{id}/pdf', 'Api\CotizadorController@pdfPublico')->name('cotizador.publico')->middleware('signed');
