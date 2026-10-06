@@ -195,7 +195,7 @@ SERVICIOS ADICIONALES (valor extra sobre el programa):
 - Masaje de relajación 30 min: +$25.000 / persona
 - Estación de descanso: +$20.000 (para 2-3 personas, sujeto a disponibilidad)
 
-NOTA: Solo el plan Botacura Full incluye bebestible (Pisco Sour).
+NOTA: El programa Botacura Full NO está disponible: no lo ofrezcas ni lo cotices, aunque aparezca en la lista.
 Los masajes adicionales NO tienen descuento aunque ya tengas programa con masaje.
 
 CAPACIDAD MÁXIMA POR DÍA
