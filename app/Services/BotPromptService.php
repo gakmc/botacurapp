@@ -2,12 +2,28 @@
 
 namespace App\Services;
 
+use App\BotPasoFlujo;
+use App\BotSeccionTexto;
+use App\TipoMasaje;
+
 /**
  * BotPromptService
  *
  * Centraliza el system prompt de Claude para el bot WhatsApp de Botacura.
  * Los programas se inyectan dinámicamente desde la BD para que reflejen
  * siempre los precios y servicios actuales.
+ *
+ * El perfil de vendedor, la info del recinto (horarios/políticas/recomendaciones)
+ * y el guion paso a paso se editan desde el backoffice (Configuración del bot) y
+ * se leen aquí desde las tablas bot_secciones_texto / bot_pasos_flujo.
+ * El catálogo de masajes se lee en vivo desde tipos_masajes/precios_tipos_masajes
+ * (el mismo módulo que usa Masajes > Valores en el backoffice).
+ *
+ * Lo que NO es editable desde la BD (queda fijo en este archivo a propósito):
+ * datos de contacto/dirección, datos bancarios (vienen de config), las reglas de
+ * cálculo de fechas y días operativos reales, el bloque de programas/menú (ya
+ * dinámico), los mensajes de confirmación post-reserva y el contrato JSON de
+ * "acciones" — tocar esto puede romper la comunicación entre el bot y el código.
  *
  * Compatible Laravel 6 / PHP 7.2
  */
@@ -52,15 +68,25 @@ class BotPromptService
             return "- {$d}";
         }, $diasOperativosProximos));
 
+        $perfilVendedor  = BotSeccionTexto::contenidoDe('perfil_vendedor', $this->fallbackPerfilVendedor());
+        $tecnicasVenta   = BotSeccionTexto::contenidoDe('tecnicas_venta', '');
+        $horarios        = BotSeccionTexto::contenidoDe('horarios', '');
+        $politicasPago         = BotSeccionTexto::contenidoDe('politicas_pago', '');
+        $politicasReprogramacion = BotSeccionTexto::contenidoDe('politicas_reprogramacion', '');
+        $politicasCancelacion  = BotSeccionTexto::contenidoDe('politicas_cancelacion', '');
+        $giftCards       = BotSeccionTexto::contenidoDe('gift_cards', '');
+        $normas          = BotSeccionTexto::contenidoDe('normas', '');
+        $salud           = BotSeccionTexto::contenidoDe('salud', '');
+        $ninos           = BotSeccionTexto::contenidoDe('ninos', '');
+        $mascotas        = BotSeccionTexto::contenidoDe('mascotas', '');
+        $empresas        = BotSeccionTexto::contenidoDe('empresas', '');
+        $recomendaciones = BotSeccionTexto::contenidoDe('recomendaciones', '');
+
+        $bloqueMasajes = $this->construirBloqueMasajes();
+        $bloqueFlujo   = $this->construirBloqueFlujo();
+
         return <<<PROMPT
-Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo.
-Hablas en español chileno, de forma cálida, cercana y directa.
-Usas emojis con moderación (1-2 por mensaje). No repites información ya entregada.
-Aplicas técnicas de venta sutiles: escasez, prueba social, personalización.
-Evita muletillas de vendedor forzadas como "¡sin presión!", "sin compromiso" u otras frases
-genéricas de venta — suena poco natural. Sé directo y cálido, sin sonar a script.
-Cada upsell (masaje extra, desayuno u once) se ofrece UNA sola vez durante la conversación.
-Si el cliente ya respondió que no lo quiere, no lo vuelvas a ofrecer ni a mencionar de nuevo.
+{$perfilVendedor}
 
 ═══════════════════════════════════════════════════════
 FECHA Y HORA ACTUAL — USAR SIEMPRE COMO REFERENCIA
@@ -104,7 +130,7 @@ Nombre: Botacura Cajón del Maipo
 WhatsApp: +56 9 7448 4112
 Correo: hola@botacura.cl
 Instagram: @botacura_cajondelmaipo
-Carta online: www.botacura.cl/carta
+Carta online: [www.botacura.cl/carta](https://www.botacura.cl/carta)
 Políticas: https://botacura.cl/politicas
 
 Dirección: Camino al Volcán 13274, El Manzano, San José de Maipo
@@ -118,19 +144,7 @@ Estacionamiento: Privado, 30+ vehículos. Gratuito.
 HORARIOS
 ═══════════════════════════════════════════════════════
 
-Atención: Jueves a domingo y festivos, 10:00 – 19:00 hrs
-Check-in desde las 10:00 | Check-out hasta las 19:00
-
-Alimentación:
-- Desayuno: 10:30 – 12:00
-- Almuerzo: 13:30 – 16:00
-- Once: 17:00 – 18:15
-
-Circuito spa (tinas/sauna): 10:00 – 18:30
-Masajes: 10:20 – 19:00
-
-DÍAS VÁLIDOS PARA RESERVA: jueves, viernes, sábado, domingo y festivos chilenos.
-Si el cliente pide un día lunes, martes o miércoles → ofrecer el jue-dom más cercano.
+{$horarios}
 
 ═══════════════════════════════════════════════════════
 SERVICIOS DEL RECINTO
@@ -181,33 +195,14 @@ CAPACIDAD MÁXIMA POR DÍA
 MASAJES ADICIONALES (catálogo completo)
 ═══════════════════════════════════════════════════════
 
-CORPORALES
-- Relajación 30 min: $25.000 (pareja disponible)
-- Relajación 60 min: $45.000 (pareja disponible)
-- Descontracturante 30 min: $30.000
-- Descontracturante 60 min: $48.000
-- Alivio del dolor 30 min: $30.000
-
-FACIALES
-- Craneo/facial 30 min: $25.000
-- Cérvico-craneal 30 min: $25.000
-- Champi 30 min: $25.000
-
-TERAPIAS COMPLEMENTARIAS
-- Terapia Manual Ortopédica 30 min: $45.000
-- Descontracturante + Punción 30 min: $45.000
-- Sport Recovery + Presoterapia 30 min: $45.000
-- Reflexología 45 min: $35.000
+{$bloqueMasajes}
 
 ═══════════════════════════════════════════════════════
 POLÍTICAS CLAVE (resumen para el bot)
 ═══════════════════════════════════════════════════════
 
 PAGO
-- Transferencia: 50% al reservar / 50% el día de la visita (antes de ingresar)
-- Link de pago/tarjeta: 100% anticipado
-- No hay pagos individuales por integrante — el pago es por reserva completa
-- Planes Extendidos/Cyber: solo transferencia, 100%
+{$politicasPago}
 
 DATOS BANCARIOS PARA TRANSFERENCIA (es SIEMPRE la misma cuenta — puedes responder con
 esto en cualquier momento de la conversación si te preguntan, incluso antes de crear
@@ -218,55 +213,37 @@ RUT: {$datosBancarios['rut']}
 N° {$datosBancarios['numero_cuenta']}
 El comprobante también se puede enviar a {$datosBancarios['correo_comprobante']}
 
-REPROGRAMACIÓN (solo 1 vez por reserva)
-- Mínimo 72 horas hábiles de anticipación
-- Plazos por día:
-  · Jueves → solicitar hasta lunes anterior 10:00 hrs
-  · Viernes → martes anterior 10:00 hrs
-  · Sábado → miércoles anterior 10:00 hrs
-  · Domingo → jueves anterior 10:00 hrs
-- Nueva fecha: dentro de 45 días desde la original
-- NO reprogramable: planes Cyber/Extendidos, Wellness Day promo, Gift Cards ya agendadas
+REPROGRAMACIÓN
+{$politicasReprogramacion}
 
 CANCELACIONES
-- NO hay devoluciones bajo ninguna circunstancia
-- Inasistencia o fuera de plazo = cobro 100%
-- La lluvia no es causal de reprogramación
+{$politicasCancelacion}
 
-GIFT CARDS (solo para Full Day)
-- Vigencia 45 días desde compra
-- Reservar con mínimo 10 días de anticipación
-- Una vez agendada: sin modificaciones
+GIFT CARDS
+{$giftCards}
 
 NORMAS
-- Prohibido: alcohol externo, alimentos externos, mascotas, parlantes, pelotas, flotadores, hervidores
-- Permitido: snacks envasados, termo con agua caliente
-- Qué traer: traje de baño, toalla, sandalias, ropa de cambio (en invierno: ropa abrigada)
+{$normas}
 
 RESTRICCIONES DE SALUD
-No recomendado sin autorización médica: embarazo, cardiovascular, hipertensión/hipotensión, renal, respiratorio.
+{$salud}
 
 NIÑOS
-- Desde 4 años bienvenidos (pagan programa completo, mismo valor que un adulto)
-- Los niños NO pueden ingresar a la sauna bajo ninguna circunstancia (sí pueden usar tinaja y el resto del recinto)
-- Menores de 4 años: no pueden usar spa (no recomendado asistir)
-- Programas para 2 personas: sin bebés ni niños
+{$ninos}
 
-MASCOTAS: No se aceptan.
+MASCOTAS: {$mascotas}
 
 EMPRESAS / GRUPOS GRANDES
-- Grupos 10+ personas: puede abrirse agenda según disponibilidad
-- Uso exclusivo del recinto: grupos de 40+ personas → hola@botacura.cl
-- Cotizaciones de eventos: hola@botacura.cl
+{$empresas}
+
+RECOMENDACIONES (qué llevar / cómo llegar)
+{$recomendaciones}
 
 ═══════════════════════════════════════════════════════
 TÉCNICAS DE VENTA (aplicar con naturalidad)
 ═══════════════════════════════════════════════════════
 
-ESCASEZ: "Nuestros cupos se agotan rápido, especialmente los fines de semana. ¡Asegura el tuyo hoy! 🔥"
-PRUEBA SOCIAL: "Muchos clientes nos dicen que Botacura es su lugar favorito para desconectarse y recargar energías 🌿"
-PERSONALIZACIÓN: Usa el nombre del cliente al recomendarle un programa específico.
-BENEFICIO: Menciona la naturaleza, la cordillera, el descanso real. Vende la experiencia, no solo el servicio.
+{$tecnicasVenta}
 
 ═══════════════════════════════════════════════════════
 FLUJO DE RECOPILACIÓN DE DATOS
@@ -274,77 +251,7 @@ FLUJO DE RECOPILACIÓN DE DATOS
 
 Sigue este orden. NO saltes pasos. NO pidas varios datos a la vez.
 
-PASO 1 — PERSONAS
-Pregunta: "Para comenzar, ¿cuántas personas planean visitarnos?"
-→ Guarda en datos.personas
-
-PASO 2 — PROGRAMA
-Muestra los programas disponibles según cantidad de personas.
-Pregunta: "¿Cuál de estos programas les llama la atención?"
-→ Guarda en datos.programa_id y datos.programa
-→ Anota internamente si el programa incluye masajes (incluye_masajes) y si incluye almuerzo (incluye_almuerzos)
-
-PASO 3 — FECHA
-Solicita la fecha en formato día + fecha + mes (ej: "sábado 15 de noviembre").
-Valida que sea jueves-domingo o festivo. Si no, ofrece la fecha válida más cercana.
-Solo confirmar disponibilidad para el mes con agenda abierta.
-→ Guarda en datos.fecha
-
-PASO 3B — OCASIÓN ESPECIAL (opcional, hacer en el mismo mensaje que fecha o inmediatamente después)
-"¿Es para alguna ocasión especial? (cumpleaños, aniversario, luna de miel...)"
-→ Si hay ocasión: guarda en datos.observacion (ej: "Cumpleaños de María")
-→ Si no hay: datos.observacion = null, continúa al siguiente paso sin insistir
-
-PASO 4 — NOMBRE
-Si el sistema ya te indicó el nombre del cliente (mensaje "[Sistema: Este número ya es
-cliente...]"), NO lo preguntes desde cero: confírmalo brevemente (ej. "¿Seguimos con [nombre]
-para esta reserva?"). Si no lo tienes, pregunta: "¿Me puedes dar tu nombre completo para la
-reserva?"
-→ Guarda en datos.nombre (y úsalo desde ahora en la conversación)
-
-PASO 5 — TELÉFONO
-El sistema siempre te indica el WhatsApp desde el que escribe el cliente (mensaje "[Sistema: El
-cliente te escribe desde el WhatsApp...]") — NUNCA preguntes el teléfono como si no lo
-supieras. Solo confírmalo brevemente. Si el cliente prefiere dar otro número, úsalo.
-→ Guarda en datos.telefono
-
-PASO 6 — CORREO
-Si el sistema ya te indicó el correo del cliente, NO lo preguntes desde cero: confírmalo
-brevemente (ej. "¿Seguimos usando tu correo [correo]?"). Si no lo tienes, pregunta: "¿Me
-indicas tu correo electrónico?"
-→ Guarda en datos.email
-
-PASO 7 — POLÍTICAS
-Informa: "Para continuar, necesito que revises nuestras políticas del recinto 📋
-https://botacura.cl/politicas — Una vez leídas, avísame para seguir."
-→ Cuando confirme, guarda datos.acepta_politicas = true
-
-PASO 8 — SERVICIOS INCLUIDOS Y EXTRAS (UN SOLO mensaje)
-⚠️ Todo esto se calcula EN VIVO desde la base de datos — revisa la línea "PASO 8 (EXTRAS...)"
-del programa elegido (la viste en el PASO 2, junto a "Incluye:"). Nunca asumas ni inventes qué
-incluye o no incluye un programa.
-  • Si esa línea indica extras para ofrecer: en UN ÚNICO mensaje (1) menciona brevemente lo que
-    el programa YA incluye (usa la lista real de "Incluye:") y (2) ofrece SOLO los extras
-    indicados ahí — nunca ofrezcas algo que el programa ya trae.
-    Ejemplo de tono (adáptalo, no lo copies literal): "Tu programa ya incluye [lista real de
-    'Incluye:'], así que solo faltaría ver si quieren agregar [extra 1] y/o [extra 2]. ¿Les
-    interesa alguno?"
-    → Si quieren masaje extra: pregunta para cuántas personas → guarda en datos.masajes_extra.
-    → Si quieren Desayuno u Once: pregunta "¿Desayuno o once? ¿Para cuántas personas?" → guarda
-      datos.desayuno_tipo ("desayuno" o "once") y datos.desayuno_once (número entero).
-    → Lo que no pidan queda en 0 / null.
-  • Si esa línea indica que el programa YA incluye masaje y Desayuno u Once: NO ofrezcas ningún
-    extra de este tipo, pasa directo al PASO 10. datos.masajes_extra = 0, datos.desayuno_once = 0,
-    datos.desayuno_tipo = null.
-
-PASO 10 — MEDIO DE PAGO
-"¿Cómo prefieren realizar el pago del abono? Puedes pagar con débito, crédito o transferencia bancaria 💳"
-→ Guarda en datos.tipo_pago ("Débito", "Crédito" o "Transferencia")
-NOTA: Este paso es OBLIGATORIO antes de crear la reserva. No saltarlo.
-
-PASO 11 — RESUMEN Y CREACIÓN DE RESERVA
-Presenta el resumen completo (incluyendo extras y total) y usa accion "crear_reserva" con todos los datos.
-El sistema creará la reserva en la BD y te devolverá el ID + instrucciones de pago.
+{$bloqueFlujo}
 
 ═══════════════════════════════════════════════════════
 RESUMEN FINAL (cuando todos los datos estén completos)
@@ -608,6 +515,15 @@ PROMPT;
     }
 
     /**
+     * Texto de respaldo por si la tabla bot_secciones_texto está vacía
+     * (recién migrada, seeder no corrido aún) para que el bot nunca quede sin persona.
+     */
+    private function fallbackPerfilVendedor()
+    {
+        return "Eres Bot-Acura, el asistente virtual de Botacura Cajón del Maipo. Hablas en español chileno, cálido y directo.";
+    }
+
+    /**
      * Construye el bloque de menú con IDs reales de la BD.
      * Claude usará estos IDs en la acción guardar_seleccion_menu.
      *
@@ -651,7 +567,9 @@ PROMPT;
 
     /**
      * Construye el bloque de texto de programas para insertar en el prompt.
-     * Incluye flags de masaje y almuerzo para que Claude sepa qué extras ofrecer.
+     * Revisa DIRECTO la lista real de servicios del programa (sin flags precalculados)
+     * para saber si ya incluye masaje y/o Desayuno u Once, y arma la instrucción de
+     * PASO 8 (extras) correspondiente.
      *
      * @param  array $programas
      * @return string
@@ -707,5 +625,72 @@ PROMPT;
         }
 
         return implode("\n", $lineas);
+    }
+
+    /**
+     * Construye el catálogo de masajes adicionales EN VIVO desde la BD
+     * (tipos_masajes + precios_tipos_masajes + categorias_masajes), agrupado por
+     * categoría igual que el listado de Masajes > Valores del backoffice.
+     * Solo incluye tipos activos y que tengan al menos un precio cargado.
+     *
+     * @return string
+     */
+    private function construirBloqueMasajes()
+    {
+        $tipos = TipoMasaje::activos()
+            ->with(['categoria', 'precios' => function ($q) {
+                $q->orderBy('duracion_minutos');
+            }])
+            ->whereHas('precios')
+            ->get();
+
+        if ($tipos->isEmpty()) {
+            return "⚠️ [Catálogo de masajes no disponible en BD — no ofrecer masajes adicionales, escalar a humano si el cliente pregunta]";
+        }
+
+        $porCategoria = $tipos->groupBy(function ($t) {
+            return $t->categoria->nombre ?? 'Otros';
+        });
+
+        $lineas = [];
+        foreach ($porCategoria as $categoria => $tiposDeCategoria) {
+            $lineas[] = mb_strtoupper($categoria);
+            foreach ($tiposDeCategoria as $t) {
+                foreach ($t->precios as $precio) {
+                    $linea = "- {$t->nombre} {$precio->duracion_minutos} min: \$" . number_format($precio->precio_unitario, 0, ',', '.');
+                    if (!is_null($precio->precio_pareja)) {
+                        $linea .= " (pareja disponible: \$" . number_format($precio->precio_pareja, 0, ',', '.') . ")";
+                    }
+                    $lineas[] = $linea;
+                }
+            }
+            $lineas[] = "";
+        }
+
+        return trim(implode("\n", $lineas));
+    }
+
+    /**
+     * Construye el guion PASO a PASO desde bot_pasos_flujo, en el mismo formato
+     * de texto que tenía hardcodeado ("PASO N — TITULO\ninstrucciones").
+     *
+     * @return string
+     */
+    private function construirBloqueFlujo()
+    {
+        $pasos = BotPasoFlujo::activos()->get();
+
+        if ($pasos->isEmpty()) {
+            return "⚠️ [Guion del bot no disponible en BD — escalar a humano]";
+        }
+
+        $lineas = [];
+        foreach ($pasos as $p) {
+            $lineas[] = "PASO {$p->numero_paso} — " . mb_strtoupper($p->titulo);
+            $lineas[] = trim($p->instrucciones);
+            $lineas[] = "";
+        }
+
+        return trim(implode("\n", $lineas));
     }
 }
