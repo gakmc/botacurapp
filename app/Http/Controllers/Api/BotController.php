@@ -281,7 +281,17 @@ class BotController extends Controller
         ]);
 
         $programa   = DB::table('programas')->where('id', $request->id_programa)->first();
-        $valorTotal = ($programa ? (int) $programa->valor_programa : 0) * (int) $request->cantidad_personas;
+        $valorPersona = $programa ? (int) $programa->valor_programa : 0;
+        // Temporada de verano (noviembre a febrero): +$5.000 por persona en programas regulares.
+        // No aplica a uso exclusivo ni a programas de semana (S), cuyo valor de verano aún no está definido.
+        $mesVisita = (int) Carbon::parse($request->fecha_visita)->month;
+        $nombreProg = trim((string) ($programa->nombre_programa ?? ''));
+        if ($programa && in_array($mesVisita, [11, 12, 1, 2], true)
+            && stripos($nombreProg, 'exclusivo') === false
+            && !preg_match('/\\sS$/i', $nombreProg)) {
+            $valorPersona += 5000;
+        }
+        $valorTotal = $valorPersona * (int) $request->cantidad_personas;
         $abono50    = (int) ceil($valorTotal / 2);
 
         Log::info("[Bot] Reserva creada #{$reservaId}");
