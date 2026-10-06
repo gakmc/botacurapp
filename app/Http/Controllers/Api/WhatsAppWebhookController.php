@@ -79,6 +79,15 @@ class WhatsAppWebhookController extends Controller
             // por este mismo número (fallback al fijo de .env si no viene).
             $this->phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
 
+        // ── Enrutamiento a Home Assistant ───────────────────────────────
+        // Los mensajes que llegan al número dedicado a HA no pasan por el
+        // bot de reservas: se reenvían tal cual a Home Assistant.
+        $haPhoneNumberId = env('HA_PHONE_NUMBER_ID');
+        if ($haPhoneNumberId && $this->phoneNumberId === $haPhoneNumberId) {
+            $this->reenviarAHomeAssistant($value);
+            return response()->json(['ok' => true]);
+        }
+
             $messages = $value['messages'] ?? [];
             if (empty($messages)) {
                 return response()->json(['ok' => true]);
@@ -88,6 +97,30 @@ class WhatsAppWebhookController extends Controller
             $tipo     = $msg['type'] ?? '';
             $telefono = $msg['from'] ?? '';
             $nombre   = $value['contacts'][0]['profile']['name'] ?? 'Cliente';
+
+            // --- Bot desactivado desde backoffice: guardar pendiente + alerta, sin responder ---
+            if (\App\BotSeccionTexto::where('clave', 'bot_activo')->value('contenido') === '0') {
+                if (($msg['type'] ?? '') !== 'sticker') {
+                    $textoPend = ($msg['type'] ?? '') === 'text'
+                        ? ($msg['text']['body'] ?? '')
+                        : '[' . ($msg['type'] ?? 'mensaje') . '] (revisar en WhatsApp)';
+                    try {
+                        \App\BotMensajePendiente::create([
+                            'telefono'        => $telefono,
+                            'nombre'          => $nombre,
+                            'phone_number_id' => $this->phoneNumberId,
+                            'tipo'            => $msg['type'] ?? 'text',
+                            'mensaje'         => $textoPend,
+                            'estado'          => 'pendiente',
+                        ]);
+                        $this->alertarBotApagado($telefono, $nombre, $textoPend);
+                    } catch (\Throwable $e) {
+                        \Log::error('Bot apagado: no se pudo guardar pendiente', ['error' => $e->getMessage()]);
+                    }
+                }
+                return response()->json(['status' => 'ok'], 200);
+            }
+
 
             Log::info("[WhatsApp] Mensaje tipo={$tipo} de {$telefono}");
 
@@ -773,6 +806,36 @@ class WhatsAppWebhookController extends Controller
     // HELPERS — envío de mensajes
     // ─────────────────────────────────────────────────────────────────────────
 
+    private function alertarBotApagado(string $telefono, string $nombre, string $texto)
+    {
+        // Máximo una alerta cada 30 minutos por cliente
+        if (!\Cache::add('bot_apagado_alerta_' . $telefono, 1, now()->addMinutes(30))) {
+            return;
+        }
+        $cuerpo = "El bot de WhatsApp está DESACTIVADO y llegó un mensaje sin responder.\n\n"
+            . "Cliente: {$nombre} (+{$telefono})\n"
+            . "Mensaje: {$texto}\n\n"
+            . "Responde desde WhatsApp o reactiva el bot en " . url('/bot-configuracion') . " y usa 'Responder seleccionadas'.";
+        $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+        if ($correo) {
+            try {
+                \Mail::raw($cuerpo, function ($m) use ($correo, $nombre) {
+                    $m->to($correo)->subject('Bot WhatsApp apagado: mensaje de ' . $nombre);
+                });
+            } catch (\Throwable $e) {
+                \Log::error('Alerta bot apagado (correo) falló', ['error' => $e->getMessage()]);
+            }
+        }
+        $fono = \App\BotSeccionTexto::where('clave', 'alerta_telefono')->value('contenido');
+        if ($fono) {
+            try {
+                $this->enviarMensaje($fono, $cuerpo);
+            } catch (\Throwable $e) {
+                \Log::error('Alerta bot apagado (WhatsApp) falló', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
     private function enviarMensaje(string $telefono, string $texto)
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
@@ -828,4 +891,30 @@ class WhatsAppWebhookController extends Controller
             Log::error('[WhatsApp] Excepción enviando documento: ' . $e->getMessage());
         }
     }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reenvío a Home Assistant (número dedicado)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function reenviarAHomeAssistant(array $value)
+    {
+        $haWebhookUrl = env('HA_WEBHOOK_URL');
+
+        if (!$haWebhookUrl) {
+            Log::warning('[WhatsApp→HA] HA_WEBHOOK_URL no configurado, mensaje descartado');
+            return;
+        }
+
+        try {
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $res = $client->post($haWebhookUrl, [
+                'json' => $value,
+            ]);
+            Log::info('[WhatsApp→HA] Reenviado a Home Assistant', ['status' => $res->getStatusCode()]);
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp→HA] Error reenviando a Home Assistant: ' . $e->getMessage());
+        }
+    }
+
 }

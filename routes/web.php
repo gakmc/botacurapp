@@ -341,6 +341,15 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/{venta}/rechazar',   'VerificacionPagoController@rechazar')->name('rechazar');
     });
 
+    // Configuracion del bot de WhatsApp -- perfil de vendedor, info del recinto y guion
+    Route::prefix('bot-configuracion')->name('bot-configuracion.')->group(function () {
+        Route::get('/', 'BotConfiguracionController@index')->name('index');
+        Route::post('/secciones', 'BotConfiguracionController@updateSecciones')->name('secciones.update');
+        Route::post('/estado', 'BotConfiguracionController@updateEstado')->name('estado.update');
+        Route::post('/pendientes/procesar', 'BotConfiguracionController@procesarPendientes')->name('pendientes.procesar');
+        Route::post('/pasos', 'BotConfiguracionController@updatePasos')->name('pasos.update');
+    });
+
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');
@@ -352,6 +361,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('producto', 'ProductoController');
     Route::resource('programa', 'ProgramaController');
     Route::resource('proveedor', 'ProveedorController');
+    Route::post('proveedor/{id}/subcategoria', 'ProveedorController@updateSubcategoria')->name('proveedor.subcategoria');
     Route::resource('rango-sueldos', 'RangoSueldoRoleController');
     Route::resource('reserva.reagendamientos', 'ReagendamientoController');
     Route::resource('reserva.venta', 'VentaController');
