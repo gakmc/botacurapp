@@ -103,7 +103,9 @@ class BotController extends Controller
 
         $fechaCarbon = Carbon::parse($fecha);
         $diaSemana   = $fechaCarbon->dayOfWeek; // 0=Dom, 4=Jue, 5=Vie, 6=Sáb
-        $esOperativo = in_array($diaSemana, [0, 4, 5, 6]);
+        // Festivos habilitados en el calendario del panel también operan
+        $esOperativo = in_array($diaSemana, [0, 4, 5, 6])
+            || \App\FechaDisponible::where('fecha', $fecha)->where('habilitada', true)->exists();
 
         if (!$esOperativo) {
             return response()->json([

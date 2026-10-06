@@ -109,6 +109,43 @@ class CotizadorController extends Controller
         return $this->pdf($id);
     }
 
+    // Próximos días habilitados con turnos de tinaja y espacios libres (para la tarea de correos)
+    public function calendario(Request $request)
+    {
+        $dias = min(120, max(1, (int) $request->query('dias', 60)));
+        $svc  = app(\App\Services\DisponibilidadService::class);
+        $hoy  = Carbon::today();
+
+        $habilitadas = \App\FechaDisponible::where('habilitada', true)
+            ->whereBetween('fecha', [$hoy->toDateString(), $hoy->copy()->addDays($dias)->toDateString() . ' 23:59:59'])
+            ->pluck('fecha')
+            ->map(function ($f) { return Carbon::parse($f)->toDateString(); })
+            ->all();
+
+        $salida = [];
+        for ($i = 0; $i <= $dias; $i++) {
+            $f     = $hoy->copy()->addDays($i);
+            $fecha = $f->toDateString();
+            if (!in_array($fecha, $habilitadas, true)) {
+                continue;
+            }
+            $t   = $svc->slotsTinaja($fecha);
+            $cap = $t['exclusivo'] ? ['estacion' => 0, 'terraza' => 0, 'reposera' => 0] : $svc->capacidadLibre($fecha);
+
+            $salida[] = [
+                'fecha'                    => $fecha,
+                'dia'                      => $f->locale('es')->isoFormat('ddd D [de] MMM'),
+                'exclusivo_agendado'       => $t['exclusivo'],
+                'libre_para_uso_exclusivo' => !$t['exclusivo'] && $t['usados'] === 0,
+                'tinaja_turnos_libres'     => $t['disponibles'],
+                'tinaja_personas_max'      => $t['disponibles'] * 5,
+                'personas_libres'          => $cap,
+            ];
+        }
+
+        return response()->json(['generado' => Carbon::now()->toIso8601String(), 'dias' => $salida]);
+    }
+
     private function generarPdf(Cotizacion $cotizacion)
     {
         $cotizacion->load('items.itemable');
