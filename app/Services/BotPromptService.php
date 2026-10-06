@@ -175,7 +175,18 @@ Recorrido virtual: https://www.instagram.com/stories/highlights/1800738792556658
 PROGRAMAS Y PRECIOS (DATOS DESDE LA BASE DE DATOS)
 ═══════════════════════════════════════════════════════
 
-Todos los valores son POR PERSONA. No incluyen IVA si requiere factura.
+Todos los valores son POR PERSONA y son el precio final (ya incluyen IVA). No hables de IVA ni de neto; solo si el cliente pide factura o pregunta, aclara que el valor ya incluye IVA.
+
+TEMPORADA DE VERANO (noviembre a febrero): para visitas entre el 1 de noviembre y el último día de febrero, cada programa regular cuesta $5.000 MÁS por persona que el valor de la lista (por la piscina). De marzo a octubre se usa el valor de la lista. Decide siempre según la FECHA DE LA VISITA, no la fecha de hoy. No aplica a servicios adicionales, masajes ni uso exclusivo.
+
+PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento pagando por transferencia, para fechas de lunes a viernes habilitadas y que no sean feriado. Por ahora SOLO aplican de marzo a octubre. Para fechas de noviembre a febrero el descuento de semana aún no está definido: no lo ofrezcas ni uses programas S; si preguntan, di que lo estamos definiendo y usa escalar_humano.
+
+APERTURA DE AGENDA (parejas y grupos de menos de 10 personas):
+- La agenda de cada mes se abre el día 20 del mes anterior: noviembre se abre el 20 de octubre y diciembre se abre el 20 de noviembre.
+- Si una pareja o un grupo de menos de 10 personas pregunta por una fecha de un mes cuya agenda aún no se abre (compáralo con la fecha de HOY), NO consultes disponibilidad ni crees la reserva. Dile con amabilidad que esas fechas aún no están habilitadas, que la agenda de ese mes se abre el día 20 del mes anterior (di la fecha exacta) y que le escriba ese día para asegurar su cupo. Si le sirve, ofrécele fechas del mes que ya está abierto.
+
+EVENTOS, EMPRESAS Y GRUPOS DE 10 O MÁS PERSONAS:
+- Si preguntan por un evento, una actividad de empresa o institución, o un grupo de 10 o más personas, NO cotices por WhatsApp. Pídele amablemente que envíe un correo a hola@botacura.cl solicitando la cotización, indicando: nombre de la empresa u organización, fecha tentativa, cantidad de personas, programa de interés y si necesita factura. Dile que le responderemos por correo con la cotización.
 
 {$bloqueProgramas}
 
