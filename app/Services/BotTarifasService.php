@@ -29,7 +29,8 @@ class BotTarifasService
         return [
             'param_programas_bot'           => ['Programas que el bot puede ofrecer y reservar (IDs separados por coma)', '1,28,39,48,3,43,45,49'],
             'param_programas_semana'        => ['Programas de semana "S" (IDs)', '3,43,45,49'],
-            'param_meses_semana'            => ['Meses en que se venden los programas S (números 1-12)', '3,4,5,6,7,8,9,10'],
+            'param_meses_semana'            => ['Meses en que se venden los programas S (números 1-12)', '1,2,3,4,5,6,7,8,9,10,11,12'],
+            'param_descuento_semana_pct'    => ['Descuento de los programas S (%). En verano se aplica también sobre el recargo de piscina', '10'],
             'param_recargo_verano'          => ['Recargo de temporada de verano por persona ($)', '5000'],
             'param_meses_verano'            => ['Meses de temporada de verano (números 1-12)', '11,12,1,2'],
             'param_programas_sin_recargo'   => ['Programas sin recargo de verano (IDs)', '20,21,22'],
@@ -39,6 +40,7 @@ class BotTarifasService
             'param_grupo_max_bot'           => ['Máximo de personas que el bot puede reservar (más que esto se deriva a correo)', '9'],
             'param_dia_apertura_agenda'     => ['Día del mes en que se abre la agenda del mes siguiente', '20'],
             'param_feriados'                => ['Feriados de jueves o viernes (una fecha AAAA-MM-DD por línea). Los programas S no aplican esos días', ''],
+            'param_masaje_slots_dia'        => ['Turnos de masaje de 30 min por día en cada espacio (container y enfermería). 10:20 a 19:00 = 17', '17'],
             'param_horas_silencio_humano'   => ['Horas que el bot queda en silencio en un chat cuando responde una persona o se deriva', '12'],
         ];
     }
@@ -240,7 +242,18 @@ class BotTarifasService
                         $err('semana_feriado', 'Los programas de semana (S) no aplican en feriados.');
                     }
                     if (!in_array($fecha->month, self::lista($p['param_meses_semana']), true)) {
-                        $err('semana_fuera_de_temporada', 'Los programas de semana (S) no están disponibles en esa fecha (temporada de verano: valor aún no definido).');
+                        $err('semana_fuera_de_temporada', 'Los programas de semana (S) no están disponibles en esa fecha.');
+                    }
+                }
+            }
+            // Cupo de masajes del día (container 2 personas de la misma reserva + enfermería 1)
+            if ($fecha && !array_intersect(array_column($errores, 'codigo'), ['fecha_pasada', 'agenda_no_abierta', 'fecha_no_habilitada'])) {
+                $turnos = ($programa && self::incluyeMasaje($programaId) ? max(0, $personas) : 0) + $masajes;
+                if ($turnos > 0) {
+                    $cm = BotMasajesService::disponible($fecha->toDateString(), $turnos);
+                    if (!$cm['ok']) {
+                        $err('sin_cupo_masajes', 'Ese día ya no quedan horas de masaje para ' . $turnos . ' persona(s).'
+                            . ($masajes > 0 ? ' Se puede reservar sin el masaje extra o en otra fecha.' : ' Ofrece otra fecha o un programa sin masaje.'));
                     }
                 }
             }
@@ -252,11 +265,16 @@ class BotTarifasService
         $extras        = self::preciosExtras();
         $valorLista    = $programa ? (int) $programa->valor_programa : 0;
         $recargo       = 0;
-        if ($fecha && !$esSemana
+        if ($fecha
             && in_array($fecha->month, self::lista($p['param_meses_verano']), true)
             && !in_array($programaId, self::lista($p['param_programas_sin_recargo']), true)) {
             $recargo = self::entero('param_recargo_verano');
-            $notas[] = 'Incluye recargo de temporada de verano de ' . self::fmt($recargo) . ' por persona.';
+            if ($esSemana) {
+                // El 10% del programa S se aplica sobre el nuevo valor (programa + recargo de piscina).
+                $recargo = (int) round($recargo * (100 - self::pct('param_descuento_semana_pct')) / 100);
+            }
+            $notas[] = 'Incluye recargo de temporada de verano (piscina) de ' . self::fmt($recargo) . ' por persona'
+                . ($esSemana ? ', ya con el descuento del programa de semana.' : '.');
         }
         $valorPersona  = $valorLista + $recargo;
         $totalPrograma = $valorPersona * max(0, $personas);
@@ -313,6 +331,35 @@ class BotTarifasService
             'saldo_formato'              => self::fmt($saldo),
             'notas'                      => $notas,
         ];
+    }
+
+    /** ¿El programa incluye masaje? (según sus servicios en la BD) */
+    public static function incluyeMasaje(int $programaId): bool
+    {
+        try {
+            return DB::table('programa_servicio as ps')
+                ->join('servicios as s', 's.id', '=', 'ps.id_servicio')
+                ->where('ps.id_programa', $programaId)
+                ->where('s.nombre_servicio', 'like', '%masaje%')
+                ->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    /** ¿El programa incluye Desayuno u Once? (según sus servicios en la BD) */
+    public static function incluyeDesayunoOnce(int $programaId): bool
+    {
+        try {
+            return DB::table('programa_servicio as ps')
+                ->join('servicios as s', 's.id', '=', 'ps.id_servicio')
+                ->where('ps.id_programa', $programaId)
+                ->where(function ($q) {
+                    $q->where('s.nombre_servicio', 'like', '%desayuno%')->orWhere('s.nombre_servicio', 'like', '%once%');
+                })->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
     }
 
     /** Solo montos (sin validar reglas), para BotReservaController. */

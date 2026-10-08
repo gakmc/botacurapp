@@ -644,6 +644,7 @@ class BotController extends Controller
             if ($accion === 'crear_reserva') {
                 $ejecutadas['crear_reserva'] = true;
             }
+            $contexto['historial'] = $historial;
             $ctx = $this->ejecutarAccion($accion, $respuesta['datos'] ?? [], $usuarioId, $contexto, $simulacion);
             if ($ctx === null) {
                 break;
@@ -768,7 +769,7 @@ class BotController extends Controller
                     'personas'    => $datos['personas'] ?? 1,
                 ]);
                 $reglas = array_values(array_filter($cot['errores'], function ($e) {
-                    return in_array($e['codigo'], ['grupo_grande', 'agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida'], true);
+                    return in_array($e['codigo'], ['grupo_grande', 'agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida', 'sin_cupo_masajes'], true);
                 }));
                 if ($reglas) {
                     return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ']';
@@ -790,6 +791,11 @@ class BotController extends Controller
                 $cot = \App\Services\BotTarifasService::cotizar($datos);
                 if (!$cot['ok']) {
                     return '[Sistema-reserva: ' . json_encode(['ok' => false, 'errores' => $cot['errores']], JSON_UNESCAPED_UNICODE) . ']';
+                }
+                // Orden obligatorio: antes de reservar debe existir una cotización con los MISMOS datos
+                // (programa, fecha, personas, extras y medio de pago), mostrada al cliente en el resumen.
+                if (!$this->hayCotizacionIgual($contexto['historial'] ?? [], $cot)) {
+                    return '[Sistema-reserva: {"ok":false,"error":"falta_cotizacion","motivo":"Antes de crear la reserva usa cotizar con los datos finales (programa, fecha, personas, extras y medio de pago), muestra el resumen con esos montos y pide confirmación."}]';
                 }
                 $planUb = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['ubicacion_preferida'] ?? null);
                 if ($planUb['categoria'] && !$planUb['ok']) {
@@ -867,7 +873,10 @@ class BotController extends Controller
                 $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
                 $res = $client->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
                     'headers' => [self::BOT_SECRET_HEADER => config('services.bot.secret'), 'X-Bot-Token' => env('BOT_API_TOKEN'), 'content-type' => 'application/json'],
-                    'json'    => ['selecciones' => $datos['selecciones'] ?? []],
+                    'json'    => array_filter([
+                        'selecciones'   => $datos['selecciones'] ?? [],
+                        'desayuno_once' => in_array($datos['desayuno_once'] ?? null, ['desayuno', 'once'], true) ? $datos['desayuno_once'] : null,
+                    ], function ($v) { return $v !== null; }),
                 ]);
                 return '[Sistema-menu: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
             }
@@ -876,6 +885,38 @@ class BotController extends Controller
             return '[Sistema-error: no se pudo completar "' . $accion . '". No inventes el resultado: dile al cliente que lo revisará el equipo y usa escalar_humano.]';
         }
         return null;
+    }
+
+    /** ¿Hay en el historial una cotización exitosa con los mismos datos que la reserva? */
+    private function hayCotizacionIgual(array $historial, array $cot): bool
+    {
+        $claves = ['programa_id', 'fecha', 'personas', 'masajes_extra', 'desayuno_once', 'total', 'pago_ahora'];
+        foreach ($historial as $h) {
+            $c = is_string($h['content'] ?? null) ? $h['content'] : '';
+            if (strpos($c, '[Sistema-cotizacion: ') === false) {
+                continue;
+            }
+            if (!preg_match_all('/\[Sistema-cotizacion: (\{.*?\}) — usa EXACTAMENTE/su', $c, $m)) {
+                continue;
+            }
+            foreach ($m[1] as $json) {
+                $prev = json_decode($json, true);
+                if (!is_array($prev) || empty($prev['ok'])) {
+                    continue;
+                }
+                $igual = true;
+                foreach ($claves as $k) {
+                    if ((string) ($prev[$k] ?? '') !== (string) ($cot[$k] ?? '')) {
+                        $igual = false;
+                        break;
+                    }
+                }
+                if ($igual) {
+                    return true;
+                }
+            }
+        }
+        return false;
     }
 
     /** Mismas reglas que reprogramarReserva(), sin escribir nada. */
@@ -928,6 +969,22 @@ class BotController extends Controller
         } catch (\Throwable $e) {
             return false;
         }
+    }
+
+    private function eleccionDesayunoOnce(int $reservaId): string
+    {
+        try {
+            $t = DB::table('menus')->where('id_reserva', $reservaId)->whereIn('tipo_servicio', ['desayuno', 'once'])->value('tipo_servicio');
+        } catch (\Throwable $e) {
+            $t = null;
+        }
+        if ($t === null) {
+            $obs = (string) DB::table('reservas')->where('id', $reservaId)->value('observacion');
+            if (stripos($obs, 'Desayuno y once (3 comidas)') !== false) {
+                return 'tiene desayuno y once (3 comidas): no preguntar';
+            }
+        }
+        return $t ? 'elección registrada: ' . $t : 'elección sin registrar (preguntar al grupo: desayuno u once)';
     }
 
     private function buscarClientePorTelefono(string $tel)
@@ -986,7 +1043,7 @@ class BotController extends Controller
                     . ($r->diferencia_programa !== null ? ', saldo pendiente para el día de la visita: $' . number_format($saldo, 0, ',', '.') : '')
                     . ". ¿Se puede reagendar?: {$reag}."
                     . ' Menú: ' . (!empty($r->menu_recibido) && DB::table('menus')->where('id_reserva', $r->id)->whereNotNull('id_producto_fondo')->exists() ? 'ya enviado' : 'pendiente de elegir')
-                    . '; incluye desayuno u once: ' . ($this->incluyeDesayunoOnce($r) ? 'sí (cada persona elige desayuno u once)' : 'no') . '.';
+                    . '; incluye desayuno u once: ' . ($this->incluyeDesayunoOnce($r) ? 'sí — ' . $this->eleccionDesayunoOnce((int) $r->id) : 'no') . '.';
             }
             $holds = DB::table('reserva_holds')
                 ->whereIn('telefono', array_unique([$tel, $corto]))

@@ -109,18 +109,33 @@ class BotProbar extends Command
             $this->check('Relax Day 2p + 1 masaje + 2 desayunos: total ' . T::fmt($esp), $c['total'] === $esp, 'total ' . $c['total']);
         }
         $c = T::calcularMontos(3, $nov, 2, 0, 0, 'Transferencia');
-        $this->check('Programa S en noviembre no lleva recargo', $c['recargo_verano_persona'] === 0);
+        $esperado = (int) round($recargo * (100 - (int) $pars['param_descuento_semana_pct']) / 100);
+        $this->check('Programa S en noviembre: recargo con el descuento aplicado (' . T::fmt($esperado) . ' por persona)', $c['recargo_verano_persona'] === $esperado, 'recargo ' . $c['recargo_verano_persona']);
 
         $sab  = $this->proximo(6);
         $jue  = $this->proximo(4);
         $lejos = Carbon::now('America/Santiago')->addMonths(2)->startOfMonth()->addDays(14)->toDateString();
         $this->check('Grupo de 12 personas → derivar a correo', in_array('grupo_grande', $this->codigos(T::cotizar(['programa_id' => 1, 'fecha' => $sab, 'personas' => 12]))));
         $this->check('Botacura Full (id 2) no disponible', in_array('programa_no_disponible', $this->codigos(T::cotizar(['programa_id' => 2, 'fecha' => $sab, 'personas' => 2]))));
+        $fds = T::calcularMontos(48, $nov, 2, 0, 0, 'Transferencia');
+        $fdsS = T::calcularMontos(3, $nov, 2, 0, 0, 'Transferencia');
+        $this->linea('  INFO   Noviembre: Full Day ' . T::fmt($fds['valor_persona']) . ' / Full Day S ' . T::fmt($fdsS['valor_persona']) . ' por persona');
         $this->check('Programa S en sábado → rechazado', in_array('semana_solo_lunes_viernes', $this->codigos(T::cotizar(['programa_id' => 3, 'fecha' => $sab, 'personas' => 2]))));
         $this->check('Programa S pagado con tarjeta → rechazado', in_array('solo_transferencia', $this->codigos(T::cotizar(['programa_id' => 3, 'fecha' => $jue, 'personas' => 2, 'tipo_pago' => 'Débito']))));
         $this->check('Fecha de un mes con agenda cerrada → rechazada (' . $lejos . ')', in_array('agenda_no_abierta', $this->codigos(T::cotizar(['programa_id' => 1, 'fecha' => $lejos, 'personas' => 2]))));
         $this->check('Fecha pasada → rechazada', in_array('fecha_pasada', $this->codigos(T::cotizar(['programa_id' => 1, 'fecha' => Carbon::now('America/Santiago')->subDays(3)->toDateString(), 'personas' => 2]))));
         $this->pruebasUbicaciones();
+
+        $M = \App\Services\BotMasajesService::class;
+        list($ok) = $M::caben(array_fill(0, 17, 2), 17);
+        $this->check('Masajes: 17 parejas caben en el container', $ok);
+        list($ok) = $M::caben(array_merge(array_fill(0, 17, 2), [2]), 17);
+        $this->check('Masajes: la pareja 18 ya no cabe', !$ok);
+        list($ok, $c, $e) = $M::caben([3, 3], 17);
+        $this->check('Masajes: 2 grupos de 3 → 2 turnos de container y 2 de enfermería', $ok && $c === 2 && $e === 2, "container {$c}, enfermería {$e}");
+        $sab = $this->proximo(6);
+        $d = $M::disponible($sab, 0);
+        $this->linea('  INFO   Masajes el ' . $sab . ': container ' . $d['container_usados'] . '/' . $d['turnos_por_espacio'] . ' turnos, enfermería ' . $d['enfermeria_usados'] . '/' . $d['turnos_por_espacio']);
 
         $c = T::cotizar(['programa_id' => 1, 'fecha' => $sab, 'personas' => 2, 'tipo_pago' => 'Transferencia']);
         $this->linea('  INFO   Wellness Plus 2p el ' . $sab . ': ' . ($c['ok'] ? 'OK ' . $c['total_formato'] : 'no reservable: ' . implode(', ', $this->codigos($c))));

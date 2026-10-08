@@ -682,6 +682,19 @@
                     <input type="checkbox" name="menu_enviar_al_preguntar" value="1" class="browser-default" style="position:static;opacity:1;pointer-events:auto;width:18px;height:18px;" {{ $menu->al_preguntar ? 'checked' : '' }}>
                     Enviar el PDF cuando un cliente pida el menú
                 </label>
+                <input type="hidden" name="fondos_form" value="1">
+                <div style="border-top:1px dashed #e2e8f0;padding-top:14px;margin-bottom:16px;">
+                    <div style="font-weight:700;color:#0f172a;margin-bottom:4px;">Fondos que son plato único</div>
+                    <div style="font-size:.82rem;color:#64748b;margin-bottom:10px;">Marca los que no llevan acompañamiento (Pastel de Papas y platos vegetarianos). El bot no pedirá acompañamiento para ellos.</div>
+                    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:6px 14px;">
+                        @foreach ($menu->fondos as $fo)
+                            <label style="display:flex;align-items:center;gap:8px;color:#333;font-size:.88rem;cursor:pointer;">
+                                <input type="checkbox" name="fondos_unicos[]" value="{{ $fo->id }}" class="browser-default" style="position:static;opacity:1;pointer-events:auto;width:16px;height:16px;" {{ $fo->unico ? 'checked' : '' }}>
+                                {{ $fo->nombre }}
+                            </label>
+                        @endforeach
+                    </div>
+                </div>
                 <button type="submit" class="btn" style="background:#3B82F6;">Guardar menú</button>
             </form>
             <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;min-height:200px;">

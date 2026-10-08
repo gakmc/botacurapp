@@ -198,6 +198,7 @@ class BotReservaController extends Controller
         if ($observacion) {
             $notaBot .= " | Ocasión: {$observacion}";
         }
+        $notaBot .= $this->notaTresComidas($programaId, $desayunoOnce);
 
         $reservaId = DB::table('reservas')->insertGetId([
             'cliente_id'             => $clienteId,
@@ -603,6 +604,7 @@ class BotReservaController extends Controller
         if ($observacion) {
             $notaBot .= " | Ocasión: {$observacion}";
         }
+        $notaBot .= $this->notaTresComidas($programaId, $desayunoOnce);
 
         $reservaId = DB::table('reservas')->insertGetId([
             'cliente_id'             => $clienteId,
@@ -721,6 +723,15 @@ class BotReservaController extends Controller
      * @param  int    $personas
      * @return array  ['disponible' => bool, 'motivo' => string|null, ...]
      */
+    /** Programa que ya incluye desayuno u once + extra Desayuno u Once = las 3 comidas. */
+    private function notaTresComidas(int $programaId, int $desayunoOnce): string
+    {
+        if ($desayunoOnce > 0 && \App\Services\BotTarifasService::incluyeDesayunoOnce($programaId)) {
+            return " | Desayuno y once (3 comidas) para {$desayunoOnce} persona(s)";
+        }
+        return '';
+    }
+
     private function verificarDisponibilidad(string $fecha, int $programaId, int $personas, ?int $excluirHoldId = null)
     {
         $programa = DB::table('programas')->where('id', $programaId)->first();
@@ -824,6 +835,7 @@ class BotReservaController extends Controller
             'selecciones.*.observacion'         => 'nullable|string|max:500',
             'selecciones.*.alergias'            => 'nullable|string|max:500',
             'selecciones.*.tipo_servicio'       => 'nullable|string|in:desayuno,once',
+            'desayuno_once'                     => 'nullable|string|in:desayuno,once',
         ]);
 
         $reserva = DB::table('reservas')->where('id', $id)->first();
@@ -846,6 +858,9 @@ class BotReservaController extends Controller
             $acompId         = isset($sel['acompanamiento_id']) && $sel['acompanamiento_id']
                                 ? (int) $sel['acompanamiento_id']
                                 : null;
+            if (in_array($fondoId, \App\Services\BotMenuService::fondosUnicos(), true)) {
+                $acompId = null; // plato único: no lleva acompañamiento
+            }
             $observacion     = isset($sel['observacion']) && $sel['observacion']
                                 ? trim($sel['observacion'])
                                 : null;
@@ -878,6 +893,17 @@ class BotReservaController extends Controller
                 ]);
             }
             $guardados++;
+        }
+
+        // Desayuno u once: una sola elección para toda la reserva (buffet)
+        if ($request->filled('desayuno_once')) {
+            $dyo = $request->desayuno_once;
+            DB::table('menus')->where('id_reserva', $id)->update(['tipo_servicio' => $dyo, 'updated_at' => now()]);
+            $obs = (string) $reserva->observacion;
+            $obs = trim(preg_replace('/\s*\|?\s*Desayuno u once: (Desayuno|Once) \(buffet\)/u', '', $obs));
+            DB::table('reservas')->where('id', $id)->update([
+                'observacion' => trim($obs . ' | Desayuno u once: ' . ($dyo === 'desayuno' ? 'Desayuno' : 'Once') . ' (buffet)', ' |'),
+            ]);
         }
 
         // Marcar reserva como menú recibido

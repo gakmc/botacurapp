@@ -102,6 +102,7 @@ class BotConfiguracionController extends Controller
             'archivo'      => \App\Services\BotMenuService::nombreArchivo(),
             'texto'        => \App\Services\BotMenuService::texto(),
             'al_preguntar' => \App\Services\BotMenuService::enviarAlPreguntar(),
+            'fondos'       => \App\Services\BotMenuService::fondos(),
         ];
 
         return view('themes.backoffice.pages.bot-configuracion.index', compact(
@@ -417,6 +418,10 @@ class BotConfiguracionController extends Controller
             if ($request->has($clave)) {
                 BotSeccionTexto::where('clave', $clave)->update(['contenido' => (string) $request->input($clave), 'updated_by' => auth()->id()]);
             }
+        }
+        if ($request->has('fondos_form')) {
+            $ids = array_map('intval', (array) $request->input('fondos_unicos', []));
+            BotSeccionTexto::where('clave', 'menu_fondos_unicos')->update(['contenido' => $ids ? implode(',', $ids) : '0', 'updated_by' => auth()->id()]);
         }
         BotSeccionTexto::where('clave', 'menu_enviar_al_preguntar')->update([
             'contenido' => $request->has('menu_enviar_al_preguntar') ? '1' : '0', 'updated_by' => auth()->id(),

@@ -321,7 +321,9 @@ MENÚ — ALMUERZO ({$__menuTitulo}; productos desde la base de datos)
 ═══════════════════════════════════════════════════════
 
 Cada persona elige 1 entrada + 1 fondo + 1 acompañamiento.
-REGLA: El "Pastel de Papas" NO lleva acompañamiento → acompanamiento_id = null.
+REGLA: los fondos marcados "PLATO ÚNICO" (Pastel de Papas y platos vegetarianos) NO llevan acompañamiento →
+acompanamiento_id = null. No pidas acompañamiento para esas personas.
+REGLA: el postre es del día; no se elige ni se pregunta.
 REGLA: Si no envían menú antes del día de la visita, NO se envían horarios del spa.
 
 USA SIEMPRE LOS ID DE PRODUCTO al usar la acción guardar_seleccion_menu.
@@ -425,14 +427,15 @@ debes solicitar las elecciones de menú AL INICIO de la conversación (antes que
 
 Te enviamos nuestro menú 📋 [el sistema envía el PDF automáticamente]
 
-Necesitamos que nos envíes las elecciones de [personas] persona(s):
-✅ 1 Entrada + 1 Plato de Fondo + 1 Acompañamiento por persona
+Necesitamos el pedido de almuerzo de las [personas] persona(s):
+✅ Por persona: 1 Entrada + 1 Fondo (proteína + acompañamiento). El postre es del día y no se elige.
 [Solo si en CONTEXTO DEL CLIENTE la reserva dice "incluye desayuno u once: sí":]
-✅ Y si cada persona prefiere *desayuno* o *once* (horarios en la sección HORARIOS)
+✅ Y si el grupo prefiere *desayuno* u *once* (es buffet y es una sola elección para toda la reserva)
 
 *Ejemplo:*
-Persona 1: Ensalada Chilena + Pollo a la Mostaza + Papas Mayo[ + Once, si aplica]
-Persona 2: Crema de Zapallo + Carne Mechada + Arroz[ + Desayuno, si aplica]
+Persona 1: Ensalada Chilena + Pollo a la Mostaza con Papas Mayo
+Persona 2: Crema de Zapallo + Carne Mechada con Arroz
+[Solo si aplica:] Preferimos once
 
 ⚠️ *Importante:* Si no nos envían el menú antes del día de su visita, no podremos enviarles los horarios disponibles del spa.
 
@@ -443,9 +446,9 @@ Mapea cada nombre de plato al ID correspondiente del bloque de menú.
 Si menciona alergias/restricciones, inclúyelas en el campo "alergias" de esa persona.
 Si pide "sin cebolla" u otra nota sobre un plato, ponlo en "observacion" de esa persona.
 Si pide aclaración sobre algún plato, explica ingredientes con la info del bloque de menú.
-Si la reserva incluye desayuno u once y alguna persona no indicó cuál prefiere, pregúntaselo antes de
-guardar (en el mismo mensaje en que confirmas lo recibido). No guardes la selección de esa persona sin
-ese dato.
+Si la reserva incluye desayuno u once y el cliente no indicó cuál prefiere el grupo, pregúntaselo antes de
+guardar. Si falta la entrada o el fondo de alguna persona, pregunta solo lo que falta.
+El postre no se pregunta: es del día. Si preguntan, explica que se informa el mismo día de la visita.
 
 ═══════════════════════════════════════════════════════
 FORMATO DE RESPUESTA — OBLIGATORIO
@@ -550,17 +553,17 @@ puede crear una sola reserva con dos programas. Puedes cotizar cada programa por
           "persona":            1,
           "entrada_id":         N,  (ID del producto entrada — OBLIGATORIO)
           "fondo_id":           N,  (ID del producto fondo — OBLIGATORIO)
-          "acompanamiento_id":  N,  (ID del acompañamiento; null si elige Pastel de Papas)
+          "acompanamiento_id":  N,  (ID del acompañamiento; null si el fondo es PLATO ÚNICO)
           "observacion":       "sin cebolla",  (nota sobre el plato; null si no hay)
-          "alergias":          "celíaco",      (restricción alimentaria; null si no hay)
-          "tipo_servicio":     "desayuno|once|null"  (OBLIGATORIO si la reserva incluye desayuno u once)
+          "alergias":          "celíaco"       (restricción alimentaria; null si no hay)
         }
-      ]
+      ],
+      "desayuno_once": "desayuno|once|null"  (una sola elección para toda la reserva; OBLIGATORIO si incluye desayuno u once)
     }
   REGLAS:
   - Una entrada en "selecciones" por cada persona de la reserva.
   - Mapea SIEMPRE nombre de plato → ID usando el bloque MENÚ del prompt.
-  - Pastel de Papas → acompanamiento_id = null.
+  - Fondo marcado PLATO ÚNICO → acompanamiento_id = null.
   - "sin algo" (ej: sin cebolla) → va en "observacion", NO en alergias.
   - Alergias/intolerancias → van en "alergias".
   - Si el cliente no menciona alergias → alergias = null.
@@ -620,11 +623,12 @@ PROMPT;
         }
 
         $lineas[] = "";
+        $__unicos = \App\Services\BotMenuService::fondosUnicos();
         $lineas[] = "FONDOS (fondo_id):";
         foreach ($fondos as $f) {
             $lineas[] = "  ID:{$f['id']} | {$f['nombre']}";
-            if (strpos($f['nombre'], 'Pastel de Papas') !== false) {
-                $lineas[] = "    ⚠️ SIN ACOMPAÑAMIENTO → acompanamiento_id = null";
+            if (in_array((int) $f['id'], $__unicos, true)) {
+                $lineas[] = "    ⚠️ PLATO ÚNICO: no lleva acompañamiento → acompanamiento_id = null";
             }
         }
 
@@ -674,7 +678,7 @@ PROMPT;
                 return stripos($s, 'masaje') !== false;
             });
             $incluyeDesayunoOnce = collect($serviciosArray)->contains(function ($s) {
-                return stripos($s, 'desayuno') !== false || stripos($s, 'once') !== false || stripos($s, 'almuerzo') !== false;
+                return stripos($s, 'desayuno') !== false || stripos($s, 'once') !== false;
             });
 
             $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona" . (!empty($p['es_semana'])
@@ -691,12 +695,11 @@ PROMPT;
             }
             if (!$incluyeDesayunoOnce) {
                 $extras[] = 'Desayuno u Once ($' . number_format($__px['desayuno_once'], 0, ',', '.') . '/persona)';
-            }
-            if ($extras) {
-                $lineas[] = "  → PASO 8 (EXTRAS, en UN SOLO mensaje): ofrecer " . implode(' y ', $extras) . ".";
             } else {
-                $lineas[] = "  → PASO 8 (EXTRAS): este programa YA incluye masaje y Desayuno u Once — NO ofrezcas ninguno de los dos como extra pagado.";
+                $extras[] = 'completar las 3 comidas: el programa ya trae desayuno u once, y por $' . number_format($__px['desayuno_once'], 0, ',', '.')
+                    . '/persona tienen desayuno y once (si lo quieren: datos.desayuno_once = cantidad de personas, datos.desayuno_tipo = null)';
             }
+            $lineas[] = "  → PASO 8 (EXTRAS, en UN SOLO mensaje): ofrecer " . implode(' y ', $extras) . ".";
         }
 
         return implode("\n", $lineas);
@@ -775,7 +778,7 @@ PROMPT;
         return [
             'regla_precio_iva' => 'Todos los valores son POR PERSONA y son el precio final (ya incluyen IVA). No hables de IVA ni de neto; solo si el cliente pide factura o pregunta, aclara que el valor ya incluye IVA.',
             'regla_temporada_verano' => 'TEMPORADA DE VERANO (noviembre a febrero): para visitas entre el 1 de noviembre y el último día de febrero, cada programa regular cuesta $5.000 MÁS por persona que el valor de la lista (por la piscina). De marzo a octubre se usa el valor de la lista. Decide siempre según la FECHA DE LA VISITA, no la fecha de hoy. No aplica a servicios adicionales, masajes ni uso exclusivo.',
-            'regla_programas_semana' => 'PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento, y su precio en la lista YA incluye ese descuento (nunca lo descuentes de nuevo). Solo para fechas de lunes a viernes habilitadas que no sean feriado, de marzo a octubre, y solo con pago por transferencia. No son reagendables. Si la fecha es un fin de semana, feriado o de noviembre a febrero, ofrece el programa regular equivalente. La acción "cotizar" valida estas condiciones.',
+            'regla_programas_semana' => 'PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento, y su precio en la lista YA incluye ese descuento (nunca lo descuentes de nuevo). Solo para fechas de lunes a viernes habilitadas que no sean feriado, y solo con pago por transferencia. No son reagendables. En temporada de verano se suma el recargo de piscina y el 10% se aplica sobre ese nuevo valor (lo calcula la acción "cotizar"). Si la fecha es fin de semana o feriado, ofrece el programa regular equivalente.',
             'regla_apertura_agenda' => 'APERTURA DE AGENDA (parejas y grupos de menos de 10 personas):
 - La agenda de cada mes se abre el día 20 del mes anterior: noviembre se abre el 20 de octubre y diciembre se abre el 20 de noviembre.
 - Si una pareja o un grupo de menos de 10 personas pregunta por una fecha de un mes cuya agenda aún no se abre (compáralo con la fecha de HOY), NO consultes disponibilidad ni crees la reserva. Dile con amabilidad que esas fechas aún no están habilitadas, que la agenda de ese mes se abre el día 20 del mes anterior (di la fecha exacta) y que le escriba ese día para asegurar su cupo. Si le sirve, ofrécele fechas del mes que ya está abierto.',
