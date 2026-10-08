@@ -614,6 +614,7 @@ class BotController extends Controller
             $historial[] = ['role' => 'assistant', 'content' => $msgError];
             $this->persistirHistorial($conv->id, $mensaje, $msgError, $historial, []);
             if (!$simulacion) {
+                \App\Services\BotAprendizajeService::evento('error_ia', $usuarioId);
                 $this->escalar($usuarioId, $nombre, 'Error al llamar a la IA', $mensaje);
             }
             return response()->json(['ok' => true, 'accion' => 'escalar_humano', 'mensaje' => $msgError, 'datos' => ['motivo' => 'error_claude_api']]);
@@ -666,6 +667,7 @@ class BotController extends Controller
                 $respuesta = $final;
             } else {
                 $respuesta = ['accion' => 'escalar_humano', 'mensaje' => 'Déjame revisarlo con el equipo y te escribimos en breve 🙏', 'datos' => ['motivo' => 'Respuesta vacía de la IA']];
+                \App\Services\BotAprendizajeService::evento('respuesta_vacia', $usuarioId);
             }
         }
 
@@ -673,6 +675,7 @@ class BotController extends Controller
         $noVerificados = $this->montosNoVerificados($respuesta['mensaje'] ?? '', $systemPrompt, $historial);
         if ($noVerificados) {
             Log::warning('[Bot] Montos no verificados en respuesta', ['telefono' => $usuarioId, 'montos' => $noVerificados]);
+            \App\Services\BotAprendizajeService::evento('monto_bloqueado', $usuarioId, ['montos' => $noVerificados, 'mensaje' => mb_substr((string) ($respuesta['mensaje'] ?? ''), 0, 500)]);
             $hist2   = $historial;
             $hist2[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
             $hist2[] = ['role' => 'user', 'content' => '[Sistema-validador: tu mensaje incluía montos que el sistema no calculó (' . implode(', ', array_map(function ($n) { return '$' . number_format($n, 0, ',', '.'); }, $noVerificados)) . '). No calcules montos tú. Si necesitas un total o abono, usa la acción "cotizar"; si no, responde sin esos montos. Responde de nuevo en el formato JSON.]'];
@@ -718,6 +721,9 @@ class BotController extends Controller
         try {
             if ($accion === 'cotizar') {
                 $cot = \App\Services\BotTarifasService::cotizar($datos);
+                if (!$cot['ok'] && !$simulacion) {
+                    \App\Services\BotAprendizajeService::evento('regla_rechazo', $usuarioId, ['codigos' => array_column($cot['errores'], 'codigo'), 'datos' => $datos]);
+                }
                 return '[Sistema-cotizacion: ' . json_encode($cot, JSON_UNESCAPED_UNICODE) . ' — usa EXACTAMENTE estos montos (campos *_formato). Si "ok" es false, explica el motivo de "errores" al cliente y no ofrezcas reservar ese caso.]';
             }
 
@@ -811,7 +817,13 @@ class BotController extends Controller
                     'headers' => [self::BOT_SECRET_HEADER => config('services.bot.secret'), 'X-Bot-Token' => env('BOT_API_TOKEN'), 'content-type' => 'application/json', 'accept' => 'application/json'],
                     'json'    => $payload,
                 ]);
-                return '[Sistema-reserva: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
+                $rj = json_decode((string) $res->getBody(), true) ?: [];
+                if (!empty($rj['ok'])) {
+                    \App\Services\BotAprendizajeService::evento(!empty($rj['es_hold']) ? 'hold_creado' : 'reserva_creada', $usuarioId, ['reserva_id' => $rj['reserva_id'] ?? null, 'programa_id' => $datos['programa_id'], 'personas' => $datos['personas']]);
+                } else {
+                    \App\Services\BotAprendizajeService::evento('reserva_fallida', $usuarioId, ['error' => $rj['error'] ?? ('http ' . $res->getStatusCode()), 'motivo' => $rj['motivo'] ?? ($rj['message'] ?? null)]);
+                }
+                return '[Sistema-reserva: ' . json_encode($rj, JSON_UNESCAPED_UNICODE) . ']';
             }
 
             if ($accion === 'reagendar') {
@@ -999,6 +1011,7 @@ class BotController extends Controller
      */
     private function escalar(string $tel, string $nombre, string $motivo, string $ultimoMensaje)
     {
+        \App\Services\BotAprendizajeService::evento('derivado', $tel, ['motivo' => $motivo, 'ultimo_mensaje' => mb_substr($ultimoMensaje, 0, 300)]);
         try {
             $horas = \App\Services\BotTarifasService::horasSilencioHumano();
             DB::table('bot_conversaciones')->where('usuario_id', $tel)->where('activo', 1)->update([

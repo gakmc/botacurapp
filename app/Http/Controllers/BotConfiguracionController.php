@@ -77,8 +77,25 @@ class BotConfiguracionController extends Controller
             ->sortByDesc('ultimo_at')
             ->values();
 
+        $apr = null;
+        try {
+            if (\Schema::hasTable('bot_aprendizajes')) {
+                $aprDias = in_array((int) request('apr_dias'), [7, 14, 30, 90], true) ? (int) request('apr_dias') : 30;
+                $apr = [
+                    'metricas'       => \App\Services\BotAprendizajeService::metricas($aprDias),
+                    'conversaciones' => \App\Services\BotAprendizajeService::conversacionesRecientes($aprDias, 30),
+                    'sugeridos'      => \DB::table('bot_aprendizajes')->where('estado', 'sugerido')
+                        ->orderByRaw("FIELD(prioridad, 'alta', 'media', 'baja')")->orderBy('id', 'desc')->get(),
+                    'aprobados'      => \DB::table('bot_aprendizajes')->where('estado', 'aprobado')->orderBy('activo', 'desc')->orderBy('id', 'desc')->get(),
+                ];
+            }
+        } catch (\Throwable $e) {
+            \Log::error('[BotConfiguracion] Error cargando aprendizajes: ' . $e->getMessage());
+            $apr = null;
+        }
+
         return view('themes.backoffice.pages.bot-configuracion.index', compact(
-            'perfil', 'recinto', 'reglas', 'parametros', 'fotos', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
+            'perfil', 'recinto', 'reglas', 'parametros', 'fotos', 'apr', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
         ));
     }
 
@@ -285,6 +302,85 @@ class BotConfiguracionController extends Controller
         Alert::success('Listo', $subidas ? "Se guardaron {$subidas} foto(s). El bot ya las usa." : 'Textos guardados.')->showConfirmButton();
         return redirect()->route('backoffice.bot-configuracion.index');
     }
+
+    // ───────────────────────── Aprendizajes ─────────────────────────
+
+    public function analizarAprendizajes(Request $request)
+    {
+        $dias = in_array((int) $request->input('dias'), [7, 14, 30], true) ? (int) $request->input('dias') : 7;
+        $r = \App\Services\BotAprendizajeService::analizar($dias);
+        if ($r['ok']) {
+            Alert::success('Análisis listo', $r['mensaje'])->showConfirmButton();
+        } else {
+            Alert::error('No se pudo analizar', $r['mensaje'])->showConfirmButton();
+        }
+        return redirect(route('backoffice.bot-configuracion.index') . '#aprendizajes');
+    }
+
+    public function nuevoAprendizaje(Request $request)
+    {
+        $request->validate(['titulo' => 'required|string|max:150', 'propuesta' => 'required|string|max:2000']);
+        \DB::table('bot_aprendizajes')->insert([
+            'tipo' => 'dato', 'titulo' => $request->titulo, 'propuesta' => $request->propuesta,
+            'estado' => 'aprobado', 'activo' => 1, 'origen' => 'equipo', 'prioridad' => 'media',
+            'revisado_por' => auth()->id(), 'revisado_at' => now(), 'created_at' => now(), 'updated_at' => now(),
+        ]);
+        Alert::success('Listo', 'Aprendizaje agregado. El bot ya lo usa.')->showConfirmButton();
+        return redirect(route('backoffice.bot-configuracion.index') . '#aprendizajes');
+    }
+
+    public function accionAprendizaje(Request $request, $id)
+    {
+        $request->validate(['accion' => 'required|in:aprobar,descartar,activar,desactivar,eliminar,guardar', 'propuesta' => 'nullable|string|max:2000']);
+        $q = \DB::table('bot_aprendizajes')->where('id', (int) $id);
+        $base = ['revisado_por' => auth()->id(), 'revisado_at' => now(), 'updated_at' => now()];
+        if ($request->filled('propuesta')) {
+            $base['propuesta'] = $request->propuesta;
+        }
+        switch ($request->accion) {
+            case 'aprobar':
+                $q->update($base + ['estado' => 'aprobado', 'activo' => 1]);
+                $msg = 'Aprobado: el bot ya lo aplica.';
+                break;
+            case 'descartar':
+                $q->update($base + ['estado' => 'descartado', 'activo' => 0]);
+                $msg = 'Descartado. No se volverá a sugerir.';
+                break;
+            case 'activar':
+                $q->update($base + ['activo' => 1]);
+                $msg = 'Activado.';
+                break;
+            case 'desactivar':
+                $q->update($base + ['activo' => 0]);
+                $msg = 'Desactivado: el bot deja de usarlo.';
+                break;
+            case 'eliminar':
+                $q->delete();
+                $msg = 'Eliminado.';
+                break;
+            default:
+                $q->update($base);
+                $msg = 'Guardado.';
+        }
+        Alert::success('Listo', $msg)->showConfirmButton();
+        return redirect(route('backoffice.bot-configuracion.index') . '#aprendizajes');
+    }
+
+    public function conversacionAprendizaje($id)
+    {
+        $c = \DB::table('bot_conversaciones')->where('id', (int) $id)->first(['id', 'usuario_id', 'nombre_cliente', 'updated_at']);
+        if (!$c) {
+            return response()->json(['ok' => false], 404);
+        }
+        return response()->json([
+            'ok'       => true,
+            'id'       => $c->id,
+            'cliente'  => ($c->nombre_cliente ?: 'Cliente') . ' (+' . $c->usuario_id . ')',
+            'fecha'    => (string) $c->updated_at,
+            'mensajes' => \App\Services\BotAprendizajeService::transcripcion((int) $c->id),
+        ]);
+    }
+
 
     private function guardarAjuste(string $clave, string $valor)
     {

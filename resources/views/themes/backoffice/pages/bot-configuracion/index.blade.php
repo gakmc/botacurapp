@@ -308,6 +308,7 @@
         <button type="button" class="bc-tab-btn" data-tab="reglas">Reglas comerciales</button>
         <button type="button" class="bc-tab-btn" data-tab="parametros">Parámetros</button>
         <button type="button" class="bc-tab-btn" data-tab="ubicaciones">Ubicaciones</button>
+        <button type="button" class="bc-tab-btn" data-tab="aprendizajes">Aprendizajes</button>
     </div>
 
     <form action="{{ route('backoffice.bot-configuracion.secciones.update') }}" method="POST">
@@ -456,6 +457,204 @@
             <button type="submit" class="btn" style="background:#3B82F6;margin-top:18px;">Guardar fotos y textos</button>
         </form>
     </div>
+
+    {{-- ===== Aprendizajes ===== --}}
+    <div class="bc-panel" id="panel-aprendizajes">
+    @if (!empty($apr))
+        @php
+            $m = $apr['metricas'];
+            $tot = max(1, $m['total']);
+            $etq = \App\Services\BotAprendizajeService::ETAPAS;
+            $reglasTxt = ['grupo_grande' => 'Grupo más grande que el máximo', 'agenda_no_abierta' => 'Mes con agenda cerrada', 'fecha_no_habilitada' => 'Día no habilitado',
+                'semana_solo_lunes_viernes' => 'Programa S en fin de semana', 'semana_feriado' => 'Programa S en feriado', 'semana_fuera_de_temporada' => 'Programa S fuera de temporada',
+                'solo_transferencia' => 'Medio de pago no permitido', 'programa_no_disponible' => 'Programa no disponible', 'fecha_pasada' => 'Fecha pasada', 'minimo_personas' => 'Bajo el mínimo de personas'];
+        @endphp
+        <style>
+            .apr-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
+            .apr-seg{display:inline-flex;background:#f1f5f9;border-radius:12px;padding:4px;gap:2px}
+            .apr-seg a{padding:6px 14px;border-radius:9px;color:#475569;font-weight:600;font-size:.85rem}
+            .apr-seg a.on{background:#fff;color:#0f172a;box-shadow:0 1px 3px rgba(15,23,42,.12)}
+            .apr-kpis{display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px;margin-bottom:18px}
+            .apr-kpi{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:14px 16px}
+            .apr-kpi b{display:block;font-size:1.6rem;color:#0f172a;line-height:1.2}
+            .apr-kpi span{font-size:.8rem;color:#64748b}
+            .apr-kpi.warn b{color:#b45309}
+            .apr-grid{display:grid;grid-template-columns:repeat(auto-fit,minmax(320px,1fr));gap:16px;margin-bottom:18px}
+            .apr-box{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px}
+            .apr-box h4{font-size:1rem;font-weight:700;color:#0f172a;margin:0 0 12px}
+            .apr-bar{display:grid;grid-template-columns:150px 1fr 48px;align-items:center;gap:10px;margin-bottom:8px;font-size:.85rem;color:#334155}
+            .apr-bar i{display:block;height:12px;border-radius:6px;background:#3B82F6;min-width:2px}
+            .apr-bar i.cut{background:#f59e0b}
+            .apr-bar em{font-style:normal;text-align:right;color:#64748b}
+            .apr-li{display:flex;justify-content:space-between;gap:10px;padding:6px 0;border-bottom:1px dashed #e2e8f0;font-size:.88rem;color:#334155}
+            .apr-li:last-child{border-bottom:0}
+            .apr-sug{background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:16px 18px;margin-bottom:12px}
+            .apr-tag{display:inline-block;font-size:.72rem;font-weight:700;padding:3px 9px;border-radius:999px;background:#eff6ff;color:#1d4ed8;margin-right:6px;text-transform:uppercase;letter-spacing:.02em}
+            .apr-tag.alta{background:#fee2e2;color:#b91c1c}.apr-tag.baja{background:#f1f5f9;color:#475569}.apr-tag.problema{background:#fef3c7;color:#92400e}
+            .apr-sug textarea{width:100%;min-height:70px;height:auto;border:1px solid #d0d0d0;border-radius:10px;padding:8px 10px;font-size:.92rem;margin:8px 0;box-sizing:border-box}
+            .apr-btn{display:inline-flex;align-items:center;height:36px;padding:0 14px;border-radius:10px;border:1px solid #e2e8f0;background:#fff;color:#334155;font-weight:600;font-size:.85rem;cursor:pointer;margin-right:6px}
+            .apr-btn.pri{background:#3B82F6;border-color:#3B82F6;color:#fff}
+            .apr-btn.ok{background:#10b981;border-color:#10b981;color:#fff}
+            .apr-link{color:#2563eb;cursor:pointer;font-size:.82rem;margin-right:8px}
+            .apr-tabla{width:100%;font-size:.88rem}
+            .apr-tabla td,.apr-tabla th{padding:8px 6px;border-bottom:1px solid #f1f5f9;text-align:left}
+            .apr-badge{font-size:.72rem;font-weight:700;padding:2px 8px;border-radius:999px;background:#f1f5f9;color:#475569}
+            .apr-badge.e4,.apr-badge.e5{background:#d1fae5;color:#065f46}.apr-badge.ab{background:#fef3c7;color:#92400e}.apr-badge.de{background:#ede9fe;color:#5b21b6}
+            .apr-modal{position:fixed;inset:0;background:rgba(15,23,42,.45);display:none;align-items:center;justify-content:center;z-index:2000;padding:16px}
+            .apr-modal.open{display:flex}
+            .apr-modal-card{background:#f8fafc;border-radius:18px;width:min(640px,100%);max-height:85vh;display:flex;flex-direction:column;overflow:hidden}
+            .apr-modal-head{padding:14px 18px;background:#fff;border-bottom:1px solid #e2e8f0;display:flex;justify-content:space-between;align-items:center}
+            .apr-chat{padding:16px;overflow:auto;display:flex;flex-direction:column;gap:8px}
+            .apr-msg{max-width:85%;padding:8px 12px;border-radius:14px;font-size:.9rem;line-height:1.4;white-space:pre-wrap;word-wrap:break-word}
+            .apr-msg.cliente{align-self:flex-start;background:#fff;border:1px solid #e2e8f0}
+            .apr-msg.bot{align-self:flex-end;background:#dcf8c6}
+            .apr-msg.equipo{align-self:flex-end;background:#dbeafe}
+            .apr-msg.sistema{align-self:center;background:transparent;color:#64748b;font-size:.75rem;font-family:monospace;max-width:100%}
+        </style>
+
+        <div class="apr-top">
+            <div class="apr-seg">
+                @foreach ([7, 14, 30, 90] as $d)
+                    <a href="{{ route('backoffice.bot-configuracion.index', ['apr_dias' => $d]) }}#aprendizajes" class="{{ $m['dias'] == $d ? 'on' : '' }}">{{ $d }} días</a>
+                @endforeach
+            </div>
+            <form action="{{ route('backoffice.bot-configuracion.aprendizajes.analizar') }}" method="POST" onsubmit="this.querySelector('button').disabled=true;this.querySelector('button').textContent='Analizando… (puede tardar 1 minuto)';">
+                @csrf
+                <input type="hidden" name="dias" value="{{ min(30, $m['dias']) }}">
+                <button type="submit" class="apr-btn pri">Analizar conversaciones con IA</button>
+                <span style="font-size:.8rem;color:#64748b;margin-left:6px;">Último análisis: {{ $m['ultimo_analisis'] ? \Carbon\Carbon::parse($m['ultimo_analisis'])->locale('es')->diffForHumans() : 'nunca' }} · automático todos los días 23:40</span>
+            </form>
+        </div>
+
+        <div class="apr-kpis">
+            <div class="apr-kpi"><b>{{ $m['total'] }}</b><span>Conversaciones</span></div>
+            <div class="apr-kpi"><b>{{ $m['embudo'][3] }}</b><span>Llegaron a cotización ({{ round($m['embudo'][3] * 100 / $tot) }}%)</span></div>
+            <div class="apr-kpi"><b>{{ $m['embudo'][4] }}</b><span>Reservas o cupos apartados ({{ round($m['embudo'][4] * 100 / $tot) }}%)</span></div>
+            <div class="apr-kpi"><b>{{ $m['embudo'][5] }}</b><span>Pagadas</span></div>
+            <div class="apr-kpi"><b>{{ $m['derivadas'] }}</b><span>Atendidas por el equipo</span></div>
+            <div class="apr-kpi {{ $m['abandonadas'] ? 'warn' : '' }}"><b>{{ $m['abandonadas'] }}</b><span>Se cortaron sin reservar</span></div>
+        </div>
+
+        <div class="apr-grid">
+            <div class="apr-box">
+                <h4>Embudo de reservas</h4>
+                @foreach ($m['embudo'] as $i => $n)
+                    <div class="apr-bar"><span>{{ $etq[$i] }}</span><i style="width:{{ round($n * 100 / $tot) }}%"></i><em>{{ $n }}</em></div>
+                @endforeach
+            </div>
+            <div class="apr-box">
+                <h4>Dónde se cortan</h4>
+                @php $maxc = max(1, max($m['cortes'])); @endphp
+                @if (array_sum($m['cortes']) === 0)
+                    <p style="color:#64748b;font-size:.9rem;">Sin conversaciones cortadas en el período.</p>
+                @else
+                    @foreach ($m['cortes'] as $i => $n)
+                        @if ($i < 4)
+                            <div class="apr-bar"><span>Después de: {{ $etq[$i] }}</span><i class="cut" style="width:{{ round($n * 100 / $maxc) }}%"></i><em>{{ $n }}</em></div>
+                        @endif
+                    @endforeach
+                @endif
+            </div>
+            <div class="apr-box">
+                <h4>Por qué deriva a una persona</h4>
+                @forelse ($m['motivos'] as $mot => $n)
+                    <div class="apr-li"><span>{{ $mot }}</span><b>{{ $n }}</b></div>
+                @empty
+                    <p style="color:#64748b;font-size:.9rem;">Sin derivaciones en el período.</p>
+                @endforelse
+            </div>
+            <div class="apr-box">
+                <h4>Reglas que más frenan</h4>
+                @forelse ($m['reglas'] as $cod => $n)
+                    <div class="apr-li"><span>{{ $reglasTxt[$cod] ?? $cod }}</span><b>{{ $n }}</b></div>
+                @empty
+                    <p style="color:#64748b;font-size:.9rem;">Ninguna en el período.</p>
+                @endforelse
+                @if ($m['montos_bloq'] || $m['vacias'] || $m['errores_ia'])
+                    <div class="apr-li" style="color:#b45309;"><span>Montos bloqueados / respuestas vacías / errores de IA</span><b>{{ $m['montos_bloq'] }} / {{ $m['vacias'] }} / {{ $m['errores_ia'] }}</b></div>
+                @endif
+            </div>
+        </div>
+
+        <h4 style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:6px 0 10px;">Sugerencias por revisar ({{ count($apr['sugeridos']) }})</h4>
+        @forelse ($apr['sugeridos'] as $s)
+            <div class="apr-sug">
+                <span class="apr-tag {{ $s->prioridad }}">{{ $s->prioridad }}</span><span class="apr-tag {{ $s->tipo === 'problema' ? 'problema' : '' }}">{{ $s->tipo }}</span>
+                <strong style="color:#0f172a;">{{ $s->titulo }}</strong>
+                @if ($s->motivo)<div style="color:#64748b;font-size:.85rem;margin-top:4px;">{{ $s->motivo }}</div>@endif
+                <form action="{{ route('backoffice.bot-configuracion.aprendizajes.accion', $s->id) }}" method="POST">
+                    @csrf
+                    <textarea name="propuesta" class="browser-default">{{ $s->propuesta }}</textarea>
+                    @foreach (json_decode($s->evidencia ?: '[]', true) as $cid)
+                        <span class="apr-link" data-conv="{{ $cid }}">Ver conversación #{{ $cid }}</span>
+                    @endforeach
+                    <div style="margin-top:8px;">
+                        @if ($s->tipo !== 'problema')
+                            <button name="accion" value="aprobar" class="apr-btn ok">Aprobar y aplicar al bot</button>
+                        @else
+                            <button name="accion" value="descartar" class="apr-btn ok">Revisado</button>
+                        @endif
+                        <button name="accion" value="descartar" class="apr-btn">Descartar</button>
+                    </div>
+                </form>
+            </div>
+        @empty
+            <p style="color:#64748b;">No hay sugerencias pendientes. Usa "Analizar conversaciones con IA" o espera el análisis diario.</p>
+        @endforelse
+
+        <h4 style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:18px 0 10px;">Aprendizajes aplicados al bot ({{ count($apr['aprobados']) }})</h4>
+        @foreach ($apr['aprobados'] as $s)
+            <div class="apr-sug" style="{{ $s->activo ? '' : 'opacity:.55' }}">
+                <strong style="color:#0f172a;">{{ $s->titulo }}</strong> <span class="apr-badge">{{ $s->origen === 'ia' ? 'sugerido por IA' : 'agregado por el equipo' }}</span>
+                <form action="{{ route('backoffice.bot-configuracion.aprendizajes.accion', $s->id) }}" method="POST">
+                    @csrf
+                    <textarea name="propuesta" class="browser-default">{{ $s->propuesta }}</textarea>
+                    <button name="accion" value="guardar" class="apr-btn">Guardar cambios</button>
+                    <button name="accion" value="{{ $s->activo ? 'desactivar' : 'activar' }}" class="apr-btn">{{ $s->activo ? 'Desactivar' : 'Activar' }}</button>
+                    <button name="accion" value="eliminar" class="apr-btn" onclick="return confirm('¿Eliminar este aprendizaje?');">Eliminar</button>
+                </form>
+            </div>
+        @endforeach
+        <form action="{{ route('backoffice.bot-configuracion.aprendizajes.nuevo') }}" method="POST" class="apr-sug">
+            @csrf
+            <strong style="color:#0f172a;">Agregar un aprendizaje a mano</strong>
+            <input type="text" name="titulo" class="browser-default" placeholder="Título corto (ej. Estacionamiento para buses)" style="width:100%;height:38px;border:1px solid #d0d0d0;border-radius:10px;padding:0 10px;margin-top:8px;box-sizing:border-box;" required>
+            <textarea name="propuesta" class="browser-default" placeholder="Instrucción para el bot (ej. Si preguntan por buses, indica que el estacionamiento recibe minibuses de hasta 20 pasajeros.)" required></textarea>
+            <button type="submit" class="apr-btn pri">Agregar</button>
+        </form>
+
+        <h4 style="font-size:1.05rem;font-weight:700;color:#0f172a;margin:18px 0 10px;">Conversaciones recientes</h4>
+        <div class="apr-box" style="overflow-x:auto;">
+            <table class="apr-tabla">
+                <thead><tr><th>Fecha</th><th>Cliente</th><th>Llegó a</th><th>Estado</th><th>Mensajes</th><th></th></tr></thead>
+                <tbody>
+                @foreach ($apr['conversaciones'] as $c)
+                    <tr>
+                        <td>{{ $c->fecha->locale('es')->isoFormat('D MMM HH:mm') }}</td>
+                        <td>{{ $c->nombre }}<br><small style="color:#94a3b8;">+{{ $c->telefono }}</small></td>
+                        <td><span class="apr-badge e{{ $c->etapa_num }}">{{ $c->etapa }}</span></td>
+                        <td>
+                            @if ($c->derivada)<span class="apr-badge de">Equipo</span>@endif
+                            @if ($c->abandonada)<span class="apr-badge ab">Se cortó</span>@endif
+                        </td>
+                        <td>{{ $c->turnos }}</td>
+                        <td><span class="apr-link" data-conv="{{ $c->id }}">Ver</span></td>
+                    </tr>
+                @endforeach
+                </tbody>
+            </table>
+        </div>
+
+        <div class="apr-modal" id="aprModal">
+            <div class="apr-modal-card">
+                <div class="apr-modal-head"><strong id="aprModalTit">Conversación</strong><button type="button" class="apr-btn" id="aprModalCerrar">Cerrar</button></div>
+                <div class="apr-chat" id="aprChat"></div>
+            </div>
+        </div>
+    @else
+        <p style="color:#64748b;">Los aprendizajes aún no están disponibles (falta correr la migración).</p>
+    @endif
+    </div>
 @endsection
 
 @section('foot')
@@ -523,5 +722,48 @@ document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
         }
     });
 });
+</script>
+<script>
+(function () {
+    var p = document.getElementById('panel-aprendizajes');
+    if (!p) return;
+    document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (b.dataset.tab === 'aprendizajes') {
+                document.querySelectorAll('.bc-panel').forEach(function (x) { x.classList.toggle('active', x === p); });
+                document.querySelectorAll('.bc-tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+                if (history.replaceState) history.replaceState(null, '', '#aprendizajes');
+            } else {
+                p.classList.remove('active');
+            }
+        });
+    });
+    if (location.hash === '#aprendizajes') {
+        var t = document.querySelector('.bc-tab-btn[data-tab="aprendizajes"]');
+        if (t) t.click();
+    }
+    var modal = document.getElementById('aprModal'), chat = document.getElementById('aprChat');
+    if (!modal) return;
+    var urlBase = @json(route('backoffice.bot-configuracion.aprendizajes.conversacion', 0));
+    function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
+    document.addEventListener('click', function (e) {
+        var el = e.target.closest('[data-conv]');
+        if (!el) return;
+        chat.innerHTML = '<p style="color:#64748b">Cargando…</p>';
+        modal.classList.add('open');
+        fetch(urlBase.replace(/0$/, el.dataset.conv), { headers: { 'Accept': 'application/json' } })
+            .then(function (r) { return r.json(); })
+            .then(function (d) {
+                document.getElementById('aprModalTit').textContent = (d.cliente || 'Conversación') + ' · #' + (d.id || '');
+                chat.innerHTML = (d.mensajes || []).map(function (m) {
+                    var et = { cliente: 'Cliente', bot: 'Bot', equipo: 'Equipo', sistema: '' }[m.de];
+                    return '<div class="apr-msg ' + m.de + '">' + (et ? '<small style="display:block;font-weight:700;color:#64748b;">' + et + '</small>' : '') + esc(m.texto) + '</div>';
+                }).join('') || '<p style="color:#64748b">Sin mensajes.</p>';
+            })
+            .catch(function () { chat.innerHTML = '<p style="color:#b91c1c">No se pudo cargar la conversación.</p>'; });
+    });
+    document.getElementById('aprModalCerrar').onclick = function () { modal.classList.remove('open'); };
+    modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('open'); });
+})();
 </script>
 @endsection

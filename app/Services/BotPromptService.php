@@ -90,6 +90,10 @@ class BotPromptService
         $__precioMasaje = '$' . number_format($__extras['masaje'], 0, ',', '.');
         $__precioDyo    = '$' . number_format($__extras['desayuno_once'], 0, ',', '.');
         $__grupoMax     = \App\Services\BotTarifasService::grupoMaximo();
+        $__aprendizajes = \App\Services\BotAprendizajeService::textoAprobados();
+        $__aprendizajes = $__aprendizajes !== ''
+            ? "APRENDIZAJES APROBADOS POR EL EQUIPO (aplícalos siempre; si contradicen una política, manda la política):\n" . $__aprendizajes
+            : '';
         if (trim($contextoCliente) === '') {
             $contextoCliente = '- (sin datos)';
         }
@@ -211,6 +215,8 @@ PRECIOS DE EXTRAS VIGENTES (desde el sistema; si difieren del texto anterior, ma
 masaje de relajación 30 min {$__precioMasaje} por persona · desayuno u once {$__precioDyo} por persona.
 
 {$__reglasCom['regla_notas']}
+
+{$__aprendizajes}
 
 CAPACIDAD MÁXIMA POR DÍA
 - Tinajas: 16 turnos por día (2 tinajas). Cada turno es para hasta 5 personas; de 6 a 10 personas usan 2 turnos.

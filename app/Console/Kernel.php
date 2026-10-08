@@ -26,6 +26,7 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('bot:aprender')->dailyAt('23:40');
         $schedule->command('cerrar:sueldos')
                 ->sundays()
                 ->at('21:00')

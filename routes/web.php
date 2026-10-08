@@ -345,6 +345,10 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::prefix('bot-configuracion')->name('bot-configuracion.')->group(function () {
         Route::get('/', 'BotConfiguracionController@index')->name('index');
         Route::post('/secciones', 'BotConfiguracionController@updateSecciones')->name('secciones.update');
+        Route::post('/aprendizajes/analizar', 'BotConfiguracionController@analizarAprendizajes')->name('aprendizajes.analizar');
+        Route::post('/aprendizajes/nuevo', 'BotConfiguracionController@nuevoAprendizaje')->name('aprendizajes.nuevo');
+        Route::post('/aprendizajes/{id}', 'BotConfiguracionController@accionAprendizaje')->name('aprendizajes.accion');
+        Route::get('/aprendizajes/conversacion/{id}', 'BotConfiguracionController@conversacionAprendizaje')->name('aprendizajes.conversacion');
         Route::post('/fotos', 'BotConfiguracionController@updateFotos')->name('fotos.update');
         Route::post('/estado', 'BotConfiguracionController@updateEstado')->name('estado.update');
         Route::post('/pendientes/procesar', 'BotConfiguracionController@procesarPendientes')->name('pendientes.procesar');
