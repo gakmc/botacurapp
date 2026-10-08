@@ -319,6 +319,9 @@ class BotReservaController extends Controller
         }
 
         \App\Services\BotUbicacionesService::registrar($reservaId, $planUb);
+        if ($this->notaTresComidas($programaId, $desayunoOnce) !== '') {
+            \App\Services\DesayunoOnceService::fijar($reservaId, ['desayuno', 'once']);
+        }
 
         Log::info('BotReservaController: reserva creada', [
             'reserva_id'     => $reservaId,
@@ -696,6 +699,9 @@ class BotReservaController extends Controller
         }
 
         \App\Services\BotUbicacionesService::registrar($reservaId, $planUbHold);
+        if ($this->notaTresComidas($programaId, $desayunoOnce) !== '') {
+            \App\Services\DesayunoOnceService::fijar($reservaId, ['desayuno', 'once']);
+        }
 
         DB::table('reserva_holds')->where('id', $hold->id)->update([
             'estado' => 'confirmado', 'id_reserva' => $reservaId, 'updated_at' => now(),
@@ -899,6 +905,7 @@ class BotReservaController extends Controller
         if ($request->filled('desayuno_once')) {
             $dyo = $request->desayuno_once;
             DB::table('menus')->where('id_reserva', $id)->update(['tipo_servicio' => $dyo, 'updated_at' => now()]);
+            \App\Services\DesayunoOnceService::fijar((int) $id, [$dyo]);
             $obs = (string) $reserva->observacion;
             $obs = trim(preg_replace('/\s*\|?\s*Desayuno u once: (Desayuno|Once) \(buffet\)/u', '', $obs));
             DB::table('reservas')->where('id', $id)->update([

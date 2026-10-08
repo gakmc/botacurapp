@@ -1046,7 +1046,11 @@ class BotController extends Controller
     private function eleccionDesayunoOnce(int $reservaId): string
     {
         try {
-            $t = DB::table('menus')->where('id_reserva', $reservaId)->whereIn('tipo_servicio', ['desayuno', 'once'])->value('tipo_servicio');
+            $tipos = DB::table('reserva_desayuno_once')->where('id_reserva', $reservaId)->pluck('tipo')->unique()->values()->all();
+            if (count($tipos) >= 2) {
+                return 'tiene desayuno y once (3 comidas): no preguntar';
+            }
+            $t = $tipos[0] ?? DB::table('menus')->where('id_reserva', $reservaId)->whereIn('tipo_servicio', ['desayuno', 'once'])->value('tipo_servicio');
         } catch (\Throwable $e) {
             $t = null;
         }
