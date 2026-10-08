@@ -345,6 +345,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::prefix('bot-configuracion')->name('bot-configuracion.')->group(function () {
         Route::get('/', 'BotConfiguracionController@index')->name('index');
         Route::post('/secciones', 'BotConfiguracionController@updateSecciones')->name('secciones.update');
+        Route::post('/menu', 'BotConfiguracionController@updateMenu')->name('menu.update');
         Route::post('/aprendizajes/analizar', 'BotConfiguracionController@analizarAprendizajes')->name('aprendizajes.analizar');
         Route::post('/aprendizajes/nuevo', 'BotConfiguracionController@nuevoAprendizaje')->name('aprendizajes.nuevo');
         Route::post('/aprendizajes/{id}', 'BotConfiguracionController@accionAprendizaje')->name('aprendizajes.accion');

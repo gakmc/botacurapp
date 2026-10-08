@@ -206,7 +206,7 @@ class WhatsAppWebhookController extends Controller
             }
 
             if (!empty($botData['adjunto_url'])) {
-                $this->enviarDocumento($telefono, $botData['adjunto_url'], $botData['adjunto_nombre'] ?? 'menu.pdf');
+                $this->enviarDocumento($telefono, $botData['adjunto_url'], $botData['adjunto_nombre'] ?? 'menu.pdf', $botData['adjunto_texto'] ?? '');
             }
 
         } catch (\Exception $e) {
@@ -970,7 +970,7 @@ class WhatsAppWebhookController extends Controller
         }
     }
 
-    private function enviarDocumento(string $telefono, string $url, string $nombre)
+    private function enviarDocumento(string $telefono, string $url, string $nombre, string $texto = '')
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
@@ -987,7 +987,7 @@ class WhatsAppWebhookController extends Controller
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'document',
-                    'document'          => ['link' => $url, 'filename' => $nombre],
+                    'document'          => array_filter(['link' => $url, 'filename' => $nombre, 'caption' => mb_substr($texto, 0, 1000)]),
                 ],
             ]);
         } catch (\Exception $e) {

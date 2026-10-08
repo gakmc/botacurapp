@@ -696,6 +696,16 @@ class BotController extends Controller
             }
         }
 
+        // Menú en PDF cuando el cliente lo pide
+        if (($respuesta['accion'] ?? '') === 'enviar_menu') {
+            $urlMenu = \App\Services\BotMenuService::url();
+            if ($urlMenu && \App\Services\BotMenuService::enviarAlPreguntar()) {
+                $respuesta['adjunto_url']    = $urlMenu;
+                $respuesta['adjunto_nombre'] = \App\Services\BotMenuService::nombreArchivo();
+                $respuesta['adjunto_texto']  = \App\Services\BotMenuService::texto();
+            }
+        }
+
         if (($respuesta['accion'] ?? '') === 'escalar_humano' && !$simulacion) {
             $this->escalar($usuarioId, $nombre, (string) ($respuesta['datos']['motivo'] ?? 'Derivado por el bot'), $mensaje);
         }

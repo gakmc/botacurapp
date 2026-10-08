@@ -191,7 +191,7 @@
 
                 <div class="bcx-list">
                     @foreach($pendientes as $p)
-                        @php($ini = mb_strtoupper(mb_substr(trim($p->nombre ?: 'C'), 0, 1)))
+                        <?php $ini = mb_strtoupper(mb_substr(trim($p->nombre ?: 'C'), 0, 1)); ?>
                         <label class="bcx-item {{ $p->en_ventana ? '' : 'is-old' }}">
                             <span class="bcx-check"><input type="checkbox" name="telefonos[]" value="{{ $p->telefono }}" {{ $p->en_ventana ? 'checked' : '' }}><i></i></span>
                             <span class="bcx-ini" style="--h:{{ crc32($p->telefono) % 360 }}">{{ $ini }}</span>
@@ -309,6 +309,7 @@
         <button type="button" class="bc-tab-btn" data-tab="parametros">Parámetros</button>
         <button type="button" class="bc-tab-btn" data-tab="ubicaciones">Ubicaciones</button>
         <button type="button" class="bc-tab-btn" data-tab="aprendizajes">Aprendizajes</button>
+        <button type="button" class="bc-tab-btn" data-tab="menu">Menú</button>
     </div>
 
     <form action="{{ route('backoffice.bot-configuracion.secciones.update') }}" method="POST">
@@ -461,14 +462,14 @@
     {{-- ===== Aprendizajes ===== --}}
     <div class="bc-panel" id="panel-aprendizajes">
     @if (!empty($apr))
-        @php
+        <?php
             $m = $apr['metricas'];
             $tot = max(1, $m['total']);
             $etq = \App\Services\BotAprendizajeService::ETAPAS;
             $reglasTxt = ['grupo_grande' => 'Grupo más grande que el máximo', 'agenda_no_abierta' => 'Mes con agenda cerrada', 'fecha_no_habilitada' => 'Día no habilitado',
                 'semana_solo_lunes_viernes' => 'Programa S en fin de semana', 'semana_feriado' => 'Programa S en feriado', 'semana_fuera_de_temporada' => 'Programa S fuera de temporada',
                 'solo_transferencia' => 'Medio de pago no permitido', 'programa_no_disponible' => 'Programa no disponible', 'fecha_pasada' => 'Fecha pasada', 'minimo_personas' => 'Bajo el mínimo de personas'];
-        @endphp
+        ?>
         <style>
             .apr-top{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-bottom:16px}
             .apr-seg{display:inline-flex;background:#f1f5f9;border-radius:12px;padding:4px;gap:2px}
@@ -544,7 +545,7 @@
             </div>
             <div class="apr-box">
                 <h4>Dónde se cortan</h4>
-                @php $maxc = max(1, max($m['cortes'])); @endphp
+                <?php $maxc = max(1, max($m['cortes'])); ?>
                 @if (array_sum($m['cortes']) === 0)
                     <p style="color:#64748b;font-size:.9rem;">Sin conversaciones cortadas en el período.</p>
                 @else
@@ -655,6 +656,43 @@
         <p style="color:#64748b;">Los aprendizajes aún no están disponibles (falta correr la migración).</p>
     @endif
     </div>
+
+    {{-- ===== Menú en PDF ===== --}}
+    <div class="bc-panel" id="panel-menu">
+        <p style="color:#555;margin-bottom:16px;">El bot envía este PDF por WhatsApp cuando se confirma el pago de una reserva con almuerzo, desayuno u once, y también cuando un cliente pide el menú (si está activado abajo). Al subir uno nuevo, reemplaza al anterior de inmediato. Máximo {{ ini_get('upload_max_filesize') }} por archivo en este servidor.</p>
+        <div style="display:grid;grid-template-columns:repeat(auto-fit,minmax(300px,1fr));gap:18px;align-items:start;">
+            <form action="{{ route('backoffice.bot-configuracion.menu.update') }}" method="POST" enctype="multipart/form-data" style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;padding:18px;">
+                @csrf
+                <label style="display:block;font-weight:700;color:#0f172a;margin-bottom:6px;">PDF del menú</label>
+                <input type="file" name="menu_pdf" accept="application/pdf" class="browser-default" style="width:100%;font-size:.9rem;margin-bottom:6px;">
+                <div style="font-size:.82rem;color:#64748b;margin-bottom:14px;">
+                    @if ($menu->url)
+                        Actual: <a href="{{ $menu->url }}" target="_blank" rel="noopener">abrir PDF</a> · actualizado {{ $menu->actualizado }}{{ $menu->antiguo ? ' (es el archivo antiguo de otoño: sube el nuevo)' : '' }}
+                    @else
+                        Aún no hay menú cargado.
+                    @endif
+                </div>
+                <label style="display:block;font-weight:600;color:#333;font-size:.9rem;margin-bottom:6px;">Nombre del menú</label>
+                <input type="text" name="menu_titulo" value="{{ $menu->titulo }}" class="browser-default" style="width:100%;height:40px;border:1px solid #d0d0d0;border-radius:10px;padding:0 12px;margin-bottom:12px;box-sizing:border-box;">
+                <label style="display:block;font-weight:600;color:#333;font-size:.9rem;margin-bottom:6px;">Nombre del archivo que ve el cliente</label>
+                <input type="text" name="menu_archivo_nombre" value="{{ $menu->archivo }}" class="browser-default" style="width:100%;height:40px;border:1px solid #d0d0d0;border-radius:10px;padding:0 12px;margin-bottom:12px;box-sizing:border-box;">
+                <label style="display:block;font-weight:600;color:#333;font-size:.9rem;margin-bottom:6px;">Texto que acompaña el PDF</label>
+                <textarea name="menu_texto" rows="3" class="browser-default" style="width:100%;height:auto;border:1px solid #d0d0d0;border-radius:10px;padding:8px 12px;margin-bottom:12px;box-sizing:border-box;">{{ $menu->texto }}</textarea>
+                <label style="display:flex;align-items:center;gap:10px;color:#333;font-size:.9rem;margin-bottom:16px;cursor:pointer;">
+                    <input type="checkbox" name="menu_enviar_al_preguntar" value="1" class="browser-default" style="position:static;opacity:1;pointer-events:auto;width:18px;height:18px;" {{ $menu->al_preguntar ? 'checked' : '' }}>
+                    Enviar el PDF cuando un cliente pida el menú
+                </label>
+                <button type="submit" class="btn" style="background:#3B82F6;">Guardar menú</button>
+            </form>
+            <div style="background:#fff;border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;min-height:200px;">
+                @if ($menu->url)
+                    <iframe src="{{ $menu->url }}" title="Vista previa del menú" style="width:100%;height:560px;border:0;"></iframe>
+                @else
+                    <div style="padding:40px;text-align:center;color:#94a3b8;">Sin vista previa</div>
+                @endif
+            </div>
+        </div>
+    </div>
 @endsection
 
 @section('foot')
@@ -764,6 +802,27 @@ document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
     });
     document.getElementById('aprModalCerrar').onclick = function () { modal.classList.remove('open'); };
     modal.addEventListener('click', function (e) { if (e.target === modal) modal.classList.remove('open'); });
+})();
+</script>
+<script>
+(function () {
+    var p = document.getElementById('panel-menu');
+    if (!p) return;
+    document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
+        b.addEventListener('click', function () {
+            if (b.dataset.tab === 'menu') {
+                document.querySelectorAll('.bc-panel').forEach(function (x) { x.classList.toggle('active', x === p); });
+                document.querySelectorAll('.bc-tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+                if (history.replaceState) history.replaceState(null, '', '#menu');
+            } else {
+                p.classList.remove('active');
+            }
+        });
+    });
+    if (location.hash === '#menu') {
+        var t = document.querySelector('.bc-tab-btn[data-tab="menu"]');
+        if (t) t.click();
+    }
 })();
 </script>
 @endsection

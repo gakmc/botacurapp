@@ -94,8 +94,18 @@ class BotConfiguracionController extends Controller
             $apr = null;
         }
 
+        $menu = (object) [
+            'url'          => \App\Services\BotMenuService::url(),
+            'actualizado'  => \App\Services\BotMenuService::actualizado(),
+            'antiguo'      => \App\Services\BotMenuService::ruta() === \App\Services\BotMenuService::ANTIGUO,
+            'titulo'       => \App\Services\BotMenuService::titulo(),
+            'archivo'      => \App\Services\BotMenuService::nombreArchivo(),
+            'texto'        => \App\Services\BotMenuService::texto(),
+            'al_preguntar' => \App\Services\BotMenuService::enviarAlPreguntar(),
+        ];
+
         return view('themes.backoffice.pages.bot-configuracion.index', compact(
-            'perfil', 'recinto', 'reglas', 'parametros', 'fotos', 'apr', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
+            'perfil', 'recinto', 'reglas', 'parametros', 'fotos', 'apr', 'menu', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
         ));
     }
 
@@ -379,6 +389,40 @@ class BotConfiguracionController extends Controller
             'fecha'    => (string) $c->updated_at,
             'mensajes' => \App\Services\BotAprendizajeService::transcripcion((int) $c->id),
         ]);
+    }
+
+
+    /**
+     * Menú en PDF que envía el bot (tras el pago y cuando lo piden) + sus textos.
+     */
+    public function updateMenu(Request $request)
+    {
+        $request->validate([
+            'menu_pdf'                 => 'nullable|file|mimes:pdf|max:20480',
+            'menu_titulo'              => 'nullable|string|max:120',
+            'menu_archivo_nombre'      => 'nullable|string|max:120',
+            'menu_texto'               => 'nullable|string|max:1000',
+        ]);
+        $subido = false;
+        $f = $request->file('menu_pdf');
+        if ($f && $f->isValid()) {
+            $dir = public_path(dirname(\App\Services\BotMenuService::ARCHIVO));
+            if (!is_dir($dir)) {
+                @mkdir($dir, 0775, true);
+            }
+            $f->move($dir, basename(\App\Services\BotMenuService::ARCHIVO));
+            $subido = true;
+        }
+        foreach (['menu_titulo', 'menu_archivo_nombre', 'menu_texto'] as $clave) {
+            if ($request->has($clave)) {
+                BotSeccionTexto::where('clave', $clave)->update(['contenido' => (string) $request->input($clave), 'updated_by' => auth()->id()]);
+            }
+        }
+        BotSeccionTexto::where('clave', 'menu_enviar_al_preguntar')->update([
+            'contenido' => $request->has('menu_enviar_al_preguntar') ? '1' : '0', 'updated_by' => auth()->id(),
+        ]);
+        Alert::success('Listo', $subido ? 'Menú actualizado. El bot ya envía el nuevo PDF.' : 'Ajustes del menú guardados.')->showConfirmButton();
+        return redirect(route('backoffice.bot-configuracion.index') . '#menu');
     }
 
 

@@ -90,6 +90,10 @@ class BotPromptService
         $__precioMasaje = '$' . number_format($__extras['masaje'], 0, ',', '.');
         $__precioDyo    = '$' . number_format($__extras['desayuno_once'], 0, ',', '.');
         $__grupoMax     = \App\Services\BotTarifasService::grupoMaximo();
+        $__menuTitulo = \App\Services\BotMenuService::titulo();
+        $__menuAccion = (\App\Services\BotMenuService::url() && \App\Services\BotMenuService::enviarAlPreguntar())
+            ? '"enviar_menu"' . "\n" . '  → El cliente pide ver el menú, la carta o qué se come. datos: {}. El sistema adjunta el PDF del ' . $__menuTitulo . '.' . "\n" . '    En el mensaje di en una línea que se lo envías; no copies el menú completo en el texto.'
+            : '"enviar_menu" (desactivado): si piden el menú, comparte la carta online www.botacura.cl/carta.';
         $__aprendizajes = \App\Services\BotAprendizajeService::textoAprobados();
         $__aprendizajes = $__aprendizajes !== ''
             ? "APRENDIZAJES APROBADOS POR EL EQUIPO (aplícalos siempre; si contradicen una política, manda la política):\n" . $__aprendizajes
@@ -313,7 +317,7 @@ Luego usa accion "crear_reserva" — el sistema crea la reserva en la BD y te de
 el ID + instrucciones de pago. Tú usas esos datos para confirmar al cliente.
 
 ═══════════════════════════════════════════════════════
-MENÚ OTOÑO 2026 — ALMUERZO (productos desde la base de datos)
+MENÚ — ALMUERZO ({$__menuTitulo}; productos desde la base de datos)
 ═══════════════════════════════════════════════════════
 
 Cada persona elige 1 entrada + 1 fondo + 1 acompañamiento.
@@ -419,7 +423,7 @@ debes solicitar las elecciones de menú AL INICIO de la conversación (antes que
 
 "¡Hola [nombre]! 🎉 ¡Tu pago fue confirmado! Tu reserva N°[reserva_id] para el [fecha] está lista.
 
-Te enviamos nuestro menú de otoño 📋 [el sistema envía el PDF automáticamente]
+Te enviamos nuestro menú 📋 [el sistema envía el PDF automáticamente]
 
 Necesitamos que nos envíes las elecciones de [personas] persona(s):
 ✅ 1 Entrada + 1 Plato de Fondo + 1 Acompañamiento por persona
@@ -485,6 +489,8 @@ ACCIONES DISPONIBLES:
     datos.ubicacion_preferida. Si no requiere elección, cuéntale en una línea dónde estarán
     usando "texto_cliente". Si "ok" es false, usa escalar_humano.
   → No inventes nombres de estaciones ni terrazas: usa solo "texto_cliente".
+
+{$__menuAccion}
 
 "reagendar"
   → El cliente pide cambiar la fecha de una reserva que aparece en CONTEXTO DEL CLIENTE.
