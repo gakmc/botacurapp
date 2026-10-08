@@ -911,6 +911,25 @@ class BotController extends Controller
         return ['ok' => true, 'mensaje' => 'Se puede reagendar a ' . $nuevaFecha . '.'];
     }
 
+    /** ¿La reserva incluye desayuno u once? (por el programa o como extra) */
+    private function incluyeDesayunoOnce($r): bool
+    {
+        try {
+            $porPrograma = DB::table('programa_servicio as ps')
+                ->join('servicios as s', 's.id', '=', 'ps.id_servicio')
+                ->where('ps.id_programa', $r->id_programa)
+                ->where(function ($q) {
+                    $q->where('s.nombre_servicio', 'like', '%desayuno%')->orWhere('s.nombre_servicio', 'like', '%once%');
+                })->exists();
+            if ($porPrograma) {
+                return true;
+            }
+            return DB::table('menus')->where('id_reserva', $r->id)->whereIn('tipo_servicio', ['desayuno', 'once'])->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
     private function buscarClientePorTelefono(string $tel)
     {
         $corto = substr($tel, -9);
@@ -938,7 +957,7 @@ class BotController extends Controller
                 ->whereIn('c.whatsapp_cliente', array_unique([$tel, $corto, '+' . $tel, '56' . $corto]))
                 ->where('r.fecha_visita', '>=', $hoy->copy()->subDays(30)->toDateString())
                 ->orderBy('r.fecha_visita')
-                ->select('r.id', 'r.fecha_visita', 'r.cantidad_personas', 'r.estado', 'r.id_programa', 'p.nombre_programa',
+                ->select('r.id', 'r.fecha_visita', 'r.cantidad_personas', 'r.estado', 'r.id_programa', 'p.nombre_programa', 'r.menu_recibido',
                     'p.permite_reprogramacion', 'v.abono_programa', 'v.diferencia_programa', 'v.estado_pago', 'v.total_pagar')
                 ->limit(5)
                 ->get();
@@ -965,7 +984,9 @@ class BotController extends Controller
                     . ", {$r->nombre_programa}, {$r->cantidad_personas} personas, estado: " . ($r->estado ?: 'sin estado')
                     . ($r->abono_programa !== null ? ', abono registrado: $' . number_format($pagado, 0, ',', '.') . ' (pago ' . ($r->estado_pago ?: 'sin estado') . ')' : ', sin pago registrado')
                     . ($r->diferencia_programa !== null ? ', saldo pendiente para el día de la visita: $' . number_format($saldo, 0, ',', '.') : '')
-                    . ". ¿Se puede reagendar?: {$reag}.";
+                    . ". ¿Se puede reagendar?: {$reag}."
+                    . ' Menú: ' . (!empty($r->menu_recibido) && DB::table('menus')->where('id_reserva', $r->id)->whereNotNull('id_producto_fondo')->exists() ? 'ya enviado' : 'pendiente de elegir')
+                    . '; incluye desayuno u once: ' . ($this->incluyeDesayunoOnce($r) ? 'sí (cada persona elige desayuno u once)' : 'no') . '.';
             }
             $holds = DB::table('reserva_holds')
                 ->whereIn('telefono', array_unique([$tel, $corto]))

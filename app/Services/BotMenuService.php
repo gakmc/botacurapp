@@ -23,7 +23,7 @@ class BotMenuService
         return [
             'menu_titulo'               => ['Nombre del menú (ej. Menú Primavera 2026)', 'Menú Otoño 2026'],
             'menu_archivo_nombre'       => ['Nombre del archivo que ve el cliente', 'Menu-Botacura.pdf'],
-            'menu_texto'                => ['Texto que acompaña el PDF', 'Te dejo nuestro menú 🍽️ Cuando lo revisen, me cuentan qué elige cada persona (1 entrada, 1 fondo y 1 acompañamiento).'],
+            'menu_texto'                => ['Texto que acompaña el PDF', 'Te dejo nuestro menú 🍽️ Cuando lo revisen, me cuentan qué elige cada persona: 1 entrada, 1 fondo y 1 acompañamiento. Si su programa incluye desayuno u once, indíquenme también cuál prefiere cada uno.'],
             'menu_enviar_al_preguntar'  => ['Enviar el menú cuando un cliente lo pide (1 = sí, 0 = no)', '1'],
         ];
     }

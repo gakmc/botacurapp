@@ -823,6 +823,7 @@ class BotReservaController extends Controller
             'selecciones.*.acompanamiento_id'   => 'nullable|integer|exists:productos,id',
             'selecciones.*.observacion'         => 'nullable|string|max:500',
             'selecciones.*.alergias'            => 'nullable|string|max:500',
+            'selecciones.*.tipo_servicio'       => 'nullable|string|in:desayuno,once',
         ]);
 
         $reserva = DB::table('reservas')->where('id', $id)->first();
@@ -861,7 +862,7 @@ class BotReservaController extends Controller
                     'observacion'                => $observacion,
                     'alergias'                   => $alergias,
                     'updated_at'                 => now(),
-                ]);
+                ] + (!empty($sel['tipo_servicio']) ? ['tipo_servicio' => $sel['tipo_servicio']] : []));
             } else {
                 // Crear nuevo registro si la reserva no tenía suficientes (edge case)
                 DB::table('menus')->insert([
@@ -871,7 +872,7 @@ class BotReservaController extends Controller
                     'id_producto_acompanamiento' => $acompId,
                     'observacion'                => $observacion,
                     'alergias'                   => $alergias,
-                    'tipo_servicio'              => $reserva->tipo_servicio ?? null,
+                    'tipo_servicio'              => $sel['tipo_servicio'] ?? null,
                     'created_at'                 => now(),
                     'updated_at'                 => now(),
                 ]);

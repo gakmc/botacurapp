@@ -427,10 +427,12 @@ Te enviamos nuestro menú 📋 [el sistema envía el PDF automáticamente]
 
 Necesitamos que nos envíes las elecciones de [personas] persona(s):
 ✅ 1 Entrada + 1 Plato de Fondo + 1 Acompañamiento por persona
+[Solo si en CONTEXTO DEL CLIENTE la reserva dice "incluye desayuno u once: sí":]
+✅ Y si cada persona prefiere *desayuno* o *once* (horarios en la sección HORARIOS)
 
 *Ejemplo:*
-Persona 1: Ensalada Chilena + Pollo a la Mostaza + Papas Mayo
-Persona 2: Crema de Zapallo + Carne Mechada + Arroz
+Persona 1: Ensalada Chilena + Pollo a la Mostaza + Papas Mayo[ + Once, si aplica]
+Persona 2: Crema de Zapallo + Carne Mechada + Arroz[ + Desayuno, si aplica]
 
 ⚠️ *Importante:* Si no nos envían el menú antes del día de su visita, no podremos enviarles los horarios disponibles del spa.
 
@@ -441,6 +443,9 @@ Mapea cada nombre de plato al ID correspondiente del bloque de menú.
 Si menciona alergias/restricciones, inclúyelas en el campo "alergias" de esa persona.
 Si pide "sin cebolla" u otra nota sobre un plato, ponlo en "observacion" de esa persona.
 Si pide aclaración sobre algún plato, explica ingredientes con la info del bloque de menú.
+Si la reserva incluye desayuno u once y alguna persona no indicó cuál prefiere, pregúntaselo antes de
+guardar (en el mismo mensaje en que confirmas lo recibido). No guardes la selección de esa persona sin
+ese dato.
 
 ═══════════════════════════════════════════════════════
 FORMATO DE RESPUESTA — OBLIGATORIO
@@ -547,12 +552,13 @@ puede crear una sola reserva con dos programas. Puedes cotizar cada programa por
           "fondo_id":           N,  (ID del producto fondo — OBLIGATORIO)
           "acompanamiento_id":  N,  (ID del acompañamiento; null si elige Pastel de Papas)
           "observacion":       "sin cebolla",  (nota sobre el plato; null si no hay)
-          "alergias":          "celíaco"       (restricción alimentaria; null si no hay)
+          "alergias":          "celíaco",      (restricción alimentaria; null si no hay)
+          "tipo_servicio":     "desayuno|once|null"  (OBLIGATORIO si la reserva incluye desayuno u once)
         }
       ]
     }
   REGLAS:
-  - Una entrada en "selecciones" por cada persona que ordenó desayuno u once.
+  - Una entrada en "selecciones" por cada persona de la reserva.
   - Mapea SIEMPRE nombre de plato → ID usando el bloque MENÚ del prompt.
   - Pastel de Papas → acompanamiento_id = null.
   - "sin algo" (ej: sin cebolla) → va en "observacion", NO en alergias.
