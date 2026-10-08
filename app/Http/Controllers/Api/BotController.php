@@ -820,7 +820,12 @@ class BotController extends Controller
                 // Orden obligatorio: antes de reservar debe existir una cotización con los MISMOS datos
                 // (programa, fecha, personas, extras y medio de pago), mostrada al cliente en el resumen.
                 if (!$this->hayCotizacionIgual($contexto['historial'] ?? [], $cot)) {
-                    return '[Sistema-reserva: {"ok":false,"error":"falta_cotizacion","motivo":"Antes de crear la reserva usa cotizar con los datos finales (programa, fecha, personas, extras y medio de pago), muestra el resumen con esos montos y pide confirmación."}]';
+                    return '[Sistema-reserva: {"ok":false,"error":"falta_confirmacion","motivo":"Todavía no se puede reservar: muestra el resumen con los montos de la cotización (programa, fecha, personas, extras y medio de pago) y pide al cliente que confirme. Recién cuando responda que sí, usa crear_reserva."}]';
+                }
+                // Evitar duplicados: si ya hay un cupo apartado o una reserva recién creada con los mismos datos, se reutiliza.
+                $previa = $this->reservaPrevia($usuarioId, $datos);
+                if ($previa) {
+                    return '[Sistema-reserva: ' . json_encode($previa, JSON_UNESCAPED_UNICODE) . ' — ya existía: repite las mismas instrucciones de pago, no digas que se creó otra.]';
                 }
                 $planUb = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['ubicacion_preferida'] ?? null);
                 if ($planUb['categoria'] && !$planUb['ok']) {
@@ -912,10 +917,52 @@ class BotController extends Controller
         return null;
     }
 
+    /** Cupo apartado vigente o reserva del bot de las últimas 2 horas con la misma fecha y programa. */
+    private function reservaPrevia(string $tel, array $datos): ?array
+    {
+        try {
+            $tels = array_unique([$tel, substr($tel, -9)]);
+            $h = DB::table('reserva_holds')->whereIn('telefono', $tels)->where('fecha', $datos['fecha'])
+                ->where('programa_id', (int) $datos['programa_id'])->whereIn('estado', ['activo', 'pendiente'])
+                ->where('expira_en', '>', now())->orderBy('id', 'desc')->first();
+            if ($h) {
+                return [
+                    'ok' => true, 'es_hold' => true, 'ya_existia' => true, 'reserva_id' => null, 'personas' => (int) $h->personas,
+                    'valor_total_formato' => '$' . number_format((int) $h->valor_total, 0, ',', '.'),
+                    'abono_50_formato'    => '$' . number_format((int) $h->abono_50, 0, ',', '.'),
+                    'diferencia_formato'  => '$' . number_format((int) $h->diferencia, 0, ',', '.'),
+                    'hold_minutos'        => max(1, now()->diffInMinutes(\Carbon\Carbon::parse($h->expira_en))),
+                    'datos_bancarios'     => config('botacura_pago.datos_bancarios_transferencia'),
+                ];
+            }
+            $r = DB::table('reservas as r')->join('clientes as c', 'c.id', '=', 'r.cliente_id')
+                ->leftJoin('ventas as v', 'v.id_reserva', '=', 'r.id')
+                ->whereIn('c.whatsapp_cliente', array_unique([$tel, substr($tel, -9), '56' . substr($tel, -9)]))
+                ->whereDate('r.fecha_visita', $datos['fecha'])->where('r.id_programa', (int) $datos['programa_id'])
+                ->where('r.fuente', 'bot_whatsapp')->where('r.created_at', '>', now()->subHours(2))
+                ->orderBy('r.id', 'desc')->first(['r.id', 'v.abono_programa', 'v.diferencia_programa', 'v.webpay_url']);
+            if ($r) {
+                $total = (int) $r->abono_programa + (int) $r->diferencia_programa;
+                return [
+                    'ok' => true, 'es_hold' => false, 'ya_existia' => true, 'reserva_id' => (int) $r->id,
+                    'valor_total_formato' => '$' . number_format($total, 0, ',', '.'),
+                    'abono_50_formato'    => '$' . number_format((int) $r->abono_programa, 0, ',', '.'),
+                    'diferencia_formato'  => '$' . number_format((int) $r->diferencia_programa, 0, ',', '.'),
+                    'webpay_url'          => $r->webpay_url,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Bot] Error buscando reserva previa: ' . $e->getMessage());
+        }
+        return null;
+    }
+
     /** ¿Hay en el historial una cotización exitosa con los mismos datos que la reserva? */
     private function hayCotizacionIgual(array $historial, array $cot): bool
     {
         $claves = ['programa_id', 'fecha', 'personas', 'masajes_extra', 'desayuno_once', 'total', 'pago_ahora'];
+        // Solo cuentan cotizaciones de turnos anteriores: el cliente tuvo que ver el resumen y responder.
+        array_pop($historial);
         foreach ($historial as $h) {
             $c = is_string($h['content'] ?? null) ? $h['content'] : '';
             if (strpos($c, '[Sistema-cotizacion: ') === false) {
