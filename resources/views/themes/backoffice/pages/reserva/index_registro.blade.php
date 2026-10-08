@@ -568,7 +568,7 @@ $(document).ready(function () {
 </script>
 
 <style>
-.dyo{--dyo-pad:3px;position:relative;display:inline-grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;padding:var(--dyo-pad);border-radius:999px;background:#f1f5f9;box-shadow:inset 0 0 0 1px #e2e8f0;min-width:220px;user-select:none;transition:box-shadow .2s,opacity .2s}
+.dyo{--dyo-pad:3px;position:relative;display:inline-grid;grid-template-columns:repeat(2,minmax(0,1fr));align-items:center;padding:var(--dyo-pad);border-radius:999px;background:#f1f5f9;box-shadow:inset 0 0 0 1px #e2e8f0;min-width:184px;user-select:none;transition:box-shadow .2s,opacity .2s}
 .dyo[data-valor=""]{background:#fffbeb;box-shadow:inset 0 0 0 1px #fcd34d}
 .dyo-thumb{position:absolute;top:var(--dyo-pad);left:var(--dyo-pad);width:calc(50% - var(--dyo-pad));height:calc(100% - var(--dyo-pad)*2);border-radius:999px;background:#fff;box-shadow:0 1px 2px rgba(15,23,42,.08),0 4px 12px -4px rgba(15,23,42,.18);transition:transform .32s cubic-bezier(.3,1.4,.5,1),background .25s,opacity .2s;opacity:0;transform:scale(.6)}
 .dyo[data-valor="desayuno"] .dyo-thumb{opacity:1;transform:translateX(0);background:linear-gradient(135deg,#fef3c7,#fde68a)}
@@ -588,6 +588,17 @@ $(document).ready(function () {
 @keyframes dyoShake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
 .dyo-ambos{display:inline-flex;align-items:center;font-size:.78rem;font-weight:700;padding:5px 12px;border-radius:999px;background:linear-gradient(135deg,#fef3c7,#e0e7ff);color:#4338ca;box-shadow:inset 0 0 0 1px #c7d2fe}
 .dyo-na{color:#cbd5e1}
+.dyo-td{white-space:nowrap}
+.dyo-scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
+.clx{max-width:100%;box-sizing:border-box;min-width:0}
+.clx-horas{grid-template-columns:repeat(10,minmax(54px,1fr))!important;overflow-x:auto}
+@media (max-width:1440px){
+  .dyo{min-width:0;grid-template-columns:repeat(2,38px)}
+  .dyo-txt{font-size:0;gap:0;padding:7px 0}
+  .dyo-txt svg{width:16px;height:16px}
+  .dyo-ambos{font-size:0;padding:5px 9px}
+  .dyo-ambos:before{content:"D + O";font-size:.74rem}
+}
 .dyo-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);opacity:0;display:flex;align-items:center;gap:8px;background:#0f172a;color:#fff;padding:10px 16px;border-radius:999px;font-size:.88rem;z-index:3000;box-shadow:0 12px 30px -10px rgba(0,0,0,.45);transition:transform .25s,opacity .25s}
 .dyo-toast.ver{transform:translate(-50%,0);opacity:1}
 .dyo-toast i{width:18px;height:18px;border-radius:50%;display:inline-grid;place-items:center;font-style:normal;font-size:.7rem;background:#22c55e}
@@ -597,6 +608,12 @@ $(document).ready(function () {
 (function () {
     var token = (document.querySelector('meta[name="csrf-token"]') || {}).content || '{{ csrf_token() }}';
     var KEY = 'dyo_scroll';
+    // la tabla se desplaza dentro de su caja en vez de ensanchar la página
+    var tb = document.querySelector('.dyo-td') && document.querySelector('.dyo-td').closest('table');
+    if (tb && !tb.parentElement.classList.contains('dyo-scroll')) {
+        var w = document.createElement('div'); w.className = 'dyo-scroll';
+        tb.parentNode.insertBefore(w, tb); w.appendChild(tb);
+    }
     try { var y = sessionStorage.getItem(KEY); if (y !== null) { sessionStorage.removeItem(KEY); window.scrollTo(0, +y); } } catch (e) {}
     function toast(t, mal) {
         var d = document.createElement('div'); d.className = 'dyo-toast' + (mal ? ' mal' : '');
