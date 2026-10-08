@@ -588,6 +588,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('reserva/{reserva}/desayuno_once', 'ReservaController@desayunoOnce')->name('reserva.desayuno_once');
     Route::post('reserva/{reserva}/desayuno_once/rapido', 'ReservaDesayunoOnceRapidoController@guardar')->name('reserva.desayuno_once.rapido');
+    Route::post('reserva/{reserva}/desayuno_once/confirmar', 'ReservaDesayunoOnceRapidoController@confirmar')->name('reserva.desayuno_once.confirmar');
     Route::match(['put', 'patch'], 'reserva/{reserva}/desayuno_once_update', 'ReservaController@desayunoOnceUpdate')->name('reserva.desayuno_once_update');
 
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');

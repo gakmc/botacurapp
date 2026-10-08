@@ -383,22 +383,32 @@
                                         <td class="dyo-td">
                                             @if (\App\Services\DesayunoOnceService::incluye($reserva))
                                                 <?php
-                                                    $dyoD = $reserva->desayunoOnce->where('tipo', 'desayuno')->count() > 0;
-                                                    $dyoO = $reserva->desayunoOnce->where('tipo', 'once')->count() > 0;
+                                                    $dyoFD = $reserva->desayunoOnce->firstWhere('tipo', 'desayuno');
+                                                    $dyoFO = $reserva->desayunoOnce->firstWhere('tipo', 'once');
+                                                    $dyoVal = $dyoFD ? 'desayuno' : ($dyoFO ? 'once' : '');
+                                                    $dyoFila = $dyoFD ?: $dyoFO;
+                                                    $dyoOk = $dyoFila && !empty($dyoFila->confirmado_at);
+                                                    $dyoConf = route('backoffice.reserva.desayuno_once.confirmar', $reserva);
                                                 ?>
-                                                @if ($dyoD && $dyoO)
-                                                    <span class="dyo-ambos" title="Desayuno y once (3 comidas)">Desayuno + Once</span>
+                                                @if ($dyoFD && $dyoFO)
+                                                    <div class="dyo-ambos" data-personas="{{ (int) $reserva->cantidad_personas }}" data-conf="{{ $dyoConf }}" title="Desayuno y once (3 comidas)">
+                                                        <button type="button" class="dyo-chip {{ !empty($dyoFD->confirmado_at) ? 'ok' : '' }}" data-tipo="desayuno" title="{{ \App\Services\DesayunoOnceService::textoConfirmado($dyoFD) ?: 'Confirmar que pasó a desayuno' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg><svg class="dyo-ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                                                        <button type="button" class="dyo-chip {{ !empty($dyoFO->confirmado_at) ? 'ok' : '' }}" data-tipo="once" title="{{ \App\Services\DesayunoOnceService::textoConfirmado($dyoFO) ?: 'Confirmar que pasó a once' }}"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3"/></svg><svg class="dyo-ck" viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
+                                                    </div>
                                                 @else
-                                                    <div class="dyo" role="radiogroup" aria-label="Desayuno u once" data-valor="{{ $dyoD ? 'desayuno' : ($dyoO ? 'once' : '') }}" data-url="{{ route('backoffice.reserva.desayuno_once.rapido', $reserva) }}">
-                                                        <span class="dyo-thumb" aria-hidden="true"></span>
-                                                        <label class="dyo-op" title="Pasaron a desayuno">
-                                                            <input type="radio" class="dyo-in" name="dyo_{{ $reserva->id }}" value="desayuno" {{ $dyoD ? 'checked' : '' }}>
-                                                            <em class="dyo-txt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Desayuno</em>
-                                                        </label>
-                                                        <label class="dyo-op" title="Queda para la once">
-                                                            <input type="radio" class="dyo-in" name="dyo_{{ $reserva->id }}" value="once" {{ $dyoO ? 'checked' : '' }}>
-                                                            <em class="dyo-txt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3"/></svg>Once</em>
-                                                        </label>
+                                                    <div class="dyo-wrap">
+                                                        <div class="dyo {{ $dyoOk ? 'bloq' : '' }}" role="radiogroup" aria-label="Desayuno u once" data-personas="{{ (int) $reserva->cantidad_personas }}" data-valor="{{ $dyoVal }}" data-url="{{ route('backoffice.reserva.desayuno_once.rapido', $reserva) }}">
+                                                            <span class="dyo-thumb" aria-hidden="true"></span>
+                                                            <label class="dyo-op" title="Pasaron a desayuno">
+                                                                <input type="radio" class="dyo-in" name="dyo_{{ $reserva->id }}" value="desayuno" {{ $dyoFD ? 'checked' : '' }}>
+                                                                <em class="dyo-txt"><svg viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="4"/><path d="M12 2v2M12 20v2M4.9 4.9l1.4 1.4M17.7 17.7l1.4 1.4M2 12h2M20 12h2M4.9 19.1l1.4-1.4M17.7 6.3l1.4-1.4"/></svg>Desayuno</em>
+                                                            </label>
+                                                            <label class="dyo-op" title="Queda para la once">
+                                                                <input type="radio" class="dyo-in" name="dyo_{{ $reserva->id }}" value="once" {{ $dyoFO ? 'checked' : '' }}>
+                                                                <em class="dyo-txt"><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M4 9h12v5a5 5 0 0 1-5 5H9a5 5 0 0 1-5-5V9z"/><path d="M16 11h1.5a2.5 2.5 0 0 1 0 5H16M8 3v3M12 3v3"/></svg>Once</em>
+                                                            </label>
+                                                        </div>
+                                                        <button type="button" class="dyo-conf {{ $dyoOk ? 'ok' : '' }}" data-conf="{{ $dyoConf }}" title="{{ $dyoOk ? \App\Services\DesayunoOnceService::textoConfirmado($dyoFila) : 'Confirmar que pasó' }}" {{ $dyoVal ? '' : 'disabled' }}><svg viewBox="0 0 24 24" aria-hidden="true"><path d="M5 12.5l4.5 4.5L19 7.5"/></svg></button>
                                                     </div>
                                                 @endif
                                             @else
@@ -586,8 +596,31 @@ $(document).ready(function () {
 @keyframes dyoPulse{50%{filter:brightness(.92)}}
 .dyo.error{animation:dyoShake .35s}
 @keyframes dyoShake{25%{transform:translateX(-4px)}75%{transform:translateX(4px)}}
-.dyo-ambos{display:inline-flex;align-items:center;font-size:.78rem;font-weight:700;padding:5px 12px;border-radius:999px;background:linear-gradient(135deg,#fef3c7,#e0e7ff);color:#4338ca;box-shadow:inset 0 0 0 1px #c7d2fe}
 .dyo-na{color:#cbd5e1}
+.dyo-wrap{display:inline-flex;align-items:center;gap:6px}
+.dyo-conf{flex:none;width:30px;height:30px;padding:0;border-radius:50%;display:inline-grid;place-items:center;background:#fff;border:1.5px dashed #cbd5e1;color:#94a3b8;cursor:pointer;transition:background .2s,border-color .2s,color .2s,transform .15s}
+.dyo-conf svg,.dyo-chip svg{width:16px;height:16px;fill:none;stroke:currentColor;stroke-width:2.2;stroke-linecap:round;stroke-linejoin:round}
+.dyo-conf:hover:not(:disabled){border-color:#22c55e;color:#16a34a;transform:scale(1.06)}
+.dyo-conf.ok{background:#22c55e;border:1.5px solid #22c55e;color:#fff;animation:dyoPop .3s}
+.dyo-conf.ok:hover{background:#16a34a;border-color:#16a34a;color:#fff}
+.dyo-conf:disabled{opacity:.35;cursor:not-allowed}
+.dyo-conf:focus-visible,.dyo-chip:focus-visible{outline:2px solid #3B82F6;outline-offset:2px}
+.dyo.bloq{pointer-events:none;box-shadow:inset 0 0 0 1.5px #86efac;background:#f0fdf4}
+.dyo.bloq .dyo-thumb{box-shadow:0 1px 2px rgba(15,23,42,.08)}
+.dyo-ambos{display:inline-flex;gap:5px}
+.dyo-chip{display:inline-flex;align-items:center;gap:3px;padding:5px 9px;border-radius:999px;border:1.5px dashed transparent;cursor:pointer;transition:background .2s,border-color .2s,color .2s}
+.dyo-chip[data-tipo=desayuno]{background:#fef3c7;color:#92400e;border-color:#fcd34d}
+.dyo-chip[data-tipo=once]{background:#e0e7ff;color:#3730a3;border-color:#a5b4fc}
+.dyo-chip .dyo-ck{display:none;width:13px;height:13px}
+.dyo-chip.ok{background:#dcfce7;color:#15803d;border-style:solid;border-color:#86efac;animation:dyoPop .3s}
+.dyo-chip.ok .dyo-ck{display:inline}
+.dyo-chip.cargando,.dyo-conf.cargando{opacity:.5;pointer-events:none}
+@keyframes dyoPop{50%{transform:scale(1.15)}}
+.dyo-res{display:flex;justify-content:center;gap:5px;margin-top:4px;font-weight:600;font-size:.72rem;white-space:nowrap}
+.dyo-res span{padding:2px 7px;border-radius:999px}
+.dyo-res .d{background:#fef3c7;color:#92400e}
+.dyo-res .o{background:#e0e7ff;color:#3730a3}
+.dyo-res .lleno{background:#dcfce7;color:#15803d}
 .dyo-td{white-space:nowrap}
 .dyo-scroll{width:100%;max-width:100%;overflow-x:auto;-webkit-overflow-scrolling:touch}
 .clx{max-width:100%;box-sizing:border-box;min-width:0}
@@ -596,8 +629,6 @@ $(document).ready(function () {
   .dyo{min-width:0;grid-template-columns:repeat(2,38px)}
   .dyo-txt{font-size:0;gap:0;padding:7px 0}
   .dyo-txt svg{width:16px;height:16px}
-  .dyo-ambos{font-size:0;padding:5px 9px}
-  .dyo-ambos:before{content:"D + O";font-size:.74rem}
 }
 .dyo-toast{position:fixed;left:50%;bottom:24px;transform:translate(-50%,12px);opacity:0;display:flex;align-items:center;gap:8px;background:#0f172a;color:#fff;padding:10px 16px;border-radius:999px;font-size:.88rem;z-index:3000;box-shadow:0 12px 30px -10px rgba(0,0,0,.45);transition:transform .25s,opacity .25s}
 .dyo-toast.ver{transform:translate(-50%,0);opacity:1}
@@ -621,6 +652,67 @@ $(document).ready(function () {
         document.body.appendChild(d); requestAnimationFrame(function () { d.classList.add('ver'); });
         setTimeout(function () { d.classList.remove('ver'); setTimeout(function () { d.remove(); }, 300); }, 2200);
     }
+
+    function resumen() {
+        var t = { d: [0, 0], o: [0, 0] };
+        document.querySelectorAll('.dyo-wrap').forEach(function (w) {
+            var d = w.querySelector('.dyo'), v = d.dataset.valor, p = +d.dataset.personas || 0;
+            if (!v) return; var k = v === 'desayuno' ? 'd' : 'o';
+            t[k][1] += p; if (w.querySelector('.dyo-conf.ok')) t[k][0] += p;
+        });
+        document.querySelectorAll('.dyo-ambos').forEach(function (a) {
+            var p = +a.dataset.personas || 0;
+            a.querySelectorAll('.dyo-chip').forEach(function (c) {
+                var k = c.dataset.tipo === 'desayuno' ? 'd' : 'o';
+                t[k][1] += p; if (c.classList.contains('ok')) t[k][0] += p;
+            });
+        });
+        var th = Array.prototype.find.call(document.querySelectorAll('th'), function (h) { return /Desayuno\s*\/\s*Once/.test(h.textContent); });
+        if (!th) return;
+        var r = th.querySelector('.dyo-res');
+        if (!r) { r = document.createElement('div'); r.className = 'dyo-res'; th.appendChild(r); }
+        r.innerHTML = '';
+        [['d', 'Desayuno'], ['o', 'Once']].forEach(function (x) {
+            if (!t[x[0]][1]) return;
+            var s = document.createElement('span');
+            s.className = x[0] + (t[x[0]][0] === t[x[0]][1] ? ' lleno' : '');
+            s.textContent = x[1] + ' ' + t[x[0]][0] + '/' + t[x[0]][1];
+            s.title = 'Personas confirmadas / total';
+            r.appendChild(s);
+        });
+    }
+    resumen();
+    document.addEventListener('click', function (e) {
+        var b = e.target.closest && e.target.closest('.dyo-conf, .dyo-chip');
+        if (!b || b.disabled) return;
+        var esChip = b.classList.contains('dyo-chip');
+        var caja = esChip ? b.closest('.dyo-ambos') : b.closest('.dyo-wrap').querySelector('.dyo');
+        var tipo = esChip ? b.dataset.tipo : caja.dataset.valor;
+        if (!tipo) return;
+        var nombre = tipo === 'desayuno' ? 'desayuno' : 'once';
+        var valor = !b.classList.contains('ok');
+        if (!valor && !window.confirm('¿Quitar la confirmación de ' + nombre + '?')) return;
+        b.classList.add('cargando');
+        fetch(b.dataset.conf || caja.dataset.conf, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': token, 'X-Requested-With': 'XMLHttpRequest' },
+            body: JSON.stringify({ tipo: tipo, valor: valor ? 1 : 0 })
+        }).then(function (r) { return r.json().then(function (j) { return [r.ok, j]; }); })
+          .then(function (res) {
+              if (!res[0] || !res[1].ok) throw new Error((res[1] && res[1].mensaje) || 'Error');
+              b.classList.remove('cargando');
+              b.classList.toggle('ok', valor);
+              b.title = valor ? ('Confirmado ' + res[1].hora + (res[1].por ? ' · ' + res[1].por : '')) : (esChip ? 'Confirmar que pasó a ' + nombre : 'Confirmar que pasó');
+              if (!esChip) caja.classList.toggle('bloq', valor);
+              var p = +caja.dataset.personas || 0;
+              toast(valor ? (nombre.charAt(0).toUpperCase() + nombre.slice(1) + ' confirmado · ' + p + (p === 1 ? ' persona' : ' personas')) : 'Confirmación quitada');
+              resumen();
+          })
+          .catch(function (err) {
+              b.classList.remove('cargando');
+              toast('No se pudo confirmar: ' + err.message, true);
+          });
+    });
     document.addEventListener('change', function (e) {
         var inp = e.target;
         if (!inp.classList || !inp.classList.contains('dyo-in')) return;
