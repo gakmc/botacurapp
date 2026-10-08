@@ -14,6 +14,24 @@
 @endsection
 
 @section('content')
+
+<div class="section">
+    <a href="?page=1"><p class="caption"><strong>Reservas {{$fechaF}}</strong></p></a>
+
+    <div class="row">
+        <div class="col s2 green-text offset-s1">
+            <i class='material-icons left'>done_all</i>Registro completo
+        </div>
+        <div class="col s2 green-text offset-s1">
+            <i class='material-icons left'>check</i>Registro incompleto
+        </div>
+        <div class="col s2 red-text offset-s1">
+            <i class='material-icons left'>close</i>No Registra
+        </div> 
+        <div class="col s2 red-text offset-s1">
+            <i class='material-icons left'>do_not_disturb_alt</i>No Aplica
+        </div> 
+    </div>
     {{-- ===== Widget del clima del día (Open-Meteo, sin clave) ===== --}}
     <div class="clx" id="clx" data-lat="-33.596" data-lon="-70.406" data-fecha="{{ $fechaF ?: now()->format('Y-m-d') }}">
         <div class="clx-head">
@@ -143,23 +161,6 @@
     })();
     </script>
 
-<div class="section">
-    <a href="?page=1"><p class="caption"><strong>Reservas {{$fechaF}}</strong></p></a>
-
-    <div class="row">
-        <div class="col s2 green-text offset-s1">
-            <i class='material-icons left'>done_all</i>Registro completo
-        </div>
-        <div class="col s2 green-text offset-s1">
-            <i class='material-icons left'>check</i>Registro incompleto
-        </div>
-        <div class="col s2 red-text offset-s1">
-            <i class='material-icons left'>close</i>No Registra
-        </div> 
-        <div class="col s2 red-text offset-s1">
-            <i class='material-icons left'>do_not_disturb_alt</i>No Aplica
-        </div> 
-    </div>
     
     <div class="divider"></div>
     <div id="basic-form" class="section">
@@ -241,8 +242,8 @@
                                     <th>Cant. Personas</th>
                                     <th>Programa</th>
                                     <th>Ubicación</th>
-                                    <th>Menus</th>
                                     <th>Desayuno / Once</th>
+                                    <th>Menus</th>
                                     <th>Spa</th>
                                     <th>Masajes</th>
                                 </tr>
@@ -379,11 +380,6 @@
                                             @endif
                                             
                                         </td>
-                                        <td>
-                                            <a href="{{$linkMenu}}">
-                                                <i class='material-icons {{$colorMenu}}-text'>{{$iconoMenu}}</i>
-                                            </a>
-                                        </td>
                                         <td class="dyo-td">
                                             @if (\App\Services\DesayunoOnceService::incluye($reserva))
                                                 <?php
@@ -408,6 +404,11 @@
                                             @else
                                                 <span class="dyo-na">—</span>
                                             @endif
+                                        </td>
+                                        <td>
+                                            <a href="{{$linkMenu}}">
+                                                <i class='material-icons {{$colorMenu}}-text'>{{$iconoMenu}}</i>
+                                            </a>
                                         </td>
                                         <td>
                                             <a href="{{$linkVisita}}">
