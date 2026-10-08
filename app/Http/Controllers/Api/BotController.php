@@ -39,6 +39,9 @@ class BotController extends Controller
     /** Imágenes que el sistema adjunta a la respuesta (fotos de ubicaciones). */
     private $imagenes = [];
 
+    /** true si la ubicación se resolvió automáticamente junto con la disponibilidad. */
+    private $ubicacionAuto = false;
+
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot/ping
     // ─────────────────────────────────────────────────────────────
@@ -650,6 +653,9 @@ class BotController extends Controller
                 break;
             }
             $acciones[] = $accion;
+            if ($this->ubicacionAuto && !in_array('ubicaciones', $acciones, true)) {
+                $acciones[] = 'ubicaciones';
+            }
             // El resultado del sistema queda guardado en el historial (memoria del bot).
             $ultimo = count($historial) - 1;
             $historial[$ultimo]['content'] .= "\n\n" . $ctx;
@@ -768,18 +774,37 @@ class BotController extends Controller
                     'fecha'       => $datos['fecha'],
                     'personas'    => $datos['personas'] ?? 1,
                 ]);
-                $reglas = array_values(array_filter($cot['errores'], function ($e) {
-                    return in_array($e['codigo'], ['grupo_grande', 'agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida', 'sin_cupo_masajes'], true);
+                $conPrograma = !empty($datos['programa_id']);
+                $codigos = ['grupo_grande', 'agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida', 'sin_cupo_masajes'];
+                if ($conPrograma) {
+                    // Con programa elegido también aplican sus reglas (programas S, mínimo de personas, programa no disponible).
+                    $codigos = array_merge($codigos, ['programa_no_disponible', 'minimo_personas', 'semana_solo_lunes_viernes', 'semana_feriado', 'semana_fuera_de_temporada']);
+                }
+                $reglas = array_values(array_filter($cot['errores'], function ($e) use ($codigos) {
+                    return in_array($e['codigo'], $codigos, true);
                 }));
                 if ($reglas) {
-                    return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ']';
+                    return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ' — explica el motivo y ofrece una alternativa válida (otra fecha o el programa regular equivalente).]';
                 }
                 $query = ['fecha' => $datos['fecha'], 'personas' => $datos['personas'] ?? 1];
-                if (!empty($datos['programa_id'])) {
+                if ($conPrograma) {
                     $query['programa_id'] = $datos['programa_id'];
                 }
                 $res = $this->disponibilidad(new Request($query));
-                return '[Sistema-disponibilidad: ' . $res->getContent() . ']';
+                $ctx = '[Sistema-disponibilidad: ' . $res->getContent() . ']';
+                // Orden: con disponibilidad confirmada, el sistema resuelve la ubicación de inmediato.
+                $disp = json_decode($res->getContent(), true) ?: [];
+                if ($conPrograma && !empty($datos['personas']) && !empty($disp['disponible'])) {
+                    $ub = $this->ejecutarAccion('ubicaciones', [
+                        'programa_id' => $datos['programa_id'], 'fecha' => $datos['fecha'], 'personas' => $datos['personas'],
+                        'preferencia' => $datos['preferencia'] ?? null,
+                    ], $usuarioId, $contexto, $simulacion);
+                    if ($ub && strpos($ub, '"categoria":null') === false) {
+                        $ctx .= "\n\n" . $ub . ' Resuelve la ubicación ahora (antes de pedir los datos personales).';
+                        $this->ubicacionAuto = true;
+                    }
+                }
+                return $ctx;
             }
 
             if ($accion === 'crear_reserva') {

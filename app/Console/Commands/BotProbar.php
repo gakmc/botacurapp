@@ -200,7 +200,7 @@ class BotProbar extends Command
                 'Hola, quiero reservar para 2 personas',
                 'El Wellness Plus',
                 "El {$txtSab}",
-                'No, ninguna ocasión especial',
+                'La terraza. Y no es ninguna ocasión especial',
                 'Juan Prueba',
                 'Sí, ese mismo número',
                 'prueba@botacura.cl',

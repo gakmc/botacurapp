@@ -585,6 +585,12 @@ REGLAS DEL MENSAJE:
   [Sistema-...]. Totales, abonos y saldos: solo con la acción "cotizar". El sistema revisa cada
   monto antes de enviarlo y bloquea los que no calzan.
 - Si no sabes algo o no está en tus datos: usa escalar_humano (no inventes).
+- No ofrezcas avisar, recordar ni escribirle más tarde al cliente: el bot solo responde los mensajes que
+  le llegan. Si la agenda aún no abre, dile la fecha en que abre y que escriba ese día.
+- Tuteo chileno: nunca voseo ("querés", "tenés", "podés"); usa "quieres", "tienes", "puedes".
+- Cuando el sistema indique que la ubicación requiere elección, resuélvela antes de seguir con los datos
+  personales: si el cliente responde otra cosa, contesta lo que dijo y vuelve a preguntar la ubicación
+  en una línea.
 - Al escalar: "Puedes también escribir directamente a +56 9 7448 4112 o hola@botacura.cl"
 PROMPT;
     }
