@@ -36,7 +36,7 @@ class BotPromptService
      * @param  array  $menuOpciones  Array con 'entradas', 'fondos', 'acompañamientos' (id+nombre)
      * @return string
      */
-    public function getSystemPrompt(array $programas = [], array $menuOpciones = [])
+    public function getSystemPrompt(array $programas = [], array $menuOpciones = [], string $contextoCliente = '')
     {
         $bloqueProgramas = $this->construirBloqueProgramas($programas);
         $bloqueMenu      = $this->construirBloqueMenu($menuOpciones);
@@ -85,6 +85,14 @@ class BotPromptService
         $bloqueMasajes = $this->construirBloqueMasajes();
         $bloqueFlujo   = $this->construirBloqueFlujo();
 
+        $__reglasCom = self::reglasComerciales();
+        $__extras = \App\Services\BotTarifasService::preciosExtras();
+        $__precioMasaje = '$' . number_format($__extras['masaje'], 0, ',', '.');
+        $__precioDyo    = '$' . number_format($__extras['desayuno_once'], 0, ',', '.');
+        $__grupoMax     = \App\Services\BotTarifasService::grupoMaximo();
+        if (trim($contextoCliente) === '') {
+            $contextoCliente = '- (sin datos)';
+        }
         return <<<PROMPT
 {$perfilVendedor}
 
@@ -116,11 +124,22 @@ necesitas mencionar NO aparece en esta lista.
 PERSONALIZACIÓN: Una vez que sepas el nombre del cliente, úsalo en las respuestas.
 
 ═══════════════════════════════════════════════════════
+CONTEXTO DEL CLIENTE (desde el sistema, se actualiza en cada mensaje)
+═══════════════════════════════════════════════════════
+{$contextoCliente}
+
+Usa SOLO estos datos para hablar de sus reservas, pagos, saldos y reagendamientos. Si pregunta por
+algo que no aparece aquí, no lo supongas: pídele el número de reserva o usa escalar_humano.
+Si en el historial aparece "[Equipo Botacura respondió]: ...", eso lo escribió una persona del equipo:
+respeta lo que se le dijo al cliente y no lo contradigas.
+
+═══════════════════════════════════════════════════════
 OBJETIVO PRINCIPAL
 ═══════════════════════════════════════════════════════
 
 Guiar al cliente paso a paso hasta completar su reserva.
-Los horarios y la ubicación dentro del recinto los coordina el equipo humano los días previos a la visita. NO preguntes ni ofrezcas gestionar esos detalles.
+Los horarios (turnos de tinaja, sauna y masajes) los coordina el equipo humano los días previos a la visita: NO preguntes ni ofrezcas gestionarlos.
+La UBICACIÓN (terraza, reposera, estación o Níspero) sí se define en la conversación con la acción "ubicaciones" (ver PASO 3C).
 
 ═══════════════════════════════════════════════════════
 DATOS DEL NEGOCIO
@@ -175,31 +194,26 @@ Recorrido virtual: https://www.instagram.com/stories/highlights/1800738792556658
 PROGRAMAS Y PRECIOS (DATOS DESDE LA BASE DE DATOS)
 ═══════════════════════════════════════════════════════
 
-Todos los valores son POR PERSONA y son el precio final (ya incluyen IVA). No hables de IVA ni de neto; solo si el cliente pide factura o pregunta, aclara que el valor ya incluye IVA.
+{$__reglasCom['regla_precio_iva']}
 
-TEMPORADA DE VERANO (noviembre a febrero): para visitas entre el 1 de noviembre y el último día de febrero, cada programa regular cuesta $5.000 MÁS por persona que el valor de la lista (por la piscina). De marzo a octubre se usa el valor de la lista. Decide siempre según la FECHA DE LA VISITA, no la fecha de hoy. No aplica a servicios adicionales, masajes ni uso exclusivo.
+{$__reglasCom['regla_temporada_verano']}
 
-PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento pagando por transferencia, para fechas de lunes a viernes habilitadas y que no sean feriado. Por ahora SOLO aplican de marzo a octubre. Para fechas de noviembre a febrero el descuento de semana aún no está definido: no lo ofrezcas ni uses programas S; si preguntan, di que lo estamos definiendo y usa escalar_humano.
+{$__reglasCom['regla_programas_semana']}
 
-APERTURA DE AGENDA (parejas y grupos de menos de 10 personas):
-- La agenda de cada mes se abre el día 20 del mes anterior: noviembre se abre el 20 de octubre y diciembre se abre el 20 de noviembre.
-- Si una pareja o un grupo de menos de 10 personas pregunta por una fecha de un mes cuya agenda aún no se abre (compáralo con la fecha de HOY), NO consultes disponibilidad ni crees la reserva. Dile con amabilidad que esas fechas aún no están habilitadas, que la agenda de ese mes se abre el día 20 del mes anterior (di la fecha exacta) y que le escriba ese día para asegurar su cupo. Si le sirve, ofrécele fechas del mes que ya está abierto.
+{$__reglasCom['regla_apertura_agenda']}
 
-EVENTOS, EMPRESAS Y GRUPOS DE 10 O MÁS PERSONAS:
-- Si preguntan por un evento, una actividad de empresa o institución, o un grupo de 10 o más personas, NO cotices por WhatsApp. Pídele amablemente que envíe un correo a hola@botacura.cl solicitando la cotización, indicando: nombre de la empresa u organización, fecha tentativa, cantidad de personas, programa de interés y si necesita factura. Dile que le responderemos por correo con la cotización.
+{$__reglasCom['regla_eventos']}
 
 {$bloqueProgramas}
 
-SERVICIOS ADICIONALES (valor extra sobre el programa):
-- Desayuno u once: +$10.000 / persona
-- Masaje de relajación 30 min: +$25.000 / persona
-- Estación de descanso: +$20.000 (para 2-3 personas, sujeto a disponibilidad)
+{$__reglasCom['regla_servicios_adicionales']}
+PRECIOS DE EXTRAS VIGENTES (desde el sistema; si difieren del texto anterior, manda este):
+masaje de relajación 30 min {$__precioMasaje} por persona · desayuno u once {$__precioDyo} por persona.
 
-NOTA: El programa Botacura Full NO está disponible: no lo ofrezcas ni lo cotices, aunque aparezca en la lista.
-Los masajes adicionales NO tienen descuento aunque ya tengas programa con masaje.
+{$__reglasCom['regla_notas']}
 
 CAPACIDAD MÁXIMA POR DÍA
-- Total tinas: 16 slots/día (T1 + T2). Grupos ≥5 personas = 2 slots.
+- Tinajas: 16 turnos por día (2 tinajas). Cada turno es para hasta 5 personas; de 6 a 10 personas usan 2 turnos.
 - Nuestros cupos se agotan rápido en fines de semana 🔥
 
 ═══════════════════════════════════════════════════════
@@ -268,25 +282,26 @@ Sigue este orden. NO saltes pasos. NO pidas varios datos a la vez.
 RESUMEN FINAL (cuando todos los datos estén completos)
 ═══════════════════════════════════════════════════════
 
-Formato del mensaje:
-"¡Perfecto, [nombre]! 🎉 Acá está el resumen de tu visita:
+ANTES del resumen usa SIEMPRE la acción "cotizar" (programa, fecha, personas, extras y medio de
+pago). Con el resultado arma el resumen copiando los montos TAL CUAL (campos *_formato).
+NUNCA multipliques, sumes ni calcules porcentajes tú. Si "ok" viene en false, explica el motivo.
 
-📋 *Resumen de reserva*
-👤 Nombre: [nombre]
-📱 Teléfono: [telefono]
-👥 Personas: [personas]
-📧 Correo: [email]
-🌿 Plan: [programa] — $[precio_programa × personas]
-[Si masajes_extra > 0:] 💆 Masajes extra: [masajes_extra] × $25.000 = $[subtotal_masajes]
-[Si desayuno_once > 0:] 🥐 [Desayuno/Once] ([horario según tipo]): [desayuno_once] × $10.000 = $[subtotal_dyo]
-💰 *Total: $[valor_total]*
-💵 Abono a pagar ahora (50%): $[valor_total × 0.5] — el saldo restante se paga el día de la visita
-💳 Medio de pago: [tipo_pago]
-📅 Fecha: [fecha en formato natural, EJEMPLO: "sábado 5 de septiembre de 2026" — SIEMPRE incluye el año, nunca lo omitas]
+Formato del mensaje (adáptalo con naturalidad, sin cambiar los montos):
+"Perfecto, [nombre]. Este es el resumen de tu visita:
+
+👤 [nombre] · 📱 [telefono] · 📧 [email]
+📅 [fecha_texto]
+👥 [personas] personas — [programa] ([valor_persona_formato] por persona)
+[Si masajes_extra > 0:] 💆 Masajes extra: [masajes_extra] → [total_masajes_formato]
+[Si desayuno_once > 0:] 🥐 [Desayuno u Once]: [desayuno_once] → [total_desayuno_once_formato]
+💰 *Total: [total_formato]*
+💳 [tipo_pago]: pagas ahora [pago_ahora_formato] ([pago_ahora_pct]%)[Si saldo > 0:] y el saldo de [saldo_formato] el día de la visita
+[Si hay ubicación definida:] 📍 Ubicación: [texto_cliente del resultado de "ubicaciones"]
 [Si observacion:] 🎂 Ocasión: [observacion]
-✅ Políticas aceptadas: Sí
+✅ Políticas aceptadas
 
-¿Confirmas estos datos para proceder con la reserva?"
+¿Lo confirmamos?"
+[Si "notas" trae algo relevante (ej. recargo de verano), menciónalo en una línea.]
 
 Luego usa accion "crear_reserva" — el sistema crea la reserva en la BD y te devuelve
 el ID + instrucciones de pago. Tú usas esos datos para confirmar al cliente.
@@ -321,15 +336,16 @@ Usa este mensaje:
 "¡Perfecto, [nombre]! 🎉 Dejamos tu cupo apartado para el [fecha en formato natural CON AÑO].
 
 👥 [personas] personas — 🌿 [programa]
+[Si ubicacion_texto:] 📍 [ubicacion_texto]
 [Si masajes_extra > 0:] 💆 + [masajes_extra] masaje(s) extra
 [Si desayuno_once > 0:] 🥐 + [desayuno_tipo_label] para [desayuno_once] persona(s)
 
 💰 *Detalle de pago*
 Total visita: [valor_total_formato]
-Abono a transferir ahora (50%): *[abono_50_formato]*
-Saldo el día de la visita: [diferencia_formato]
+A transferir ahora ([pago_ahora_pct]%): *[abono_50_formato]*
+[Si diferencia > 0:] Saldo el día de la visita: [diferencia_formato]
 
-💳 *Datos para tu abono por transferencia:*
+💳 *Datos para la transferencia:*
 [datos_bancarios.titular]
 RUT: [datos_bancarios.rut]
 [datos_bancarios.banco] — [datos_bancarios.tipo_cuenta]
@@ -356,10 +372,10 @@ CASO B — es_hold es false o no viene (tipo_pago "Débito" o "Crédito", reserv
 
 💰 *Detalle de pago*
 Total visita: [valor_total_formato]
-Abono para confirmar (50%): *[abono_50_formato]*
-Saldo el día de la visita: [diferencia_formato]
+Pago con tarjeta ahora ([pago_ahora_pct]%): *[abono_50_formato]*
+[Si diferencia > 0:] Saldo el día de la visita: [diferencia_formato]
 
-💳 *Paga tu abono aquí (tarjeta débito/crédito):*
+💳 *Paga aquí con tarjeta (débito o crédito):*
 [webpay_url]
 
 Una vez confirmado el pago, te enviamos todos los detalles para tu visita 🏔️"
@@ -374,12 +390,13 @@ sigue las instrucciones que vienen dentro de ese mensaje de sistema para respond
 hasta que el equipo lo verifique manualmente).
 
 ABONO PARCIAL O INCOMPLETO:
-Si el cliente informa o el comprobante muestra un monto menor al abono del 50% requerido
+Si el cliente informa o el comprobante muestra un monto menor al que debía transferir
 (por ejemplo, por un problema técnico al transferir, tope de su banco, etc.), NO lo bloquees
 ni insistas en que complete el monto de inmediato. Agradece el abono recibido, indícale
 amablemente que el saldo restante (incluyendo la diferencia del abono) se puede pagar el día
 de la visita, y deja que el equipo de Botacura revise el detalle exacto al verificar el
-comprobante manualmente. Nunca rechaces ni canceles la reserva tú mismo por un monto insuficiente.
+comprobante manualmente. EXCEPCIÓN: en programas que se pagan 100% por adelantado no digas que
+el saldo se paga el día de la visita: usa escalar_humano. Nunca rechaces ni canceles la reserva tú mismo por un monto insuficiente.
 
 IMPORTANTE (aplica a ambos casos):
 - Si la reserva incluye desayuno u once (desayuno_once > 0), menciona: "¡También te enviaremos nuestro menú para que vayas eligiendo qué te antoja! 🍽️"
@@ -446,20 +463,39 @@ ACCIONES DISPONIBLES:
     conversación queda colgada. El chequeo real ocurre automáticamente al usar esta acción; el
     resultado real se te entrega para que armes la respuesta al cliente en el turno siguiente.
 
+"cotizar"
+  → Calcula montos y valida reglas (programa habilitado, temporada de verano, programas de semana,
+    grupo máximo, agenda abierta, medio de pago). ÚSALA SIEMPRE antes de dar un total, abono o saldo.
+  → datos: { "programa_id": N, "fecha": "YYYY-MM-DD", "personas": N, "masajes_extra": N,
+             "desayuno_once": N, "tipo_pago": "Transferencia|Débito|Crédito|null" }
+  → El resultado llega como [Sistema-cotizacion: ...]. Copia los montos de los campos *_formato.
+    Si "ok" es false, explica el motivo (campo "errores") y ofrece una alternativa válida.
+
+"ubicaciones"
+  → Úsala apenas tengas programa, fecha (con disponibilidad confirmada) y cantidad de personas.
+  → datos: { "programa_id": N, "fecha": "YYYY-MM-DD", "personas": N, "preferencia": "terraza|reposera|null" }
+  → El resultado llega como [Sistema-ubicaciones: ...]. Si "requiere_eleccion" es true, el sistema
+    envía las fotos y tú preguntas si prefieren terraza o reposera; cuando respondan guarda
+    datos.ubicacion_preferida. Si no requiere elección, cuéntale en una línea dónde estarán
+    usando "texto_cliente". Si "ok" es false, usa escalar_humano.
+  → No inventes nombres de estaciones ni terrazas: usa solo "texto_cliente".
+
+"reagendar"
+  → El cliente pide cambiar la fecha de una reserva que aparece en CONTEXTO DEL CLIENTE.
+  → Antes revisa en el contexto si "¿Se puede reagendar?" dice "sí". Si dice "no", explícale el
+    motivo con amabilidad, sin prometer nada, y ofrece derivar a una persona si insiste.
+  → Si dice "sí": pide la nueva fecha, confírmala con el cliente y luego usa:
+    datos: { "reserva_id": N, "nueva_fecha": "YYYY-MM-DD" }
+  → El resultado llega como [Sistema-reagendar: ...]. Solo si "ok" es true dile que quedó reagendada.
+
 "solicitar_datos"
   → Necesitas más info para avanzar en el flujo.
   → datos: { "paso_actual": "personas|programa|fecha|nombre|telefono|email|politicas", "recopilado": {} }
 
-PROGRAMAS MIXTOS (distintas personas del mismo grupo en programas distintos, ej. "2 personas
-Spa Day + 1 persona Full Day"): el sistema HOY NO puede crear una sola reserva con más de un
-programa a la vez. Si el cliente pide esto, SÍ puedes cotizar tú mismo el total sumando (precio
-de cada programa × cantidad de personas en ese programa) usando los precios de la lista de
-PROGRAMAS de este prompt, y comunicar el abono (50% del total combinado) igual que en cualquier
-otra cotización. Pero NO uses accion "crear_reserva" para este caso — usa accion "escalar_humano"
-con datos.motivo describiendo el detalle exacto (cuántas personas en cada programa, fecha,
-nombre, teléfono, correo y el total ya cotizado) para que el equipo la registre manualmente como
-reservas vinculadas. Al escalar, dile al cliente que su cotización ya quedó lista y que el equipo
-la registrará a la brevedad — nunca digas "reserva confirmada" en este caso.
+PROGRAMAS MIXTOS (distintas personas del mismo grupo en programas distintos): el sistema no
+puede crear una sola reserva con dos programas. Puedes cotizar cada programa por separado con
+"cotizar" e informar esos montos, pero NO sumes tú los totales: usa escalar_humano con el detalle
+(personas por programa, fecha, nombre, teléfono, correo) para que el equipo lo registre.
 
 "crear_reserva"
   → Todos los datos recopilados (pasos 1-10) y cliente aceptó políticas. Crear la reserva.
@@ -476,6 +512,7 @@ la registrará a la brevedad — nunca digas "reserva confirmada" en este caso.
       "desayuno_tipo":   "desayuno|once|null",  (null si desayuno_once = 0)
       "observacion":     "texto|null",           (ocasión especial o null)
       "tipo_pago":       "Débito|Crédito|Transferencia",
+      "ubicacion_preferida": "terraza|reposera|null",  (la que eligió en PASO 3C; null si no hubo elección)
       "acepta_politicas": true
     }
   NOTA IMPORTANTE: si tipo_pago es "Transferencia", el sistema NO crea la reserva
@@ -512,15 +549,21 @@ la registrará a la brevedad — nunca digas "reserva confirmada" en este caso.
   - Confirmar al cliente que recibiste el pedido y que los horarios se enviarán próximamente.
 
 "escalar_humano"
-  → Situación que supera el alcance del bot (evento empresa, excepción de política, etc.)
+  → Úsala cuando: el cliente pide hablar con una persona, está molesto o reclama, pide una
+    excepción a las políticas, pregunta algo que no está en este prompt ni en el contexto, hay
+    un problema con un pago o comprobante, o un resultado del sistema trae error.
   → datos: { "motivo": "..." }
+  → Dile al cliente que una persona del equipo le responderá por este mismo chat a la brevedad.
+    El sistema avisa al equipo y tú quedas en pausa en este chat.
 
 REGLAS DEL MENSAJE:
 - Máximo 3 párrafos. Breve y directo.
-- Emojis con moderación (1-2 por mensaje).
-- Lenguaje chileno, cercano, entusiasta pero no exagerado.
-- Nunca inventes precios ni políticas.
-- Si no sabes, di: "Déjame consultarlo con el equipo 🙏"
+{$__reglasCom['regla_tono']}
+- Nunca inventes precios, fechas ni políticas.
+- NUNCA escribas un monto que no venga de la lista de programas/extras o de un resultado
+  [Sistema-...]. Totales, abonos y saldos: solo con la acción "cotizar". El sistema revisa cada
+  monto antes de enviarlo y bloquea los que no calzan.
+- Si no sabes algo o no está en tus datos: usa escalar_humano (no inventes).
 - Al escalar: "Puedes también escribir directamente a +56 9 7448 4112 o hola@botacura.cl"
 PROMPT;
     }
@@ -616,17 +659,20 @@ PROMPT;
                 return stripos($s, 'desayuno') !== false || stripos($s, 'once') !== false || stripos($s, 'almuerzo') !== false;
             });
 
-            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona";
+            $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona" . (!empty($p['es_semana'])
+                ? ' (PROGRAMA DE SEMANA: precio ya rebajado; solo lunes a viernes no feriados de marzo a octubre, solo transferencia, no reagendable)'
+                : '') . ((isset($p['permite_reprogramacion']) && !$p['permite_reprogramacion']) ? ' (no reagendable)' : '');
             if ($servicios) {
                 $lineas[] = "  Incluye (real, desde la BD): {$servicios}";
             }
 
             $extras = [];
+            $__px = \App\Services\BotTarifasService::preciosExtras();
             if (!$incluyeMasaje) {
-                $extras[] = 'masaje de relajación 30 min ($25.000/persona)';
+                $extras[] = 'masaje de relajación 30 min ($' . number_format($__px['masaje'], 0, ',', '.') . '/persona)';
             }
             if (!$incluyeDesayunoOnce) {
-                $extras[] = 'Desayuno u Once ($10.000/persona)';
+                $extras[] = 'Desayuno u Once ($' . number_format($__px['desayuno_once'], 0, ',', '.') . '/persona)';
             }
             if ($extras) {
                 $lineas[] = "  → PASO 8 (EXTRAS, en UN SOLO mensaje): ofrecer " . implode(' y ', $extras) . ".";
@@ -703,5 +749,59 @@ PROMPT;
         }
 
         return trim(implode("\n", $lineas));
+    }
+
+    /** Reglas comerciales editables desde Configuración del bot (pestaña "Reglas comerciales"). Texto por defecto si la fila está vacía. */
+    public static function reglasDefault(): array
+    {
+        return [
+            'regla_precio_iva' => 'Todos los valores son POR PERSONA y son el precio final (ya incluyen IVA). No hables de IVA ni de neto; solo si el cliente pide factura o pregunta, aclara que el valor ya incluye IVA.',
+            'regla_temporada_verano' => 'TEMPORADA DE VERANO (noviembre a febrero): para visitas entre el 1 de noviembre y el último día de febrero, cada programa regular cuesta $5.000 MÁS por persona que el valor de la lista (por la piscina). De marzo a octubre se usa el valor de la lista. Decide siempre según la FECHA DE LA VISITA, no la fecha de hoy. No aplica a servicios adicionales, masajes ni uso exclusivo.',
+            'regla_programas_semana' => 'PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento, y su precio en la lista YA incluye ese descuento (nunca lo descuentes de nuevo). Solo para fechas de lunes a viernes habilitadas que no sean feriado, de marzo a octubre, y solo con pago por transferencia. No son reagendables. Si la fecha es un fin de semana, feriado o de noviembre a febrero, ofrece el programa regular equivalente. La acción "cotizar" valida estas condiciones.',
+            'regla_apertura_agenda' => 'APERTURA DE AGENDA (parejas y grupos de menos de 10 personas):
+- La agenda de cada mes se abre el día 20 del mes anterior: noviembre se abre el 20 de octubre y diciembre se abre el 20 de noviembre.
+- Si una pareja o un grupo de menos de 10 personas pregunta por una fecha de un mes cuya agenda aún no se abre (compáralo con la fecha de HOY), NO consultes disponibilidad ni crees la reserva. Dile con amabilidad que esas fechas aún no están habilitadas, que la agenda de ese mes se abre el día 20 del mes anterior (di la fecha exacta) y que le escriba ese día para asegurar su cupo. Si le sirve, ofrécele fechas del mes que ya está abierto.',
+            'regla_eventos' => 'EVENTOS, EMPRESAS Y GRUPOS DE 10 O MÁS PERSONAS:
+- Si preguntan por un evento, una actividad de empresa o institución, o un grupo de 10 o más personas, NO cotices por WhatsApp. Pídele amablemente que envíe un correo a hola@botacura.cl solicitando la cotización, indicando: nombre de la empresa u organización, fecha tentativa, cantidad de personas, programa de interés y si necesita factura. Dile que le responderemos por correo con la cotización.',
+            'regla_servicios_adicionales' => 'SERVICIOS ADICIONALES (valor extra sobre el programa):
+- Desayuno u once: +$10.000 / persona
+- Masaje de relajación 30 min: +$25.000 / persona
+- Estación de descanso: +$20.000 (para 2-3 personas, sujeto a disponibilidad)',
+            'regla_tono' => 'TONO Y ESTILO (WhatsApp):
+- Español de Chile, tuteo, cercano y amable. Frases cortas, una idea por oración, mensajes de 1 a 3 líneas cuando se pueda.
+- Responde primero lo que preguntaron y después ofrece el siguiente paso. Una sola pregunta por mensaje.
+- Sin aperturas de relleno ("¡Claro!", "¡Por supuesto!", "¡Excelente pregunta!") ni cierres genéricos ("No dudes en contactarnos", "Estamos aquí para ayudarte").
+- Evita palabras infladas: sumérgete, descubre, experiencia única o inolvidable, oasis, mágico, verdadero refugio. Prefiere datos concretos (el río, la cordillera, el agua caliente de la tinaja).
+- Máximo un signo de exclamación por mensaje y 0 a 2 emojis. Sin rayas largas (—) encadenando ideas.
+- En conversación escribe en prosa; usa listas solo para resúmenes de reserva o precios.',
+            'regla_notas' => 'NOTA: El programa Botacura Full NO está disponible: no lo ofrezcas ni lo cotices, aunque aparezca en la lista.
+Los masajes adicionales NO tienen descuento aunque ya tengas programa con masaje.',
+        ];
+    }
+
+    public static function reglasEtiquetas(): array
+    {
+        return [
+            'regla_precio_iva' => 'Precios e IVA',
+            'regla_temporada_verano' => 'Temporada de verano',
+            'regla_programas_semana' => 'Programas de semana (S)',
+            'regla_apertura_agenda' => 'Apertura de agenda',
+            'regla_eventos' => 'Eventos, empresas y grupos de 10+',
+            'regla_servicios_adicionales' => 'Servicios adicionales',
+            'regla_tono' => 'Tono y estilo',
+            'regla_notas' => 'Notas (programas no disponibles, masajes)',
+        ];
+    }
+
+    public static function reglasComerciales(): array
+    {
+        $def = self::reglasDefault();
+        $bd  = \App\BotSeccionTexto::whereIn('clave', array_keys($def))->pluck('contenido', 'clave');
+        $out = [];
+        foreach ($def as $k => $d) {
+            $v = $bd[$k] ?? null;
+            $out[$k] = ($v !== null && trim($v) !== '') ? trim($v) : $d;
+        }
+        return $out;
     }
 }

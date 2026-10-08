@@ -306,9 +306,28 @@
         <button type="button" class="bc-tab-btn" data-tab="guion">Guion del bot</button>
         <button type="button" class="bc-tab-btn" data-tab="masajes">Masajes</button>
         <button type="button" class="bc-tab-btn" data-tab="reglas">Reglas comerciales</button>
+        <button type="button" class="bc-tab-btn" data-tab="parametros">Parámetros</button>
+        <button type="button" class="bc-tab-btn" data-tab="ubicaciones">Ubicaciones</button>
     </div>
 
     <form action="{{ route('backoffice.bot-configuracion.secciones.update') }}" method="POST">
+        <div class="bc-panel" id="panel-parametros">
+            <p style="color:#555;margin-bottom:16px;">Valores que el sistema usa para calcular cobros y aplicar reglas. El bot no calcula montos: los toma de aquí. Los IDs de programas están en el módulo Programas. Si dejas un campo vacío o con un valor inválido, se usa el valor por defecto.</p>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(320px,1fr));gap:14px 22px;">
+            @foreach ($parametros as $r)
+                <div>
+                    <label style="display:block;font-weight:600;color:#333;font-size:.9rem;margin-bottom:6px;">{{ $r->etiqueta }}</label>
+                    @if ($r->clave === 'param_feriados')
+                        <textarea name="contenido[{{ $r->clave }}]" rows="4" class="browser-default" style="width:100%;height:auto;min-height:96px;border:1px solid #d0d0d0;border-radius:10px;padding:10px;font-size:.95rem;background:#fff;">{{ $r->contenido }}</textarea>
+                    @else
+                        <input type="text" name="contenido[{{ $r->clave }}]" value="{{ $r->contenido }}" class="browser-default" style="width:100%;height:40px;border:1px solid #d0d0d0;border-radius:10px;padding:0 12px;font-size:.95rem;background:#fff;box-sizing:border-box;">
+                    @endif
+                </div>
+            @endforeach
+            </div>
+            <button type="submit" class="btn" style="background:#3B82F6;margin-top:18px;">Guardar parámetros</button>
+        </div>
+
         <div class="bc-panel" id="panel-reglas">
             <p style="color:#555;margin-bottom:16px;">Reglas que el bot aplica al cotizar y responder. Los cambios rigen desde el siguiente mensaje. Si dejas un recuadro vacío, el bot vuelve al texto original.</p>
             @foreach ($reglas as $r)
@@ -411,6 +430,32 @@
         @endif
     </div>
 </div>
+
+    <div class="bc-panel" id="panel-ubicaciones">
+        <p style="color:#555;margin-bottom:16px;">Fotos que el bot envía por WhatsApp para mostrar las ubicaciones (una por tipo). En los programas Wellness para 2 o 4 personas envía la de terraza y la de reposera para que el cliente elija. Usa fotos horizontales, livianas (máximo {{ ini_get('upload_max_filesize') }} por foto en este servidor).</p>
+        <form action="{{ route('backoffice.bot-configuracion.fotos.update') }}" method="POST" enctype="multipart/form-data">
+            @csrf
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(260px,1fr));gap:18px;">
+                @foreach ($fotos as $tipo => $f)
+                    <div style="border:1px solid #e2e8f0;border-radius:14px;overflow:hidden;background:#fff;">
+                        <div style="aspect-ratio:4/3;background:#f1f5f9;display:flex;align-items:center;justify-content:center;">
+                            @if ($f->url)
+                                <img src="{{ $f->url }}" alt="{{ $f->etiqueta }}" style="width:100%;height:100%;object-fit:cover;">
+                            @else
+                                <span style="color:#94a3b8;font-size:.9rem;">Sin foto</span>
+                            @endif
+                        </div>
+                        <div style="padding:12px 14px;">
+                            <div style="font-weight:700;color:#0f172a;margin-bottom:8px;">{{ $f->etiqueta }}</div>
+                            <input type="file" name="foto[{{ $tipo }}]" accept="image/jpeg,image/png,image/webp" class="browser-default" style="font-size:.85rem;margin-bottom:10px;width:100%;">
+                            <textarea name="texto[{{ $tipo }}]" rows="3" class="browser-default" placeholder="Texto que acompaña la foto" style="width:100%;height:auto;border:1px solid #d0d0d0;border-radius:10px;padding:8px 10px;font-size:.9rem;box-sizing:border-box;">{{ $f->texto }}</textarea>
+                        </div>
+                    </div>
+                @endforeach
+            </div>
+            <button type="submit" class="btn" style="background:#3B82F6;margin-top:18px;">Guardar fotos y textos</button>
+        </form>
+    </div>
 @endsection
 
 @section('foot')
@@ -443,6 +488,34 @@ document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
         var p = document.getElementById('panel-reglas');
         if (!p) return;
         if (b.dataset.tab === 'reglas') {
+            document.querySelectorAll('.bc-panel').forEach(function (x) { x.classList.toggle('active', x === p); });
+            document.querySelectorAll('.bc-tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+        } else {
+            p.classList.remove('active');
+        }
+    });
+});
+</script>
+<script>
+document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var p = document.getElementById('panel-parametros');
+        if (!p) return;
+        if (b.dataset.tab === 'parametros') {
+            document.querySelectorAll('.bc-panel').forEach(function (x) { x.classList.toggle('active', x === p); });
+            document.querySelectorAll('.bc-tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
+        } else {
+            p.classList.remove('active');
+        }
+    });
+});
+</script>
+<script>
+document.querySelectorAll('.bc-tab-btn').forEach(function (b) {
+    b.addEventListener('click', function () {
+        var p = document.getElementById('panel-ubicaciones');
+        if (!p) return;
+        if (b.dataset.tab === 'ubicaciones') {
             document.querySelectorAll('.bc-panel').forEach(function (x) { x.classList.toggle('active', x === p); });
             document.querySelectorAll('.bc-tab-btn').forEach(function (x) { x.classList.toggle('active', x === b); });
         } else {

@@ -35,6 +35,16 @@ class BotConfiguracionController extends Controller
     {
         $perfil  = BotSeccionTexto::categoria('perfil')->get();
         $recinto = BotSeccionTexto::categoria('recinto')->get();
+        $reglas  = BotSeccionTexto::categoria('reglas')->orderBy('orden')->get();
+        $parametros = BotSeccionTexto::categoria('parametros')->orderBy('orden')->get();
+        $fotos = [];
+        foreach (\App\Services\BotUbicacionesService::tiposFoto() as $tipo => $d) {
+            $fotos[$tipo] = (object) [
+                'etiqueta' => $d[0],
+                'url'      => \App\Services\BotUbicacionesService::fotoUrl($tipo),
+                'texto'    => \App\Services\BotUbicacionesService::fotoTexto($tipo),
+            ];
+        }
         $pasos   = BotPasoFlujo::orderBy('orden')->get();
 
         $masajes = TipoMasaje::activos()
@@ -68,7 +78,7 @@ class BotConfiguracionController extends Controller
             ->values();
 
         return view('themes.backoffice.pages.bot-configuracion.index', compact(
-            'perfil', 'recinto', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
+            'perfil', 'recinto', 'reglas', 'parametros', 'fotos', 'pasos', 'masajes', 'botActivo', 'alertaCorreo', 'alertaTelefono', 'pendientes'
         ));
     }
 
@@ -162,6 +172,10 @@ class BotConfiguracionController extends Controller
 
         $telefonos = array_slice($request->input('telefonos'), 0, 10);
 
+        // El equipo ya se hizo cargo (o pidió al bot responder): el bot vuelve a atender esos chats.
+        \DB::table('bot_conversaciones')->whereIn('usuario_id', $telefonos)
+            ->update(['humano_hasta' => null, 'requiere_humano' => 0]);
+
         if ($request->input('accion') === 'atendido') {
             BotMensajePendiente::pendientes()->whereIn('telefono', $telefonos)
                 ->update(['estado' => 'atendido', 'respondido_at' => now()]);
@@ -231,6 +245,44 @@ class BotConfiguracionController extends Controller
         if ($fuera) $resumen .= " Fuera de plazo (más de 24 h, responder a mano): {$fuera}.";
         if ($error) $resumen .= " Con error (revisar log): {$error}.";
         Alert::info('Pendientes procesados', $resumen)->showConfirmButton();
+        return redirect()->route('backoffice.bot-configuracion.index');
+    }
+
+    /**
+     * Fotos de ubicaciones que el bot envía por WhatsApp (una por tipo) y su texto.
+     */
+    public function updateFotos(Request $request)
+    {
+        $request->validate([
+            'foto'    => 'nullable|array',
+            'foto.*'  => 'nullable|image|mimes:jpg,jpeg,png,webp|max:5120',
+            'texto'   => 'nullable|array',
+            'texto.*' => 'nullable|string|max:1000',
+        ]);
+        $dir = public_path(\App\Services\BotUbicacionesService::DIR_FOTOS);
+        if (!is_dir($dir)) {
+            @mkdir($dir, 0775, true);
+        }
+        $subidas = 0;
+        foreach (array_keys(\App\Services\BotUbicacionesService::tiposFoto()) as $tipo) {
+            $f = $request->file('foto.' . $tipo);
+            if ($f && $f->isValid()) {
+                foreach (glob($dir . '/' . $tipo . '.*') ?: [] as $viejo) {
+                    @unlink($viejo);
+                }
+                $ext = strtolower($f->getClientOriginalExtension() ?: 'jpg');
+                $ext = $ext === 'jpeg' ? 'jpg' : $ext;
+                $f->move($dir, $tipo . '.' . $ext);
+                $subidas++;
+            }
+            if ($request->has('texto.' . $tipo)) {
+                BotSeccionTexto::where('clave', 'foto_texto_' . $tipo)->update([
+                    'contenido'  => (string) $request->input('texto.' . $tipo),
+                    'updated_by' => auth()->id(),
+                ]);
+            }
+        }
+        Alert::success('Listo', $subidas ? "Se guardaron {$subidas} foto(s). El bot ya las usa." : 'Textos guardados.')->showConfirmButton();
         return redirect()->route('backoffice.bot-configuracion.index');
     }
 

@@ -88,6 +88,12 @@ class WhatsAppWebhookController extends Controller
             return response()->json(['ok' => true]);
         }
 
+            // ── Respuestas del equipo desde la app WhatsApp Business (coexistencia) ──
+            if (!empty($value['message_echoes'])) {
+                $this->registrarEcosEquipo($value['message_echoes']);
+                return response()->json(['ok' => true]);
+            }
+
             $messages = $value['messages'] ?? [];
             if (empty($messages)) {
                 return response()->json(['ok' => true]);
@@ -98,8 +104,14 @@ class WhatsAppWebhookController extends Controller
             $telefono = $msg['from'] ?? '';
             $nombre   = $value['contacts'][0]['profile']['name'] ?? 'Cliente';
 
-            // --- Bot desactivado desde backoffice: guardar pendiente + alerta, sin responder ---
-            if (\App\BotSeccionTexto::where('clave', 'bot_activo')->value('contenido') === '0') {
+            // --- Bot desactivado, o chat atendido por una persona / derivado: guardar pendiente + alerta, sin responder ---
+            $convHumano = DB::table('bot_conversaciones')
+                ->where('usuario_id', preg_replace('/\D/', '', $telefono))
+                ->where('activo', 1)
+                ->whereNotNull('humano_hasta')
+                ->where('humano_hasta', '>', now())
+                ->exists();
+            if ($convHumano || \App\BotSeccionTexto::where('clave', 'bot_activo')->value('contenido') === '0') {
                 if (($msg['type'] ?? '') !== 'sticker') {
                     $textoPend = ($msg['type'] ?? '') === 'text'
                         ? ($msg['text']['body'] ?? '')
@@ -113,7 +125,11 @@ class WhatsAppWebhookController extends Controller
                             'mensaje'         => $textoPend,
                             'estado'          => 'pendiente',
                         ]);
-                        $this->alertarBotApagado($telefono, $nombre, $textoPend);
+                        if (!$convHumano) {
+                            // Con el chat en manos del equipo no se manda correo: el mensaje queda en
+                            // pendientes y se marca solo como atendido cuando el equipo responde.
+                            $this->alertarBotApagado($telefono, $nombre, $textoPend);
+                        }
                     } catch (\Throwable $e) {
                         \Log::error('Bot apagado: no se pudo guardar pendiente', ['error' => $e->getMessage()]);
                     }
@@ -177,6 +193,13 @@ class WhatsAppWebhookController extends Controller
 
             $botData = json_decode($botBody, true) ?? [];
             $mensaje = $botData['mensaje'] ?? null;
+
+            // Fotos (ej. ubicaciones) antes del texto, para que la pregunta quede al final.
+            foreach (array_slice($botData['imagenes'] ?? [], 0, 4) as $img) {
+                if (!empty($img['url'])) {
+                    $this->enviarImagen($telefono, $img['url'], $img['texto'] ?? '');
+                }
+            }
 
             if ($mensaje) {
                 $this->enviarMensaje($telefono, $mensaje);
@@ -806,6 +829,62 @@ class WhatsAppWebhookController extends Controller
     // HELPERS — envío de mensajes
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Mensajes que el equipo envió desde la app WhatsApp Business (webhook smb_message_echoes):
+     * quedan en el historial del bot como "[Equipo Botacura respondió]", el bot se silencia en ese
+     * chat por las horas configuradas y los pendientes de ese cliente se marcan como atendidos.
+     */
+    private function registrarEcosEquipo(array $ecos)
+    {
+        foreach ($ecos as $eco) {
+            try {
+                $para = preg_replace('/\D/', '', (string) ($eco['to'] ?? ''));
+                if ($para === '') {
+                    continue;
+                }
+                $tipo  = $eco['type'] ?? 'text';
+                $texto = $tipo === 'text' ? trim((string) ($eco['text']['body'] ?? '')) : '[' . $tipo . ' enviado por el equipo]';
+                if ($texto === '') {
+                    continue;
+                }
+                $conv = DB::table('bot_conversaciones')->where('usuario_id', $para)->where('activo', 1)->orderBy('id', 'desc')->first();
+                if (!$conv) {
+                    $id = DB::table('bot_conversaciones')->insertGetId([
+                        'usuario_id' => $para, 'canal' => 'whatsapp', 'paso' => 0, 'activo' => 1,
+                        'historial_json' => '[]', 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    $conv = DB::table('bot_conversaciones')->find($id);
+                }
+                $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
+                $linea = '[Equipo Botacura respondió]: ' . $texto;
+                $ultimo = end($historial);
+                if ($ultimo && ($ultimo['role'] ?? '') === 'assistant') {
+                    if (strpos((string) $ultimo['content'], $texto) !== false) {
+                        continue; // eco de algo que ya está en el historial
+                    }
+                    $historial[count($historial) - 1]['content'] .= "\n\n" . $linea;
+                } else {
+                    if (empty($historial)) {
+                        $historial[] = ['role' => 'user', 'content' => '[Sistema: conversación atendida por el equipo de Botacura desde la app de WhatsApp.]'];
+                    }
+                    $historial[] = ['role' => 'assistant', 'content' => $linea];
+                }
+                $horas = \App\Services\BotTarifasService::horasSilencioHumano();
+                DB::table('bot_conversaciones')->where('id', $conv->id)->update([
+                    'historial_json'  => json_encode(array_slice($historial, -24), JSON_UNESCAPED_UNICODE),
+                    'requiere_humano' => 1,
+                    'humano_hasta'    => now()->addHours($horas),
+                    'updated_at'      => now(),
+                ]);
+                \App\BotMensajePendiente::where('telefono', $para)->where('estado', 'pendiente')
+                    ->update(['estado' => 'atendido', 'updated_at' => now()]);
+                Log::info('[WhatsApp] Respuesta del equipo registrada', ['telefono' => $para]);
+            } catch (\Throwable $e) {
+                Log::error('[WhatsApp] Error registrando eco del equipo: ' . $e->getMessage());
+            }
+        }
+    }
+
     private function alertarBotApagado(string $telefono, string $nombre, string $texto)
     {
         // Máximo una alerta cada 30 minutos por cliente
@@ -864,6 +943,30 @@ class WhatsAppWebhookController extends Controller
             }
         } catch (\Exception $e) {
             Log::error('[WhatsApp] Excepción enviando mensaje: ' . $e->getMessage());
+        }
+    }
+
+    private function enviarImagen(string $telefono, string $url, string $texto = '')
+    {
+        $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
+        $token   = env('META_WHATSAPP_TOKEN');
+        $version = env('META_API_VERSION', 'v19.0');
+        try {
+            $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
+            $res = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
+                'json'    => [
+                    'messaging_product' => 'whatsapp',
+                    'to'                => $telefono,
+                    'type'              => 'image',
+                    'image'             => array_filter(['link' => $url, 'caption' => mb_substr($texto, 0, 1000)]),
+                ],
+            ]);
+            if ($res->getStatusCode() >= 300) {
+                Log::error('[WhatsApp] Error enviando imagen', ['status' => $res->getStatusCode(), 'body' => substr((string) $res->getBody(), 0, 300)]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] Excepción enviando imagen: ' . $e->getMessage());
         }
     }
 

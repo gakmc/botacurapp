@@ -75,6 +75,7 @@ class BotReservaController extends Controller
             'desayuno_tipo'  => 'nullable|string|in:desayuno,once',
             'observacion'    => 'nullable|string|max:500',
             'tipo_pago'      => 'nullable|string|max:80',
+            'ubicacion_preferida' => 'nullable|string|in:terraza,reposera',
         ]);
 
         $telefono      = $this->normalizarTelefono($request->telefono);
@@ -88,6 +89,34 @@ class BotReservaController extends Controller
         $desayunoTipo  = ($desayunoOnce > 0 && $request->desayuno_tipo) ? $request->desayuno_tipo : null;
         $observacion   = $request->observacion ? trim($request->observacion) : null;
         $tipoPago      = trim($request->tipo_pago ?? '');
+
+        // ── 0. Reglas comerciales (programa habilitado, grupo, agenda, programas S,
+        //     solo transferencia). Fuente única: BotTarifasService.
+        $cotReglas = \App\Services\BotTarifasService::cotizar([
+            'programa_id'   => $programaId,
+            'fecha'         => $fecha,
+            'personas'      => $personas,
+            'masajes_extra' => $masajesExtra,
+            'desayuno_once' => $desayunoOnce,
+            'tipo_pago'     => $tipoPago,
+        ]);
+        if (!$cotReglas['ok']) {
+            return response()->json([
+                'ok'      => false,
+                'error'   => $cotReglas['errores'][0]['codigo'],
+                'motivo'  => implode(' ', array_column($cotReglas['errores'], 'mensaje')),
+                'errores' => $cotReglas['errores'],
+            ], 422);
+        }
+
+        // ── 0b. Ubicación (terraza/reposera/estación/Níspero) según reglas de Botacura.
+        $planUb = \App\Services\BotUbicacionesService::plan($fecha, $programaId, $personas, $request->ubicacion_preferida);
+        if ($planUb['categoria'] && !$planUb['ok']) {
+            return response()->json(['ok' => false, 'error' => 'ubicacion_no_disponible', 'motivo' => $planUb['motivo']], 409);
+        }
+        if ($planUb['requiere_eleccion']) {
+            return response()->json(['ok' => false, 'error' => 'falta_ubicacion', 'motivo' => 'Falta la preferencia de ubicación (terraza o reposera).'], 422);
+        }
 
         // ── 1. Verificar disponibilidad ───────────────────────────────────────
         $dispCheck = $this->verificarDisponibilidad($fecha, $programaId, $personas);
@@ -119,6 +148,8 @@ class BotReservaController extends Controller
                 'desayuno_tipo' => $desayunoTipo,
                 'observacion'   => $observacion,
                 'tipo_pago'     => $tipoPago,
+                'ubicacion_preferida' => $planUb['wellness'] ?: $request->ubicacion_preferida,
+                'ubicacion_texto'     => $planUb['texto_cliente'],
             ]);
         }
 
@@ -150,8 +181,17 @@ class BotReservaController extends Controller
         $totalMasajes       = $masajesExtra * $precioMasaje;
         $totalDyO           = $desayunoOnce  * $precioDyO;
         $valorTotal         = $totalPrograma + $totalMasajes + $totalDyO;
-        $abono50            = (int) ceil($valorTotal / 2);
-        $diferencia         = $valorTotal - $abono50;
+        // Montos desde la fuente única (recargo de verano, % según medio de pago).
+        $__m = \App\Services\BotTarifasService::calcularMontos($programaId, $fecha, $personas, $masajesExtra, $desayunoOnce, $tipoPago);
+        $totalPrograma      = $__m['total_programa'];
+        $totalMasajes       = $__m['total_masajes'];
+        $totalDyO           = $__m['total_desayuno_once'];
+        $precioMasaje       = $__m['precio_masaje'];
+        $precioDyO          = $__m['precio_desayuno_once'];
+        $valorTotal         = $__m['total'];
+        $abono50            = $__m['pago_ahora'];
+        $diferencia         = $__m['saldo'];
+        $pagoAhoraPct       = $__m['pago_ahora_pct'];
 
         // ── 5. Crear reserva ──────────────────────────────────────────────────
         $notaBot = 'Reserva creada por bot WhatsApp';
@@ -260,7 +300,7 @@ class BotReservaController extends Controller
             $visitaRequest = \App\Http\Requests\Visita\StoreRequest::create(
                 '/reserva/' . $reservaId . '/visitas',
                 'POST',
-                ['trago_cortesia' => 'No']
+                \App\Services\BotUbicacionesService::payloadVisita($planUb)
             );
             $visitaRequest->setContainer(app());
             $visitaRequest->setRedirector(app(\Illuminate\Routing\Redirector::class));
@@ -276,6 +316,8 @@ class BotReservaController extends Controller
                 'error'      => $e->getMessage(),
             ]);
         }
+
+        \App\Services\BotUbicacionesService::registrar($reservaId, $planUb);
 
         Log::info('BotReservaController: reserva creada', [
             'reserva_id'     => $reservaId,
@@ -342,9 +384,9 @@ class BotReservaController extends Controller
         }
 
         $mensajePago = $esTransferencia
-            ? "Para confirmar tu reserva N°{$reservaId}, transfiere el abono de \$" . number_format($abono50, 0, ',', '.') . " a la cuenta de Botacura (Banco Estado, N° 36072963894, RUT 77.848.621-0) y envíanos la foto del comprobante por este mismo chat."
+            ? "Para confirmar tu reserva N°{$reservaId}, transfiere \$" . number_format($abono50, 0, ',', '.') . " a la cuenta de Botacura (Banco Estado, N° 36072963894, RUT 77.848.621-0) y envíanos la foto del comprobante por este mismo chat."
             : ($webpayUrl
-                ? "Para confirmar tu reserva N°{$reservaId}, haz clic aquí para pagar el abono de \$" . number_format($abono50, 0, ',', '.') . " de forma segura con tarjeta:\n{$webpayUrl}"
+                ? "Para confirmar tu reserva N°{$reservaId}, haz clic aquí para pagar \$" . number_format($abono50, 0, ',', '.') . ($diferencia > 0 ? '' : ' (total de la visita)') . " de forma segura con tarjeta:\n{$webpayUrl}"
                 : "Para confirmar tu reserva N°{$reservaId}, realiza el abono de \$" . number_format($abono50, 0, ',', '.') . ". Contáctanos para coordinar el pago.");
 
         return response()->json([
@@ -366,10 +408,13 @@ class BotReservaController extends Controller
             'valor_total_formato'  => '$' . number_format($valorTotal, 0, ',', '.'),
             'abono_50'             => $abono50,
             'abono_50_formato'     => '$' . number_format($abono50, 0, ',', '.'),
+            'pago_ahora_pct'       => $pagoAhoraPct,
+            'pago_ahora_formato'   => '$' . number_format($abono50, 0, ',', '.'),
             'diferencia'           => $diferencia,
             'diferencia_formato'   => '$' . number_format($diferencia, 0, ',', '.'),
             'incluye_menu'         => ($desayunoOnce > 0),
             'tipo_pago'            => $tipoPago,
+            'ubicacion_texto'      => $planUb['texto_cliente'],
             'webpay_url'           => $webpayUrl,
             'datos_bancarios'      => $datosBancarios,
             'mensaje_siguiente'    => $mensajePago,
@@ -400,8 +445,16 @@ class BotReservaController extends Controller
         $totalMasajes      = $datos['masajes_extra'] * $precioMasaje;
         $totalDyO          = $datos['desayuno_once']  * $precioDyO;
         $valorTotal        = $totalPrograma + $totalMasajes + $totalDyO;
-        $abono50           = (int) ceil($valorTotal / 2);
-        $diferencia        = $valorTotal - $abono50;
+        $__m = \App\Services\BotTarifasService::calcularMontos((int) $datos['programa_id'], (string) $datos['fecha'], (int) $datos['personas'], (int) $datos['masajes_extra'], (int) $datos['desayuno_once'], $datos['tipo_pago']);
+        $totalPrograma     = $__m['total_programa'];
+        $totalMasajes      = $__m['total_masajes'];
+        $totalDyO          = $__m['total_desayuno_once'];
+        $precioMasaje      = $__m['precio_masaje'];
+        $precioDyO         = $__m['precio_desayuno_once'];
+        $valorTotal        = $__m['total'];
+        $abono50           = $__m['pago_ahora'];
+        $diferencia        = $__m['saldo'];
+        $pagoAhoraPct      = $__m['pago_ahora_pct'];
 
         $expiraEn = now()->addMinutes(self::HOLD_MINUTOS);
 
@@ -454,6 +507,8 @@ class BotReservaController extends Controller
             'valor_total_formato' => '$' . number_format($valorTotal, 0, ',', '.'),
             'abono_50'            => $abono50,
             'abono_50_formato'    => '$' . number_format($abono50, 0, ',', '.'),
+            'pago_ahora_pct'      => $pagoAhoraPct,
+            'pago_ahora_formato'  => '$' . number_format($abono50, 0, ',', '.'),
             'diferencia'          => $diferencia,
             'diferencia_formato'  => '$' . number_format($diferencia, 0, ',', '.'),
             'incluye_menu'        => ($datos['desayuno_once'] > 0),
@@ -461,6 +516,7 @@ class BotReservaController extends Controller
             'webpay_url'          => null,
             'datos_bancarios'     => $datosBancarios,
             'hold_minutos'        => self::HOLD_MINUTOS,
+            'ubicacion_texto'     => $datos['ubicacion_texto'] ?? null,
             'hold_expira_en'      => $expiraEn->toIso8601String(),
         ]);
     }
@@ -530,8 +586,18 @@ class BotReservaController extends Controller
         $totalMasajes      = $masajesExtra * $precioMasaje;
         $totalDyO          = $desayunoOnce  * $precioDyO;
         $valorTotal        = $totalPrograma + $totalMasajes + $totalDyO;
-        $abono50           = (int) ceil($valorTotal / 2);
-        $diferencia        = $valorTotal - $abono50;
+        $__m = \App\Services\BotTarifasService::calcularMontos($programaId, (string) $fecha, $personas, $masajesExtra, $desayunoOnce, $tipoPago);
+        $totalPrograma     = $__m['total_programa'];
+        $totalMasajes      = $__m['total_masajes'];
+        $totalDyO          = $__m['total_desayuno_once'];
+        $valorTotal        = $__m['total'];
+        $abono50           = $__m['pago_ahora'];
+        $diferencia        = $__m['saldo'];
+        // Respetar el monto ya informado al cliente al crear el hold.
+        if (isset($hold->valor_total) && (int) $hold->valor_total > 0 && (int) $hold->valor_total === (int) $valorTotal) {
+            $abono50    = (int) $hold->abono_50;
+            $diferencia = (int) $hold->diferencia;
+        }
 
         $notaBot = 'Reserva creada por bot WhatsApp (transferencia, confirmada tras comprobante)';
         if ($observacion) {
@@ -604,9 +670,15 @@ class BotReservaController extends Controller
             }
         }
 
+        $__dj = json_decode((string) ($hold->datos_json ?? ''), true) ?: [];
+        $planUbHold = \App\Services\BotUbicacionesService::plan((string) $fecha, $programaId, $personas, $__dj['ubicacion_preferida'] ?? null, (int) $reservaId);
+        if ($planUbHold['categoria'] && (!$planUbHold['ok'] || empty($planUbHold['asignacion']))) {
+            Log::warning('[BotReserva] Hold convertido sin ubicación automática: la asigna el equipo', ['hold_id' => $hold->id, 'reserva_id' => $reservaId, 'motivo' => $planUbHold['motivo']]);
+        }
+
         try {
             $visitaRequest = \App\Http\Requests\Visita\StoreRequest::create(
-                '/reserva/' . $reservaId . '/visitas', 'POST', ['trago_cortesia' => 'No']
+                '/reserva/' . $reservaId . '/visitas', 'POST', \App\Services\BotUbicacionesService::payloadVisita($planUbHold)
             );
             $visitaRequest->setContainer(app());
             $visitaRequest->setRedirector(app(\Illuminate\Routing\Redirector::class));
@@ -620,6 +692,8 @@ class BotReservaController extends Controller
                 'reserva_id' => $reservaId, 'error' => $e->getMessage(),
             ]);
         }
+
+        \App\Services\BotUbicacionesService::registrar($reservaId, $planUbHold);
 
         DB::table('reserva_holds')->where('id', $hold->id)->update([
             'estado' => 'confirmado', 'id_reserva' => $reservaId, 'updated_at' => now(),
