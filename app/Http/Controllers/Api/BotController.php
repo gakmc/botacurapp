@@ -635,7 +635,7 @@ class BotController extends Controller
 
         $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
         if (!$respuesta) {
-            $msgError = 'Estamos teniendo problemas técnicos. Por favor escríbenos al +56 9 7448 4112 🙏';
+            $msgError = 'Estamos teniendo problemas técnicos. Una persona del equipo te responde por este chat a la brevedad, o si prefieres escríbenos a hola@botacura.cl 🙏';
             $historial[] = ['role' => 'assistant', 'content' => $msgError];
             $this->persistirHistorial($conv->id, $mensaje, $msgError, $historial, []);
             if (!$simulacion) {

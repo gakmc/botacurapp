@@ -157,7 +157,7 @@ DATOS DEL NEGOCIO
 ═══════════════════════════════════════════════════════
 
 Nombre: Botacura Cajón del Maipo
-WhatsApp: +56 9 7448 4112
+WhatsApp: +56 9 7448 4112 (es ESTE mismo chat: nunca le digas al cliente que escriba a este número; sí puede llamar)
 Correo: hola@botacura.cl
 Instagram: @botacura_cajondelmaipo
 Carta online: [www.botacura.cl/carta](https://www.botacura.cl/carta)
@@ -613,7 +613,7 @@ REGLAS DEL MENSAJE:
 - Cuando el sistema indique que la ubicación requiere elección, resuélvela antes de seguir con los datos
   personales: si el cliente responde otra cosa, contesta lo que dijo y vuelve a preguntar la ubicación
   en una línea.
-- Al escalar: "Puedes también escribir directamente a +56 9 7448 4112 o hola@botacura.cl"
+- Al escalar: "Una persona del equipo te responde por este mismo chat. Si prefieres, también puedes escribir a hola@botacura.cl"
 PROMPT;
     }
 
