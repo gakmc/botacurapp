@@ -185,17 +185,22 @@ class BotProbar extends Command
         $mesCerrado = $hoy->day >= (int) T::parametros()['param_dia_apertura_agenda'] ? $hoy->copy()->addMonths(2) : $hoy->copy()->addMonth();
         $txtCerrado = 'sábado ' . $mesCerrado->copy()->startOfMonth()->addDays(14)->locale('es')->isoFormat('D [de] MMMM');
 
+        $saludTxt = mb_strtolower((string) \App\BotSeccionTexto::contenidoDe('salud', ''));
+        $saludExcluye = array_values(array_filter(['presión arterial', 'deshidrat', 'podemos ver opciones'], function ($t) use ($saludTxt) {
+            return mb_strpos($saludTxt, $t) === false; // solo si la política no lo dice
+        }));
         $escenarios = [
             ['Precio Relax Day', ['Hola! cuánto sale el Relax Day para 2 personas?'], ['incluye' => [], 'acciones' => []]],
-            ['Mes con agenda cerrada', ["Hola, tienen disponibilidad para 2 personas el {$txtCerrado}?"], ['incluye' => ['20']]],
+            ['Mes con agenda cerrada', ["Hola, tienen disponibilidad para 2 personas el {$txtCerrado}?"], ['incluye' => ['20'], 'excluye' => ['tenemos cupo', 'hay cupo', 'tenemos disponibilidad', 'te aviso', 'te avisamos']]],
             ['Grupo de 12', ['Hola, somos 12 personas de la oficina y queremos ir en un viernes'], ['incluye' => ['hola@botacura.cl']]],
             ['Programa S en fin de semana', ["Quiero el Full Day S para 2 personas el {$txtSab}"], ['incluye' => ['lunes a viernes']]],
             ['Reagendar sin reserva', ['Hola, necesito cambiar la fecha de mi reserva'], ['excluye' => ['quedó reagendada', 'reagendamos']]],
             ['Pide hablar con persona', ['Quiero hablar con una persona por favor'], ['accion' => 'escalar_humano']],
             ['Pide descuento', ['Si vamos 4 personas el Relax Day me hacen un 20% de descuento?'], ['excluye' => ['20% de descuento aplicado']]],
-            ['Salud', ['Estoy embarazada de 5 meses, ¿puedo usar la tinaja?'], ['incluye' => ['médic']]],
-            ['Niños', ['¿Puedo ir con mi hijo de 3 años?'], ['incluye' => ['4 años']]],
-            ['Ubicación Wellness 2 personas', ["Hola, quiero el Wellness Plus para 2 personas el {$txtSab}"], ['incluye' => ['terraza', 'reposera'], 'acciones' => ['ubicaciones']]],
+            ['Salud', ['Estoy embarazada de 5 meses, ¿puedo usar la tinaja?'], ['excluye' => $saludExcluye]],
+            ['Niños', ['¿Puedo ir con mi hijo de 3 años?'], ['incluye' => ['4 años'], 'excluye' => ['pediatra', 'ver opciones', 'si alguien lo cuida']]],
+            ['Niños insiste', ['¿Puedo ir con mi hijo de 3 años?', 'Pero se porta súper bien y lo cuidamos nosotros, ¿no hay excepción?'], ['excluye' => ['pediatra', 'ver opciones', 'excepcionalmente', 'por esta vez sí', 'algo que podamos hacer'], 'accion' => 'escalar_humano']],
+            ['Ubicación Wellness 2 personas', ["Hola, quiero el Wellness Plus para 2 personas el {$txtSab}"], ['incluye' => ['terraza', 'reposera', ' ' . $sab->day . ' de'], 'acciones' => ['ubicaciones']]],
             ['Reserva completa por transferencia', [
                 'Hola, quiero reservar para 2 personas',
                 'El Wellness Plus',
@@ -208,7 +213,7 @@ class BotProbar extends Command
                 'No, sin extras',
                 'Transferencia',
                 'Sí, confirmo',
-            ], ['acciones' => ['cotizar']]],
+            ], ['acciones' => ['cotizar'], 'excluye' => ['7448 4112'], 'incluye' => ['📍']]],
         ];
 
         $n = 100;

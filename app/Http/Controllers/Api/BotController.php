@@ -587,6 +587,20 @@ class BotController extends Controller
         $conv      = $this->obtenerConversacion($usuarioId, $nombre);
         $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
 
+        // El chat estuvo en manos del equipo (o derivado) y ahora vuelve al bot: se registra en el
+        // historial del caso y se le indica al bot cómo retomar.
+        $notaRetoma = '';
+        if (!empty($conv->requiere_humano) && (empty($conv->humano_hasta) || Carbon::parse($conv->humano_hasta)->lte(now()))) {
+            $sinResp = !\App\Services\BotCasoService::equipoRespondioTrasDerivar($usuarioId);
+            if (!$simulacion) {
+                \App\Services\BotCasoService::registrar('bot_retoma', $usuarioId, ['sin_respuesta_equipo' => $sinResp]);
+                DB::table('bot_conversaciones')->where('id', $conv->id)->update(['requiere_humano' => 0, 'updated_at' => now()]);
+            }
+            $notaRetoma = $sinResp
+                ? '[Sistema: este chat se derivó al equipo y nadie alcanzó a responder. Discúlpate en una línea por la espera, revisa el HISTORIAL DEL CASO y retoma lo que el cliente necesitaba.]'
+                : '[Sistema: el equipo de Botacura atendió este chat. Lee lo que respondió el equipo (en el historial y en HISTORIAL DEL CASO) y continúa desde ahí: no repitas lo que ya se dijo ni contradigas lo acordado. Si el equipo prometió algo que no puedes verificar en el sistema, usa escalar_humano.]';
+        }
+
         $contenidoParaHistorial = $mensaje;
         if (empty($historial)) {
             $ctxTelefono = "[Sistema: El cliente te escribe desde el WhatsApp {$usuarioId} — "
@@ -604,7 +618,15 @@ class BotController extends Controller
                 $contenidoParaHistorial = $mensaje . "\n\n" . $ctxTelefono;
             }
         }
-        $historial[] = ['role' => 'user', 'content' => $contenidoParaHistorial];
+        if ($notaRetoma !== '') {
+            $contenidoParaHistorial .= "\n\n" . $notaRetoma;
+        }
+        if ($historial && ($historial[count($historial) - 1]['role'] ?? '') === 'user') {
+            // Mensajes que el cliente dejó mientras lo atendía el equipo: se juntan en un solo turno.
+            $historial[count($historial) - 1]['content'] .= "\n\n" . $contenidoParaHistorial;
+        } else {
+            $historial[] = ['role' => 'user', 'content' => $contenidoParaHistorial];
+        }
 
         $programas      = $this->cargarProgramasBd();
         $menuOpciones   = $this->cargarMenuOpciones();
@@ -650,7 +672,20 @@ class BotController extends Controller
             $contexto['historial'] = $historial;
             $ctx = $this->ejecutarAccion($accion, $respuesta['datos'] ?? [], $usuarioId, $contexto, $simulacion);
             if ($ctx === null) {
-                break;
+                // La IA pidió una acción sin los datos mínimos: su mensaje se escribió sin verificar nada.
+                if (isset($ejecutadas['sin_datos'])) {
+                    break;
+                }
+                $ejecutadas['sin_datos'] = true;
+                $h = $historial;
+                $h[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+                $h[] = ['role' => 'user', 'content' => '[Sistema: la acción "' . $accion . '" no se ejecutó porque faltan datos (la fecha va en "fecha" con formato AAAA-MM-DD). Vuelve a pedir la acción con los datos completos, o pregúntale al cliente lo que falta. No afirmes nada que el sistema no haya verificado.]'];
+                $nueva = $this->llamarClaude($systemPrompt, $h, $nombre);
+                if (!$nueva) {
+                    break;
+                }
+                $respuesta = $nueva;
+                continue;
             }
             $acciones[] = $accion;
             if ($this->ubicacionAuto && !in_array('ubicaciones', $acciones, true)) {
@@ -703,6 +738,28 @@ class BotController extends Controller
             }
         }
 
+        // Control de fechas y cupos: no se afirman fechas ni disponibilidad que el sistema no verificó.
+        $problemas = $this->fechasYCuposNoVerificados((string) ($respuesta['mensaje'] ?? ''), $historial, $contexto['texto'] ?? '');
+        if ($problemas) {
+            \App\Services\BotAprendizajeService::evento('fecha_no_verificada', $usuarioId, ['problemas' => $problemas, 'mensaje' => mb_substr((string) ($respuesta['mensaje'] ?? ''), 0, 500)]);
+            $h = $historial;
+            $h[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+            $h[] = ['role' => 'user', 'content' => '[Sistema-validador: ' . implode(' ', $problemas) . ' Usa solo la fecha que dio el cliente o las que el sistema verificó. Para ofrecer otras fechas, pregunta qué día le acomoda y verifícalo con verificar_disponibilidad; no listes días con cupo sin verificarlos. Responde de nuevo en el formato JSON.]'];
+            $reintento = $this->llamarClaude($systemPrompt, $h, $nombre);
+            if ($reintento && ($reintento['accion'] ?? '') === 'verificar_disponibilidad' && !empty($reintento['datos']['fecha'])) {
+                $ctx = $this->ejecutarAccion('verificar_disponibilidad', $reintento['datos'], $usuarioId, $contexto, $simulacion);
+                if ($ctx) {
+                    $acciones[] = 'verificar_disponibilidad';
+                    $historial[count($historial) - 1]['content'] .= "\n\n" . $ctx;
+                    $reintento = $this->llamarClaude($systemPrompt, $historial, $nombre);
+                }
+            }
+            if ($reintento && trim((string) ($reintento['mensaje'] ?? '')) !== ''
+                && !$this->montosNoVerificados($reintento['mensaje'] ?? '', $systemPrompt, $historial)) {
+                $respuesta = $reintento;
+            }
+        }
+
         // Menú en PDF cuando el cliente lo pide
         if (($respuesta['accion'] ?? '') === 'enviar_menu') {
             $urlMenu = \App\Services\BotMenuService::url();
@@ -738,6 +795,19 @@ class BotController extends Controller
         try {
             if ($accion === 'cotizar') {
                 $cot = \App\Services\BotTarifasService::cotizar($datos);
+                // La ubicación va en la misma cotización, para que el resumen siempre la muestre.
+                if (!empty($cot['ok']) && !empty($datos['programa_id']) && !empty($datos['fecha']) && !empty($datos['personas'])) {
+                    try {
+                        $pu = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['ubicacion_preferida'] ?? ($datos['preferencia'] ?? null));
+                        if (!empty($pu['requiere_eleccion'])) {
+                            $cot['ubicacion_pendiente'] = 'Falta que el cliente elija terraza o reposera. Si ya lo eligió, vuelve a cotizar con ubicacion_preferida; si no, pregúntale antes del resumen.';
+                        } elseif (!empty($pu['ok']) && !empty($pu['texto_cliente'])) {
+                            $cot['ubicacion_texto'] = $pu['texto_cliente'];
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('[Bot] Ubicación en cotización: ' . $e->getMessage());
+                    }
+                }
                 if (!$cot['ok'] && !$simulacion) {
                     \App\Services\BotAprendizajeService::evento('regla_rechazo', $usuarioId, ['codigos' => array_column($cot['errores'], 'codigo'), 'datos' => $datos]);
                 }
@@ -846,7 +916,7 @@ class BotController extends Controller
                 }
                 $payload = [
                     'nombre'        => $datos['nombre'],
-                    'telefono'      => !empty($datos['telefono']) ? $datos['telefono'] : $usuarioId,
+                    'telefono'      => $this->telefonoReserva($datos['telefono'] ?? null, $usuarioId),
                     'email'         => $datos['email'],
                     'programa_id'   => $datos['programa_id'],
                     'fecha'         => $datos['fecha'],
@@ -1137,6 +1207,11 @@ class BotController extends Controller
         $texto = $lineas
             ? implode("\n", $lineas)
             : '- Este WhatsApp no tiene reservas recientes ni futuras en el sistema.';
+        $texto = '- WhatsApp del cliente: +' . $tel . ' (este es SU número de contacto; el +56 9 7448 4112 es de Botacura, nunca lo uses como teléfono del cliente).' . "\n" . $texto;
+        $caso = \App\Services\BotCasoService::resumen($tel);
+        if ($caso !== '') {
+            $texto .= "\n\nHISTORIAL DEL CASO (alertas, derivaciones y lo que respondió el equipo; más antiguo primero):\n" . $caso;
+        }
         return ['texto' => $texto, 'reserva_ids' => $ids];
     }
 
@@ -1194,6 +1269,7 @@ class BotController extends Controller
                     function ($m) use ($correo, $nombre) {
                         $m->to($correo)->subject('Bot WhatsApp: conversación derivada (' . $nombre . ')');
                     });
+                \App\Services\BotCasoService::registrar('alerta_enviada', $tel, ['canal' => 'correo', 'motivo' => 'derivación: ' . $motivo]);
             }
         } catch (\Throwable $e) {
             Log::error('[Bot] Error al derivar: ' . $e->getMessage());
@@ -1315,6 +1391,90 @@ class BotController extends Controller
             $conv = DB::table('bot_conversaciones')->find($id);
         }
         return $conv;
+    }
+
+    /** Teléfono para la reserva: el WhatsApp del cliente, salvo que él mismo haya dado otro número. */
+    private function telefonoReserva($dato, string $usuarioId): string
+    {
+        $d = preg_replace('/\D/', '', (string) $dato);
+        if ($d === '' || substr($d, -8) === '74484112' || substr($d, -8) === substr($usuarioId, -8)) {
+            return $usuarioId;
+        }
+        return $d;
+    }
+
+    /**
+     * Fechas que el bot menciona y que no vienen del cliente, del equipo ni de un resultado del sistema,
+     * y afirmaciones de cupo sin una verificación de disponibilidad en este turno.
+     */
+    private function fechasYCuposNoVerificados(string $mensaje, array $historial, string $contextoTexto): array
+    {
+        $meses = ['enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4, 'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
+                  'septiembre' => 9, 'setiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12];
+        $extraer = function (string $t) use ($meses) {
+            $out = [];
+            if (preg_match_all('/\b(\d{1,2})\s+de\s+(' . implode('|', array_keys($meses)) . ')\b/iu', $t, $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    $out[] = (int) $x[1] . '-' . $meses[mb_strtolower($x[2])];
+                }
+            }
+            if (preg_match_all('/\b20\d\d-(\d{2})-(\d{2})\b/', $t, $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    $out[] = (int) $x[2] . '-' . (int) $x[1];
+                }
+            }
+            if (preg_match_all('/\b(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\b/', str_replace('24/7', '', $t), $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    if ((int) $x[1] >= 1 && (int) $x[1] <= 31 && (int) $x[2] >= 1 && (int) $x[2] <= 12) {
+                        $out[] = (int) $x[1] . '-' . (int) $x[2];
+                    }
+                }
+            }
+            return $out;
+        };
+        $fuente = $contextoTexto;
+        foreach ($historial as $h) {
+            $c = is_string($h['content'] ?? null) ? $h['content'] : '';
+            if (($h['role'] ?? '') === 'user' || strpos($c, '[Equipo Botacura') !== false) {
+                $fuente .= "\n" . $c;
+            }
+        }
+        $permitidas = array_flip($extraer($fuente));
+        // Día de apertura de la agenda (este mes y el próximo) y hoy/mañana.
+        try {
+            $dia = (int) (\App\Services\BotTarifasService::parametros()['param_dia_apertura_agenda'] ?? 0);
+            $hoy = Carbon::now('America/Santiago');
+            foreach ([$hoy, $hoy->copy()->addMonthNoOverflow()] as $f) {
+                if ($dia) {
+                    $permitidas[$dia . '-' . $f->month] = true;
+                }
+            }
+            $permitidas[$hoy->day . '-' . $hoy->month] = true;
+            $permitidas[$hoy->copy()->addDay()->day . '-' . $hoy->copy()->addDay()->month] = true;
+        } catch (\Throwable $e) {
+        }
+        $problemas = [];
+        $nuevas = array_values(array_unique(array_filter($extraer($mensaje), function ($k) use ($permitidas) {
+            return !isset($permitidas[$k]);
+        })));
+        if ($nuevas) {
+            $problemas[] = 'Tu mensaje menciona fechas que nadie pidió ni el sistema verificó (' . implode(', ', array_map(function ($k) {
+                list($d, $m) = explode('-', $k);
+                return $d . '/' . $m;
+            }, $nuevas)) . ').';
+        }
+        $ultimoUser = '';
+        for ($i = count($historial) - 1; $i >= 0; $i--) {
+            if (($historial[$i]['role'] ?? '') === 'user') {
+                $ultimoUser = (string) $historial[$i]['content'];
+                break;
+            }
+        }
+        $verificoCupo = strpos($ultimoUser, '"disponible":true') !== false || strpos($ultimoUser, '[Sistema-reserva') !== false;
+        if (!$verificoCupo && preg_match('/\b(tenemos|hay|quedan|con)\s+(cupos?|disponibilidad)\b|\best[aá]\s+disponible\b/iu', $mensaje)) {
+            $problemas[] = 'Tu mensaje afirma que hay cupo o disponibilidad, pero en este turno el sistema no verificó disponibilidad.';
+        }
+        return $problemas;
     }
 
     private function persistirHistorial(int $convId, string $msgUsuario, string $msgBot, array $historial, array $datos)

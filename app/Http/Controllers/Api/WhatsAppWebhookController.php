@@ -82,10 +82,26 @@ class WhatsAppWebhookController extends Controller
         // ── Enrutamiento a Home Assistant ───────────────────────────────
         // Los mensajes que llegan al número dedicado a HA no pasan por el
         // bot de reservas: se reenvían tal cual a Home Assistant.
+        // Número compartido (opcional): si HA_TELEFONOS tiene teléfonos (separados por coma), solo los
+        // mensajes de esos teléfonos van a HA; el resto de los clientes los atiende el bot de reservas.
+        // Si HA_TELEFONOS está vacío, todo lo que llega al número de HA va a HA (comportamiento anterior).
         $haPhoneNumberId = env('HA_PHONE_NUMBER_ID');
         if ($haPhoneNumberId && $this->phoneNumberId === $haPhoneNumberId) {
-            $this->reenviarAHomeAssistant($value);
-            return response()->json(['ok' => true]);
+            $haTels = array_filter(array_map(function ($t) {
+                return substr(preg_replace('/\D/', '', $t), -9);
+            }, explode(',', (string) env('HA_TELEFONOS', ''))));
+            $esDeHa = true;
+            if ($haTels) {
+                if (!empty($value['messages'])) {
+                    $esDeHa = in_array(substr(preg_replace('/\D/', '', (string) ($value['messages'][0]['from'] ?? '')), -9), $haTels, true);
+                } elseif (!empty($value['message_echoes'])) {
+                    $esDeHa = in_array(substr(preg_replace('/\D/', '', (string) ($value['message_echoes'][0]['to'] ?? '')), -9), $haTels, true);
+                }
+            }
+            if ($esDeHa) {
+                $this->reenviarAHomeAssistant($value);
+                return response()->json(['ok' => true]);
+            }
         }
 
             // ── Respuestas del equipo desde la app WhatsApp Business (coexistencia) ──
@@ -125,6 +141,11 @@ class WhatsAppWebhookController extends Controller
                             'mensaje'         => $textoPend,
                             'estado'          => 'pendiente',
                         ]);
+                        \App\Services\BotCasoService::registrar('mensaje_en_espera', $telefono, ['texto' => $textoPend, 'motivo' => $convHumano ? 'equipo_atendiendo' : 'bot_apagado']);
+                        if ($convHumano) {
+                            // Queda en la conversación para que el bot lo tenga cuando retome.
+                            $this->agregarClienteAlHistorial($telefono, $textoPend);
+                        }
                         if (!$convHumano) {
                             // Con el chat en manos del equipo no se manda correo: el mensaje queda en
                             // pendientes y se marca solo como atendido cuando el equipo responde.
@@ -879,9 +900,39 @@ class WhatsAppWebhookController extends Controller
                 \App\BotMensajePendiente::where('telefono', $para)->where('estado', 'pendiente')
                     ->update(['estado' => 'atendido', 'updated_at' => now()]);
                 Log::info('[WhatsApp] Respuesta del equipo registrada', ['telefono' => $para]);
+                \App\Services\BotCasoService::registrar('respuesta_equipo', $para, ['texto' => mb_substr($texto, 0, 500)]);
             } catch (\Throwable $e) {
                 Log::error('[WhatsApp] Error registrando eco del equipo: ' . $e->getMessage());
             }
+        }
+    }
+
+    /** Mensaje del cliente mientras lo atiende el equipo: queda como turno del cliente en el historial del bot. */
+    private function agregarClienteAlHistorial(string $telefono, string $texto)
+    {
+        try {
+            $tel  = preg_replace('/\D/', '', $telefono);
+            $conv = DB::table('bot_conversaciones')->where('usuario_id', $tel)->where('activo', 1)->orderBy('id', 'desc')->first();
+            if (!$conv) {
+                return;
+            }
+            $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
+            $linea = '[Cliente, mientras lo atendía el equipo]: ' . $texto;
+            $n = count($historial);
+            if ($n && ($historial[$n - 1]['role'] ?? '') === 'user') {
+                $historial[$n - 1]['content'] .= "\n" . $linea;
+            } else {
+                $historial[] = ['role' => 'user', 'content' => $linea];
+            }
+            $historial = array_slice($historial, -24);
+            while ($historial && ($historial[0]['role'] ?? '') !== 'user') {
+                array_shift($historial);
+            }
+            DB::table('bot_conversaciones')->where('id', $conv->id)->update([
+                'historial_json' => json_encode($historial, JSON_UNESCAPED_UNICODE), 'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[WhatsApp] No se pudo agregar el mensaje al historial: ' . $e->getMessage());
         }
     }
 
@@ -901,6 +952,7 @@ class WhatsAppWebhookController extends Controller
                 \Mail::raw($cuerpo, function ($m) use ($correo, $nombre) {
                     $m->to($correo)->subject('Bot WhatsApp apagado: mensaje de ' . $nombre);
                 });
+                \App\Services\BotCasoService::registrar('alerta_enviada', $telefono, ['canal' => 'correo', 'motivo' => 'bot apagado']);
             } catch (\Throwable $e) {
                 \Log::error('Alerta bot apagado (correo) falló', ['error' => $e->getMessage()]);
             }
@@ -909,6 +961,7 @@ class WhatsAppWebhookController extends Controller
         if ($fono) {
             try {
                 $this->enviarMensaje($fono, $cuerpo);
+                \App\Services\BotCasoService::registrar('alerta_enviada', $telefono, ['canal' => 'WhatsApp al equipo', 'motivo' => 'bot apagado']);
             } catch (\Throwable $e) {
                 \Log::error('Alerta bot apagado (WhatsApp) falló', ['error' => $e->getMessage()]);
             }
