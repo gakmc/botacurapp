@@ -46,35 +46,38 @@ class Kernel extends ConsoleKernel
         $schedule->command('reservaholds:expirar')
                 ->everyFiveMinutes();
 
-        // -- Sincronizacion SII: lunes desde las 10:00 (antes domingos 19:45;
-        // cambio pedido por Sebastian el 10/10/2026). Orden importa: compras y
-        // honorarios primero, F29 al final porque depende de ambos.
-        // Los comandos trabajan sobre "el mes en curso"; por eso, durante la
-        // primera semana de cada mes se re-sincroniza tambien el mes anterior
-        // (antes los documentos de sus ultimos dias nunca se importaban).
-        $mesAnterior = now()->subMonthNoOverflow();
-        $primeraSemana = function () {
-            return now()->day <= 7;
-        };
+        // -- Sincronizacion SII: UNA sola ejecucion, lunes 10:00 (hora de Chile).
+        // Corre en orden compras -> honorarios -> F29 (el F29 depende de los
+        // otros dos). Los comandos trabajan sobre un mes; el primer lunes de
+        // cada mes (dia <= 7) se procesa tambien el mes anterior, para no perder
+        // los documentos de sus ultimos dias. Cambio pedido por Sebastian el
+        // 10/10/2026 (antes: domingos 19:45/20:00/20:15).
+        $schedule->call(function () {
+            $hoy = now();
+            $periodos = [];
+            if ($hoy->day <= 7) {
+                $ant = $hoy->copy()->subMonthNoOverflow();
+                $periodos[] = [$ant->year, $ant->month];
+            }
+            $periodos[] = [$hoy->year, $hoy->month];
 
-        // 1) Compras (RCV) -> egresos.
-        $schedule->command('sii:importar-semana')
-            ->mondays()->at('10:00')->timezone('America/Santiago');
-        $schedule->command('sii:importar-semana --anio=' . $mesAnterior->year . ' --mes=' . $mesAnterior->month)
-            ->mondays()->at('10:05')->timezone('America/Santiago')->when($primeraSemana);
-
-        // 2) BHE. --forzar es necesario: el comando no re-consulta un periodo
-        // que ya tiene registros.
-        $schedule->command('honorarios:sync --mes=' . now()->month . ' --forzar')
-            ->mondays()->at('10:15')->timezone('America/Santiago');
-        $schedule->command('honorarios:sync ' . $mesAnterior->year . ' --mes=' . $mesAnterior->month . ' --forzar')
-            ->mondays()->at('10:20')->timezone('America/Santiago')->when($primeraSemana);
-
-        // 3) Resumen F29 (ventas SII + compras + honorarios ya sincronizados).
-        $schedule->command('sii:sincronizar-f29')
-            ->mondays()->at('10:30')->timezone('America/Santiago');
-        $schedule->command('sii:sincronizar-f29 --anio=' . $mesAnterior->year . ' --mes=' . $mesAnterior->month)
-            ->mondays()->at('10:35')->timezone('America/Santiago')->when($primeraSemana);
+            foreach ($periodos as list($anio, $mes)) {
+                $pasos = [
+                    ['sii:importar-semana', ['--anio' => $anio, '--mes' => $mes]],
+                    ['honorarios:sync', ['anio' => $anio, '--mes' => $mes, '--forzar' => true]],
+                    ['sii:sincronizar-f29', ['--anio' => $anio, '--mes' => $mes]],
+                ];
+                foreach ($pasos as list($comando, $args)) {
+                    try {
+                        \Illuminate\Support\Facades\Artisan::call($comando, $args);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error("Sync SII semanal: {$comando} {$anio}-{$mes} fallo: " . $e->getMessage());
+                    }
+                }
+            }
+        })->name('sii-sync-semanal')
+          ->mondays()->at('10:00')->timezone('America/Santiago')
+          ->withoutOverlapping(120);
     }
 
     /**

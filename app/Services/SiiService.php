@@ -249,6 +249,9 @@ class SiiService
     {
         $tipoNombre = config('sii.tipos_importar')[$tipoNum] ?? 'Desconocido';
 
+        // Notas de credito (60/61) restan: se guardan con monto negativo.
+        $signoDoc = in_array((int) $tipoNum, [60, 61], true) ? -1 : 1;
+
         return [
             'tipo_documento'  => $tipoNum,
             'tipo_nombre'     => $tipoNombre,
@@ -256,9 +259,9 @@ class SiiService
             'fecha_documento' => $doc['fecha']                   ?? null,
             'rut_emisor'      => $doc['rut']                     ?? null,
             'razon_social'    => $doc['razon_social']            ?? null,
-            'monto_neto'      => (int) ($doc['neto']             ?? 0),
-            'monto_iva'       => (int) ($doc['iva']              ?? 0),
-            'monto_total'     => (int) ($doc['total']            ?? 0),
+            'monto_neto'      => $signoDoc * abs((int) ($doc['neto'] ?? 0)),
+            'monto_iva'       => $signoDoc * abs((int) ($doc['iva'] ?? 0)),
+            'monto_total'     => $signoDoc * abs((int) ($doc['total'] ?? 0)),
             'estado_acuse'    => $doc['fecha_acuse']             ?? null,
         ];
     }
