@@ -273,12 +273,19 @@
                     <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA Credito (compras)</span>
                     <span style="font-size:1.1rem;font-weight:700;color:#388E3C">${{ number_format($ivaCreditoSii,0,',','.') }}</span>
                 </div>
-                <div class="col s12 m6">
-                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA a pagar (Codigo 089)</span>
-                    @if($ivaAPagarSii > 0)
-                        <span style="font-size:1.2rem;font-weight:700;color:#B71C1C">${{ number_format($ivaAPagarSii,0,',','.') }}</span>
+                <div class="col s6 m3">
+                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">Remanente mes anterior</span>
+                    @if($remanenteAntSii !== null)
+                        <span style="font-size:1.1rem;font-weight:700;color:#388E3C">${{ number_format($remanenteAntSii,0,',','.') }}</span>
                     @else
-                        <span style="font-size:1.1rem;font-weight:700;color:#2E7D32">Remanente a favor ${{ number_format($ivaRemanenteSii,0,',','.') }}</span>
+                        <span style="font-size:.9rem;color:#FF8F00">Desconocido</span>
+                    @endif
+                </div>
+                <div class="col s6 m3">
+                    <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">IVA a pagar (Codigo 089)</span>
+                    <span style="font-size:1.2rem;font-weight:700;color:{{ $ivaAPagarSii > 0 ? '#B71C1C' : '#555' }}">${{ number_format($ivaAPagarSii,0,',','.') }}</span>
+                    @if($ivaRemanenteSii > 0)
+                        <span style="font-size:.75rem;display:block;color:#2E7D32">Remanente siguiente ${{ number_format($ivaRemanenteSii,0,',','.') }}</span>
                     @endif
                 </div>
             </div>

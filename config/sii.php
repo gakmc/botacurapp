@@ -20,6 +20,12 @@ return [
     'api_url' => env('SII_API_URL', 'https://app.apigateway.cl/api/v2/sii'),
     'api_key' => env('SII_API_KEY', ''),
 
+    // Remanente de credito fiscal IVA con que parte la cadena del F29: codigo
+    // 077 del F29 del mes anterior a remanente_inicial_periodo (en pesos).
+    // Vacio = no informado (se asume 0 y la pantalla F29 lo marca como supuesto).
+    'remanente_inicial'         => env('SII_REMANENTE_INICIAL'),
+    'remanente_inicial_periodo' => env('SII_REMANENTE_INICIAL_PERIODO', '202601'),
+
     // Tipos de documento DTE a importar desde RCV compras
     'tipos_importar' => [
         33 => 'Factura Electrónica',

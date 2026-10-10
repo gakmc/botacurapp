@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\HonorarioBte;
 use App\SiiResumenMensual;
+use App\Services\F29Service;
 use App\Services\SiiService;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
@@ -31,9 +32,13 @@ class ImpuestoController extends Controller
     /** @var SiiService */
     private $sii;
 
-    public function __construct(SiiService $sii)
+    /** @var F29Service */
+    private $f29;
+
+    public function __construct(SiiService $sii, F29Service $f29)
     {
         $this->sii = $sii;
+        $this->f29 = $f29;
     }
 
     // ─────────────────────────────────────────────────────────────────────────
@@ -86,9 +91,12 @@ class ImpuestoController extends Controller
         // ── Total F29 estimado ────────────────────────────────────────────────
         $ivaDebito     = $resumen ? (int) $resumen->iva_debito     : 0;
         $ivaCredito    = $resumen ? (int) $resumen->iva_credito    : 0;
-        $ivaDiferencia = $resumen ? (int) $resumen->iva_diferencia : 0; // negativo = remanente a favor
-        $ivaAPagar     = $ivaDiferencia > 0 ? $ivaDiferencia : 0;
-        $ivaRemanente  = $ivaDiferencia < 0 ? abs($ivaDiferencia) : 0;
+        $ivaDiferencia = $resumen ? (int) $resumen->iva_diferencia : 0; // debito - credito del mes
+        // IVA a pagar descontando el remanente del mes anterior reajustado (F29Service)
+        $f29Iva            = $this->f29->ivaPeriodo($periodo);
+        $remanenteAnterior = $f29Iva ? $f29Iva['remanente_anterior'] : null;
+        $ivaAPagar         = $f29Iva ? $f29Iva['iva_a_pagar']         : ($ivaDiferencia > 0 ? $ivaDiferencia : 0);
+        $ivaRemanente      = $f29Iva ? $f29Iva['remanente_siguiente'] : ($ivaDiferencia < 0 ? abs($ivaDiferencia) : 0);
 
         $totalF29 = $ppm + $retencionBte + $ivaAPagar;
 
@@ -125,6 +133,7 @@ class ImpuestoController extends Controller
             'ventasTotal', 'ventasNeto', 'ventasExento', 'ventasCant',
             'creditoFiscal', 'retencionBte', 'bteCantidad',
             'ivaDebito', 'ivaCredito', 'ivaDiferencia', 'ivaAPagar', 'ivaRemanente',
+            'f29Iva', 'remanenteAnterior',
             'basePpm', 'ppm', 'totalF29',
             'proyeccion', 'bteSemanales', 'resumenAnual'
         ));
@@ -296,12 +305,25 @@ class ImpuestoController extends Controller
             $ventas = $r ? (int) $r->ventas_neto + (int) $r->ventas_exento : 0;
             $ppm    = (int) round($ventas * self::TASA_PPM);
 
+            $f29Iva = $this->f29->ivaPeriodo($periodo);
+            if ($f29Iva) {
+                $iva       = $f29Iva['iva_a_pagar'];
+                $remanente = $f29Iva['remanente_siguiente'];
+            } else {
+                $dif       = $r ? (int) $r->iva_diferencia : 0;
+                $iva       = $dif > 0 ? $dif : 0;
+                $remanente = $dif < 0 ? -$dif : 0;
+            }
+
             $meses[$m] = [
                 'ventas'      => $ventas,
+                'iva'         => $iva,
+                'remanente'   => $remanente,
                 'ppm'         => $ppm,
                 'retenciones' => $ret,
-                'total'       => $ppm + $ret,
+                'total'       => $iva + $ppm + $ret,
                 'sincronizado'=> $r !== null,
+                'aviso'       => $f29Iva && ($f29Iva['cadena_incompleta'] || $f29Iva['sin_utm']),
             ];
         }
 

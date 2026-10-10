@@ -570,8 +570,11 @@ class ReporteFinancieroController extends Controller
         $ivaDebitoSii     = $resumenSii ? (int) $resumenSii->iva_debito     : 0;
         $ivaCreditoSii    = $resumenSii ? (int) $resumenSii->iva_credito    : 0;
         $ivaDiferenciaSii = $resumenSii ? (int) $resumenSii->iva_diferencia : 0;
-        $ivaAPagarSii     = $ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0;
-        $ivaRemanenteSii  = $ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0;
+        // Con arrastre del remanente del mes anterior (misma logica que F29 Estimado)
+        $f29Iva           = app(\App\Services\F29Service::class)->ivaPeriodo(sprintf('%04d%02d', $anio, $mes));
+        $remanenteAntSii  = $f29Iva ? $f29Iva['remanente_anterior'] : null;
+        $ivaAPagarSii     = $f29Iva ? $f29Iva['iva_a_pagar']         : ($ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0);
+        $ivaRemanenteSii  = $f29Iva ? $f29Iva['remanente_siguiente'] : ($ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0);
         $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
 
         return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
@@ -582,7 +585,7 @@ class ReporteFinancieroController extends Controller
             'honorariosRetencion', 'honorariosNeto',
             'sueldosPagados', 'basePpm', 'ppm', 'breakdown',
             'resumenAnual',
-            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'ultimaSyncSii'
+            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'remanenteAntSii', 'ultimaSyncSii'
         ));
     }
 
