@@ -35,7 +35,7 @@
                 F29 Estimado — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                F29 = IVA (Débito - Crédito) + PPM (0.25% x ventas SII) + Retenciones BTE.
+                F29 = IVA (Débito - Crédito) + PPM (0.25% x ventas SII sin IVA) + Retenciones BTE.
                 @if($resumen && $resumen->ultima_sincronizacion)
                     <span>Última sync: {{ $resumen->ultima_sincronizacion->format('d/m/Y H:i') }}</span>
                 @endif
@@ -87,12 +87,12 @@
         {{-- Ventas SII (base PPM) --}}
         <div class="col s6 m3">
             <div class="card-panel" style="padding:14px 12px;margin:4px 0;border-left:4px solid #039B7B">
-                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">Ventas SII</span>
+                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">Ventas SII sin IVA</span>
                 <span style="font-size:1.3rem;font-weight:700;color:#039B7B">
-                    ${{ number_format($ventasTotal, 0, ',', '.') }}
+                    ${{ number_format($basePpm, 0, ',', '.') }}
                 </span>
                 <span class="grey-text" style="font-size:.75rem;display:block">
-                    {{ $ventasCant }} doc(s) · base PPM
+                    {{ $ventasCant }} doc(s) · base PPM · con IVA ${{ number_format($ventasTotal, 0, ',', '.') }}
                     @if(!$resumen)<br><small class="orange-text">Sin sincronizar</small>@endif
                 </span>
             </div>
@@ -245,7 +245,7 @@
                     <table style="width:100%;font-size:.9rem">
                         <tbody>
                             <tr style="border-bottom:1px solid #f0f0f0">
-                                <td class="grey-text" style="padding:6px 0">Ventas promedio mensual</td>
+                                <td class="grey-text" style="padding:6px 0">Ventas promedio mensual (sin IVA)</td>
                                 <td style="text-align:right">${{ number_format($proyeccion['promedio_ventas'], 0, ',', '.') }}</td>
                             </tr>
                             <tr style="border-bottom:1px solid #f0f0f0">
@@ -352,7 +352,7 @@
             <thead>
                 <tr style="background:#eceff1">
                     <th>Mes</th>
-                    <th class="right-align">Ventas SII</th>
+                    <th class="right-align">Ventas SII sin IVA</th>
                     <th class="right-align">PPM (0.25%)</th>
                     <th class="right-align">Retenc. BTE</th>
                     <th class="right-align">Total F29</th>

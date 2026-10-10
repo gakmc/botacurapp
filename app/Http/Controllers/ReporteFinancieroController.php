@@ -509,11 +509,7 @@ class ReporteFinancieroController extends Controller
         $anio = (int) $request->input('anio', now()->year);
         $mes  = (int) $request->input('mes',  now()->month);
 
-        $inicio    = Carbon::create($anio, $mes, 1)->startOfMonth();
-        $fin       = Carbon::create($anio, $mes, 1)->endOfMonth();
-        $nombreMes = $inicio->locale('es')->isoFormat('MMMM');
-        $periodo   = sprintf('%04d%02d', $anio, $mes);
-        $periodoKey = $anio . '-' . sprintf('%02d', $mes);
+        $nombreMes = Carbon::create($anio, $mes, 1)->locale('es')->isoFormat('MMMM');
 
         $mesesNombres = [
             1 => 'Enero', 2 => 'Febrero', 3 => 'Marzo', 4 => 'Abril',
@@ -521,7 +517,100 @@ class ReporteFinancieroController extends Controller
             9 => 'Septiembre', 10 => 'Octubre', 11 => 'Noviembre', 12 => 'Diciembre',
         ];
 
-        // ── Ingresos del mes ──────────────────────────────────────────────────
+        $u = $this->calcularUtilidadMes($anio, $mes);
+
+        $abonos              = $u['abonos'];
+        $consumos            = $u['consumos'];
+        $servicios           = $u['servicios'];
+        $directas            = $u['directas'];
+        $totalIngresos       = $u['totalIngresos'];
+        $facturasSii         = $u['facturasSii'];
+        $ivaCompras          = $u['ivaCompras'];
+        $ivaDebito           = $u['ivaDebito'];
+        $ivaEstimado         = $u['ivaEstimado'];
+        $honorariosRetencion = $u['honorariosRetencion'];
+        $honorariosNeto      = $u['honorariosNeto'];
+        $sueldosPagados      = $u['sueldosPagados'];
+        $basePpm             = $u['basePpm'];
+        $ppm                 = $u['ppm'];
+        $totalEgresos        = $u['totalEgresos'];
+        $utilidad            = $u['utilidad'];
+        $margen              = $u['margen'];
+
+        $pct = function ($monto) use ($totalIngresos) {
+            return $totalIngresos > 0 ? round(($monto / $totalIngresos) * 100, 1) : 0;
+        };
+        $breakdown = [
+            'facturas'   => $pct($facturasSii),
+            'iva'        => $pct($ivaDebito),
+            'honorarios' => $pct($honorariosRetencion),
+            'sueldos'    => $pct($sueldosPagados),
+            'ppm'        => $pct($ppm),
+        ];
+
+        // ── Resumen anual (misma formula que el mes, via calcularUtilidadMes) ─
+        $resumenAnual = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $d = $this->calcularUtilidadMes($anio, $m);
+            if ($d['totalIngresos'] === 0 && $d['totalEgresos'] === 0 && Carbon::create($anio, $m, 1)->isFuture()) {
+                $resumenAnual[$m] = null;
+            } else {
+                $resumenAnual[$m] = [
+                    'ing'          => $d['totalIngresos'],
+                    'egr'          => $d['totalEgresos'],
+                    'utilidad'     => $d['utilidad'],
+                    'margen'       => $d['margen'],
+                    'iva_estimado' => $d['ivaEstimado'],
+                ];
+            }
+        }
+
+        // ── IVA segun SII (RCV oficial, lo que se declara en el F29) ─────────
+        $resumenSii       = $u['resumenSii'];
+        $ivaDebitoSii     = $resumenSii ? (int) $resumenSii->iva_debito     : 0;
+        $ivaCreditoSii    = $resumenSii ? (int) $resumenSii->iva_credito    : 0;
+        $ivaDiferenciaSii = $resumenSii ? (int) $resumenSii->iva_diferencia : 0;
+        $ivaAPagarSii     = $ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0;
+        $ivaRemanenteSii  = $ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0;
+        $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
+
+        return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
+            'anio', 'mes', 'nombreMes', 'mesesNombres',
+            'abonos', 'consumos', 'servicios', 'directas',
+            'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
+            'facturasSii', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
+            'honorariosRetencion', 'honorariosNeto',
+            'sueldosPagados', 'basePpm', 'ppm', 'breakdown',
+            'resumenAnual',
+            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'ultimaSyncSii'
+        ));
+    }
+
+    /**
+     * Utilidad de un mes. Unica fuente para la tarjeta del mes y el resumen anual.
+     *
+     * Los ingresos de la app son precios a publico (IVA incluido). El IVA no es
+     * ingreso ni gasto de Botacura: el debito se cobra al cliente y se entrega al
+     * SII, y el credito de las compras se recupera en el F29. Por eso:
+     *
+     *   Utilidad = Ingresos (con IVA) - IVA debito - Compras netas
+     *              - Retencion BTE - Sueldos - PPM
+     *
+     * En caja es lo mismo: a proveedores se les paga neto + IVA credito y al SII
+     * (debito - credito), o sea neto + debito en total. Un remanente de credito
+     * no se pierde (se arrastra al mes siguiente), asi que tampoco es gasto.
+     *
+     * IVA debito y base PPM salen del RCV de ventas sincronizado (exacto). Si el
+     * mes no esta sincronizado se estiman como 19/119 de los ingresos de la app
+     * (suponiendo todo afecto y boleteado) y se marca ivaEstimado = true.
+     */
+    private function calcularUtilidadMes($anio, $mes)
+    {
+        $inicio  = Carbon::create($anio, $mes, 1)->startOfMonth()->toDateString();
+        $fin     = Carbon::create($anio, $mes, 1)->endOfMonth()->toDateString();
+        $periodo = sprintf('%04d%02d', $anio, $mes);
+
+        // ── Ingresos (con IVA) ────────────────────────────────────────────────
         $abonos = (int) DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->whereYear('reservas.fecha_visita', $anio)
@@ -545,34 +634,29 @@ class ReporteFinancieroController extends Controller
             ->sum('detalle_servicios_extra.subtotal');
 
         $directas = (int) DB::table('ventas_directas')
-            ->whereBetween('fecha', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereBetween('fecha', [$inicio, $fin])
             ->sum('subtotal');
 
         // Poro Poro NO se contabiliza aqui: va a otro fondo, la app solo se usa
         // para registrarlo (confirmado por el cliente, no es ingreso de Botacura).
         $totalIngresos = $abonos + $consumos + $servicios + $directas;
 
-        // ── Egresos del mes ───────────────────────────────────────────────────
-        // 1. Facturas SII (fuente=sii). Usa fecha_egreso (fecha real de la
-        // factura), no periodo_sii (fecha de declaracion SII, que se atrasa) -
-        // mismo criterio que resumenMensual/resumenAnual/detalle-mes.
-        // Formula total-iva: neto no siempre suma con iva para dar total.
-        $facturasSii = (int) DB::table('egresos')
+        // ── Compras SII ───────────────────────────────────────────────────────
+        // Usa fecha_egreso (fecha real de la factura), no periodo_sii (fecha de
+        // declaracion SII, que se atrasa) - mismo criterio que
+        // resumenMensual/resumenAnual/detalle-mes. Neto = total - iva (incluye
+        // exento; neto no siempre suma con iva para dar total). Las notas de
+        // credito vienen en negativo y restan solas.
+        $compras = DB::table('egresos')
             ->where('fuente', 'sii')
-            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
+            ->whereBetween('fecha_egreso', [$inicio, $fin])
             ->whereNull('reconciliado_con_id')
-            ->selectRaw('SUM(total - COALESCE(iva, 0)) as t')
-            ->value('t');
-        $facturasSii = (int) $facturasSii;
+            ->selectRaw('COALESCE(SUM(total - COALESCE(iva, 0)), 0) as neto, COALESCE(SUM(iva), 0) as iva')
+            ->first();
+        $facturasSii = (int) $compras->neto;
+        $ivaCompras  = (int) $compras->iva; // credito fiscal: informativo, no es gasto
 
-        // 1b. IVA de las facturas SII (impuesto a pagar por las compras)
-        $ivaSii = (int) DB::table('egresos')
-            ->where('fuente', 'sii')
-            ->whereBetween('fecha_egreso', [$inicio->toDateString(), $fin->toDateString()])
-            ->whereNull('reconciliado_con_id')
-            ->sum('iva');
-
-        // 2. Honorarios BTE (retenciones)
+        // ── Honorarios BTE (retenciones) ──────────────────────────────────────
         $honorariosRetencion = 0;
         $honorariosNeto      = 0;
         if (Schema::hasTable('honorarios_bte')) {
@@ -586,104 +670,33 @@ class ReporteFinancieroController extends Controller
                 ->sum('monto_pagado');
         }
 
-        // 3. Sueldos devengados del mes (misma lógica que /sueldos: por semana
-        // trabajada, no por fecha en que se clickeó "Pagar"). Antes esto sumaba
-        // sueldos_pagados.monto por fecha_pago (base caja), lo que generaba un
-        // número distinto al de /sueldos para el mismo mes.
+        // ── Sueldos devengados (misma logica que /sueldos) ────────────────────
         $sueldosPagados = (new SueldoDevengadoService())->totalMes($anio, $mes);
 
-        // 4. PPM estimado (1.5% del total ventas en app — aproximado)
-        $ppm = (int) round($totalIngresos * 0.015);
+        // ── IVA debito y PPM ──────────────────────────────────────────────────
+        $resumenSii = \App\SiiResumenMensual::where('periodo', $periodo)->first();
+        if ($resumenSii) {
+            $ivaDebito   = (int) $resumenSii->iva_debito;
+            $basePpm     = (int) $resumenSii->ventas_neto + (int) $resumenSii->ventas_exento;
+            $ivaEstimado = false;
+        } else {
+            $ivaDebito   = (int) round($totalIngresos * 19 / 119);
+            $basePpm     = $totalIngresos - $ivaDebito;
+            $ivaEstimado = true;
+        }
+        // PPM sobre ingresos brutos sin IVA (neto + exento), misma tasa que F29.
+        $ppm = (int) round($basePpm * ImpuestoController::TASA_PPM);
 
-        $totalEgresos = $facturasSii + $ivaSii + $honorariosRetencion + $sueldosPagados + $ppm;
+        $totalEgresos = $facturasSii + $ivaDebito + $honorariosRetencion + $sueldosPagados + $ppm;
         $utilidad     = $totalIngresos - $totalEgresos;
         $margen       = $totalIngresos > 0 ? round(($utilidad / $totalIngresos) * 100, 1) : 0;
 
-        // ── Breakdown egresos ─────────────────────────────────────────────────
-        $breakdown = [
-            ['label' => 'Facturas SII',       'monto' => $facturasSii,          'pct' => $totalIngresos > 0 ? round(($facturasSii / $totalIngresos) * 100, 1) : 0],
-            ['label' => 'Honorarios (ret.)',  'monto' => $honorariosRetencion,  'pct' => $totalIngresos > 0 ? round(($honorariosRetencion / $totalIngresos) * 100, 1) : 0],
-            ['label' => 'Sueldos',            'monto' => $sueldosPagados,       'pct' => $totalIngresos > 0 ? round(($sueldosPagados / $totalIngresos) * 100, 1) : 0],
-            ['label' => 'PPM est.',           'monto' => $ppm,                  'pct' => $totalIngresos > 0 ? round(($ppm / $totalIngresos) * 100, 1) : 0],
-            ['label' => 'IVA compras (SII)',   'monto' => $ivaSii,               'pct' => $totalIngresos > 0 ? round(($ivaSii / $totalIngresos) * 100, 1) : 0],
-        ];
-
-        // ── Ventas SII del período ────────────────────────────────────────────
-        $ventasSii = (int) DB::table('sii_resumen_mensual')
-            ->where('periodo', $periodo)
-            ->value('ventas_total') ?? 0;
-
-        // ── Resumen anual ─────────────────────────────────────────────────────
-        $resumenAnual = [];
-        for ($m = 1; $m <= 12; $m++) {
-            $ini = Carbon::create($anio, $m, 1)->startOfMonth()->toDateString();
-            $fin_m = Carbon::create($anio, $m, 1)->endOfMonth()->toDateString();
-            $per_m = sprintf('%04d%02d', $anio, $m);
-            $per_k = $anio . '-' . sprintf('%02d', $m);
-
-            $ing = (int) DB::table('ventas')
-                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-                ->whereYear('reservas.fecha_visita', $anio)
-                ->whereMonth('reservas.fecha_visita', $m)
-                ->sum(DB::raw('ventas.abono_programa + COALESCE(ventas.diferencia_programa,0)'));
-            $ing += (int) DB::table('detalles_consumos')
-                ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
-                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-                ->whereYear('reservas.fecha_visita', $anio)
-                ->whereMonth('reservas.fecha_visita', $m)
-                ->sum('detalles_consumos.subtotal');
-            $ing += (int) DB::table('detalle_servicios_extra')
-                ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
-                ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
-                ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-                ->whereYear('reservas.fecha_visita', $anio)
-                ->whereMonth('reservas.fecha_visita', $m)
-                ->sum('detalle_servicios_extra.subtotal');
-            $ing += (int) DB::table('ventas_directas')->whereBetween('fecha', [$ini, $fin_m])->sum('subtotal');
-
-            $egr = (int) DB::table('egresos')
-                ->where('fuente', 'sii')
-                ->whereBetween('fecha_egreso', [$ini, $fin_m])
-                ->whereNull('reconciliado_con_id')
-                ->sum('total');
-            if (Schema::hasTable('honorarios_bte')) {
-                $egr += (int) DB::table('honorarios_bte')->where('periodo', $per_m)->where('estado', '!=', 'Anulada')->sum('monto_retenido');
-            }
-            $egr += (new SueldoDevengadoService())->totalMes($anio, $m);
-            $egr += (int) round($ing * 0.015);
-
-            if ($ing === 0 && $egr === 0 && Carbon::create($anio, $m, 1)->isFuture()) {
-                $resumenAnual[$m] = null;
-            } else {
-                $util_m = $ing - $egr;
-                $resumenAnual[$m] = [
-                    'ing'     => $ing,
-                    'egr'     => $egr,
-                    'utilidad' => $util_m,
-                    'margen'  => $ing > 0 ? round(($util_m / $ing) * 100, 1) : 0,
-                ];
-            }
-        }
-
-        // ── IVA segun SII (RCV oficial, para registro/pre-pago; no afecta Utilidad Neta) ──
-        $resumenSii = \App\SiiResumenMensual::where('periodo', $periodo)->first();
-        $ivaDebitoSii     = $resumenSii ? (int) $resumenSii->iva_debito     : 0;
-        $ivaCreditoSii    = $resumenSii ? (int) $resumenSii->iva_credito    : 0;
-        $ivaDiferenciaSii = $resumenSii ? (int) $resumenSii->iva_diferencia : 0;
-        $ivaAPagarSii     = $ivaDiferenciaSii > 0 ? $ivaDiferenciaSii : 0;
-        $ivaRemanenteSii  = $ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0;
-        $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
-
-        return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
-            'anio', 'mes', 'nombreMes', 'mesesNombres',
-            'abonos', 'consumos', 'servicios', 'directas',
-            'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
-            'facturasSii', 'ivaSii', 'honorariosRetencion', 'honorariosNeto',
-            'sueldosPagados', 'ppm', 'breakdown',
-            'ventasSii', 'resumenAnual',
-            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'ultimaSyncSii'
-        ));
+        return compact(
+            'abonos', 'consumos', 'servicios', 'directas', 'totalIngresos',
+            'facturasSii', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
+            'honorariosRetencion', 'honorariosNeto', 'sueldosPagados',
+            'basePpm', 'ppm', 'totalEgresos', 'utilidad', 'margen', 'resumenSii'
+        );
     }
 
     public function comparar(Request $request)

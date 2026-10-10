@@ -18,7 +18,7 @@
                 Utilidad — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                Ingresos de la app vs Egresos SII. Utilidad = Ingresos − (Facturas + IVA + Honorarios + PPM).
+                Ingresos de la app (con IVA). Utilidad = Ingresos − (Compras netas + IVA débito + Retención BTE + Sueldos + PPM). El IVA de compras no es gasto: se recupera en el F29.
             </p>
         </div>
         <div class="col s12 m5" style="text-align:right">
@@ -45,7 +45,7 @@
             <div class="card-panel" style="padding:14px 12px;margin:4px 0;border-left:4px solid #2E7D32;background:#f1f8e9">
                 <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">Total Ingresos</span>
                 <span style="font-size:1.4rem;font-weight:700;color:#2E7D32">${{ number_format($totalIngresos,0,',','.') }}</span>
-                <span class="grey-text" style="font-size:.75rem;display:block">Ventas app</span>
+                <span class="grey-text" style="font-size:.75rem;display:block">Ventas app (con IVA)</span>
             </div>
         </div>
         {{-- Egresos --}}
@@ -135,15 +135,42 @@
                     {{-- Facturas SII --}}
                     <div style="margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
-                            <a href="{{ route('backoffice.sii.detalleMes', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Facturas SII (compras)</a>
+                            <a href="{{ route('backoffice.sii.detalleMes', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Facturas SII (compras netas)</a>
                             <span>
-                                <strong>${{ number_format($facturasSii,0,',','.') }}</strong>
-                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[0]['pct'] }}%</span>
+                                <strong>{{ $facturasSii < 0 ? '-' : '' }}${{ number_format(abs($facturasSii),0,',','.') }}</strong>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['facturas'] }}%</span>
                             </span>
                         </div>
                         <div style="background:#e0e0e0;border-radius:4px;height:6px">
-                            <div style="background:#EF5350;border-radius:4px;height:6px;width:{{ min($breakdown[0]['pct'],100) }}%"></div>
+                            <div style="background:#EF5350;border-radius:4px;height:6px;width:{{ max(0, min($breakdown['facturas'],100)) }}%"></div>
                         </div>
+                        <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
+                            Neto + exento, menos notas de crédito · IVA crédito ${{ number_format($ivaCompras,0,',','.') }} no es gasto (se descuenta en F29)
+                        </div>
+                    </div>
+
+                    {{-- IVA débito (ventas) --}}
+                    <div style="margin-bottom:14px">
+                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
+                            <a href="{{ route('backoffice.impuesto.index', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">IVA ventas (débito fiscal)</a>
+                            <span>
+                                <strong>${{ number_format($ivaDebito,0,',','.') }}</strong>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['iva'] }}%</span>
+                            </span>
+                        </div>
+                        <div style="background:#e0e0e0;border-radius:4px;height:6px">
+                            <div style="background:#7E57C2;border-radius:4px;height:6px;width:{{ min($breakdown['iva'],100) }}%"></div>
+                        </div>
+                        @if($ivaEstimado)
+                        <div style="font-size:.75rem;color:#FF8F00;margin-top:2px">
+                            <i class="material-icons" style="font-size:.8rem;vertical-align:middle">warning</i>
+                            Estimado (19/119 de los ingresos). Sincroniza ventas SII en <a href="{{ route('backoffice.impuesto.index', ['anio'=>$anio,'mes'=>$mes]) }}">F29 Estimado</a> para usar el dato real.
+                        </div>
+                        @else
+                        <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
+                            IVA cobrado a clientes, se entrega al SII. En caja: crédito a proveedores + F29 (débito − crédito).
+                        </div>
+                        @endif
                     </div>
 
                     {{-- Retención Honorarios --}}
@@ -152,11 +179,11 @@
                             <a href="{{ route('backoffice.honorarios.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Retención honorarios (SII)</a>
                             <span>
                                 <strong>${{ number_format($honorariosRetencion,0,',','.') }}</strong>
-                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[1]['pct'] }}%</span>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['honorarios'] }}%</span>
                             </span>
                         </div>
                         <div style="background:#e0e0e0;border-radius:4px;height:6px">
-                            <div style="background:#FF7043;border-radius:4px;height:6px;width:{{ min($breakdown[1]['pct'],100) }}%"></div>
+                            <div style="background:#FF7043;border-radius:4px;height:6px;width:{{ min($breakdown['honorarios'],100) }}%"></div>
                         </div>
                         <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
                             15.25% del bruto BTE · Neto a trabajadores: ${{ number_format($honorariosNeto,0,',','.') }} (ya en sueldos)
@@ -169,11 +196,11 @@
                             <a href="{{ route('backoffice.sueldos.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">Sueldos pagados</a>
                             <span>
                                 <strong>${{ number_format($sueldosPagados,0,',','.') }}</strong>
-                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[2]['pct'] }}%</span>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['sueldos'] }}%</span>
                             </span>
                         </div>
                         <div style="background:#e0e0e0;border-radius:4px;height:6px">
-                            <div style="background:#26A69A;border-radius:4px;height:6px;width:{{ min($breakdown[2]['pct'],100) }}%"></div>
+                            <div style="background:#26A69A;border-radius:4px;height:6px;width:{{ min($breakdown['sueldos'],100) }}%"></div>
                         </div>
                         <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
                             Sueldo base (valor_dia) · excluye propinas de funcionarios
@@ -183,34 +210,17 @@
                     {{-- F29 PPM --}}
                     <div style="margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
-                            <a href="{{ route('backoffice.impuesto.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">F29 PPM (0.25% × ventas SII)</a>
+                            <a href="{{ route('backoffice.impuesto.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">F29 PPM (0.25% × ventas sin IVA)</a>
                             <span>
                                 <strong>${{ number_format($ppm,0,',','.') }}</strong>
-                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[3]['pct'] }}%</span>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['ppm'] }}%</span>
                             </span>
                         </div>
                         <div style="background:#e0e0e0;border-radius:4px;height:6px">
-                            <div style="background:#AB47BC;border-radius:4px;height:6px;width:{{ min($breakdown[3]['pct'],100) }}%"></div>
+                            <div style="background:#AB47BC;border-radius:4px;height:6px;width:{{ min($breakdown['ppm'],100) }}%"></div>
                         </div>
-                        @if($ventasSii == 0)
-                        <div style="font-size:.75rem;color:#FF8F00;margin-top:2px">
-                            <i class="material-icons" style="font-size:.8rem;vertical-align:middle">warning</i>
-                            Sincroniza ventas SII en <a href="{{ route('backoffice.impuesto.index', ['anio'=>$anio,'mes'=>$mes]) }}">F29 Estimado</a> para calcular el PPM.
-                        </div>
-                        @endif
-                    </div>
-
-                    {{-- IVA compras SII --}}
-                    <div style="margin-bottom:14px">
-                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
-                            <a href="{{ route('backoffice.sii.detalleMes', ['anio'=>$anio,'mes'=>$mes]) }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">IVA compras (SII)</a>
-                            <span>
-                                <strong>${{ number_format($ivaSii,0,',','.') }}</strong>
-                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown[4]['pct'] }}%</span>
-                            </span>
-                        </div>
-                        <div style="background:#e0e0e0;border-radius:4px;height:6px">
-                            <div style="background:#7E57C2;border-radius:4px;height:6px;width:{{ min($breakdown[4]['pct'],100) }}%"></div>
+                        <div style="font-size:.75rem;color:{{ $ivaEstimado ? '#FF8F00' : '#9e9e9e' }};margin-top:2px">
+                            Base ${{ number_format($basePpm,0,',','.') }}{{ $ivaEstimado ? ' (estimada, sin sync SII)' : ' (ventas SII netas + exentas)' }}
                         </div>
                     </div>
                     <div style="border-top:2px solid #ffcdd2;padding-top:10px">
@@ -247,7 +257,7 @@
                 <i class="material-icons tiny">receipt_long</i> IVA segun SII (oficial) &mdash; {{ ucfirst($nombreMes) }}
             </p>
             <p class="grey-text" style="margin:0 0 12px;font-size:.78rem">
-                Dato exacto del RCV sincronizado con el SII. Es la antesala de lo que hay que declarar/pagar en el F29 &mdash; no afecta el calculo de Utilidad Neta de arriba (que usa fecha de pago).
+                Dato exacto del RCV sincronizado con el SII. Es la antesala de lo que hay que declarar/pagar en el F29. El IVA débito de aquí es el que se resta arriba en la Utilidad. El crédito sigue el periodo de declaración SII, por eso puede diferir del IVA de las facturas del mes.
                 @if($ultimaSyncSii)
                     <br>Ultima sincronizacion: {{ $ultimaSyncSii->format('d/m/Y H:i') }}
                 @else
@@ -309,6 +319,9 @@
                            class="{{ $esMes ? 'blue-text font-weight-bold' : '' }}">
                             {{ $mesesNombres[$m] }}
                         </a>
+                        @if($d !== null && $d['iva_estimado'])
+                            <span class="orange-text" title="IVA y PPM estimados: mes sin sincronizar con el SII">*</span>
+                        @endif
                     </td>
                     @if($d === null)
                         <td class="right-align grey-text" colspan="4">—</td>
@@ -343,6 +356,9 @@
             </tfoot>
         </table>
         </div>
+        <p class="grey-text" style="font-size:.75rem;margin:4px 0 0">
+            <span class="orange-text">*</span> Mes sin sincronizar con el SII: IVA débito y PPM estimados (19/119 de los ingresos).
+        </p>
     </div>
 
 </div>

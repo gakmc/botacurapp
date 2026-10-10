@@ -20,7 +20,7 @@ use Illuminate\Support\Facades\Log;
  *   - BTE         → Retenciones de honorarios
  *
  * La empresa SI genera debito fiscal por ventas (confirmado via RCV/F29 real,
- * ver carpeta tributaria). F29 a pagar = IVA (Debito - Credito) + PPM (0.25% x ventas) + Retenciones BTE
+ * ver carpeta tributaria). F29 a pagar = IVA (Debito - Credito) + PPM (0.25% x ventas netas + exentas) + Retenciones BTE
  *
  * Compatible Laravel 6 / PHP 7.2.
  */
@@ -78,8 +78,9 @@ class ImpuestoController extends Controller
         $ventasExento = $resumen ? (int) $resumen->ventas_exento : 0;
         $ventasCant   = $resumen ? (int) $resumen->ventas_cantidad : 0;
 
-        // Base PPM = total ventas (exentas + afectas sin IVA)
-        $basePpm = $ventasTotal;
+        // Base PPM = ingresos brutos sin IVA (afectas netas + exentas).
+        // ventas_total trae el IVA incluido, no sirve como base.
+        $basePpm = $ventasNeto + $ventasExento;
         $ppm     = (int) round($basePpm * self::TASA_PPM);
 
         // ── Total F29 estimado ────────────────────────────────────────────────
@@ -217,8 +218,9 @@ class ImpuestoController extends Controller
             $ref     = Carbon::create($anio, $mes, 1)->subMonths($i);
             $periodo = $ref->format('Ym');
             $r = SiiResumenMensual::where('periodo', $periodo)->first();
-            if ($r && $r->ventas_total > 0) {
-                $totales[] = (int) $r->ventas_total;
+            $base = $r ? (int) $r->ventas_neto + (int) $r->ventas_exento : 0;
+            if ($base > 0) {
+                $totales[] = $base;
             }
         }
         return count($totales) > 0 ? (int) round(array_sum($totales) / count($totales)) : 0;
@@ -291,7 +293,7 @@ class ImpuestoController extends Controller
                 ->where('estado', '!=', 'Anulada')
                 ->sum('monto_retenido');
 
-            $ventas = $r ? (int) $r->ventas_total : 0;
+            $ventas = $r ? (int) $r->ventas_neto + (int) $r->ventas_exento : 0;
             $ppm    = (int) round($ventas * self::TASA_PPM);
 
             $meses[$m] = [
