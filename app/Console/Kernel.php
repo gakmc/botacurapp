@@ -27,6 +27,8 @@ class Kernel extends ConsoleKernel
     protected function schedule(Schedule $schedule)
     {
         $schedule->command('bot:aprender')->dailyAt('23:40');
+        // Inventario: corrige descuentos de ventas que no dispararon observer
+        $schedule->command('inventario:conciliar')->hourly()->withoutOverlapping(30);
         $schedule->command('cerrar:sueldos')
                 ->sundays()
                 ->at('21:00')

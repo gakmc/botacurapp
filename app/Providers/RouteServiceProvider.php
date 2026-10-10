@@ -46,6 +46,8 @@ class RouteServiceProvider extends ServiceProvider
 
         $this->mapWebRoutes();
 
+        $this->mapInventarioRoutes();
+
         //
     }
 
@@ -70,6 +72,15 @@ class RouteServiceProvider extends ServiceProvider
      *
      * @return void
      */
+    protected function mapInventarioRoutes()
+    {
+        Route::middleware(['web', 'auth'])
+             ->namespace($this->namespace)
+             ->prefix('inventario')
+             ->name('backoffice.inventario.')
+             ->group(base_path('routes/inventario.php'));
+    }
+
     protected function mapApiRoutes()
     {
         Route::prefix('api')

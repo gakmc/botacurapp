@@ -23,6 +23,8 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot()
     {
-        //
+        // Inventario: cada venta descuenta insumos según receta
+        \App\DetalleConsumo::observe(\App\Observers\DetalleConsumoObserver::class);
+        \App\DetalleVentaDirecta::observe(\App\Observers\DetalleVentaDirectaObserver::class);
     }
 }
