@@ -18,7 +18,7 @@
                 Utilidad — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                Ingresos de la app (con IVA). Utilidad = Ingresos − (Compras netas + IVA débito + Retención BTE + Sueldos + PPM). El IVA de compras no es gasto: se recupera en el F29.
+                Ingresos de la app (con IVA). Utilidad = Ingresos − (Compras netas + Gas + IVA débito + Retención BTE + Sueldos + PPM). El IVA de compras no es gasto: se recupera en el F29. Las remodelaciones se muestran aparte.
             </p>
         </div>
         <div class="col s12 m5" style="text-align:right">
@@ -149,6 +149,23 @@
                         </div>
                     </div>
 
+                    {{-- Gas y otros sin factura --}}
+                    <div style="margin-bottom:14px">
+                        <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
+                            <span style="color:#555">Gas y otros sin factura</span>
+                            <span>
+                                <strong>${{ number_format($otrosEgresos,0,',','.') }}</strong>
+                                <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['otros'] }}%</span>
+                            </span>
+                        </div>
+                        <div style="background:#e0e0e0;border-radius:4px;height:6px">
+                            <div style="background:#8D6E63;border-radius:4px;height:6px;width:{{ min($breakdown['otros'],100) }}%"></div>
+                        </div>
+                        <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
+                            Compras con boleta (gas Abastible registrado por el sensor). Sin crédito fiscal.
+                        </div>
+                    </div>
+
                     {{-- IVA débito (ventas) --}}
                     <div style="margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
@@ -203,7 +220,7 @@
                             <div style="background:#26A69A;border-radius:4px;height:6px;width:{{ min($breakdown['sueldos'],100) }}%"></div>
                         </div>
                         <div style="font-size:.75rem;color:#9e9e9e;margin-top:2px">
-                            Sueldo base (valor_dia) · excluye propinas de funcionarios
+                            Devengado (sueldo, BTE neto, comisiones y bonos) · sin propinas (${{ number_format($propinas,0,',','.') }}, las paga el cliente aparte)
                         </div>
                     </div>
 
@@ -246,6 +263,16 @@
                         <small style="font-size:.8rem"> ({{ $margen }}%)</small>
                     </span>
                 </div>
+                @if($inversiones != 0)
+                <div style="display:flex;justify-content:space-between;font-size:.85rem;margin-top:8px;color:#555">
+                    <span>− Inversión / remodelación (aparte, no es gasto del mes)</span>
+                    <span>${{ number_format($inversiones,0,',','.') }}</span>
+                </div>
+                <div style="display:flex;justify-content:space-between;font-size:.9rem;font-weight:700;margin-top:4px;color:{{ $utilidadTrasInversion >= 0 ? '#1565C0' : '#B71C1C' }}">
+                    <span>Resultado después de inversión</span>
+                    <span>{{ $utilidadTrasInversion < 0 ? '-' : '' }}${{ number_format(abs($utilidadTrasInversion),0,',','.') }}</span>
+                </div>
+                @endif
             </div>
         </div>
 
@@ -314,10 +341,11 @@
                     <th class="right-align">Egresos</th>
                     <th class="right-align">Utilidad</th>
                     <th class="right-align">Margen</th>
+                    <th class="right-align">Inversión (aparte)</th>
                 </tr>
             </thead>
             <tbody>
-                @php $totIng=0; $totEgr=0; @endphp
+                @php $totIng=0; $totEgr=0; $totInv=0; @endphp
                 @foreach($resumenAnual as $m => $d)
                 @php $esMes = ($m == $mes); @endphp
                 <tr class="{{ $esMes ? 'blue lighten-5' : '' }}">
@@ -331,9 +359,9 @@
                         @endif
                     </td>
                     @if($d === null)
-                        <td class="right-align grey-text" colspan="4">—</td>
+                        <td class="right-align grey-text" colspan="5">—</td>
                     @else
-                    @php $totIng += $d['ing']; $totEgr += $d['egr']; @endphp
+                    @php $totIng += $d['ing']; $totEgr += $d['egr']; $totInv += $d['inversion']; @endphp
                     <td class="right-align green-text text-darken-2">${{ number_format($d['ing'],0,',','.') }}</td>
                     <td class="right-align red-text">${{ number_format($d['egr'],0,',','.') }}</td>
                     <td class="right-align" style="color:{{ $d['utilidad']>=0 ? '#1565C0' : '#E53935' }};font-weight:600">
@@ -341,6 +369,9 @@
                     </td>
                     <td class="right-align" style="color:{{ $d['margen']>=0 ? '#388E3C' : '#E53935' }}">
                         {{ $d['margen'] }}%
+                    </td>
+                    <td class="right-align grey-text">
+                        {{ $d['inversion'] ? '$' . number_format($d['inversion'],0,',','.') : '—' }}
                     </td>
                     @endif
                 </tr>
@@ -359,6 +390,7 @@
                         {{ $totUtil>=0?'':'-' }}${{ number_format(abs($totUtil),0,',','.') }}
                     </td>
                     <td class="right-align" style="color:{{ $totMarg>=0 ? '#388E3C' : '#E53935' }}">{{ $totMarg }}%</td>
+                    <td class="right-align grey-text">${{ number_format($totInv,0,',','.') }}</td>
                 </tr>
             </tfoot>
         </table>

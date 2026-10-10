@@ -531,17 +531,22 @@ class ReporteFinancieroController extends Controller
         $honorariosRetencion = $u['honorariosRetencion'];
         $honorariosNeto      = $u['honorariosNeto'];
         $sueldosPagados      = $u['sueldosPagados'];
+        $propinas            = $u['propinas'];
+        $otrosEgresos        = $u['otrosEgresos'];
+        $inversiones         = $u['inversiones'];
         $basePpm             = $u['basePpm'];
         $ppm                 = $u['ppm'];
         $totalEgresos        = $u['totalEgresos'];
         $utilidad            = $u['utilidad'];
         $margen              = $u['margen'];
+        $utilidadTrasInversion = $u['utilidadTrasInversion'];
 
         $pct = function ($monto) use ($totalIngresos) {
             return $totalIngresos > 0 ? round(($monto / $totalIngresos) * 100, 1) : 0;
         };
         $breakdown = [
             'facturas'   => $pct($facturasSii),
+            'otros'      => $pct($otrosEgresos),
             'iva'        => $pct($ivaDebito),
             'honorarios' => $pct($honorariosRetencion),
             'sueldos'    => $pct($sueldosPagados),
@@ -560,6 +565,7 @@ class ReporteFinancieroController extends Controller
                     'egr'          => $d['totalEgresos'],
                     'utilidad'     => $d['utilidad'],
                     'margen'       => $d['margen'],
+                    'inversion'    => $d['inversiones'],
                     'iva_estimado' => $d['ivaEstimado'],
                 ];
             }
@@ -583,7 +589,8 @@ class ReporteFinancieroController extends Controller
             'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
             'facturasSii', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
             'honorariosRetencion', 'honorariosNeto',
-            'sueldosPagados', 'basePpm', 'ppm', 'breakdown',
+            'sueldosPagados', 'propinas', 'otrosEgresos', 'inversiones', 'utilidadTrasInversion',
+            'basePpm', 'ppm', 'breakdown',
             'resumenAnual',
             'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'remanenteAntSii', 'ultimaSyncSii'
         ));
@@ -596,8 +603,11 @@ class ReporteFinancieroController extends Controller
      * ingreso ni gasto de Botacura: el debito se cobra al cliente y se entrega al
      * SII, y el credito de las compras se recupera en el F29. Por eso:
      *
-     *   Utilidad = Ingresos (con IVA) - IVA debito - Compras netas
-     *              - Retencion BTE - Sueldos - PPM
+     *   Utilidad = Ingresos (con IVA) - IVA debito - Compras netas - Gas/otros sin
+     *              factura - Retencion BTE - Sueldos (sin propinas) - PPM
+     *
+     * Las compras marcadas es_inversion (remodelacion) no entran: se informan
+     * aparte en 'inversiones' y en utilidadTrasInversion.
      *
      * En caja es lo mismo: a proveedores se les paga neto + IVA credito y al SII
      * (debito - credito), o sea neto + debito en total. Un remanente de credito
@@ -650,14 +660,32 @@ class ReporteFinancieroController extends Controller
         // resumenMensual/resumenAnual/detalle-mes. Neto = total - iva (incluye
         // exento; neto no siempre suma con iva para dar total). Las notas de
         // credito vienen en negativo y restan solas.
+        // Las marcadas es_inversion (remodelacion, activo fijo) van aparte: no
+        // son gasto de operacion del mes.
         $compras = DB::table('egresos')
             ->where('fuente', 'sii')
             ->whereBetween('fecha_egreso', [$inicio, $fin])
             ->whereNull('reconciliado_con_id')
-            ->selectRaw('COALESCE(SUM(total - COALESCE(iva, 0)), 0) as neto, COALESCE(SUM(iva), 0) as iva')
+            ->selectRaw('COALESCE(SUM(CASE WHEN es_inversion = 0 THEN total - COALESCE(iva, 0) END), 0) as neto,
+                         COALESCE(SUM(CASE WHEN es_inversion = 1 THEN total - COALESCE(iva, 0) END), 0) as inversion,
+                         COALESCE(SUM(iva), 0) as iva')
             ->first();
         $facturasSii = (int) $compras->neto;
         $ivaCompras  = (int) $compras->iva; // credito fiscal: informativo, no es gasto
+
+        // ── Egresos sin factura (gas Abastible via IoT, etc.) ────────────────
+        // Se pagan con boleta: sin credito fiscal, el total es el costo. Solo
+        // fuentes distintas de 'sii' y no nulas, para no duplicar facturas.
+        $otros = DB::table('egresos')
+            ->whereNotNull('fuente')
+            ->where('fuente', '<>', 'sii')
+            ->whereBetween('fecha_egreso', [$inicio, $fin])
+            ->whereNull('reconciliado_con_id')
+            ->selectRaw('COALESCE(SUM(CASE WHEN es_inversion = 0 THEN total - COALESCE(iva, 0) END), 0) as gasto,
+                         COALESCE(SUM(CASE WHEN es_inversion = 1 THEN total - COALESCE(iva, 0) END), 0) as inversion')
+            ->first();
+        $otrosEgresos = (int) $otros->gasto;
+        $inversiones  = (int) $compras->inversion + (int) $otros->inversion;
 
         // ── Honorarios BTE (retenciones) ──────────────────────────────────────
         $honorariosRetencion = 0;
@@ -674,7 +702,10 @@ class ReporteFinancieroController extends Controller
         }
 
         // ── Sueldos devengados (misma logica que /sueldos) ────────────────────
-        $sueldosPagados = (new SueldoDevengadoService())->totalMes($anio, $mes);
+        // Sin propinas: las paga el cliente aparte, no estan en los ingresos.
+        $sueldoService  = new SueldoDevengadoService();
+        $sueldosPagados = $sueldoService->totalMes($anio, $mes, false);
+        $propinas       = $sueldoService->totalMes($anio, $mes) - $sueldosPagados;
 
         // ── IVA debito y PPM ──────────────────────────────────────────────────
         $resumenSii = \App\SiiResumenMensual::where('periodo', $periodo)->first();
@@ -690,15 +721,18 @@ class ReporteFinancieroController extends Controller
         // PPM sobre ingresos brutos sin IVA (neto + exento), misma tasa que F29.
         $ppm = (int) round($basePpm * ImpuestoController::TASA_PPM);
 
-        $totalEgresos = $facturasSii + $ivaDebito + $honorariosRetencion + $sueldosPagados + $ppm;
+        $totalEgresos = $facturasSii + $otrosEgresos + $ivaDebito + $honorariosRetencion + $sueldosPagados + $ppm;
         $utilidad     = $totalIngresos - $totalEgresos;
         $margen       = $totalIngresos > 0 ? round(($utilidad / $totalIngresos) * 100, 1) : 0;
 
+        // Despues de inversiones (remodelacion): lo que queda en caja del mes.
+        $utilidadTrasInversion = $utilidad - $inversiones;
+
         return compact(
             'abonos', 'consumos', 'servicios', 'directas', 'totalIngresos',
-            'facturasSii', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
-            'honorariosRetencion', 'honorariosNeto', 'sueldosPagados',
-            'basePpm', 'ppm', 'totalEgresos', 'utilidad', 'margen', 'resumenSii'
+            'facturasSii', 'otrosEgresos', 'inversiones', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
+            'honorariosRetencion', 'honorariosNeto', 'sueldosPagados', 'propinas',
+            'basePpm', 'ppm', 'totalEgresos', 'utilidad', 'margen', 'utilidadTrasInversion', 'resumenSii'
         );
     }
 

@@ -112,9 +112,13 @@
 
 
                           <div class="row">
-
-
-
+                            <div class="col s12">
+                              <input type="hidden" name="es_inversion" value="0">
+                              <label>
+                                <input type="checkbox" class="filled-in" name="es_inversion" value="1" {{ $egreso->es_inversion ? 'checked' : '' }}>
+                                <span>Es inversión (remodelación, equipamiento): no cuenta como gasto del mes en Utilidad</span>
+                              </label>
+                            </div>
                           </div>
 
                           <div class="row">
