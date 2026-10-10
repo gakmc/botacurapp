@@ -176,20 +176,20 @@ class InventarioService
     /**
      * Toma de inventario: deja el stock del sistema igual a lo contado.
      * $conteos = [id_insumo => ['contado' => x, 'costo_unitario' => y|null]]
-     * Insumos sin historial quedan como toma_inicial (stock de partida, no merma).
+     * El primer conteo de cada insumo queda como toma_inicial (stock de partida,
+     * no merma), aunque antes haya recibido alguna compra.
      */
     public function registrarToma(array $conteos, array $opts = [])
     {
         $inicial = [];
         $ajuste  = [];
-        $tieneHistorial = InventarioMovimientoDetalle::whereIn('id_insumo', array_keys($conteos))
-            ->distinct()->pluck('id_insumo')->flip();
+        $inicios = $this->inicios();
 
         foreach ($conteos as $idInsumo => $c) {
             if (! isset($c['contado']) || $c['contado'] === '' || $c['contado'] === null) continue;
             $diff = (float) $c['contado'] - $this->stock($idInsumo);
             $linea = ['id_insumo' => $idInsumo, 'cantidad' => $diff, 'costo_unitario' => $c['costo_unitario'] ?? null];
-            if (isset($tieneHistorial[$idInsumo])) $ajuste[] = $linea; else $inicial[] = $linea;
+            if (isset($inicios[$idInsumo])) $ajuste[] = $linea; else $inicial[] = $linea;
         }
 
         $movs = [];

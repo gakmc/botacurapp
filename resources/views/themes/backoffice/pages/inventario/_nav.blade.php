@@ -12,12 +12,15 @@
 <div class="inv-nav">
   <a href="{{ route('backoffice.inventario.index') }}" class="{{ $r === 'backoffice.inventario.index' ? 'activo' : '' }}">Stock</a>
   <a href="{{ route('backoffice.inventario.toma.create') }}" class="{{ $r === 'backoffice.inventario.toma.create' ? 'activo' : '' }}">Toma de inventario</a>
-  <a href="{{ route('backoffice.inventario.recepcion.create') }}" class="{{ $r === 'backoffice.inventario.recepcion.create' ? 'activo' : '' }}">Recepción de compras</a>
+  <a href="{{ route('backoffice.inventario.compras.lista') }}" class="{{ $r === 'backoffice.inventario.compras.lista' ? 'activo' : '' }}">Lista de compras</a>
+  <a href="{{ route('backoffice.inventario.compras.index') }}" class="{{ \Illuminate\Support\Str::startsWith($r, 'backoffice.inventario.compras.') && ! in_array($r, ['backoffice.inventario.compras.lista', 'backoffice.inventario.compras.configurar']) ? 'activo' : '' }}">Pedidos</a>
+  <a href="{{ route('backoffice.inventario.recepcion.create') }}" class="{{ $r === 'backoffice.inventario.recepcion.create' ? 'activo' : '' }}">Recepción sin pedido</a>
   <a href="{{ route('backoffice.inventario.movimientos') }}" class="{{ $r === 'backoffice.inventario.movimientos' ? 'activo' : '' }}">Movimientos</a>
+  <a href="{{ route('backoffice.inventario.compras.configurar') }}" class="{{ $r === 'backoffice.inventario.compras.configurar' ? 'activo' : '' }}">Configurar insumos</a>
   <a href="{{ route('backoffice.inventario.recetas') }}" class="{{ $r === 'backoffice.inventario.recetas' ? 'activo' : '' }}">Recetas con problemas</a>
 </div>
 @if(session('success'))<div class="inv-msg ok">{{ session('success') }}</div>@endif
 @if(session('error'))<div class="inv-msg err">{{ session('error') }}</div>@endif
-@if($errors->any())
+@if(isset($errors) && $errors->any())
   <div class="inv-msg err">@foreach($errors->all() as $e)<div>{{ $e }}</div>@endforeach</div>
 @endif

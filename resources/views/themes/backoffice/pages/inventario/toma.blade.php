@@ -14,8 +14,12 @@
     <strong>ajuste</strong> (merma o sobrante). Revisa también el costo: es el valor neto (sin IVA) por unidad.
   </p>
 
-  <form method="GET" action="{{ route('backoffice.inventario.toma.create') }}" style="max-width:360px">
-    <select name="sector_id" class="browser-default" onchange="this.form.submit()">
+  <form method="GET" action="{{ route('backoffice.inventario.toma.create') }}" style="display:flex;gap:10px;flex-wrap:wrap;max-width:720px">
+    <select name="ubicacion" class="browser-default" onchange="this.form.submit()" style="flex:1;min-width:200px">
+      <option value="">Todas las ubicaciones</option>
+      @foreach($ubicaciones as $u)<option value="{{ $u }}" {{ $ubicacion === $u ? 'selected' : '' }}>{{ $u }}</option>@endforeach
+    </select>
+    <select name="sector_id" class="browser-default" onchange="this.form.submit()" style="flex:1;min-width:200px">
       <option value="">Todos los sectores</option>
       @foreach($sectores as $s)<option value="{{ $s->id }}" {{ (string)$sectorId === (string)$s->id ? 'selected' : '' }}>{{ $s->nombre }}</option>@endforeach
     </select>
@@ -30,12 +34,17 @@
           <th>Insumo</th><th class="inv-num">Stock sistema</th><th>Contado</th><th class="inv-num">Diferencia</th><th>Costo neto por unidad</th>
         </tr></thead>
         <tbody>
+        @php $seccion = false; @endphp
         @foreach($insumos as $i)
           @php
             $um = optional($i->unidadMedida)->abreviatura;
             $iniciado = isset($inicios[$i->id]);
             $stock = $iniciado ? (float) $i->cantidad : 0;
           @endphp
+          @if($i->ubicacion !== $seccion)
+            @php $seccion = $i->ubicacion; @endphp
+            <tr style="background:#eceff1"><td colspan="5" style="font-weight:700;color:#37474f">{{ $seccion ?: 'Sin ubicación' }}</td></tr>
+          @endif
           <tr>
             <td>{{ $i->nombre }} @if(! $iniciado)<span class="new badge orange" data-badge-caption="Primera toma"></span>@endif</td>
             <td class="inv-num">{{ $iniciado ? rtrim(rtrim(number_format($stock, 3, ',', '.'), '0'), ',') . ' ' . $um : '—' }}</td>

@@ -1,8 +1,8 @@
 <?php
 
 /*
-| Inventario de insumos (kardex). Se carga desde RouteServiceProvider con
-| middleware web + auth y nombres "backoffice.inventario.*".
+| Inventario de insumos (kardex) y ciclo de compras. Se carga desde
+| RouteServiceProvider con middleware web + auth y nombres "backoffice.inventario.*".
 */
 
 Route::get('/', 'InventarioController@index')->name('index');
@@ -15,3 +15,16 @@ Route::get('/movimientos', 'InventarioController@movimientos')->name('movimiento
 Route::get('/kardex/{insumo}', 'InventarioController@kardex')->name('kardex');
 Route::get('/recetas', 'InventarioController@recetas')->name('recetas');
 Route::post('/conciliar', 'InventarioController@conciliar')->name('conciliar');
+
+// Ciclo de compras: lista -> pedido por proveedor -> compra -> recepción verificada
+Route::get('/insumos', 'CompraInsumoController@configurar')->name('compras.configurar');
+Route::post('/insumos', 'CompraInsumoController@guardarConfiguracion')->name('compras.configurar.guardar');
+Route::get('/compras/lista', 'CompraInsumoController@lista')->name('compras.lista');
+Route::post('/compras/pedidos', 'CompraInsumoController@crearPedidos')->name('compras.crear');
+Route::get('/compras', 'CompraInsumoController@index')->name('compras.index');
+Route::get('/compras/{pedido}', 'CompraInsumoController@show')->name('compras.show');
+Route::post('/compras/{pedido}/cancelar', 'CompraInsumoController@cancelar')->name('compras.cancelar');
+Route::get('/compras/{pedido}/comprar', 'CompraInsumoController@comprarForm')->name('compras.comprar');
+Route::post('/compras/{pedido}/comprar', 'CompraInsumoController@comprarStore')->name('compras.comprar.store');
+Route::get('/compras/{pedido}/recibir', 'CompraInsumoController@recibirForm')->name('compras.recibir');
+Route::post('/compras/{pedido}/recibir', 'CompraInsumoController@recibirStore')->name('compras.recibir.store');

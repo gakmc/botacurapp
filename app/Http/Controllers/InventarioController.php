@@ -47,13 +47,19 @@ class InventarioController extends Controller
     public function index(Request $request)
     {
         $sectorId = $request->input('sector_id');
+        $provId   = $request->input('id_proveedor');
         $search   = trim((string) $request->input('search', ''));
         $inicios  = $this->inv->inicios();
 
-        $insumos = Insumo::with(['unidadMedida', 'sector'])
+        $insumos = Insumo::with(['unidadMedida', 'sector', 'proveedor'])
             ->when($sectorId, function ($q) use ($sectorId) { $q->where('id_sector', $sectorId); })
+            ->when($provId === 'sin', function ($q) { $q->whereNull('id_proveedor'); })
+            ->when($provId && $provId !== 'sin', function ($q) use ($provId) { $q->where('id_proveedor', $provId); })
             ->when($search !== '', function ($q) use ($search) { $q->where('nombre', 'like', "%{$search}%"); })
-            ->orderBy('id_sector')->orderBy('nombre')->get();
+            ->orderBy('nombre')->get()
+            // Secciones por proveedor habitual (Cencosud, Cocha, Lo Valledor…); sin proveedor al final
+            ->sortBy(function ($i) { return ($i->proveedor ? '0' . $i->proveedor->nombre : '1') . '|' . $i->nombre; })->values();
+        $proveedoresFiltro = \App\Proveedor::whereIn('id', Insumo::whereNotNull('id_proveedor')->distinct()->pluck('id_proveedor'))->orderBy('nombre')->get(['id', 'nombre']);
 
         $totalValor = 0;
         foreach ($insumos as $i) {
@@ -66,19 +72,23 @@ class InventarioController extends Controller
         $sinIniciar = $insumos->where('iniciado', false)->count();
         $criticos = $insumos->filter(function ($i) { return $i->iniciado && (float) $i->cantidad <= (float) $i->stock_critico; })->count();
 
-        return view('themes.backoffice.pages.inventario.index', compact('insumos', 'sectores', 'sectorId', 'search', 'totalValor', 'sinIniciar', 'criticos'));
+        return view('themes.backoffice.pages.inventario.index', compact('insumos', 'sectores', 'sectorId', 'search', 'totalValor', 'sinIniciar', 'criticos', 'provId', 'proveedoresFiltro'));
     }
 
     // ── Toma de inventario ──────────────────────────────────────────────────
     public function tomaCreate(Request $request)
     {
-        $sectorId = $request->input('sector_id');
+        $sectorId  = $request->input('sector_id');
+        $ubicacion = $request->input('ubicacion');
         $sectores = Sector::orderBy('nombre')->get();
+        $ubicaciones = Insumo::whereNotNull('ubicacion')->distinct()->orderBy('ubicacion')->pluck('ubicacion');
+        // Ordenado por ubicación: así se recorre la bodega al contar (Equipo 1, Equipo 3, Despensa…)
         $insumos = Insumo::with('unidadMedida')
             ->when($sectorId, function ($q) use ($sectorId) { $q->where('id_sector', $sectorId); })
-            ->orderBy('nombre')->get();
+            ->when($ubicacion, function ($q) use ($ubicacion) { $q->where('ubicacion', $ubicacion); })
+            ->orderByRaw('ubicacion IS NULL, ubicacion')->orderBy('nombre')->get();
         $inicios = $this->inv->inicios();
-        return view('themes.backoffice.pages.inventario.toma', compact('insumos', 'sectores', 'sectorId', 'inicios'));
+        return view('themes.backoffice.pages.inventario.toma', compact('insumos', 'sectores', 'sectorId', 'inicios', 'ubicacion', 'ubicaciones'));
     }
 
     public function tomaStore(Request $request)
