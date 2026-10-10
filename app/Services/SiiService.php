@@ -250,6 +250,63 @@ class SiiService
     // PRIVADO: normalizar documento V2 → formato interno
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PÚBLICO: Portal MIPYME — documentos recibidos (con detalle de productos)
+    // Autentica con la persona autorizada (config sii.mipyme_rut / mipyme_clave).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function mipymeConfigurado()
+    {
+        return config('sii.mipyme_rut') && config('sii.mipyme_clave') && $this->token && $this->rut;
+    }
+
+    /**
+     * XML del DTE recibido (string) o excepción. Cuesta créditos de API Gateway:
+     * llamar solo para documentos que aún no se han leído.
+     */
+    public function xmlRecibido($rutEmisor, $dte, $folio, $fechaEmision = null)
+    {
+        $url = rtrim($this->baseUrl, '/') . "/mipyme/recibidos/xml/{$this->rut}/{$rutEmisor}/{$dte}/{$folio}"
+            . ($fechaEmision ? '?fecha_emision=' . $fechaEmision : '');
+        $client = new Client([
+            'timeout' => max($this->timeout, 60), 'verify' => false, 'http_errors' => false,
+            'headers' => ['Authorization' => 'Token ' . $this->token, 'Content-Type' => 'application/json'],
+        ]);
+        \Illuminate\Support\Facades\Log::info('SII API request', ['url' => $url]);
+        $res = $client->post($url, ['json' => ['auth' => ['pass' => [
+            'rut' => config('sii.mipyme_rut'), 'clave' => config('sii.mipyme_clave'),
+        ]]]]);
+        $body = (string) $res->getBody();
+        if ($res->getStatusCode() !== 200) {
+            $j = json_decode($body, true);
+            throw new \Exception('MIPYME ' . $res->getStatusCode() . ': ' . ($j['detail'] ?? substr($body, 0, 200)));
+        }
+        return $body;
+    }
+
+    /**
+     * Líneas de detalle de un XML de DTE: [['nombre', 'cantidad', 'unidad', 'precio', 'monto', 'codigo'], ...]
+     */
+    public static function detalleXml($xmlString)
+    {
+        $xml = @simplexml_load_string($xmlString);
+        if (! $xml) return [];
+        $xml->registerXPathNamespace('s', 'http://www.sii.cl/SiiDte');
+        $det = $xml->xpath('//s:Documento/s:Detalle') ?: ($xml->xpath('//Documento/Detalle') ?: []);
+        $out = [];
+        foreach ($det as $d) {
+            $out[] = [
+                'nombre'   => trim((string) $d->NmbItem),
+                'cantidad' => (float) $d->QtyItem,
+                'unidad'   => trim((string) $d->UnmdItem),
+                'precio'   => (float) $d->PrcItem,
+                'monto'    => (float) $d->MontoItem,
+                'codigo'   => trim((string) ($d->CdgItem->VlrCodigo ?? '')),
+            ];
+        }
+        return $out;
+    }
+
     /**
      * ¿Ya existe en egresos este documento del RCV? Compara folio + RUT del
      * emisor + tipo (nota de credito = total negativo). Distintos proveedores
