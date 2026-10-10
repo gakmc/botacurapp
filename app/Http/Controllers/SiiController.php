@@ -318,6 +318,7 @@ class SiiController extends Controller
             39 => 'Boleta',
             46 => 'Liquidacion',
             56 => 'Nota de Debito',
+            60 => 'Nota de Credito',
             61 => 'Nota de Credito',
         ];
 
