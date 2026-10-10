@@ -21,13 +21,13 @@ use Illuminate\Support\Facades\Log;
  *   - BTE         → Retenciones de honorarios
  *
  * La empresa SI genera debito fiscal por ventas (confirmado via RCV/F29 real,
- * ver carpeta tributaria). F29 a pagar = IVA (Debito - Credito) + PPM (0.25% x ventas netas + exentas) + Retenciones BTE
+ * ver carpeta tributaria). F29 a pagar = IVA (Debito - Credito) + PPM (0.125% x ventas netas + exentas) + Retenciones BTE
  *
  * Compatible Laravel 6 / PHP 7.2.
  */
 class ImpuestoController extends Controller
 {
-    const TASA_PPM = 0.0025; // 0.25%
+    const TASA_PPM = 0.00125; // 0,125%: codigo 115 de los F29 presentados en 2026
 
     /** @var SiiService */
     private $sii;

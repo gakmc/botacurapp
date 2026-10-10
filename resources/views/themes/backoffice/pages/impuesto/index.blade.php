@@ -35,7 +35,7 @@
                 F29 Estimado — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                F29 = IVA (Débito - Crédito) + PPM (0.25% x ventas SII sin IVA) + Retenciones BTE.
+                F29 = IVA (Débito - Crédito) + PPM (0.125% x ventas SII sin IVA) + Retenciones BTE.
                 @if($resumen && $resumen->ultima_sincronizacion)
                     <span>Última sync: {{ $resumen->ultima_sincronizacion->format('d/m/Y H:i') }}</span>
                 @endif
@@ -101,7 +101,7 @@
         {{-- PPM --}}
         <div class="col s6 m3">
             <div class="card-panel" style="padding:14px 12px;margin:4px 0;border-left:4px solid #1565C0">
-                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">PPM (0.25%)</span>
+                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">PPM (0.125%)</span>
                 <span style="font-size:1.3rem;font-weight:700;color:#1565C0">
                     ${{ number_format($ppm, 0, ',', '.') }}
                 </span>
@@ -215,7 +215,7 @@
                             @endif
                             <tr style="border-bottom:1px solid #f0f0f0">
                                 <td style="padding:6px 0">
-                                    <strong>Código 062</strong> — PPM (0.25% × base cód. 563)
+                                    <strong>Código 062</strong> — PPM (0.125% × base cód. 563)
                                 </td>
                                 <td style="text-align:right;color:#1565C0;font-weight:700">
                                     ${{ number_format($ppm, 0, ',', '.') }}
@@ -387,7 +387,7 @@
                     <th>Mes</th>
                     <th class="right-align">Ventas SII sin IVA</th>
                     <th class="right-align">IVA a pagar</th>
-                    <th class="right-align">PPM (0.25%)</th>
+                    <th class="right-align">PPM (0.125%)</th>
                     <th class="right-align">Retenc. BTE</th>
                     <th class="right-align">Total F29</th>
                     <th class="center-align">Estado</th>

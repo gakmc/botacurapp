@@ -79,9 +79,7 @@ class SiiAutoController extends Controller
         try {
             foreach ($resultado['data'] as $doc) {
                 // Evitar duplicados
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($doc['folio'], $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;

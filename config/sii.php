@@ -32,6 +32,7 @@ return [
         34 => 'Factura No Afecta Electrónica',
         46 => 'Liquidación Factura Electrónica',
         56 => 'Nota de Débito Electrónica',
+        60 => 'Nota de Crédito',
         61 => 'Nota de Crédito Electrónica',
     ],
 

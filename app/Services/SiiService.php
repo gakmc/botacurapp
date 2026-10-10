@@ -57,20 +57,25 @@ class SiiService
         $documentos = [];
         $errores    = [];
 
-        foreach ($tiposImportar as $tipo) {
-            try {
-                $resp = $this->postRcv(
-                    "/rcv/compras/detalle/{$rutPath}/{$periodo}/{$tipo}/REGISTRO"
-                );
-                $data = $resp['data'] ?? [];
-                foreach ($data as $doc) {
-                    $documentos[] = $this->normalizarDocumento($doc, $tipo);
+        // La API devuelve TODOS los documentos del periodo sin importar el tipo
+        // pedido en la ruta (comprobado 2026-10-10: 33/34/46/56/61 traen los mismos
+        // documentos). Se consulta una sola vez y el tipo real se toma del campo
+        // 'dte' de cada documento. Antes las notas de credito entraban como
+        // facturas positivas y se pagaban 5 consultas por periodo.
+        try {
+            $tipoRuta = $tiposImportar[0] ?? 33;
+            $resp = $this->postRcv(
+                "/rcv/compras/detalle/{$rutPath}/{$periodo}/{$tipoRuta}/REGISTRO"
+            );
+            foreach ($resp['data'] ?? [] as $doc) {
+                $dte = (int) ($doc['dte'] ?? 0);
+                if (! in_array($dte, $tiposImportar)) {
+                    continue;
                 }
-            } catch (\Throwable $e) {
-                // Si un tipo no tiene registros, la API puede devolver 404 o array vacío.
-                // Continuamos con los demás tipos.
-                $errores[] = "tipo {$tipo}: " . $e->getMessage();
+                $documentos[] = $this->normalizarDocumento($doc, $dte);
             }
+        } catch (\Throwable $e) {
+            $errores[] = $e->getMessage();
         }
 
         $ok = empty($errores) || count($documentos) > 0;
@@ -244,6 +249,27 @@ class SiiService
     // ─────────────────────────────────────────────────────────────────────────
     // PRIVADO: normalizar documento V2 → formato interno
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * ¿Ya existe en egresos este documento del RCV? Compara folio + RUT del
+     * emisor + tipo (nota de credito = total negativo). Distintos proveedores
+     * pueden repetir numero de folio; antes se comparaba solo el folio y el
+     * segundo documento se perdia.
+     */
+    public static function egresoExiste($folio, $rut = null, $tipo = 33)
+    {
+        $q = \App\Egreso::where('fuente', 'sii')->where('numero_documento', (string) $folio);
+        $q->where('total', in_array((int) $tipo, [60, 61], true) ? '<' : '>=', 0);
+        if ($rut) {
+            $rut = strtoupper(str_replace(['.', ' '], '', $rut));
+            $q->where(function ($w) use ($rut) {
+                $w->whereHas('proveedor', function ($p) use ($rut) {
+                    $p->whereRaw("UPPER(REPLACE(REPLACE(rut, '.', ''), ' ', '')) = ?", [$rut]);
+                })->orWhere('observaciones', 'like', '%RUT: ' . $rut . '%');
+            });
+        }
+        return $q->exists();
+    }
 
     private function normalizarDocumento($doc, $tipoNum)
     {

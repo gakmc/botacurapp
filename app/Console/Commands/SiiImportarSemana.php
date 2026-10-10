@@ -100,10 +100,7 @@ class SiiImportarSemana extends Command
         try {
             $periodoKey = sprintf('%04d-%02d', $anio, $mes);
             foreach ($resultado['data'] as $doc) {
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('periodo_sii', $periodoKey)
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($doc['folio'], $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;

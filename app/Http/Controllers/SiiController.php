@@ -149,9 +149,7 @@ class SiiController extends Controller
         try {
             foreach ($resultado['data'] as $doc) {
                 // Deduplicar por fuente + numero_documento (folio)
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($doc['folio'], $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;
@@ -229,9 +227,7 @@ class SiiController extends Controller
         DB::beginTransaction();
         try {
             foreach ($request->documentos as $doc) {
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($doc['folio'], $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;
@@ -485,9 +481,7 @@ class SiiController extends Controller
                 $folio = $doc['folio'] ?? ($doc['numero_documento'] ?? null);
                 if (!$folio) continue;
 
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $folio)
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($folio, $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;

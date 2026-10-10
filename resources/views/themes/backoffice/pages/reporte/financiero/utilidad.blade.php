@@ -227,7 +227,7 @@
                     {{-- F29 PPM --}}
                     <div style="margin-bottom:14px">
                         <div style="display:flex;justify-content:space-between;font-size:.88rem;margin-bottom:3px">
-                            <a href="{{ route('backoffice.impuesto.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">F29 PPM (0.25% × ventas sin IVA)</a>
+                            <a href="{{ route('backoffice.impuesto.index') }}" style="color:#555;text-decoration:none" onmouseover="this.style.textDecoration='underline'" onmouseout="this.style.textDecoration='none'">F29 PPM (0.125% × ventas sin IVA)</a>
                             <span>
                                 <strong>${{ number_format($ppm,0,',','.') }}</strong>
                                 <span class="grey-text" style="font-size:.8rem;margin-left:6px">{{ $breakdown['ppm'] }}%</span>
