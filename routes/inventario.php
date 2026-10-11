@@ -39,3 +39,8 @@ Route::post('/facturas/{foto}/releer', 'FacturaFotoController@releer')->name('fa
 Route::post('/facturas/{foto}/actualizar', 'FacturaFotoController@actualizar')->name('facturas.actualizar');
 Route::post('/facturas/{foto}/confirmar', 'FacturaFotoController@confirmar')->name('facturas.confirmar');
 Route::post('/facturas/{foto}/descartar', 'FacturaFotoController@descartar')->name('facturas.descartar');
+
+// Facturas recibidas (XML o foto): selección de productos que pasan al inventario
+Route::get('/facturas-recibidas', 'CompraFacturaController@index')->name('recibidas.index');
+Route::get('/facturas-recibidas/{rut}/{dte}/{folio}', 'CompraFacturaController@show')->name('recibidas.show');
+Route::post('/facturas-recibidas/{rut}/{dte}/{folio}', 'CompraFacturaController@agregar')->name('recibidas.agregar');

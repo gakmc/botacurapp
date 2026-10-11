@@ -14,6 +14,7 @@
   <a href="{{ route('backoffice.inventario.toma.create') }}" class="{{ $r === 'backoffice.inventario.toma.create' ? 'activo' : '' }}">Toma de inventario</a>
   <a href="{{ route('backoffice.inventario.compras.lista') }}" class="{{ $r === 'backoffice.inventario.compras.lista' ? 'activo' : '' }}">Lista de compras</a>
   <a href="{{ route('backoffice.inventario.compras.index') }}" class="{{ \Illuminate\Support\Str::startsWith($r, 'backoffice.inventario.compras.') && ! in_array($r, ['backoffice.inventario.compras.lista', 'backoffice.inventario.compras.configurar']) ? 'activo' : '' }}">Pedidos</a>
+  <a href="{{ route('backoffice.inventario.recibidas.index') }}" class="{{ \Illuminate\Support\Str::startsWith($r, 'backoffice.inventario.recibidas.') ? 'activo' : '' }}">Facturas recibidas</a>
   <a href="{{ route('backoffice.inventario.facturas.index') }}" class="{{ \Illuminate\Support\Str::startsWith($r, 'backoffice.inventario.facturas.') ? 'activo' : '' }}">Facturas por foto</a>
   <a href="{{ route('backoffice.inventario.recepcion.create') }}" class="{{ $r === 'backoffice.inventario.recepcion.create' ? 'activo' : '' }}">Recepción sin pedido</a>
   <a href="{{ route('backoffice.inventario.movimientos') }}" class="{{ $r === 'backoffice.inventario.movimientos' ? 'activo' : '' }}">Movimientos</a>

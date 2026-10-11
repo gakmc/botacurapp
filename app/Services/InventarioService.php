@@ -103,9 +103,10 @@ class InventarioService
     /**
      * @param string $tipo    entrada | salida | ajuste
      * @param string $origen  toma_inicial | toma | compra_factura | compra_manual | consumo | venta_directa | merma | ajuste_manual
-     * @param array  $lineas  [['id_insumo', 'cantidad', 'id_unidad_medida'?, 'costo_unitario'?], ...]
+     * @param array  $lineas  [['id_insumo', 'cantidad', 'id_unidad_medida'?, 'costo_unitario'?, 'costo_unitario_iva'?], ...]
      *                        cantidad: positiva para entrada/salida; con signo para ajuste.
      *                        costo_unitario: neto, por unidad de la línea (opcional).
+     *                        costo_unitario_iva: con IVA incluido (opcional; si falta, neto + 19%).
      * @param array  $opts    fecha, referencia (Model), referencia_type, referencia_id,
      *                        id_user, id_sector, observacion, fijar_costo (bool)
      */
@@ -144,24 +145,35 @@ class InventarioService
                 $stockPrev = $this->stock($insumo->id);
                 $tieneCosto = isset($l['costo_unitario']) && $l['costo_unitario'] !== '' && $l['costo_unitario'] !== null;
                 $costo = $tieneCosto ? ((float) $l['costo_unitario']) / $f : (float) $insumo->valor;
+                // Costo con IVA incluido (para costear contra precios de venta con IVA).
+                // Si no viene, se asume el neto + 19%.
+                $tieneIva = isset($l['costo_unitario_iva']) && $l['costo_unitario_iva'] !== '' && $l['costo_unitario_iva'] !== null;
+                $costoIva = $tieneIva ? ((float) $l['costo_unitario_iva']) / $f
+                    : ($tieneCosto ? $costo * 1.19 : (float) ($insumo->valor_con_iva ?? round($costo * 1.19)));
 
+                $promedio = function ($previo, $nuevo) use ($stockPrev, $base) {
+                    // Promedio ponderado (si el stock previo es negativo o cero, manda el costo nuevo)
+                    return (int) round($stockPrev > 0 && $previo !== null
+                        ? ($stockPrev * (float) $previo + $base * $nuevo) / ($stockPrev + $base)
+                        : $nuevo);
+                };
                 if ($tieneCosto && ! empty($opts['fijar_costo'])) {
                     $insumo->valor = (int) round($costo);
+                    $insumo->valor_con_iva = (int) round($costoIva);
                 } elseif ($tieneCosto && $base > 0) {
-                    // Promedio ponderado (si el stock previo es negativo o cero, manda el costo nuevo)
-                    $insumo->valor = (int) round($stockPrev > 0
-                        ? ($stockPrev * (float) $insumo->valor + $base * $costo) / ($stockPrev + $base)
-                        : $costo);
+                    $insumo->valor = $promedio($insumo->valor, $costo);
+                    $insumo->valor_con_iva = $promedio($insumo->valor_con_iva, $costoIva);
                 }
 
                 InventarioMovimientoDetalle::create([
-                    'movimiento_id'    => $mov->id,
-                    'id_insumo'        => $insumo->id,
-                    'cantidad'         => $cantidad,
-                    'id_unidad_medida' => $unidadLinea,
-                    'cantidad_base'    => $base,
-                    'costo_unitario'   => $costo,
-                    'costo_total'      => round($base * $costo, 2),
+                    'movimiento_id'      => $mov->id,
+                    'id_insumo'          => $insumo->id,
+                    'cantidad'           => $cantidad,
+                    'id_unidad_medida'   => $unidadLinea,
+                    'cantidad_base'      => $base,
+                    'costo_unitario'     => $costo,
+                    'costo_unitario_iva' => $costoIva,
+                    'costo_total'        => round($base * $costo, 2),
                 ]);
 
                 $insumo->cantidad = $stockPrev + $base;

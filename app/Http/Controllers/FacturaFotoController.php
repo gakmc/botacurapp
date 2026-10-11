@@ -126,8 +126,11 @@ class FacturaFotoController extends Controller
         if ($foto->pedido && ! $foto->pedido->egreso_id && $foto->egreso_id) {
             $foto->pedido->update(['egreso_id' => $foto->egreso_id]);
         }
-        return redirect()->route('backoffice.inventario.facturas.show', $foto)
-            ->with('success', $n ? "Factura confirmada: {$n} producto(s) agregados al catálogo de compras." : 'Factura confirmada. Sus productos ya estaban registrados (XML o foto anterior).');
+        // Siguiente paso: elegir qué productos pasan al inventario
+        list($rut, $dte, $folio) = FacturaFotoService::claveDocumento($d);
+        return redirect()->route('backoffice.inventario.recibidas.show', [$rut, $dte, $folio])
+            ->with('success', ($n ? "Factura confirmada: {$n} producto(s) registrados." : 'Factura confirmada (sus productos ya estaban registrados por XML).')
+                . ' Marca ahora los que pasan al inventario.');
     }
 
     public function descartar(FacturaFoto $foto)

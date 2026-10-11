@@ -134,11 +134,19 @@ TXT;
     }
 
     /** Guarda las líneas confirmadas en compra_items (no pisa las que ya vinieron por XML). */
+    /** [rut, dte, folio] con que el documento queda en compra_items. */
+    public static function claveDocumento(array $d)
+    {
+        return [
+            strtoupper(str_replace(['.', ' '], '', (string) ($d['rut_emisor'] ?? ''))),
+            ['factura' => 33, 'factura_exenta' => 34, 'nota_credito' => 61, 'boleta' => 39, 'guia_despacho' => 52][$d['tipo_documento'] ?? 'factura'] ?? 33,
+            preg_replace('/\D/', '', (string) ($d['folio'] ?? '')),
+        ];
+    }
+
     public function guardarLineas($facturaFotoId, array $d, $egresoId)
     {
-        $rut = strtoupper(str_replace(['.', ' '], '', (string) $d['rut_emisor']));
-        $folio = preg_replace('/\D/', '', (string) $d['folio']);
-        $dte = ['factura' => 33, 'factura_exenta' => 34, 'nota_credito' => 61, 'boleta' => 39, 'guia_despacho' => 52][$d['tipo_documento'] ?? 'factura'] ?? 33;
+        list($rut, $dte, $folio) = self::claveDocumento($d);
         if (DB::table('compra_items')->where('rut_emisor', $rut)->where('dte', $dte)->where('folio', $folio)->exists()) {
             return 0; // ya está (por XML o por una foto anterior)
         }

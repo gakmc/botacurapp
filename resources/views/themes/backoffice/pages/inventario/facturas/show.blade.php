@@ -56,10 +56,10 @@
         <div class="col s6 m2"><label>Fecha</label><input type="date" name="cab[fecha_emision]" value="{{ $d['fecha_emision'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
       </div>
       <div class="row" style="margin-bottom:0">
-        <div class="col s6 m3"><label>Neto</label><input type="number" name="cab[neto]" value="{{ $d['neto'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
-        <div class="col s6 m3"><label>Exento</label><input type="number" name="cab[exento]" value="{{ $d['exento'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
-        <div class="col s6 m3"><label>IVA</label><input type="number" name="cab[iva]" value="{{ $d['iva'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
-        <div class="col s6 m3"><label>Total</label><input type="number" name="cab[total]" value="{{ $d['total'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
+        <div class="col s6 m3"><label>Neto ($)</label><input type="number" step="1" name="cab[neto]" value="{{ $d['neto'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
+        <div class="col s6 m3"><label>Exento ($)</label><input type="number" step="1" name="cab[exento]" value="{{ $d['exento'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
+        <div class="col s6 m3"><label>IVA ($)</label><input type="number" step="1" name="cab[iva]" value="{{ $d['iva'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
+        <div class="col s6 m3"><label>Total ($)</label><input type="number" step="1" name="cab[total]" value="{{ $d['total'] ?? '' }}" {{ $editable ? '' : 'readonly' }}></div>
       </div>
       <input type="hidden" name="cab[tipo_documento]" value="{{ $d['tipo_documento'] ?? 'factura' }}">
     </div>
@@ -75,8 +75,8 @@
             <td><input type="text" name="lin[{{ $i }}][descripcion]" value="{{ $l['descripcion'] ?? '' }}" style="margin:0;min-width:260px" {{ $editable ? '' : 'readonly' }}></td>
             <td><input type="number" step="any" name="lin[{{ $i }}][cantidad]" value="{{ $num($l['cantidad'] ?? null) }}" style="margin:0;width:80px" {{ $editable ? '' : 'readonly' }}></td>
             <td><input type="text" name="lin[{{ $i }}][unidad]" value="{{ $l['unidad'] ?? '' }}" style="margin:0;width:60px" {{ $editable ? '' : 'readonly' }}></td>
-            <td><input type="number" step="any" name="lin[{{ $i }}][precio_unitario]" value="{{ $num($l['precio_unitario'] ?? null) }}" style="margin:0;width:100px" {{ $editable ? '' : 'readonly' }}></td>
-            <td><input type="number" step="any" name="lin[{{ $i }}][monto]" value="{{ $num($l['monto'] ?? null) }}" style="margin:0;width:110px" {{ $editable ? '' : 'readonly' }}></td>
+            <td style="white-space:nowrap">$ <input type="number" step="1" name="lin[{{ $i }}][precio_unitario]" value="{{ isset($l['precio_unitario']) ? (int) round($l['precio_unitario']) : '' }}" style="margin:0;width:100px" {{ $editable ? '' : 'readonly' }}></td>
+            <td style="white-space:nowrap">$ <input type="number" step="1" name="lin[{{ $i }}][monto]" value="{{ isset($l['monto']) ? (int) round($l['monto']) : '' }}" style="margin:0;width:110px" {{ $editable ? '' : 'readonly' }}></td>
           </tr>
         @endforeach
         </tbody>
@@ -133,8 +133,8 @@
         '<td><input type="text" name="lin[' + i + '][descripcion]" style="margin:0;min-width:260px"></td>' +
         '<td><input type="number" step="any" name="lin[' + i + '][cantidad]" style="margin:0;width:80px"></td>' +
         '<td><input type="text" name="lin[' + i + '][unidad]" style="margin:0;width:60px"></td>' +
-        '<td><input type="number" step="any" name="lin[' + i + '][precio_unitario]" style="margin:0;width:100px"></td>' +
-        '<td><input type="number" step="any" name="lin[' + i + '][monto]" style="margin:0;width:110px"></td>';
+        '<td style="white-space:nowrap">$ <input type="number" step="1" name="lin[' + i + '][precio_unitario]" style="margin:0;width:100px"></td>' +
+        '<td style="white-space:nowrap">$ <input type="number" step="1" name="lin[' + i + '][monto]" style="margin:0;width:110px"></td>';
       tb.appendChild(tr);
     });
   })();

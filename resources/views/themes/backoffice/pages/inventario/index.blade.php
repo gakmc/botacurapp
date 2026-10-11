@@ -56,7 +56,7 @@
     <table class="highlight" style="min-width:720px">
       <thead><tr>
         <th>Insumo</th><th>Ubicación</th><th class="inv-num">Stock</th><th class="inv-num">Crítico</th>
-        <th class="inv-num">Costo prom. (neto)</th><th class="inv-num">Valor stock</th><th>Estado</th><th></th>
+        <th class="inv-num">Costo prom. c/IVA</th><th class="inv-num">Valor stock</th><th>Estado</th><th></th>
       </tr></thead>
       <tbody>
       @php $seccion = null; @endphp
@@ -76,7 +76,7 @@
           <td class="grey-text">{{ $i->ubicacion ?: optional($i->sector)->nombre }}</td>
           <td class="inv-num">{{ $i->iniciado ? $fmt($i->cantidad) . ' ' . $um : '—' }}</td>
           <td class="inv-num">{{ $fmt($i->stock_critico) }} {{ $um }}</td>
-          <td class="inv-num">${{ number_format($i->valor, 0, ',', '.') }} / {{ $um }}</td>
+          <td class="inv-num">${{ number_format($i->valor_con_iva ?? round($i->valor * 1.19), 0, ',', '.') }} / {{ $um }}<br><span class="grey-text" style="font-size:.8rem">neto ${{ number_format($i->valor, 0, ',', '.') }}</span></td>
           <td class="inv-num">{{ $i->iniciado ? '$' . number_format($i->valor_stock, 0, ',', '.') : '—' }}</td>
           <td>
             @if(! $i->iniciado)<span class="new badge orange" data-badge-caption="Sin toma"></span>
