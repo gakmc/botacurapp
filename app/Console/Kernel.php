@@ -29,6 +29,12 @@ class Kernel extends ConsoleKernel
         $schedule->command('bot:aprender')->dailyAt('23:40');
         // Inventario: corrige descuentos de ventas que no dispararon observer
         $schedule->command('inventario:conciliar')->hourly()->withoutOverlapping(30);
+        // Detalle (productos) de las facturas recibidas, una hora después de la sync SII
+        $schedule->call(function () {
+            \Illuminate\Support\Facades\Artisan::call('sii:importar-detalle-compras', [
+                'desde' => now()->subDays(45)->toDateString(), 'hasta' => now()->toDateString(),
+            ]);
+        })->name('sii-detalle-compras')->mondays()->at('11:00')->timezone('America/Santiago')->withoutOverlapping(120);
         $schedule->command('cerrar:sueldos')
                 ->sundays()
                 ->at('21:00')

@@ -61,6 +61,7 @@
     @if($pedido->estado === 'comprado')
       <a class="btn waves-effect blue darken-2" href="{{ route('backoffice.inventario.compras.recibir', $pedido) }}">Recibir</a>
     @endif
+    <a class="btn waves-effect teal" href="{{ route('backoffice.inventario.facturas.create', ['pedido_id' => $pedido->id]) }}"><i class="material-icons left">add_a_photo</i>Subir foto de factura</a>
     <a class="btn-flat" href="{{ route('backoffice.inventario.compras.index') }}">Volver a pedidos</a>
   </div>
 </div>

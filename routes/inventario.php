@@ -28,3 +28,14 @@ Route::get('/compras/{pedido}/comprar', 'CompraInsumoController@comprarForm')->n
 Route::post('/compras/{pedido}/comprar', 'CompraInsumoController@comprarStore')->name('compras.comprar.store');
 Route::get('/compras/{pedido}/recibir', 'CompraInsumoController@recibirForm')->name('compras.recibir');
 Route::post('/compras/{pedido}/recibir', 'CompraInsumoController@recibirStore')->name('compras.recibir.store');
+
+// Facturas impresas: foto -> lectura con IA -> corroboración con el SII -> catálogo de compras
+Route::get('/facturas', 'FacturaFotoController@index')->name('facturas.index');
+Route::get('/facturas/subir', 'FacturaFotoController@create')->name('facturas.create');
+Route::post('/facturas', 'FacturaFotoController@store')->name('facturas.store');
+Route::get('/facturas/{foto}', 'FacturaFotoController@show')->name('facturas.show');
+Route::get('/facturas/{foto}/archivo/{n}', 'FacturaFotoController@archivo')->name('facturas.archivo');
+Route::post('/facturas/{foto}/releer', 'FacturaFotoController@releer')->name('facturas.releer');
+Route::post('/facturas/{foto}/actualizar', 'FacturaFotoController@actualizar')->name('facturas.actualizar');
+Route::post('/facturas/{foto}/confirmar', 'FacturaFotoController@confirmar')->name('facturas.confirmar');
+Route::post('/facturas/{foto}/descartar', 'FacturaFotoController@descartar')->name('facturas.descartar');
