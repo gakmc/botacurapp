@@ -621,6 +621,9 @@ class BotController extends Controller
         if ($notaRetoma !== '') {
             $contenidoParaHistorial .= "\n\n" . $notaRetoma;
         }
+        // Dias pedidos sin habilitar (14/10/2026): si el cliente pide un dia cerrado de un mes abierto,
+        // se registra y se le indica a la IA que ofrezca anotarlo (aunque no verifique esa fecha).
+        $contenidoParaHistorial .= \App\Services\BotInteresFechasService::notaParaMensaje($usuarioId, $mensaje, $conv, $simulacion);
         if ($historial && ($historial[count($historial) - 1]['role'] ?? '') === 'user') {
             // Mensajes que el cliente dejó mientras lo atendía el equipo: se juntan en un solo turno.
             $historial[count($historial) - 1]['content'] .= "\n\n" . $contenidoParaHistorial;
@@ -650,7 +653,7 @@ class BotController extends Controller
         $acciones   = [];
         for ($i = 0; $i < 4; $i++) {
             $accion = $respuesta['accion'] ?? 'responder';
-            if (!in_array($accion, ['verificar_disponibilidad', 'cotizar', 'ubicaciones', 'crear_reserva', 'reagendar', 'guardar_seleccion_menu'], true)) {
+            if (!in_array($accion, ['verificar_disponibilidad', 'cotizar', 'ubicaciones', 'crear_reserva', 'reagendar', 'guardar_seleccion_menu', 'anotar_interes'], true)) {
                 break;
             }
             $firma = $accion . ':' . md5(json_encode($respuesta['datos'] ?? []));
@@ -854,7 +857,7 @@ class BotController extends Controller
                     return in_array($e['codigo'], $codigos, true);
                 }));
                 if ($reglas) {
-                    return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ' — explica el motivo y ofrece una alternativa válida (otra fecha o el programa regular equivalente).]';
+                    return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ' — explica el motivo y ofrece una alternativa válida (otra fecha o el programa regular equivalente).]' . $this->consultaDiaCerrado($reglas, $datos, $usuarioId, $contexto, $simulacion);
                 }
                 $query = ['fecha' => $datos['fecha'], 'personas' => $datos['personas'] ?? 1];
                 if ($conPrograma) {
@@ -964,6 +967,18 @@ class BotController extends Controller
                 }
                 $res = $this->reprogramarReserva(new Request(['nueva_fecha' => $nueva]), $id);
                 return '[Sistema-reagendar: ' . $res->getContent() . ']';
+            }
+
+            if ($accion === 'anotar_interes') {
+                // Dias pedidos sin habilitar (14/10/2026): el cliente acepto que le avisemos si se habilita el dia.
+                if (empty($datos['fecha'])) {
+                    return null;
+                }
+                if ($simulacion) {
+                    return '[Sistema-interes (SIMULACIÓN): {"ok":true} — confírmale en una línea que quedó anotado y que le avisaremos por este chat si se habilita ese día. No prometas que se abrirá.]';
+                }
+                $r = \App\Services\BotInteresFechasService::anotar($usuarioId, $datos, $contexto['nombre'] ?? null);
+                return '[Sistema-interes: ' . json_encode($r, JSON_UNESCAPED_UNICODE) . ' — si ok es true, confírmale en una línea que quedó anotado y que le avisaremos por este chat si se habilita ese día (no prometas que se abrirá). Si ok es false, sigue lo que dice el mensaje.]';
             }
 
             if ($accion === 'guardar_seleccion_menu') {
@@ -1600,6 +1615,31 @@ class BotController extends Controller
     // ─────────────────────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Dias pedidos sin habilitar (14/10/2026): si la fecha consultada no esta habilitada (lunes a miercoles
+     * o dia cerrado de un mes abierto), registra la consulta y le indica a la IA que ofrezca anotarlo.
+     */
+    private function consultaDiaCerrado(array $reglas, array $datos, string $usuarioId, array $contexto, bool $simulacion): string
+    {
+        $codigos = array_column($reglas, 'codigo');
+        if (!in_array('fecha_no_habilitada', $codigos, true)
+            || array_intersect($codigos, ['fecha_pasada', 'agenda_no_abierta', 'fecha_invalida'])) {
+            return '';
+        }
+        try {
+            $fecha = \Carbon\Carbon::parse((string) ($datos['fecha'] ?? ''))->toDateString();
+        } catch (\Throwable $e) {
+            return '';
+        }
+        if (!$simulacion) {
+            \App\Services\BotInteresFechasService::registrarConsulta($usuarioId, $fecha, $datos, $contexto['nombre'] ?? null);
+        }
+        return "\n[Sistema-interes: ese día no abrimos, pero llevamos registro de quienes lo piden por si lo habilitamos. "
+            . 'En tu respuesta, además de ofrecer otra fecha, pregúntale si quiere que lo anotemos para avisarle por este chat si habilitamos el ' . $fecha . '. '
+            . 'Solo si responde que sí, usa la acción "anotar_interes" con datos {"fecha":"' . $fecha . '","personas":<número o null>,"programa_id":<id o null>}. '
+            . 'No prometas que se abrirá ni lo anotes sin su permiso.]';
+    }
 
     private function normalizarTelefono(string $telefono)
     {

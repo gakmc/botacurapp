@@ -31,6 +31,17 @@ class BotCasoService
         return array_values(array_unique([$tel, $corto, '56' . $corto]));
     }
 
+    /** Id del ultimo reinicio con frase clave: lo anterior ya no cuenta como historial del caso. */
+    private static function ultimoReinicio(string $tel): int
+    {
+        try {
+            return (int) DB::table('bot_eventos')->whereIn('telefono', self::variantes($tel))
+                ->where('tipo', 'conversacion_reiniciada')->max('id');
+        } catch (\Throwable $e) {
+            return 0;
+        }
+    }
+
     /** Eventos del caso (más antiguo primero). */
     public static function eventos(string $tel, int $dias = 60, int $max = 20)
     {
@@ -39,6 +50,7 @@ class BotCasoService
                 ->whereIn('telefono', self::variantes($tel))
                 ->whereIn('tipo', self::TIPOS)
                 ->where('created_at', '>=', now()->subDays($dias))
+                ->where('id', '>', self::ultimoReinicio($tel))
                 ->orderBy('id', 'desc')->limit($max)->get()->reverse()->values();
         } catch (\Throwable $e) {
             Log::warning('[BotCaso] No se pudo leer el historial: ' . $e->getMessage());
