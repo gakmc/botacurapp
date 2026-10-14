@@ -34,6 +34,7 @@
                                     <th data-field="rut">Rut</th>
                                     <th data-field="telefono">Teléfono</th>
                                     <th data-field="correo">Correo Electrónico</th>
+                                    <th>Subcategoría</th>
                                     <th>Acciones</th>
                                 </tr>
                             </thead>
@@ -46,6 +47,17 @@
                                         <td>{{$proveedor->rut ?? '-'}}</td>
                                         <td>{{$proveedor->telefono ?? '-'}}</td>
                                         <td>{{$proveedor->correo ?? '-'}}</td>
+                                        <td>
+                                            <form action="{{ route('backoffice.proveedor.subcategoria', $proveedor->id) }}" method="POST" style="display:inline;">
+                                                @csrf
+                                                <select name="subcategoria_id" onchange="this.form.submit()" class="browser-default" style="width:auto;display:inline-block;">
+                                                    <option value="">Sin asignar</option>
+                                                    @foreach($subcategorias as $sc)
+                                                    <option value="{{ $sc->id }}" {{ $proveedor->subcategoria_id == $sc->id ? 'selected' : '' }}>{{ $sc->categoria_nombre }} - {{ $sc->nombre }}</option>
+                                                    @endforeach
+                                                </select>
+                                            </form>
+                                        </td>
                                         <td>
                                             <a href="{{route('backoffice.proveedor.edit', $proveedor)}}" class="btn-small btn-floating purple"><i class='material-icons'>edit</i></a>
                                             <form id="form-eliminar-{{ $proveedor->id }}" action="{{ route('backoffice.proveedor.destroy', $proveedor->id) }}" method="POST" style="display:inline;">

@@ -17,7 +17,7 @@ class MenuController extends Controller
         Carbon::setLocale('es');
 
         // Vista actual
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
             ->with(['cliente','menus', 'programa.servicios'])

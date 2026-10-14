@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Proveedor;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\DB;
 
 class ProveedorController extends Controller
 {
@@ -14,9 +15,16 @@ class ProveedorController extends Controller
      */
     public function index()
     {
-        $proveedores = Proveedor::all();
+        $proveedores = Proveedor::with('subcategoria.categoria')->orderBy('nombre')->get();
 
-        return view('themes.backoffice.pages.proveedor.index', compact('proveedores'));
+        $subcategorias = DB::table('subcategorias_compras as sc')
+            ->join('categorias_compras as c', 'c.id', '=', 'sc.categoria_id')
+            ->select('sc.id', 'sc.nombre', 'c.nombre as categoria_nombre')
+            ->orderBy('c.nombre')
+            ->orderBy('sc.nombre')
+            ->get();
+
+        return view('themes.backoffice.pages.proveedor.index', compact('proveedores', 'subcategorias'));
     }
 
     /**
@@ -43,6 +51,7 @@ class ProveedorController extends Controller
             'rut' => 'nullable|string|max:20',
             'telefono' => 'nullable|string|max:20',
             'correo' => 'nullable|email|max:255',
+            'subcategoria_id' => 'nullable|exists:subcategorias_compras,id',
         ], [
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.string' => 'El nombre debe ser un texto.',
@@ -102,6 +111,7 @@ class ProveedorController extends Controller
             'rut' => 'nullable|string|max:20',
             'telefono' => 'nullable|string|max:20',
             'correo' => 'nullable|email|max:255',
+            'subcategoria_id' => 'nullable|exists:subcategorias_compras,id',
         ], [
             'nombre.required' => 'El nombre es obligatorio.',
             'nombre.string' => 'El nombre debe ser un texto.',
@@ -119,6 +129,22 @@ class ProveedorController extends Controller
         $proveedor->update($request->all());
 
         return redirect()->route('backoffice.proveedor.index')->with('success', 'Proveedor creado correctamente.');
+    }
+
+    /**
+     * Update just the subcategoria_id (quick inline edit from the index list).
+     */
+    public function updateSubcategoria(Request $request, $id)
+    {
+        $request->validate([
+            'subcategoria_id' => 'nullable|exists:subcategorias_compras,id',
+        ]);
+
+        $proveedor = Proveedor::findOrFail($id);
+        $proveedor->subcategoria_id = $request->subcategoria_id ?: null;
+        $proveedor->save();
+
+        return redirect()->route('backoffice.proveedor.index')->with('success', 'Subcategoria de ' . $proveedor->nombre . ' actualizada.');
     }
 
     /**

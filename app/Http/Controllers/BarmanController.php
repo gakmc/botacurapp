@@ -16,7 +16,7 @@ class BarmanController extends Controller
 {
     public function index()
     {
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
         $productos = DB::table('reservas')
             ->join('ventas', 'reservas.id', '=', 'ventas.id_reserva')
@@ -115,14 +115,14 @@ class BarmanController extends Controller
      */
     private function productosVentaDirectaBarra()
     {
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
         return DB::table('detalles_ventas_directas')
             ->join('ventas_directas', 'ventas_directas.id', '=', 'detalles_ventas_directas.venta_directa_id')
             ->join('productos', 'detalles_ventas_directas.producto_id', '=', 'productos.id')
             ->join('tipos_productos', 'productos.id_tipo_producto', '=', 'tipos_productos.id')
             ->join('sectores', 'tipos_productos.id_sector', '=', 'sectores.id')
-            ->where('ventas_directas.fecha', '>=', $fechaActual->toDateString())
+            ->where('ventas_directas.fecha', '>=', $fechaActual)
             ->where('sectores.nombre', 'barra')
             ->select(
                 'detalles_ventas_directas.id as id',
@@ -346,7 +346,7 @@ class BarmanController extends Controller
 
     public function bebidas()
     {
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
         $productos = DB::table('reservas')
             ->join('ventas', 'reservas.id', '=', 'ventas.id_reserva')

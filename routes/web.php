@@ -655,6 +655,15 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
+    Route::get('bot-conversaciones', 'BotConversacionesController@index')->name('bot-conversaciones.index');
+    Route::post('bot-conversaciones/interes/avisar', 'BotConversacionesController@avisarInteres')->name('bot-conversaciones.interes.avisar');
+    Route::post('bot-conversaciones/interes/{id}/estado', 'BotConversacionesController@estadoInteres')->name('bot-conversaciones.interes.estado');
+
+    Route::get('finanzas/reservas-del-dia', 'ReservasDelDiaController@index')->name('finanzas.reservas_dia');
+    Route::get('finanzas/reservas-del-dia/comprobante/{id}', 'ReservasDelDiaController@comprobante')->name('finanzas.reservas_dia.comprobante');
+    Route::post('finanzas/reservas-del-dia/comprobante/{id}/aprobar', 'ReservasDelDiaController@aprobar')->name('finanzas.reservas_dia.aprobar');
+    Route::post('finanzas/reservas-del-dia/comprobante/{id}/rechazar', 'ReservasDelDiaController@rechazar')->name('finanzas.reservas_dia.rechazar');
+
     Route::get('finanzas/ingresos/comparar', 'ReporteFinancieroController@comparar')->name('finanzas.comparar');
 
     Route::get('finanzas/egresos', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.acumulado');
@@ -688,3 +697,7 @@ Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.w
 
 // Route::prefix('admin')->middleware('auth')->group(function () {
 // });
+
+// Conectar el WhatsApp de Bot-Acura a la API (coexistencia con la app WhatsApp Business)
+Route::get('bot-configuracion/whatsapp-conectar', 'WhatsAppConectarController@index')->name('whatsapp.conectar');
+Route::post('bot-configuracion/whatsapp-conectar/finalizar', 'WhatsAppConectarController@finalizar')->name('whatsapp.conectar.finalizar');

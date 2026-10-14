@@ -316,6 +316,17 @@
                     </a>
                 </li>
 
+
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.bot-configuracion.index') }}">
+                        <i class="material-icons">
+                            android
+                        </i>
+                        <span class="nav-text">
+                            Configuracion del Bot
+                        </span>
+                    </a>
+                </li>
                 @endif
                 
                 @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
@@ -405,6 +416,13 @@
                         <a class="waves-effect waves-cyan" href="{{ route('backoffice.finanzas.utilidad') }}">
                             <i class="material-icons">show_chart</i>
                             <span class="nav-text">Utilidad</span>
+                        </a>
+                    </li>
+
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.finanzas.reservas_dia') }}">
+                            <i class="material-icons">event_available</i>
+                            <span class="nav-text">Reservas del día</span>
                         </a>
                     </li>
 
