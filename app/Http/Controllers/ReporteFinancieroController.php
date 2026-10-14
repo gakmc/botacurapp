@@ -129,9 +129,16 @@ class ReporteFinancieroController extends Controller
 
         // dd($impuestos, $egresos);
 
+        // Mismas cifras que Finanzas > Utilidad (una sola formula para todo)
+        $filas = [];
+        for ($m = 1; $m <= 12; $m++) {
+            $d = $this->calcularUtilidadMes((int) $anio, $m);
+            $filas[$m] = ($d['totalIngresos'] === 0 && $d['totalEgresos'] === 0 && Carbon::create((int) $anio, $m, 1)->isFuture()) ? null : $d;
+        }
+
         return view('themes.backoffice.pages.reporte.financiero.anual', compact(
             'abonos', 'diferencias', 'consumos', 'servicios',
-            'egresos', 'sueldos', 'bonos', 'impuestos', 'ventasDirectas', 'anio'
+            'egresos', 'sueldos', 'bonos', 'impuestos', 'ventasDirectas', 'anio', 'filas'
         ));
     }
 
@@ -264,9 +271,10 @@ class ReporteFinancieroController extends Controller
         // ABONOS
         $abonos = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(ventas.abono_programa) as total')
-            ->whereYear('reservas.created_at', $anio)
-            ->whereMonth('reservas.created_at', $mes)
+            ->selectRaw('YEARWEEK(COALESCE(ventas.fecha_abono, DATE(reservas.created_at)), 1) as yearweek, COALESCE(ventas.fecha_abono, DATE(reservas.created_at)) as fecha, SUM(ventas.abono_programa) as total')
+            ->whereRaw('YEAR(COALESCE(ventas.fecha_abono, DATE(reservas.created_at))) = ?', [$anio])
+            ->whereRaw('MONTH(COALESCE(ventas.fecha_abono, DATE(reservas.created_at))) = ?', [$mes])
+            ->whereNotExists(function ($q) { $q->select(DB::raw(1))->from('gift_cards')->whereColumn('gift_cards.id_venta', 'ventas.id'); }) // pagado con Gift Card: la plata entro el dia en que se vendio la Gift Card
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -282,12 +290,25 @@ class ReporteFinancieroController extends Controller
 
         $abonos = $this->mergeTotalesPorFecha($abonos, $abonosExtra);
 
+        // GIFT CARDS VENDIDAS (la plata entra el dia en que se vende la Gift Card)
+        $giftCardsVendidas = DB::table('gift_cards')
+            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, DATE(created_at) as fecha, SUM(monto) as total')
+            ->whereYear('created_at', $anio)
+            ->whereMonth('created_at', $mes)
+            ->where('monto', '>', 0)
+            ->groupBy('yearweek', 'fecha')
+            ->orderBy('fecha')
+            ->get();
+        $totalGiftCardsVendidas = (int) collect($giftCardsVendidas)->sum('total');
+        // Gift Cards: columna propia en la tabla semanal (no se mezclan con los abonos)
+
         // DIFERENCIAS
         $diferencias = DB::table('ventas')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(ventas.diferencia_programa) as total')
-            ->whereYear('reservas.created_at', $anio)
-            ->whereMonth('reservas.created_at', $mes)
+            ->selectRaw('YEARWEEK(reservas.fecha_visita, 1) as yearweek, DATE(reservas.fecha_visita) as fecha, SUM(ventas.diferencia_programa) as total')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereDate('reservas.fecha_visita', '<=', now()->toDateString()) // visita futura: aun no se ha cobrado
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -297,9 +318,10 @@ class ReporteFinancieroController extends Controller
             ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(detalles_consumos.subtotal) as total')
-            ->whereYear('reservas.created_at', $anio)
-            ->whereMonth('reservas.created_at', $mes)
+            ->selectRaw('YEARWEEK(reservas.fecha_visita, 1) as yearweek, DATE(reservas.fecha_visita) as fecha, SUM(detalles_consumos.subtotal) as total')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereDate('reservas.fecha_visita', '<=', now()->toDateString()) // visita futura: aun no se ha cobrado
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -310,9 +332,10 @@ class ReporteFinancieroController extends Controller
             ->join('consumos', 'detalle_servicios_extra.id_consumo', '=', 'consumos.id')
             ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
-            ->selectRaw('YEARWEEK(reservas.created_at, 1) as yearweek, DATE(reservas.created_at) as fecha, SUM(detalle_servicios_extra.subtotal) as total')
-            ->whereYear('reservas.created_at', $anio)
-            ->whereMonth('reservas.created_at', $mes)
+            ->selectRaw('YEARWEEK(reservas.fecha_visita, 1) as yearweek, DATE(reservas.fecha_visita) as fecha, SUM(detalle_servicios_extra.subtotal) as total')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereDate('reservas.fecha_visita', '<=', now()->toDateString()) // visita futura: aun no se ha cobrado
             ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
@@ -323,9 +346,9 @@ class ReporteFinancieroController extends Controller
 
 
         $ventasDirectas = DB::table('ventas_directas')
-            ->selectRaw('YEARWEEK(created_at, 1) as yearweek, DATE(created_at) as fecha, SUM(subtotal) as total')
-            ->whereBetween('created_at', [$inicioMes, $finMes])
-            ->groupBy('yearweek', 'created_at')
+            ->selectRaw('YEARWEEK(fecha, 1) as yearweek, DATE(fecha) as fecha, SUM(subtotal) as total')
+            ->whereBetween('fecha', [$inicioMes, $finMes])
+            ->groupBy('yearweek', 'fecha')
             ->orderBy('fecha')
             ->get();
 
@@ -377,10 +400,8 @@ class ReporteFinancieroController extends Controller
 
         $tiposTransacciones = TipoTransaccion::all()->map(function ($tipo) use ($anio, $mes) {
             $abono = Venta::where('id_tipo_transaccion_abono', $tipo->id)
-                ->whereHas('reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
-                })
+                ->whereNotIn('id', DB::table('gift_cards')->whereNotNull('id_venta')->pluck('id_venta'))
+                ->whereRaw('YEAR(COALESCE(ventas.fecha_abono, (SELECT DATE(r2.created_at) FROM reservas r2 WHERE r2.id = ventas.id_reserva))) = ? AND MONTH(COALESCE(ventas.fecha_abono, (SELECT DATE(r2.created_at) FROM reservas r2 WHERE r2.id = ventas.id_reserva))) = ?', [$anio, $mes])
                 ->sum('abono_programa');
 
             $abonoExtra = AbonoExtra::where('id_tipo_transaccion', $tipo->id)
@@ -390,22 +411,22 @@ class ReporteFinancieroController extends Controller
 
             $total_pago1 = \App\PagoConsumo::where('id_tipo_transaccion1', $tipo->id)
                 ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes);
                 })
                 ->sum('pago1');
 
             $total_pago2 = \App\PagoConsumo::where('id_tipo_transaccion2', $tipo->id)
                 ->whereNotNull('pago2')
                 ->whereHas('venta.reserva', function ($query) use ($anio, $mes) {
-                    $query->whereYear('created_at', $anio)
-                        ->whereMonth('created_at', $mes);
+                    $query->whereYear('fecha_visita', $anio)
+                        ->whereMonth('fecha_visita', $mes);
                 })
                 ->sum('pago2');
 
             $ventaDirecta = VentaDirecta::where('id_tipo_transaccion', $tipo->id)
-                ->whereYear('created_at', $anio)
-                ->whereMonth('created_at', $mes)
+                ->whereYear('fecha', $anio)
+                ->whereMonth('fecha', $mes)
                 ->sum('subtotal');
 
             $poroPoro = PoroPoroVenta::where('id_tipo_transaccion', $tipo->id)
@@ -493,10 +514,33 @@ class ReporteFinancieroController extends Controller
 
 
         // dd($impuestos);
+        $sumaTotal = function ($c) { return (int) collect($c)->sum('total'); };
+        $resumenMes = [
+            'abonos'      => $sumaTotal($abonos),
+            'diferencias' => $sumaTotal($diferencias),
+            'consumos'    => $sumaTotal($consumos) + $sumaTotal($ventasDirectas),
+            'servicios'   => $sumaTotal($servicios),
+            'giftcards'   => $totalGiftCardsVendidas,
+        ];
+        $resumenMes['total'] = array_sum($resumenMes);
+        $resumenMes['pagos'] = (int) ($tiposTransacciones->sum('total_abonos') + $tiposTransacciones->sum('total_diferencias') + $tiposTransacciones->sum('venta_directa'));
+        $resumenMes['giftcards'] = $totalGiftCardsVendidas;
+        $resumenMes['propinas'] = (int) round(0.1 * DB::table('detalles_consumos')
+            ->join('consumos', 'detalles_consumos.id_consumo', '=', 'consumos.id')
+            ->join('ventas', 'consumos.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereDate('reservas.fecha_visita', '<=', now()->toDateString())
+            ->where('detalles_consumos.genera_propina', 1)
+            ->sum('detalles_consumos.subtotal'));
+        // Lo que deberia aparecer en los medios de pago: ingresos + propinas - Gift Cards (no guardan medio de pago)
+        $resumenMes['esperado'] = $resumenMes['total'] + $resumenMes['propinas'] - $resumenMes['giftcards'];
+
         return view('themes.backoffice.pages.reporte.ingreso.percibido', compact(
             'anio', 'mes', 'mesNombre',
             'abonos', 'diferencias', 'consumos', 'servicios'
-            , 'ventasDirectas', 'programas', 'tiposTransacciones', 'ventas', 'fechasDisponibles'
+            , 'ventasDirectas', 'programas', 'tiposTransacciones', 'ventas', 'fechasDisponibles', 'resumenMes', 'giftCardsVendidas'
         ));
     }
 
@@ -519,7 +563,10 @@ class ReporteFinancieroController extends Controller
 
         $u = $this->calcularUtilidadMes($anio, $mes);
 
-        $abonos              = $u['abonos'];
+        $abonos = $u['abonos'];
+        $giftCardsUsadas = $u['giftCardsUsadas'];
+        $giftCardsVendidasMes = $u['giftCardsVendidasMes'];
+        $giftCardsVendidasCant = $u['giftCardsVendidasCant'];
         $consumos            = $u['consumos'];
         $servicios           = $u['servicios'];
         $directas            = $u['directas'];
@@ -583,16 +630,19 @@ class ReporteFinancieroController extends Controller
         $ivaRemanenteSii  = $f29Iva ? $f29Iva['remanente_siguiente'] : ($ivaDiferenciaSii < 0 ? abs($ivaDiferenciaSii) : 0);
         $ultimaSyncSii    = $resumenSii ? $resumenSii->ultima_sincronizacion : null;
 
+        // Total a pagar en el F29: IVA (089) + retencion de honorarios (151) + PPM (062)
+        $totalF29 = (int) $ivaAPagarSii + (int) $honorariosRetencion + (int) $ppm;
+
         return view('themes.backoffice.pages.reporte.financiero.utilidad', compact(
             'anio', 'mes', 'nombreMes', 'mesesNombres',
-            'abonos', 'consumos', 'servicios', 'directas',
+            'abonos', 'giftCardsUsadas', 'giftCardsVendidasMes', 'giftCardsVendidasCant', 'consumos', 'servicios', 'directas',
             'totalIngresos', 'totalEgresos', 'utilidad', 'margen',
             'facturasSii', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
             'honorariosRetencion', 'honorariosNeto',
             'sueldosPagados', 'propinas', 'otrosEgresos', 'inversiones', 'utilidadTrasInversion',
             'basePpm', 'ppm', 'breakdown',
             'resumenAnual',
-            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'remanenteAntSii', 'ultimaSyncSii'
+            'ivaDebitoSii', 'ivaCreditoSii', 'ivaDiferenciaSii', 'ivaAPagarSii', 'ivaRemanenteSii', 'remanenteAntSii', 'ultimaSyncSii', 'totalF29'
         ));
     }
 
@@ -652,7 +702,38 @@ class ReporteFinancieroController extends Controller
 
         // Poro Poro NO se contabiliza aqui: va a otro fondo, la app solo se usa
         // para registrarlo (confirmado por el cliente, no es ingreso de Botacura).
-        $totalIngresos = $abonos + $consumos + $servicios + $directas;
+        // Abonos extra: pagos adicionales antes de la visita. AbonoExtraController los
+        // descuenta de total_pagar, asi que NO estan en abono_programa ni en
+        // diferencia_programa. Se imputan al mes de la visita, igual que el abono.
+        $abonosExtra = Schema::hasTable('abonos_extra') ? (int) DB::table('abonos_extra')
+            ->join('ventas', 'abonos_extra.id_venta', '=', 'ventas.id')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->sum('abonos_extra.monto') : 0;
+        $abonos += $abonosExtra;
+
+        // Gift Cards: el programa pagado con Gift Card cuenta como ingreso el mes de la
+        // visita (cuando se presta el servicio). Se muestra en su propia fila.
+        $giftCardsUsadas = (int) DB::table('ventas')
+            ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
+            ->whereYear('reservas.fecha_visita', $anio)
+            ->whereMonth('reservas.fecha_visita', $mes)
+            ->whereExists(function ($q) { $q->select(DB::raw(1))->from('gift_cards')->whereColumn('gift_cards.id_venta', 'ventas.id'); })
+            ->sum('ventas.abono_programa');
+        $abonos -= $giftCardsUsadas;
+        // Gift Cards vendidas en el mes: suman en los ingresos del mes de la venta
+        $gcVendidas = DB::table('gift_cards')
+            ->whereBetween(DB::raw('DATE(created_at)'), [$inicio, $fin])
+            ->where('monto', '>', 0)
+            ->selectRaw('COUNT(*) as cantidad, COALESCE(SUM(monto), 0) as total')
+            ->first();
+        $giftCardsVendidasMes = (int) $gcVendidas->total;
+        $giftCardsVendidasCant = (int) $gcVendidas->cantidad;
+
+        // La Gift Card es ingreso el mes en que se vende (boleta al cobrarla). El programa
+        // canjeado con Gift Card ya se resto de los abonos para no contarlo dos veces.
+        $totalIngresos = $abonos + $giftCardsVendidasMes + $consumos + $servicios + $directas;
 
         // ── Compras SII ───────────────────────────────────────────────────────
         // Usa fecha_egreso (fecha real de la factura), no periodo_sii (fecha de
@@ -729,7 +810,7 @@ class ReporteFinancieroController extends Controller
         $utilidadTrasInversion = $utilidad - $inversiones;
 
         return compact(
-            'abonos', 'consumos', 'servicios', 'directas', 'totalIngresos',
+            'abonos', 'giftCardsUsadas', 'giftCardsVendidasMes', 'giftCardsVendidasCant', 'consumos', 'servicios', 'directas', 'totalIngresos',
             'facturasSii', 'otrosEgresos', 'inversiones', 'ivaCompras', 'ivaDebito', 'ivaEstimado',
             'honorariosRetencion', 'honorariosNeto', 'sueldosPagados', 'propinas',
             'basePpm', 'ppm', 'totalEgresos', 'utilidad', 'margen', 'utilidadTrasInversion', 'resumenSii'

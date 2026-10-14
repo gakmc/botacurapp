@@ -93,7 +93,8 @@
                         <tbody>
                             @php
                                 $ingRows = [
-                                    ['Programas / Abonos',  $abonos],
+                                    ['Programas / Abonos', $abonos],
+                            ['Gift Cards vendidas', $giftCardsVendidasMes],
                                     ['Consumos (bar/spa)',   $consumos],
                                     ['Servicios Extra',      $servicios],
                                     ['Venta Directa',        $directas],
@@ -111,7 +112,15 @@
                             </tr>
                             @endif
                             @endforeach
-                        </tbody>
+                            @if($giftCardsVendidasCant > 0 || $giftCardsUsadas > 0)
+                            <tr>
+                                <td colspan="3" style="padding:6px 0 0;color:#9e9e9e;font-size:.78rem">
+                                    @if($giftCardsVendidasCant > 0)Gift Cards vendidas en {{ $nombreMes }}: {{ $giftCardsVendidasCant }} (mismo monto que en Ingresos percibidos).@endif
+                                    @if($giftCardsUsadas > 0)Programas canjeados con Gift Card este mes: ${{ number_format($giftCardsUsadas,0,',','.') }}. No vuelven a sumar: ya se contaron cuando se vendio la Gift Card.@endif
+                                </td>
+                            </tr>
+                            @endif
+                            </tbody>
                         <tfoot>
                             <tr style="background:#f1f8e9">
                                 <td style="padding:8px 0;font-weight:700">Total Ingresos</td>
@@ -316,6 +325,22 @@
                     @endif
                 </div>
             </div>
+<div class="row" style="margin:12px 0 0;padding-top:12px;border-top:1px dashed #d1c4e9">
+    <div class="col s6 m3">
+        <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">Retencion honorarios (Codigo 151)</span>
+        <span style="font-size:1.1rem;font-weight:700;color:#B71C1C">${{ number_format($honorariosRetencion,0,',','.') }}</span>
+    </div>
+    <div class="col s6 m3">
+        <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">PPM (Codigo 062)</span>
+        <span style="font-size:1.1rem;font-weight:700;color:#B71C1C">${{ number_format($ppm,0,',','.') }}</span>
+        @if($ivaEstimado)<span style="font-size:.75rem;display:block;color:#FF8F00">Estimado (sin sync SII)</span>@endif
+    </div>
+    <div class="col s12 m6">
+        <span class="grey-text" style="font-size:.7rem;text-transform:uppercase;letter-spacing:.5px;display:block">Total a pagar F29 (IVA + retenciones + PPM)</span>
+        <span style="font-size:1.4rem;font-weight:700;color:#B71C1C">${{ number_format($totalF29,0,',','.') }}</span>
+        <span style="font-size:.75rem;display:block;color:#9e9e9e">${{ number_format($ivaAPagarSii,0,',','.') }} + ${{ number_format($honorariosRetencion,0,',','.') }} + ${{ number_format($ppm,0,',','.') }}</span>
+    </div>
+</div>
         </div>
     </div>
 
