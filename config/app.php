@@ -17,6 +17,12 @@ return [
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'visit_role' => env('VISIT_ROLE', 'visitante'),
     'laravel_api_key' => env('LARAVEL_API_KEY'),
+    // Exigir LARAVEL_API_KEY por ámbito (middleware auth.apikey:{ambito}). Poner en false
+    // solo de forma transitoria mientras se configura el cliente externo.
+    'api_key_exigir' => [
+        'iot'     => env('IOT_EXIGIR_API_KEY', true),
+        'egresos' => env('EGRESOS_EXIGIR_API_KEY', true),
+    ],
     'cantidad_slot_spa' => env('CANTIDAD_SLOT_SPA'),
     /*
     |--------------------------------------------------------------------------

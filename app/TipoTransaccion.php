@@ -2,10 +2,19 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class TipoTransaccion extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el medio de pago';
+
+    protected $auditoriaCampos = ['nombre' => 'Nombre'];
+
     protected $table = 'tipos_transacciones';
 
     protected $fillable = [

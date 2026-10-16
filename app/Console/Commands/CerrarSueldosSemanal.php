@@ -2,6 +2,8 @@
 
 namespace App\Console\Commands;
 
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use App\User;
 use App\Asignacion;
@@ -12,6 +14,10 @@ use Illuminate\Support\Facades\DB;
 
 class CerrarSueldosSemanal extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'cerrar:sueldos';
     protected $description = 'Cerrar automáticamente los sueldos de la semana';
 

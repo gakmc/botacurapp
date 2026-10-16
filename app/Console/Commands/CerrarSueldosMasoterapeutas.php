@@ -5,12 +5,18 @@ use App\Masaje;
 use App\Sueldo;
 use App\User;
 use Carbon\Carbon;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class CerrarSueldosMasoterapeutas extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature   = 'cerrar:sueldos_masoterapeutas';
     protected $description = 'Cierra los sueldos de masoterapeutas según masajes realizados en la semana';
 

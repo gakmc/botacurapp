@@ -2,6 +2,7 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -25,6 +26,29 @@ use Illuminate\Database\Eloquent\Model;
  */
 class HonorarioBte extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    // Sin RUT del emisor
+    protected $auditoriaCampos = [
+        'folio'          => 'Folio',
+        'periodo'        => 'Período',
+        'estado'         => 'Estado',
+        'nombre_emisor'  => 'Emisor',
+        'fecha_emision'  => ['Fecha emisión', 'fecha'],
+        'fecha_pago'     => ['Fecha pago', 'fecha'],
+        'monto_bruto'    => ['Monto bruto', 'monto'],
+        'monto_retenido' => ['Retención', 'monto'],
+        'monto_pagado'   => ['Monto pagado', 'monto'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'editó', 'eliminó') . ' la boleta de honorarios folio ' . $this->folio
+            . ' de ' . $this->nombre_emisor . ' (' . $this->periodo . ')';
+    }
+
     protected $table = 'honorarios_bte';
 
     protected $fillable = [

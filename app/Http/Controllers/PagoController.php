@@ -2,7 +2,10 @@
 
 namespace App\Http\Controllers;
 
+use App\Auditoria;
+use App\Services\AuditoriaService;
 use App\Services\WebpayService;
+use App\Venta;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -45,6 +48,7 @@ class PagoController extends Controller
                     'estado_pago' => 'anulado',
                     'updated_at'  => now(),
                 ]);
+                $this->auditarPagoWebpay($venta, 'anulado');
             }
             return view('pago.resultado', [
                 'exito'   => false,
@@ -86,6 +90,8 @@ class PagoController extends Controller
                 'updated_at'  => now(),
             ]);
 
+            $this->auditarPagoWebpay($venta, $estadoPago, $confirmacion);
+
             Log::info('[Pago] Venta actualizada', [
                 'venta_id'    => $venta->id,
                 'estado_pago' => $estadoPago,
@@ -117,6 +123,44 @@ class PagoController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Las actualizaciones de Webpay usan query builder (sin eventos de modelo):
+     * se auditan aquí. $venta es la fila previa a la actualización. El actor es
+     * "Sistema (Webpay)" (middleware auditoria en la ruta).
+     */
+    private function auditarPagoWebpay($venta, string $estado, array $confirmacion = [])
+    {
+        $auditoria = app(AuditoriaService::class);
+        $modelo    = Venta::with('reserva.cliente')->find($venta->id);
+        $reserva   = optional($modelo)->reserva;
+
+        $cambios = ['Estado de pago' => [$venta->estado_pago, $estado]];
+        if (isset($confirmacion['amount'])) {
+            $cambios['Monto'] = [null, $auditoria->monto($confirmacion['amount'])];
+        }
+        if (! empty($confirmacion['authorization_code'])) {
+            $cambios['Código de autorización'] = [null, $confirmacion['authorization_code']];
+        }
+        if ($estado === 'pagado') {
+            $cambios['Estado de la reserva'] = [optional($reserva)->estado, 'confirmada'];
+        }
+
+        $textos = [
+            'pagado'    => 'confirmó el pago por Webpay de ',
+            'rechazado' => 'registró el pago rechazado por Webpay de ',
+            'anulado'   => 'registró el pago anulado en Webpay de ',
+        ];
+
+        $auditoria->registrar([
+            'categoria'   => Auditoria::CATEGORIA_FINANCIERA,
+            'evento'      => $estado === 'pagado' ? Auditoria::EVENTO_APROBO : Auditoria::EVENTO_RECHAZO,
+            'auditable'   => $modelo,
+            'contexto'    => $reserva,
+            'descripcion' => ($textos[$estado] ?? 'actualizó el pago Webpay de ') . $auditoria->textoReserva($reserva),
+            'cambios'     => $cambios,
+        ]);
+    }
 
     private function notificarPagoConfirmado(int $reservaId, array $confirmacion)
     {

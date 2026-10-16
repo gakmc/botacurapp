@@ -1,6 +1,8 @@
 <?php
 namespace App;
 
+use App\Concerns\Auditable;
+use App\Services\AuditoriaService;
 use Carbon\Carbon;
 use Illuminate\Contracts\Auth\MustVerifyEmail;
 use Illuminate\Foundation\Auth\User as Authenticatable;
@@ -10,7 +12,85 @@ use Tymon\JWTAuth\Contracts\JWTSubject;
 
 class User extends Authenticatable implements MustVerifyEmail, JWTSubject
 {
-    use Notifiable;
+    use Notifiable, Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_SEGURIDAD;
+
+    protected $auditoriaCampos = [
+        'name'    => 'Nombre',
+        'email'   => 'Email',
+        'activo'  => ['Activo', 'bool'],
+        'boletea' => ['Emite boleta de honorarios', 'bool'],
+    ];
+
+    // Solo se registra que cambiaron, nunca su valor
+    protected $auditoriaCamposOcultos = [
+        'password'               => 'Contraseña',
+        'rut'                    => 'Identificación (RUT)',
+        'banco'                  => 'Datos bancarios',
+        'tipo_cuenta_bancaria'   => 'Datos bancarios',
+        'numero_cuenta_bancaria' => 'Datos bancarios',
+        'correo_personal'        => 'Correo personal',
+        'dob'                    => 'Fecha de nacimiento',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        if ($evento === Auditoria::EVENTO_EDITO && $this->isDirty('activo') && count(array_intersect_key($this->getDirty(), $this->auditoriaCampos)) === 1) {
+            return ($this->activo ? 'activó' : 'desactivó') . ' al usuario ' . $this->name;
+        }
+
+        return $this->segunEvento($evento, 'creó', 'editó', 'eliminó') . ' el usuario ' . $this->name;
+    }
+
+    protected function auditoriaContexto()
+    {
+        return $this;
+    }
+
+    /**
+     * Ejecuta un cambio de roles/permisos y lo registra como un solo evento
+     * "antes → después" (los sync/attach/detach no disparan eventos de modelo).
+     */
+    public function auditarAccesos($descripcion, callable $operacion)
+    {
+        $servicio = app(AuditoriaService::class);
+        $antes    = [$this->resumenRoles(), $this->resumenPermisos()];
+
+        $resultado = $servicio->sinRegistro($operacion);
+
+        $despues = [$this->resumenRoles(), $this->resumenPermisos()];
+        $cambios = [];
+        if ($antes[0] !== $despues[0]) {
+            $cambios['Roles'] = [$antes[0] ?: 'Ninguno', $despues[0] ?: 'Ninguno'];
+        }
+        if ($antes[1] !== $despues[1]) {
+            $cambios['Permisos'] = [$antes[1] ?: 'Ninguno', $despues[1] ?: 'Ninguno'];
+        }
+
+        if ($cambios) {
+            $servicio->registrar([
+                'categoria'   => Auditoria::CATEGORIA_SEGURIDAD,
+                'evento'      => Auditoria::EVENTO_ASIGNO,
+                'auditable'   => $this,
+                'contexto'    => $this,
+                'descripcion' => $descripcion . ' ' . $this->name,
+                'cambios'     => $cambios,
+            ]);
+        }
+
+        return $resultado;
+    }
+
+    public function resumenRoles()
+    {
+        return $this->roles()->orderBy('name')->pluck('name')->implode(', ');
+    }
+
+    public function resumenPermisos()
+    {
+        return $this->permissions()->orderBy('name')->pluck('name')->implode(', ');
+    }
 
     public function getJWTIdentifier()
     {
@@ -135,21 +215,38 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
         return $this->hasOne(UserImpuesto::class);
     }
 
+    public function auditoriaAutorizacion()
+    {
+        return $this->hasOne(AuditoriaAutorizado::class, 'user_id');
+    }
+
+    public function auditoriasRealizadas()
+    {
+        return $this->hasMany(Auditoria::class, 'user_id');
+    }
+
 //ALMACENAMIENTO
 
     public function store($request)
     {
-        $user = self::create($request->all());
-        $user->update(['password' => Hash::make($request->password)]);
+        // Solo los campos del formulario; la contraseña se guarda ya hasheada
+        // (antes se creaba con el texto plano y se hasheaba en un segundo paso).
+        $user = self::create($request->only(['name', 'dob', 'email']) + [
+            'password' => Hash::make($request->password),
+        ]);
         $roles = [$request->role];
-        $user->role_assignment(null, $roles);
+        $user->auditarAccesos('asignó roles al nuevo usuario', function () use ($user, $roles) {
+            $user->role_assignment(null, $roles);
+        });
         alert('Éxito', 'Usuario creado con éxito', 'success');
         return $user;
     }
 
     public function my_update($request)
     {
-        self::update($request->all());
+        // Solo los campos del formulario de edición: con $request->all() se podía
+        // inyectar "password" (u otro campo asignable) y quedaba guardado sin hash.
+        self::update($request->only(['name', 'dob', 'email']));
         alert('Éxito', 'Usuario actualizado', 'success');
 
     }
@@ -207,6 +304,16 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
 
         }
         return false;
+    }
+
+    public function puede_ver_auditoria()
+    {
+        return ! is_null($this->auditoriaAutorizacion);
+    }
+
+    public function es_gestor_auditoria()
+    {
+        return $this->puede_ver_auditoria() && $this->auditoriaAutorizacion->es_gestor();
     }
 
     public function age()

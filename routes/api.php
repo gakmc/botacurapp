@@ -19,7 +19,8 @@ use App\Http\Controllers\Api\VerificarDisponibilidadController;
 
 // Route::middleware('auth:api')->get('/user', 'Api\UserController@show')->name('user');
 
-Route::post('register', 'Api\AuthController@register');
+// Registro público deshabilitado: permitía a cualquiera crear una cuenta (con acceso
+// también al backoffice). Los usuarios se crean desde la plataforma (UserController).
 Route::post('login', 'Api\AuthController@login');
 
 Route::middleware('auth:api')->group(function () {
@@ -57,14 +58,14 @@ Route::prefix('bot')->namespace('Api')->middleware('bot.token')->group(function 
 // auth.apikey (ApiKeyMiddleware) contra config('app.laravel_api_key')
 // [env LARAVEL_API_KEY]. /ping queda fuera de la protección para health-check.
 // -------------------------------------------------------------------------
-Route::prefix('iot')->namespace('Api')->group(function () {
-    // NOTA: auth.apikey (LARAVEL_API_KEY) disponible pero NO activado aqui
-    // todavia -- no confirmado si Home Assistant ya envia la API key.
-    // Ver commit 3f99502 para la version protegida cuando se confirme HA.
+Route::prefix('iot')->namespace('Api')->middleware('auditoria:sistema,IoT Home Assistant')->group(function () {
+    // Las lecturas para Home Assistant siguen sin API key (pendiente confirmar que HA la envía).
+    // Los registros de gasto (gas/agua) crean egresos: exigen X-API-KEY (auth.apikey:iot).
+    // Si HA aún no la envía, IOT_EXIGIR_API_KEY=false las acepta transitoriamente (queda en log y auditoría).
     Route::get('ping',                    'IotController@ping')->name('iot.ping');
     Route::get('proxima-tinaja',          'IotController@proximaTinaja')->name('iot.proxima-tinaja');
-    Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar');
-    Route::post('agua/registrar',         'AguaIotController@registrar')->name('iot.agua.registrar');
+    Route::post('gas/registrar',          'GasIotController@registrar')->name('iot.gas.registrar')->middleware('auth.apikey:iot');
+    Route::post('agua/registrar',         'AguaIotController@registrar')->name('iot.agua.registrar')->middleware('auth.apikey:iot');
     // Próxima reserva por tinaja — consumido por Home Assistant (sensor REST)
     Route::get('tinajas/proxima-reserva', 'TinajaController@proximaReserva')->name('iot.tinajas.proxima-reserva');
     // Agenda completa de hoy por tinaja/sauna — para mantener temperatura toda la jornada
@@ -79,8 +80,10 @@ Route::prefix('iot')->namespace('Api')->group(function () {
 // -------------------------------------------------------------------------
 // Egresos — Escaneo IA y registro rápido
 // -------------------------------------------------------------------------
-Route::prefix('egresos')->namespace('Api')->group(function () {
-    // Datos para formulario (categorías, proveedores, etc.) — sin auth para facilitar integración
+// Todo el grupo exige X-API-KEY (auth.apikey:egresos): crea y expone egresos.
+// EGRESOS_EXIGIR_API_KEY=false lo deja pasar transitoriamente (queda en log y auditoría).
+Route::prefix('egresos')->namespace('Api')->middleware(['auditoria:sistema,API de egresos', 'auth.apikey:egresos'])->group(function () {
+    // Datos para formulario (categorías, proveedores, etc.) — incluye proveedores: también exige la API key
     Route::get('form-data',    'EgresoApiController@formData')->name('egresos.form-data');
 
     // Escaneo de factura/boleta con IA
@@ -98,12 +101,12 @@ Route::prefix('egresos')->namespace('Api')->group(function () {
 // GET  /api/whatsapp/webhook  → verificación
 // POST /api/whatsapp/webhook  → mensajes entrantes
 // -------------------------------------------------------------------------
-Route::prefix('whatsapp')->namespace('Api')->group(function () {
+Route::prefix('whatsapp')->namespace('Api')->middleware('auditoria:omitir')->group(function () {
     Route::get('webhook',  'WhatsAppWebhookController@verify')->name('whatsapp.webhook.verify');
     Route::post('webhook', 'WhatsAppWebhookController@handle')->name('whatsapp.webhook.handle');
 });
 
-Route::prefix('woocommerce')->namespace('Api')->group(function(){
+Route::prefix('woocommerce')->namespace('Api')->middleware('auditoria:sistema,WooCommerce')->group(function(){
 
     // Endpoint de prueba — no requiere auth, solo verifica que el servidor responde
     Route::get('ping', 'WoocommerceWebhookController@ping')->name('woocommerce.ping');

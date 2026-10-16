@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\User;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 /**
@@ -14,6 +16,10 @@ use Illuminate\Console\Command;
  */
 class NormalizarCodigosBancoUsuarios extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_SEGURIDAD;
+
     protected $signature = 'sueldos:normalizar-codigos-banco {--dry-run}';
 
     protected $description = 'Convierte banco/tipo_cuenta_bancaria de texto libre a los códigos oficiales del banco';

@@ -3,10 +3,37 @@
 namespace App;
 
 use Carbon\Carbon;
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Masaje extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected function auditoriaContexto()
+    {
+        return $this->reserva;
+    }
+
+    protected $auditoriaCampos = [
+        'persona'         => 'Persona',
+        'horario_masaje'  => ['Horario', 'hora'],
+        'tipo_masaje'     => 'Tipo de masaje',
+        'id_lugar_masaje' => ['Lugar', 'App\LugarMasaje@nombre'],
+        'tiempo_extra'    => 'Tiempo extra (min)',
+        'user_id'         => ['Masoterapeuta', 'App\User@name'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        $persona = $this->persona ? ' (persona ' . $this->persona . ')' : '';
+
+        return $this->segunEvento($evento, 'agregó un masaje' . $persona . ' a', 'editó el masaje' . $persona . ' de', 'eliminó el masaje' . $persona . ' de')
+            . ' ' . $this->textoReservaAuditoria($this->reserva);
+    }
+
     protected $table = 'masajes';
 
     protected $fillable = [

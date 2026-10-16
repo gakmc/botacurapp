@@ -12,6 +12,7 @@
 
 
 @section('dropdown_settings')
+@include('themes.backoffice.pages.auditoria.partials.enlace_historial', ['tipo' => 'programa', 'id' => $programa->id])
 @endsection
 
 @section('content')

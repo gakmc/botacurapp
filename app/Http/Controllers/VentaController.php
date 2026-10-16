@@ -2,6 +2,7 @@
 namespace App\Http\Controllers;
 
 use App\Asignacion;
+use App\Auditoria;
 use App\Consumo;
 use App\DetalleConsumo;
 use App\Jobs\ProcesarVentaCerrada;
@@ -10,6 +11,7 @@ use App\Mail\VentaCerradaMailable;
 use App\PagoConsumo;
 use App\Propina;
 use App\Reserva;
+use App\Services\AuditoriaService;
 use App\TipoTransaccion;
 use App\Venta;
 use Carbon\Carbon;
@@ -499,6 +501,9 @@ class VentaController extends Controller
 
             DB::transaction(function () use ($request, $reserva, &$venta, $consumo) {
 
+              // Auditoría: un solo registro "cerró la venta" en lugar de uno por cada escritura interna
+              app(AuditoriaService::class)->sinRegistro(function () use ($request, $reserva, &$venta, $consumo) {
+
                 // 1) Actualizar venta (saldar diferencia)
                 $venta->diferencia_programa = $request->input('diferencia');
                 $venta->total_pagar         = 0;
@@ -566,6 +571,10 @@ class VentaController extends Controller
                             ->update(['genera_propina' => 0]);
                     }
                 }
+
+              }); // fin sinRegistro
+
+                $this->auditarCierreVenta($reserva, $venta, $request);
 
             }); // fin transaction
 
@@ -674,6 +683,48 @@ class VentaController extends Controller
         Storage::disk($disk)->move($rutaTemporal, $rutaFinal);
 
         return $rutaFinal;
+    }
+
+    /**
+     * Registro resumido del cierre de venta (pago de diferencia, consumo y propina).
+     */
+    private function auditarCierreVenta(Reserva $reserva, Venta $venta, Request $request)
+    {
+        $auditoria = app(AuditoriaService::class);
+        $medio     = function ($id) use ($auditoria) {
+            return $auditoria->nombreRelacionado(TipoTransaccion::class, 'nombre', $id);
+        };
+
+        $pago    = $venta->pagoConsumo()->latest('id')->first();
+        $propina = optional($venta->consumo()->first())->propina;
+
+        $cambios = [
+            'Diferencia pagada'        => [null, $auditoria->monto($venta->diferencia_programa)],
+            'Medio de pago diferencia' => [null, $medio($venta->id_tipo_transaccion_diferencia)],
+        ];
+
+        if ($pago) {
+            $cambios['Total pagado'] = [null, $auditoria->monto($pago->valor_consumo)];
+
+            if ($request->has('dividir_pago')) {
+                $cambios['Pago 1'] = [null, $auditoria->monto($pago->pago1) . ' (' . $medio($pago->id_tipo_transaccion1) . ')'];
+                $cambios['Pago 2'] = [null, $auditoria->monto($pago->pago2) . ' (' . $medio($pago->id_tipo_transaccion2) . ')'];
+            }
+        }
+
+        $cambios['Propina'] = [null, $propina
+            ? $auditoria->monto($propina->cantidad) . ' repartida entre ' . $propina->users()->count() . ' persona(s)'
+            : 'Sin propina'];
+
+        $auditoria->registrar([
+            'categoria'   => Auditoria::CATEGORIA_FINANCIERA,
+            'evento'      => Auditoria::EVENTO_CERRO,
+            'auditable'   => $venta,
+            'contexto'    => $reserva,
+            'descripcion' => 'cerró la venta de ' . $auditoria->textoReserva($reserva)
+                . ($propina ? ' con propina de ' . $auditoria->monto($propina->cantidad) : ' sin propina'),
+            'cambios'     => $cambios,
+        ]);
     }
 
     private function asignarPropinas(Consumo $consumo, Reserva $reserva, Request $request)

@@ -11,6 +11,7 @@
 @endsection
 
 @section('dropdown_settings')
+@include('themes.backoffice.pages.auditoria.partials.enlace_historial', ['tipo' => 'cliente', 'id' => $cliente->id])
 <li><a href="{{ route('backoffice.reserva.create',$cliente->id) }}" class="grey-text text-darken-2">Crear Reserva</a>
 </li>
 @endsection

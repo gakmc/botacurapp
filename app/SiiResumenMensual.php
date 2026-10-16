@@ -2,10 +2,29 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class SiiResumenMensual extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaCampos = [
+        'ventas_total'     => ['Ventas', 'monto'],
+        'compras_total'    => ['Compras', 'monto'],
+        'honorarios_bruto' => ['Honorarios', 'monto'],
+        'iva_debito'       => ['IVA débito', 'monto'],
+        'iva_credito'      => ['IVA crédito', 'monto'],
+        'iva_diferencia'   => ['IVA a pagar', 'monto'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'creó', 'actualizó', 'eliminó') . ' el resumen F29 del período ' . $this->periodo;
+    }
+
     protected $table = 'sii_resumen_mensual';
 
     protected $fillable = [

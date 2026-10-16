@@ -1,11 +1,17 @@
 <?php
 namespace App\Console\Commands;
 
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class RecategorizarEgresosSii extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'egresos:recategorizar-sii {--dry-run}';
     protected $description = 'Recategoriza los egresos fuente=sii usando el mapeo proveedor.subcategoria_id (backfill del fix de matching por proveedor)';
 

@@ -56,6 +56,8 @@ class AguaIotController extends Controller
                 'created_at'       => now(),
                 'updated_at'       => now(),
             ]);
+            // Insert con query builder: se audita explícitamente
+            optional(\App\Egreso::find($egresoId))->registrarAuditoria(\App\Auditoria::EVENTO_CREO);
 
             $boleta = AguaBoleta::create([
                 'egreso_id'           => $egresoId,

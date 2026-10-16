@@ -2,10 +2,37 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class WoocommerceOrder extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    // Sin datos del comprador ni de la tarjeta
+    protected $auditoriaCampos = [
+        'wc_order_id'    => 'Orden WooCommerce',
+        'status'         => 'Estado',
+        'total'          => ['Total', 'monto'],
+        'payment_method' => 'Medio de pago',
+        'procesado'      => ['Procesada', 'bool'],
+        'reserva_id'     => 'Reserva',
+        'error_detalle'  => 'Error',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'actualizó', 'eliminó') . ' la orden WooCommerce #' . $this->wc_order_id
+            . ' por ' . app(\App\Services\AuditoriaService::class)->monto($this->total);
+    }
+
+    protected function auditoriaContexto()
+    {
+        return $this->reserva;
+    }
+
     protected $table = 'woocommerce_orders';
 
     protected $fillable = [

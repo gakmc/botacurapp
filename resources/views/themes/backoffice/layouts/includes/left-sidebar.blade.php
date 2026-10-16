@@ -436,6 +436,19 @@
 
                 @endif
 
+                @can('ver-auditoria')
+                    <li class="bold">
+                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.auditoria.index') }}">
+                            <i class="material-icons">
+                                history
+                            </i>
+                            <span class="nav-text">
+                                Auditoría
+                            </span>
+                        </a>
+                    </li>
+                @endcan
+
 
 
             </ul>

@@ -2,10 +2,26 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Insumo extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el insumo';
+
+    protected $auditoriaCampos = [
+        'nombre'           => 'Nombre',
+        'valor'            => ['Valor', 'monto'],
+        'cantidad'         => 'Stock',
+        'stock_critico'    => 'Stock crítico',
+        'id_unidad_medida' => ['Unidad de medida', 'App\UnidadMedida@nombre'],
+        'id_sector'        => ['Sector', 'App\Sector@nombre'],
+    ];
+
     protected $table = 'insumos';
 
     protected $fillable = [

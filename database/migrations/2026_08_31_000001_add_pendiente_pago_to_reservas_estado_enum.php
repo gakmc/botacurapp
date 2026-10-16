@@ -18,6 +18,10 @@ class AddPendientePagoToReservasEstadoEnum extends Migration
 {
     public function up()
     {
+        // En entornos donde la columna nació como VARCHAR nullable (migración
+        // 2026_07_17_200000), hay filas con NULL que impiden el NOT NULL.
+        DB::table('reservas')->whereNull('estado')->update(['estado' => 'pendiente']);
+
         DB::statement("ALTER TABLE reservas MODIFY estado ENUM('pendiente','pendiente_pago','confirmada','completada','cancelada','no_show') NOT NULL DEFAULT 'pendiente'");
     }
 

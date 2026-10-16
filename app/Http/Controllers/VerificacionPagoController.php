@@ -2,6 +2,9 @@
 
 namespace App\Http\Controllers;
 
+use App\Auditoria;
+use App\Services\AuditoriaService;
+use App\Venta;
 use GuzzleHttp\Client as GuzzleClient;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\DB;
@@ -74,6 +77,8 @@ class VerificacionPagoController extends Controller
             'updated_at' => now(),
         ]);
 
+        $this->auditarVerificacion($venta, true);
+
         Log::info('[VerificacionPago] Comprobante aprobado', ['venta_id' => $ventaId, 'por' => auth()->id()]);
 
         $this->notificarCliente($venta->id_reserva, true);
@@ -94,6 +99,8 @@ class VerificacionPagoController extends Controller
             'updated_at'     => now(),
         ]);
 
+        $this->auditarVerificacion($venta, false);
+
         Log::info('[VerificacionPago] Comprobante rechazado', ['venta_id' => $ventaId, 'por' => auth()->id()]);
 
         $this->notificarCliente($venta->id_reserva, false);
@@ -103,6 +110,33 @@ class VerificacionPagoController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────────────────
+
+    /**
+     * Estas actualizaciones usan query builder (sin eventos de modelo), por eso
+     * se auditan explícitamente. $venta es la fila previa a la actualización.
+     */
+    private function auditarVerificacion($venta, bool $aprobado)
+    {
+        $auditoria = app(AuditoriaService::class);
+        $modelo    = Venta::with('reserva.cliente')->find($venta->id);
+        $monto     = $venta->comprobante_monto ? ' por ' . $auditoria->monto($venta->comprobante_monto) : '';
+
+        $cambios = ['Estado de pago' => [$venta->estado_pago, $aprobado ? 'pagado' : 'rechazado']];
+        if ($aprobado) {
+            $cambios['Estado de la reserva'] = [optional(optional($modelo)->reserva)->estado, 'confirmada'];
+        }
+
+        $auditoria->registrar([
+            'categoria'   => Auditoria::CATEGORIA_FINANCIERA,
+            'evento'      => $aprobado ? Auditoria::EVENTO_APROBO : Auditoria::EVENTO_RECHAZO,
+            'auditable'   => $modelo,
+            'contexto'    => optional($modelo)->reserva,
+            'descripcion' => ($aprobado ? 'aprobó' : 'rechazó') . ' el comprobante de transferencia' . $monto
+                . ' de ' . $auditoria->textoReserva(optional($modelo)->reserva)
+                . ($aprobado ? ' y la reserva quedó confirmada' : ''),
+            'cambios'     => $cambios,
+        ]);
+    }
 
     private function notificarCliente(int $reservaId, bool $aprobado)
     {

@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Asistencia;
+use App\Auditoria;
+use App\Services\AuditoriaService;
 use App\Sueldo;
 use App\User;
 use Illuminate\Http\Request;
@@ -92,7 +94,7 @@ class AsistenciaController extends Controller
             'fecha' => $fecha,
         ]);
 
-        $asistencia->users()->sync($request->users);
+        $this->sincronizarAsistentes($asistencia, $request->users);
 
         foreach ($request->users as $userId) {
             $usuario = User::findOrFail($userId);
@@ -178,13 +180,15 @@ class AsistenciaController extends Controller
         // Detectar usuarios desmarcados
         $usuariosDesmarcados = array_diff($usuariosAntes, $usuariosDespues);
 
-        // Eliminar sus sueldos
+        // Eliminar sus sueldos (uno a uno para que cada eliminación quede en la auditoría)
         Sueldo::whereIn('id_user', $usuariosDesmarcados)
             ->where('dia_trabajado', $fecha)
+            ->get()
+            ->each
             ->delete();
 
         // Sincronizar nuevos usuarios
-        $asistencia->users()->sync($usuariosDespues);
+        $this->sincronizarAsistentes($asistencia, $usuariosDespues);
 
         // Asegurar que cada usuario nuevo tenga su sueldo (si no existe aún)
         foreach ($usuariosDespues as $userId) {
@@ -214,5 +218,27 @@ class AsistenciaController extends Controller
     public function destroy(Asistencia $asistencia)
     {
         //
+    }
+
+    /**
+     * sync() no dispara eventos de modelo: se registra un solo cambio
+     * "antes → después" de los asistentes del día.
+     */
+    private function sincronizarAsistentes(Asistencia $asistencia, array $usuarios)
+    {
+        $auditoria = app(AuditoriaService::class);
+
+        $auditoria->sincronizar(
+            $asistencia,
+            Auditoria::CATEGORIA_FINANCIERA,
+            'Asistentes',
+            'cambió los asistentes del ' . $auditoria->fecha($asistencia->getAttributes()['fecha'] ?? null),
+            function () use ($asistencia) {
+                return $asistencia->resumenUsuariosAuditoria();
+            },
+            function () use ($asistencia, $usuarios) {
+                $asistencia->users()->sync($usuarios);
+            }
+        );
     }
 }

@@ -6,6 +6,8 @@ use App\Egreso;
 use App\Proveedor;
 use App\Services\SiiService;
 use Carbon\Carbon;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -22,6 +24,10 @@ use Illuminate\Support\Facades\DB;
  */
 class SiiImportarSemana extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature   = 'sii:importar-semana
                                 {--anio= : Año a importar (default: año actual)}
                                 {--mes=  : Mes a importar (default: mes actual)}';

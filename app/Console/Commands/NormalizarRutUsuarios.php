@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\User;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 /**
@@ -14,6 +16,10 @@ use Illuminate\Console\Command;
  */
 class NormalizarRutUsuarios extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_SEGURIDAD;
+
     protected $signature = 'usuarios:normalizar-rut {--dry-run}';
     protected $description = 'Normaliza el formato de users.rut a cuerpo-DV con un solo guión';
 

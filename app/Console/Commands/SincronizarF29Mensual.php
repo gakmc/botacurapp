@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\HonorarioBte;
 use App\Services\SiiService;
 use App\SiiResumenMensual;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
@@ -21,6 +23,10 @@ use Illuminate\Support\Facades\DB;
  */
 class SincronizarF29Mensual extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'sii:sincronizar-f29 {--anio=} {--mes=}';
 
     protected $description = 'Recalcula el resumen F29 mensual (ventas SII + compras + honorarios BTE)';

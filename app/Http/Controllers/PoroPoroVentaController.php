@@ -228,26 +228,40 @@ class PoroPoroVentaController extends Controller
 
         DB::transaction(function () use ($request, $poroVenta){
 
-            $poroVenta->detalles()->delete();
-            
-            $poroVenta->total = 0;
-            $totalVenta = 0;
-            
-            foreach ($request->productos as $id => $detalle) {
-                $producto = PoroPoro::findOrFail($id);
-                $cantidad = $detalle['cantidad'];
-                $precioUnitario = $producto->valor;
-                $subtotal = $precioUnitario * $cantidad;
-                
-                $detalleVenta = $poroVenta->detalles()->create([
-                    'poro_id' => $producto->id,
-                    'cantidad' => $cantidad,
-                    'precio_unitario' => $precioUnitario,
-                    'subtotal' => $subtotal
-                ]);
-                
-                $totalVenta += $subtotal;
-            }
+            // Los detalles se reemplazan en bloque: un solo registro "antes → después"
+            $auditoria  = app(\App\Services\AuditoriaService::class);
+            $totalVenta = $auditoria->sincronizar(
+                $poroVenta,
+                \App\Auditoria::CATEGORIA_FINANCIERA,
+                'Productos',
+                'editó los productos de la venta PoroPoro #' . $poroVenta->id,
+                function () use ($poroVenta) {
+                    return $poroVenta->resumenDetallesAuditoria();
+                },
+                function () use ($request, $poroVenta) {
+                    $poroVenta->detalles()->delete();
+
+                    $totalVenta = 0;
+
+                    foreach ($request->productos as $id => $detalle) {
+                        $producto = PoroPoro::findOrFail($id);
+                        $cantidad = $detalle['cantidad'];
+                        $precioUnitario = $producto->valor;
+                        $subtotal = $precioUnitario * $cantidad;
+
+                        $poroVenta->detalles()->create([
+                            'poro_id' => $producto->id,
+                            'cantidad' => $cantidad,
+                            'precio_unitario' => $precioUnitario,
+                            'subtotal' => $subtotal
+                        ]);
+
+                        $totalVenta += $subtotal;
+                    }
+
+                    return $totalVenta;
+                }
+            );
             
             $poroVenta->fecha = Carbon::now();
             $poroVenta->total = $totalVenta;

@@ -270,6 +270,24 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::match(['put', 'patch'],'usuarios/{user}/retencion', 'UsuarioRetencionController@update')->name('usuario-retencion.update');
 
+    // Auditoría (acceso por tabla auditoria_autorizados, no por rol)
+    Route::prefix('auditoria')->name('auditoria.')->group(function () {
+        Route::get('/', 'AuditoriaController@index')->name('index')->middleware('can:ver-auditoria');
+        Route::get('historial/{tipo}/{id}', 'AuditoriaController@historial')->name('historial')
+            ->middleware('can:ver-auditoria')->where('id', '[0-9]+');
+
+        // Gestión de accesos: solo gestores. Otorgan lector/gestor, ascienden lectores y
+        // revocan accesos (nunca el propio). También disponible por consola: auditoria:autorizar.
+        Route::get('autorizados', 'AuditoriaController@autorizados')->name('autorizados')->middleware('can:gestionar-auditoria');
+        Route::post('autorizados', 'AuditoriaController@autorizar')->name('autorizar')->middleware('can:gestionar-auditoria');
+        Route::patch('autorizados/{autorizado}/gestor', 'AuditoriaController@promover')->name('promover')->middleware('can:gestionar-auditoria');
+        Route::delete('autorizados/{autorizado}', 'AuditoriaController@revocar')->name('revocar')->middleware('can:gestionar-auditoria');
+
+        // {id}: el registro puede estar en `auditorias` o en `auditorias_archivo`
+        Route::get('{id}', 'AuditoriaController@show')->name('show')
+            ->middleware('can:ver-auditoria')->where('id', '[0-9]+');
+    });
+
 
     // Metodos Reservas
     // Index - Mostrar una lista de reservas
@@ -664,7 +682,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 });
 
 // ── Webpay — retorno de pago (sin autenticación) ─────────────────────────────
-Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.webpay.retorno');
+Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.webpay.retorno')->middleware('auditoria:sistema,Webpay');
 
 // // routes/web.php
 

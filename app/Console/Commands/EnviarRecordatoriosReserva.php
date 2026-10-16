@@ -4,12 +4,18 @@ namespace App\Console\Commands;
 
 use App\Services\WhatsAppService;
 use Carbon\Carbon;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class EnviarRecordatoriosReserva extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
     protected $signature = 'reservas:enviar-recordatorios {--dry-run}';
 
     protected $description = 'Envía recordatorio de WhatsApp 24h antes a las reservas de mañana (excluye canceladas)';

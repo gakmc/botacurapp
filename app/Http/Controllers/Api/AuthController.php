@@ -2,7 +2,9 @@
 
 namespace App\Http\Controllers\Api;
 
+use App\Auditoria;
 use App\Http\Controllers\Controller;
+use App\Services\AuditoriaService;
 use Illuminate\Http\Request;
 use App\User;
 use Tymon\JWTAuth\Facades\JWTAuth;
@@ -17,29 +19,33 @@ class AuthController extends Controller
         ]);
 
         $credentials = $request->only('email', 'password');
+        $auditoria   = app(AuditoriaService::class);
 
+        // El guard JWT no dispara eventos Login/Failed: se audita aquí
         if (! $token = auth('api')->attempt($credentials)) {
+            $user = User::where('email', $request->email)->first();
+
+            $auditoria->registrarComo(null, [
+                'categoria'   => Auditoria::CATEGORIA_SEGURIDAD,
+                'evento'      => Auditoria::EVENTO_LOGIN_FALLIDO,
+                'auditable'   => $user,
+                'contexto'    => $user,
+                'user_id'     => $user ? $user->id : null,
+                'descripcion' => 'intentó iniciar sesión en la API con el email "' . $request->email . '"'
+                    . ($user ? ' (contraseña incorrecta)' : ' (email no registrado)'),
+            ], Auditoria::ACTOR_INVITADO);
+
             return response()->json(['error' => 'Credenciales inválidas'], 401);
         }
 
-        return $this->respondWithToken($token);
-    }
-
-    public function register(Request $request)
-    {
-        $request->validate([
-            'name' => 'required',
-            'email' => 'required|email|unique:users',
-            'password' => 'required|min:6'
+        $user = auth('api')->user();
+        $auditoria->registrarComo($user, [
+            'categoria'   => Auditoria::CATEGORIA_SEGURIDAD,
+            'evento'      => Auditoria::EVENTO_LOGIN,
+            'auditable'   => $user,
+            'contexto'    => $user,
+            'descripcion' => 'inició sesión en la API',
         ]);
-
-        $user = User::create([
-            'name' => $request->name,
-            'email' => $request->email,
-            'password' => bcrypt($request->password),
-        ]);
-
-        $token = auth('api')->login($user);
 
         return $this->respondWithToken($token);
     }
@@ -51,6 +57,17 @@ class AuthController extends Controller
 
     public function logout()
     {
+        $user = auth('api')->user();
+        if ($user) {
+            app(AuditoriaService::class)->registrarComo($user, [
+                'categoria'   => Auditoria::CATEGORIA_SEGURIDAD,
+                'evento'      => Auditoria::EVENTO_LOGOUT,
+                'auditable'   => $user,
+                'contexto'    => $user,
+                'descripcion' => 'cerró sesión en la API',
+            ]);
+        }
+
         auth('api')->logout();
         return response()->json(['message' => 'Sesión cerrada']);
     }

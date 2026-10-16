@@ -2,10 +2,31 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditable;
+use App\Auditoria;
 use Illuminate\Database\Eloquent\Model;
 
 class AguaBoleta extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaCampos = [
+        'numero_boleta'     => 'N° boleta',
+        'periodo'           => 'Período',
+        'consumo_m3'        => 'Consumo (m³)',
+        'total_a_pagar'     => ['Total a pagar', 'monto'],
+        'fecha_limite_pago' => ['Fecha límite', 'fecha'],
+        'origen'            => 'Origen',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'editó', 'eliminó') . ' la boleta de agua N° ' . $this->numero_boleta
+            . ' (' . $this->periodo . ') por ' . app(\App\Services\AuditoriaService::class)->monto($this->total_a_pagar);
+    }
+
     protected $connection = 'mysql';
     protected $table = 'agua_boletas';
 

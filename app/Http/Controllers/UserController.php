@@ -160,9 +160,11 @@ class UserController extends Controller
     public function role_assignment(Request $request, User $user)
     {
         $this->authorize('assign_role', $user);
-        $user->role_assignment($request);
-        $user->roles()->sync($request->roles);
-        $user->verify_permission_integrity($request->roles);
+        $user->auditarAccesos('cambió los roles del usuario', function () use ($request, $user) {
+            $user->role_assignment($request);
+            $user->roles()->sync($request->roles);
+            $user->verify_permission_integrity($request->roles);
+        });
         alert('Éxito', 'Roles asignados', 'success')->showConfirmButton();
 
         return redirect()->route('backoffice.user.show',$user);
@@ -188,7 +190,9 @@ class UserController extends Controller
     public function permission_assignment(Request $request, User $user)
     {
         $this->authorize('assign_permission', $user);
-        $user->permissions()->sync($request->permissions);
+        $user->auditarAccesos('cambió los permisos del usuario', function () use ($request, $user) {
+            $user->permissions()->sync($request->permissions);
+        });
         alert('Éxito', 'Permisos asignados', 'success');
         return redirect()->route('backoffice.user.show', $user);
     }

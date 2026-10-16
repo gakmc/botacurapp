@@ -11,6 +11,7 @@
 @endsection
 
 @section('dropdown_settings')
+@include('themes.backoffice.pages.auditoria.partials.enlace_historial', ['tipo' => 'reserva', 'id' => $reserva->id])
 
   <li><a href="{{ route('backoffice.reserva.edit',$reserva) }}" class="grey-text text-darken-2">Editar Reserva</a></li>
 

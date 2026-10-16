@@ -2,10 +2,22 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class TipoProducto extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el tipo de producto';
+
+    protected $auditoriaCampos = [
+        'nombre'    => 'Nombre',
+        'id_sector' => ['Sector', 'App\Sector@nombre'],
+    ];
+
     protected $table = 'tipos_productos';
 
     protected $fillable = [

@@ -5,11 +5,17 @@ namespace App\Console\Commands;
 use App\HonorarioBte;
 use App\Proveedor;
 use App\Services\SiiBteService;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\DB;
 
 class SincronizarHonorariosBhe extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'honorarios:sync
                             {anio? : Año (default: año actual)}
                             {--mes= : Mes específico 1-12}

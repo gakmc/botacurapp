@@ -3,11 +3,76 @@
 namespace App;
 
 use Carbon\Carbon;
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class Reserva extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected function auditoriaContexto()
+    {
+        return $this;
+    }
+
+    /** Historial completo: acciones sobre la reserva y sus registros hijos (venta, pedidos, masajes...). */
+    public function auditoriasHistorial()
+    {
+        return $this->morphMany(Auditoria::class, 'contexto')
+            ->orderByDesc('created_at')
+            ->orderByDesc('id');
+    }
+
+    protected $auditoriaCampos = [
+        'cliente_id'             => ['Cliente', 'App\Cliente@nombre_cliente'],
+        'id_programa'            => ['Programa', 'App\Programa@nombre_programa'],
+        'fecha_visita'           => ['Fecha de visita', 'fecha'],
+        'cantidad_personas'      => 'Personas',
+        'cantidad_masajes'       => 'Masajes',
+        'cantidad_masajes_extra' => 'Masajes extra',
+        'estado'                 => 'Estado',
+        'observacion'            => 'Observación',
+        'avisado_en_cocina'      => ['Avisado en cocina', 'bool'],
+        'menu_recibido'          => ['Menú recibido', 'bool'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        $programa = optional($this->programa)->nombre_programa;
+
+        return $this->segunEvento($evento, 'creó', 'editó', 'eliminó') . ' ' . $this->textoReservaAuditoria($this)
+            . ($evento === Auditoria::EVENTO_CREO && $programa
+                ? ' (' . $programa . ', ' . $this->cantidad_personas . ' personas)'
+                : '');
+    }
+
+    /**
+     * Estado legible de las colecciones que se reemplazan en bloque, para
+     * AuditoriaService::sincronizarReserva(). Siempre consulta la BD.
+     */
+    public function resumenAuditoria($que)
+    {
+        switch ($que) {
+            case 'ubicaciones':
+                return $this->ubicacionesAsignadas()->with('ubicacion')->orderBy('id')->get()
+                    ->map(function ($asignada) {
+                        $nombre = optional($asignada->ubicacion)->nombre ?: '#' . $asignada->id_ubicacion;
+
+                        return $asignada->cantidad_personas ? $nombre . ' (' . $asignada->cantidad_personas . ' personas)' : $nombre;
+                    })
+                    ->implode(', ');
+            case 'wellness':
+                return $this->wellness()->pluck('tipo')->implode(', ');
+            case 'desayuno_once':
+                return $this->desayunoOnce()->orderBy('tipo')->pluck('tipo')->implode(', ');
+        }
+
+        return '';
+    }
+
     protected $dates = ['fecha_visita'];
 
 

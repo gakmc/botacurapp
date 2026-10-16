@@ -2,10 +2,28 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class FechaDisponible extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaCampos = [
+        'fecha'      => ['Fecha', 'fecha'],
+        'tipo'       => 'Tipo',
+        'habilitada' => ['Habilitada', 'bool'],
+        'nota'       => 'Nota',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'configuró', 'cambió', 'eliminó') . ' la disponibilidad del '
+            . app(\App\Services\AuditoriaService::class)->fecha($this->getAttributes()['fecha'] ?? null);
+    }
+
     protected $fillable = ['fecha', 'tipo', 'habilitada', 'nota'];
 
     protected $casts = [

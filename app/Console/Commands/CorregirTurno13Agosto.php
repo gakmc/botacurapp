@@ -5,6 +5,8 @@ namespace App\Console\Commands;
 use App\Asignacion;
 use App\Propina;
 use App\Sueldo;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 /**
@@ -20,6 +22,10 @@ use Illuminate\Console\Command;
  */
 class CorregirTurno13Agosto extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'sueldos:corregir-turno-13agosto {--dry-run}';
 
     protected $description = 'Corrige el turno del 2026-08-13 ingresado por error para Sebastián Wimmer (user_id=1)';

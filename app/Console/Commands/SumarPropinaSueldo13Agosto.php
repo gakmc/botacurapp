@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\Sueldo;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 /**
@@ -20,6 +22,10 @@ use Illuminate\Console\Command;
  */
 class SumarPropinaSueldo13Agosto extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'sueldos:sumar-propina-13agosto {--dry-run}';
 
     protected $description = 'Suma el share de propina de Sebastián al sub_sueldo/total_pagar del 13-08 de los 3 restantes';

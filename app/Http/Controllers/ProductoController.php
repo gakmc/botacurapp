@@ -120,6 +120,20 @@ class ProductoController extends Controller
 
         }
 
+        // attach() no dispara eventos: los insumos se agregan al registro de creación del producto
+        $auditoria = app(\App\Services\AuditoriaService::class);
+        $insumos   = $producto->insumos()->orderBy('nombre')->pluck('nombre')->implode(', ');
+        if ($insumos && ! $auditoria->fusionarEnCreacion($producto, ['Insumos' => [null, $insumos]])) {
+            $auditoria->registrar([
+                'categoria'   => \App\Auditoria::CATEGORIA_FINANCIERA,
+                'evento'      => \App\Auditoria::EVENTO_EDITO,
+                'auditable'   => $producto,
+                'contexto'    => $producto,
+                'descripcion' => 'definió los insumos del producto "' . $producto->nombre . '"',
+                'cambios'     => ['Insumos' => [null, $insumos]],
+            ]);
+        }
+
         Alert::success('Éxito', 'Se ha generado el producto con sus insumos')->showConfirmButton();
         return redirect()->route('backoffice.producto.show', $producto);
     }

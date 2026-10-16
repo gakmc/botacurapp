@@ -1,10 +1,24 @@
 <?php
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class UnidadMedida extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'la unidad de medida';
+
+    protected $auditoriaCampos = [
+        'nombre'      => 'Nombre',
+        'abreviatura' => 'Abreviatura',
+        'tipo'        => 'Tipo',
+        'descripcion' => 'Descripción',
+    ];
+
     protected $table = 'unidades_medidas';
 
     protected $fillable = [

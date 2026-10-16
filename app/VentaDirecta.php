@@ -2,10 +2,36 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class VentaDirecta extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaCampos = [
+        'fecha'               => ['Fecha', 'fecha'],
+        'subtotal'            => ['Subtotal', 'monto'],
+        'tiene_propina'       => ['Con propina', 'bool'],
+        'valor_propina'       => ['Propina', 'monto'],
+        'total'               => ['Total', 'monto'],
+        'id_tipo_transaccion' => ['Medio de pago', 'App\TipoTransaccion@nombre'],
+        'id_user'             => ['Vendedor', 'App\User@name'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'editó', 'eliminó') . ' la venta directa #' . $this->id
+            . ' por ' . app(\App\Services\AuditoriaService::class)->monto($this->total);
+    }
+
+    protected function auditoriaContexto()
+    {
+        return $this;
+    }
+
     protected $table = 'ventas_directas';
 
     protected $dates = [

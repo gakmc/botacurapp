@@ -3,6 +3,8 @@
 namespace App\Console\Commands;
 
 use App\User;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 /**
@@ -18,6 +20,10 @@ use Illuminate\Console\Command;
  */
 class VincularDatosBancarios extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_SEGURIDAD;
+
     protected $signature = 'sueldos:vincular-datos-bancarios {--dry-run}';
 
     protected $description = 'Vincula rut/boletea/banco/cuenta/correo_personal a los 18 usuarios confirmados';

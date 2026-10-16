@@ -16,6 +16,7 @@
 
 
 @section('dropdown_settings')
+@include('themes.backoffice.pages.auditoria.partials.enlace_historial', ['tipo' => 'cotizacion', 'id' => $cotizacion->id])
 <li>
     <a href="{{route('backoffice.cotizacion.verpdf', $cotizacion)}}" target="_blank"><i class="material-icons left">picture_as_pdf</i>Ver PDF</a>
 </li>

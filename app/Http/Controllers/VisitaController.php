@@ -17,6 +17,7 @@ use App\ReservaDesayunoOnce;
 use App\ReservaUbicacion;
 use App\ReservaWellness;
 use App\Servicio;
+use App\Services\AuditoriaService;
 use App\TipoMasaje;
 use App\Ubicacion;
 use App\Visita;
@@ -974,8 +975,10 @@ class VisitaController extends Controller
             return;
         }
 
-        $reserva->wellness()->delete();
-        ReservaWellness::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+        app(AuditoriaService::class)->sincronizarReserva($reserva, 'wellness', function () use ($reserva, $tipo) {
+            $reserva->wellness()->delete();
+            ReservaWellness::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+        });
     }
 
     private function sincronizarUbicacionesReserva(Request $request, Reserva $reserva): ?int
@@ -994,23 +997,25 @@ class VisitaController extends Controller
             return null;
         }
 
-        $reserva->ubicacionesAsignadas()->delete();
+        return app(AuditoriaService::class)->sincronizarReserva($reserva, 'ubicaciones', function () use ($reserva, $filas) {
+            $reserva->ubicacionesAsignadas()->delete();
 
-        $idPrincipal = null;
+            $idPrincipal = null;
 
-        foreach ($filas as $fila) {
-            $creada = ReservaUbicacion::create([
-                'id_reserva'        => $reserva->id,
-                'id_ubicacion'      => (int) $fila['id'],
-                'cantidad_personas' => (isset($fila['personas']) && $fila['personas'] !== '') ? (int) $fila['personas'] : null,
-            ]);
+            foreach ($filas as $fila) {
+                $creada = ReservaUbicacion::create([
+                    'id_reserva'        => $reserva->id,
+                    'id_ubicacion'      => (int) $fila['id'],
+                    'cantidad_personas' => (isset($fila['personas']) && $fila['personas'] !== '') ? (int) $fila['personas'] : null,
+                ]);
 
-            if ($idPrincipal === null) {
-                $idPrincipal = $creada->id_ubicacion;
+                if ($idPrincipal === null) {
+                    $idPrincipal = $creada->id_ubicacion;
+                }
             }
-        }
 
-        return $idPrincipal;
+            return $idPrincipal;
+        });
     }
 
     public function register(Reserva $reserva, Visita $visita)
@@ -1752,13 +1757,14 @@ class VisitaController extends Controller
                         $this->asegurarMasajesParaPersonas($reserva, $personasMasaje, true, $incluyeMasajePrograma);
                     }
                 } else {
-                    $reserva->masajes()->delete();
+                    // Uno a uno para que cada eliminación quede en la auditoría
+                    $reserva->masajes()->get()->each->delete();
                 }
 
                 if ($incluyeAlmuerzo) {
                     $this->actualizarMenusDesdePayload($request, $reserva);
                 } else {
-                    $reserva->menus()->delete();
+                    $reserva->menus()->get()->each->delete();
                 }
 
                 $this->actualizarDesayunoOnceDesdePayload($request, $reserva);
@@ -2787,6 +2793,8 @@ class VisitaController extends Controller
 
         Masaje::where('id_reserva', $reserva->id)
             ->where('persona', '>', $personasMasaje)
+            ->get()
+            ->each
             ->delete();
 
         return $reserva->masajes()->orderBy('persona')->get();
@@ -2965,21 +2973,23 @@ class VisitaController extends Controller
         $incluyeAmbos = in_array('Desayuno y Once', $servicios);
         $incluyeUno   = in_array('Desayuno u Once', $servicios);
 
-        $reserva->desayunoOnce()->delete();
+        app(AuditoriaService::class)->sincronizarReserva($reserva, 'desayuno_once', function () use ($request, $reserva, $incluyeAmbos, $incluyeUno) {
+            $reserva->desayunoOnce()->delete();
 
-        if ($incluyeAmbos) {
-            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'desayuno']);
-            ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'once']);
+            if ($incluyeAmbos) {
+                ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'desayuno']);
+                ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => 'once']);
 
-            return;
-        }
-
-        if ($incluyeUno) {
-            $tipo = $request->input('desayuno_once');
-            if (in_array($tipo, ['desayuno', 'once'], true)) {
-                ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+                return;
             }
-        }
+
+            if ($incluyeUno) {
+                $tipo = $request->input('desayuno_once');
+                if (in_array($tipo, ['desayuno', 'once'], true)) {
+                    ReservaDesayunoOnce::create(['id_reserva' => $reserva->id, 'tipo' => $tipo]);
+                }
+            }
+        });
     }
 
     private function actualizarMenusDesdePayload($request, Reserva $reserva): void
@@ -3078,6 +3088,8 @@ class VisitaController extends Controller
             ->where('id_servicio_extra', $idServicioMasaje)
             ->whereNull('id_precio_tipo_masaje')
             ->lockForUpdate()
+            ->get()
+            ->each
             ->delete();
 
         foreach ($grupos as $precioId => $items) {

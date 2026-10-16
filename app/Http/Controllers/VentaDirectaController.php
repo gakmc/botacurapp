@@ -358,7 +358,9 @@ class VentaDirectaController extends Controller
             // Los que se mantienen conservan su fila (y por lo tanto su `estado`).
             $ventaDirecta->detalles()
                 ->whereNotIn('producto_id', array_keys($productosValidos))
-                ->delete();
+                ->get()
+                ->each
+                ->delete(); // uno a uno para que cada producto quitado quede en la auditoría
 
             $pedidoKeyVentaDirecta = 'vd-' . $ventaDirecta->id;
 

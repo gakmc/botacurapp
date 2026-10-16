@@ -2,10 +2,38 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Venta extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected function auditoriaContexto()
+    {
+        return $this->reserva;
+    }
+
+    protected $auditoriaCampos = [
+        'abono_programa'                 => ['Abono', 'monto'],
+        'folio_abono'                    => 'Folio abono',
+        'id_tipo_transaccion_abono'      => ['Medio de pago abono', 'App\TipoTransaccion@nombre'],
+        'diferencia_programa'            => ['Diferencia', 'monto'],
+        'folio_diferencia'               => 'Folio diferencia',
+        'id_tipo_transaccion_diferencia' => ['Medio de pago diferencia', 'App\TipoTransaccion@nombre'],
+        'descuento'                      => ['Descuento', 'monto'],
+        'total_pagar'                    => ['Total a pagar', 'monto'],
+        'estado_pago'                    => 'Estado de pago',
+        'verificado_por'                 => ['Verificado por', 'App\User@name'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'creó', 'editó', 'eliminó') . ' la venta de ' . $this->textoReservaAuditoria($this->reserva);
+    }
+
     protected $fillable = [
         'abono_programa',
         'folio_abono',

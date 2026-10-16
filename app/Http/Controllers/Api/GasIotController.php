@@ -93,6 +93,8 @@ class GasIotController extends Controller
                 'created_at'       => now(),
                 'updated_at'       => now(),
             ]);
+            // Insert con query builder: se audita explícitamente
+            optional(\App\Egreso::find($egreso))->registrarAuditoria(\App\Auditoria::EVENTO_CREO);
 
             // 2. Crear registro en gas_compras
             $compra = GasCompra::create([

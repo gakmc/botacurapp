@@ -2,10 +2,24 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Servicio extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaNombre = 'el servicio';
+
+    protected $auditoriaCampos = [
+        'nombre_servicio' => 'Nombre',
+        'valor_servicio'  => ['Precio', 'monto'],
+        'costo_servicio'  => ['Costo', 'monto'],
+        'duracion'        => 'Duración (min)',
+    ];
+
     protected $fillable = [
         'nombre_servicio', 'valor_servicio', 'costo_servicio', 'duracion',
     ];

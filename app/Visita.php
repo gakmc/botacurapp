@@ -3,10 +3,33 @@
 namespace App;
 
 use Carbon\Carbon;
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Visita extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected function auditoriaContexto()
+    {
+        return $this->reserva;
+    }
+
+    protected $auditoriaCampos = [
+        'id_ubicacion'   => ['Ubicación', 'App\Ubicacion@nombre'],
+        'horario_sauna'  => ['Horario sauna', 'hora'],
+        'horario_tinaja' => ['Horario tinaja', 'hora'],
+        'trago_cortesia' => 'Trago cortesía',
+        'observacion'    => 'Observación',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'editó', 'eliminó') . ' la visita de ' . $this->textoReservaAuditoria($this->reserva);
+    }
+
     protected $fillable = [
         'horario_sauna',
         'horario_tinaja',

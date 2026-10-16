@@ -127,6 +127,8 @@ class EgresoApiController extends Controller
                 'created_at'        => now(),
                 'updated_at'        => now(),
             ]);
+            // Insert con query builder: se audita explícitamente
+            optional(\App\Egreso::find($egresoId))->registrarAuditoria(\App\Auditoria::EVENTO_CREO);
 
             // Guardar ítems
             if ($request->items && count($request->items) > 0) {

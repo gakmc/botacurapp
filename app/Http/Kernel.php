@@ -64,6 +64,7 @@ class Kernel extends HttpKernel
         'role'        => \App\Http\Middleware\Role::class,
         'bot.token'   => \App\Http\Middleware\BotTokenMiddleware::class,
         'auth.apikey' => \App\Http\Middleware\ApiKeyMiddleware::class,
+        'auditoria'   => \App\Http\Middleware\AuditoriaActor::class,
     ];
 
     /**

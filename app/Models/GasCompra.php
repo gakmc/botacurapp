@@ -2,6 +2,8 @@
 
 namespace App\Models;
 
+use App\Concerns\Auditable;
+use App\Auditoria;
 use Illuminate\Database\Eloquent\Model;
 
 /**
@@ -10,6 +12,26 @@ use Illuminate\Database\Eloquent\Model;
  */
 class GasCompra extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaCampos = [
+        'proveedor_nombre'   => 'Proveedor',
+        'fecha_compra'       => ['Fecha', 'fecha'],
+        'cantidad_cilindros' => 'Cilindros',
+        'valor_unitario_clp' => ['Valor unitario', 'monto'],
+        'total_clp'          => ['Total', 'monto'],
+        'estado'             => 'Estado',
+        'origen'             => 'Origen',
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'registró', 'editó', 'eliminó') . ' la compra de gas de ' . $this->cantidad_cilindros
+            . ' cilindro(s) por ' . app(\App\Services\AuditoriaService::class)->monto($this->total_clp);
+    }
+
     protected $connection = 'mysql';   // BD principal (botacurapp)
     protected $table      = 'gas_compras';
 

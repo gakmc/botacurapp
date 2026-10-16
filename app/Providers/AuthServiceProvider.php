@@ -34,6 +34,13 @@ class AuthServiceProvider extends ServiceProvider
     {
         $this->registerPolicies();
 
-        //
+        // Auditoría: el acceso no depende del rol (ser administrador no basta).
+        Gate::define('ver-auditoria', function ($user) {
+            return $user->puede_ver_auditoria();
+        });
+
+        Gate::define('gestionar-auditoria', function ($user) {
+            return $user->es_gestor_auditoria();
+        });
     }
 }

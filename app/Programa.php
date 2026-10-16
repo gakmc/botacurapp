@@ -1,12 +1,39 @@
 <?php
 namespace App;
 
+use App\Concerns\Auditable;
+use App\Services\AuditoriaService;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Support\Str;
 use RealRashid\SweetAlert\Facades\Alert;
 
 class Programa extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaNombre = 'el programa';
+
+    // Sin datos técnicos de WooCommerce (ids, imágenes, slug)
+    protected $auditoriaCampos = [
+        'nombre_programa'        => 'Nombre',
+        'valor_programa'         => ['Precio', 'monto'],
+        'descuento'              => ['Descuento', 'monto'],
+        'min_personas'           => 'Mínimo de personas',
+        'espacio_tipo'           => 'Tipo de espacio',
+        'permite_giftcard'       => ['Permite gift card', 'bool'],
+        'solo_plataforma'        => ['Solo plataforma', 'bool'],
+        'permite_reprogramacion' => ['Permite reprogramación', 'bool'],
+        'estado'                 => 'Estado',
+    ];
+
+    /** Servicios incluidos, para AuditoriaService::sincronizar() */
+    public function resumenServiciosAuditoria()
+    {
+        return $this->servicios()->orderBy('nombre_servicio')->pluck('nombre_servicio')->implode(', ');
+    }
+
     protected $guarded = [];
 
     protected $casts = [
@@ -65,7 +92,7 @@ class Programa extends Model
         ]);
 
         if ($request->has('servicios')) {
-            $programa->servicios()->sync($request->servicios);
+            $programa->sincronizarServicios($request->servicios);
         }
 
         Alert::success('Éxito', 'Programa guardado')->showConfirmButton();
@@ -76,21 +103,39 @@ class Programa extends Model
     {
         $slug = Str::slug($request->nombre_programa, '-');
 
-        $this->update($request->except(['servicios', 'imagenes', 'solo_plataforma', 'permite_giftcard']) + [
+        // Solo los campos del formulario: con $guarded = [] y except() se podía escribir
+        // cualquier columna (wc_product_id, estado, slug...) desde el request.
+        $this->update($request->only(['nombre_programa', 'valor_programa', 'descuento', 'espacio_tipo', 'min_personas']) + [
             'slug'             => $slug,
             'solo_plataforma'  => $request->has('solo_plataforma') ? 1 : 0,
             'permite_giftcard' => $request->has('permite_giftcard') ? 1 : 0,
         ]);
 
-        if ($request->has('servicios')) {
-            $this->servicios()->sync($request->servicios);
-        } else {
-            $this->servicios()->sync([]);
-        }
+        $this->sincronizarServicios($request->has('servicios') ? $request->servicios : []);
 
         Alert::success('Éxito', 'Programa actualizado')->showConfirmButton();
         return $this;
 
+    }
+
+    /**
+     * sync() no dispara eventos de modelo: se registra un solo cambio
+     * "antes → después" de los servicios incluidos.
+     */
+    public function sincronizarServicios(array $servicios)
+    {
+        app(AuditoriaService::class)->sincronizar(
+            $this,
+            Auditoria::CATEGORIA_FINANCIERA,
+            'Servicios incluidos',
+            'cambió los servicios incluidos del programa "' . $this->nombre_programa . '"',
+            function () {
+                return $this->resumenServiciosAuditoria();
+            },
+            function () use ($servicios) {
+                $this->servicios()->sync($servicios);
+            }
+        );
     }
 
     //VALIDACION

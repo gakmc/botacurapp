@@ -1886,12 +1886,14 @@ class ReservaController extends Controller
         ]);
 
         try {
-            $reserva->desayunoOnce()->delete();
+            app(\App\Services\AuditoriaService::class)->sincronizarReserva($reserva, 'desayuno_once', function () use ($request, $reserva) {
+                $reserva->desayunoOnce()->delete();
 
-            ReservaDesayunoOnce::create([
-                'id_reserva' => $reserva->id,
-                'tipo'       => $request->input('desayuno_once'),
-            ]);
+                ReservaDesayunoOnce::create([
+                    'id_reserva' => $reserva->id,
+                    'tipo'       => $request->input('desayuno_once'),
+                ]);
+            });
 
             return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva])->with('success', 'Desayuno/Once actualizado correctamente.');
 

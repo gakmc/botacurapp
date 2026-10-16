@@ -202,30 +202,42 @@ class CotizacionController extends Controller
                 'observaciones' => $request->observaciones,
             ]);
 
-            $cotizacion->items()->delete();
+            // Los ítems se reemplazan en bloque: un solo registro "antes → después"
+            app(\App\Services\AuditoriaService::class)->sincronizar(
+                $cotizacion,
+                \App\Auditoria::CATEGORIA_FINANCIERA,
+                'Ítems',
+                'editó los ítems de la cotización #' . $cotizacion->id . ' para ' . $cotizacion->cliente,
+                function () use ($cotizacion) {
+                    return $cotizacion->resumenItemsAuditoria();
+                },
+                function () use ($request, $cotizacion) {
+                    $cotizacion->items()->delete();
 
-            $tipos = [
-                'programas' => Programa::class,
-                'servicios' => Servicio::class,
-                'productos' => Producto::class,
-            ];
+                    $tipos = [
+                        'programas' => Programa::class,
+                        'servicios' => Servicio::class,
+                        'productos' => Producto::class,
+                    ];
 
-            foreach ($tipos as $tipo => $modelo) {
-                if ($request->has($tipo)) {
-                    foreach ($request->$tipo as $key => $datos) {
-                        $item = $modelo::findOrFail($key);
-                        // $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
+                    foreach ($tipos as $tipo => $modelo) {
+                        if ($request->has($tipo)) {
+                            foreach ($request->$tipo as $key => $datos) {
+                                $item = $modelo::findOrFail($key);
+                                // $valor = $modelo === Producto::class ? $item->valor : ($modelo === Programa::class ? $item->valor_programa : $item->valor_servicio);
 
-                        $cotizacion->items()->create([
-                            'itemable_id' => $key,
-                            'itemable_type' => $modelo,
-                            'cantidad' => (int)$datos['cantidad'],
-                            'valor_neto' => (int)$datos['subtotal']/(int)$datos['cantidad'],
-                            'total' => (int)$datos['subtotal'],
-                        ]);
+                                $cotizacion->items()->create([
+                                    'itemable_id' => $key,
+                                    'itemable_type' => $modelo,
+                                    'cantidad' => (int)$datos['cantidad'],
+                                    'valor_neto' => (int)$datos['subtotal']/(int)$datos['cantidad'],
+                                    'total' => (int)$datos['subtotal'],
+                                ]);
+                            }
+                        }
                     }
                 }
-            }
+            );
 
         });
 

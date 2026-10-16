@@ -2,10 +2,28 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class EstadoRecepcion extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected function auditoriaContexto()
+    {
+        return $this->reserva;
+    }
+
+    protected $auditoriaCampos = [];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        return $this->segunEvento($evento, 'recepcionó al cliente de', 'editó la recepción de', 'anuló la recepción de')
+            . ' ' . $this->textoReservaAuditoria($this->reserva);
+    }
+
     protected $table = 'estados_recepcion';
 
     protected $fillable = [

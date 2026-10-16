@@ -32,6 +32,9 @@ class BotTokenMiddleware
             return response()->json(['error' => 'No autorizado'], 401);
         }
 
+        // Las acciones del bot no se auditan (solo lo realizado en la plataforma)
+        app(\App\Services\AuditoriaService::class)->omitir();
+
         return $next($request);
     }
 }

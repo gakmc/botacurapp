@@ -1,10 +1,19 @@
 <?php
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class Sector extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el sector';
+
+    protected $auditoriaCampos = ['nombre' => 'Nombre'];
+
     protected $table = 'sectores';
 
     protected $fillable = [

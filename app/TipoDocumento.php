@@ -2,10 +2,22 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class TipoDocumento extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el tipo de documento';
+
+    protected $auditoriaCampos = [
+        'nombre'      => 'Nombre',
+        'descripcion' => 'Descripción',
+    ];
+
     protected $table = 'tipos_documentos';
 
     protected $fillable = [

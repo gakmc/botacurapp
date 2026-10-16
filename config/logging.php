@@ -100,6 +100,14 @@ return [
             'path' => storage_path('logs/laravel.log'),
         ],
 
+        // Fallas al escribir la auditoría (payload completo para reintentar).
+        'auditoria' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/auditoria/auditoria.log'),
+            'level' => 'debug',
+            'days' => 90,
+        ],
+
         'masoterapeutas' => [
             'driver' => 'single',
             'path' => storage_path('logs/masoterapeutas.log'),

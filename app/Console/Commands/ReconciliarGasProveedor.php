@@ -3,10 +3,16 @@
 namespace App\Console\Commands;
 
 use App\Services\GasReconciliacionService;
+use App\Auditoria;
+use App\Console\Concerns\ComandoAuditable;
 use Illuminate\Console\Command;
 
 class ReconciliarGasProveedor extends Command
 {
+    use ComandoAuditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
     protected $signature = 'egresos:reconciliar-gas {--proveedor=65} {--anio=} {--mes=}';
     protected $description = 'Reconcilia las compras de gas via IoT contra la factura real del proveedor (SII) del mismo periodo';
 

@@ -2,10 +2,23 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class TipoMasaje extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_OPERACIONAL;
+
+    protected $auditoriaNombre = 'el tipo de masaje';
+
+    protected $auditoriaCampos = [
+        'nombre'              => 'Nombre',
+        'id_categoria_masaje' => ['Categoría', 'App\CategoriaMasaje@nombre'],
+        'activo'              => ['Activo', 'bool'],
+    ];
+
     protected $table = 'tipos_masajes';
     protected $fillable = ['id_categoria_masaje','nombre','slug','activo'];
 

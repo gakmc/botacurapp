@@ -2,10 +2,35 @@
 
 namespace App;
 
+use App\Concerns\Auditable;
 use Illuminate\Database\Eloquent\Model;
 
 class PoroDetalleVenta extends Model
 {
+    use Auditable;
+
+    protected $auditoriaCategoria = Auditoria::CATEGORIA_FINANCIERA;
+
+    protected $auditoriaCampos = [
+        'poro_id'         => ['Producto', 'App\PoroPoro@nombre'],
+        'cantidad'        => 'Cantidad',
+        'precio_unitario' => ['Precio unitario', 'monto'],
+        'subtotal'        => ['Subtotal', 'monto'],
+    ];
+
+    protected function auditoriaDescripcion($evento)
+    {
+        $detalle = $this->cantidad . ' x ' . optional($this->poro)->nombre;
+
+        return $this->segunEvento($evento, 'agregó ' . $detalle . ' a', 'editó ' . $detalle . ' en', 'quitó ' . $detalle . ' de')
+            . ' la venta PoroPoro #' . $this->poro_venta_id;
+    }
+
+    protected function auditoriaContexto()
+    {
+        return $this->venta;
+    }
+
     protected $table = 'poro_detalle_ventas';
 
     protected $fillable = [

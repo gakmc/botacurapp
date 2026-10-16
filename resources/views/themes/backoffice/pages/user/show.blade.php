@@ -11,6 +11,7 @@
 @endsection
 
 @section('dropdown_settings')
+@include('themes.backoffice.pages.auditoria.partials.enlace_historial', ['tipo' => 'usuario', 'id' => $user->id, 'accionesDeUsuario' => true])
 <li><a href="{{route('backoffice.user.edit',$user)}}" class="grey-text text-darken-2">Editar Usuario</a></li>
 @endsection
 

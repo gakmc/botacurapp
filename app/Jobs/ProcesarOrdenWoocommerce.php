@@ -36,6 +36,9 @@ class ProcesarOrdenWoocommerce implements ShouldQueue
 
     public function handle()
     {
+        // En la cola no pasa por el middleware HTTP: se fija el actor de la auditoría aquí
+        app(\App\Services\AuditoriaService::class)->establecerActor(null, \App\Auditoria::ACTOR_SISTEMA, 'WooCommerce');
+
         $payload   = $this->payload;
         $wcOrderId = $payload['id'] ?? null;
 

@@ -3,7 +3,9 @@
 namespace App\Http\Controllers;
 
 use App\Asignacion;
+use App\Auditoria;
 use App\Reserva;
+use App\Services\AuditoriaService;
 use App\User;
 use Illuminate\Http\Request;
 use Carbon\Carbon;
@@ -178,7 +180,7 @@ class AsignacionController extends Controller
             'fecha' => Carbon::createFromFormat('d-m-Y', $request->fecha)->format('Y-m-d'),
         ]);
 
-        $asignacion->users()->sync($request->users);
+        $this->sincronizarPersonal($asignacion, $request->users);
 
         Alert::success('Éxito', 'Equipo asignado correctamente', 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.asignacion.index');
@@ -217,7 +219,7 @@ class AsignacionController extends Controller
             'users.required' => 'Debe seleccionar al menos un usuario',
         ]);
 
-        $asignacion->users()->sync($request->users);
+        $this->sincronizarPersonal($asignacion, $request->users);
         Alert::success('Éxito', 'Equipo editado correctamente para el '.$request->fecha, 'Confirmar')->showConfirmButton();
         return redirect()->route('backoffice.asignacion.index');
 
@@ -226,5 +228,27 @@ class AsignacionController extends Controller
     public function destroy(asignacion $asignacion)
     {
         //
+    }
+
+    /**
+     * sync() no dispara eventos de modelo: se registra un solo cambio
+     * "antes → después" del personal asignado (define reparto de propinas y sueldos).
+     */
+    private function sincronizarPersonal(Asignacion $asignacion, array $usuarios)
+    {
+        $auditoria = app(AuditoriaService::class);
+
+        $auditoria->sincronizar(
+            $asignacion,
+            Auditoria::CATEGORIA_FINANCIERA,
+            'Personal asignado',
+            'cambió el personal asignado al turno del ' . $auditoria->fecha($asignacion->getAttributes()['fecha'] ?? null),
+            function () use ($asignacion) {
+                return $asignacion->resumenUsuariosAuditoria();
+            },
+            function () use ($asignacion, $usuarios) {
+                $asignacion->users()->sync($usuarios);
+            }
+        );
     }
 }
