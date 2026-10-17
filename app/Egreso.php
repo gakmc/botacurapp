@@ -52,6 +52,7 @@ class Egreso extends Model
         'periodo_sii',
         'estado',
         'observaciones',
+        'es_inversion',
     ];
 
 

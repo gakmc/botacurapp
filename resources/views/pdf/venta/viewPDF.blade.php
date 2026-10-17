@@ -28,7 +28,7 @@
 
         <div>
             <img style="max-height: 150px;"
-                src="{{ public_path('images/botacura/294235172_462864912512116_3346235978129441981_n-modified.png') }}"
+                src="{{ public_path('images/logo/botacura-logo-green.png') }}"
                 alt="botacura logo" />
             <h3 class="right primario" style="margin-top: 7%">Detalle de visita</h3>
         </div>

@@ -28,11 +28,17 @@ class Proveedor extends Model
         'nombre',
         'rut',
         'telefono',
-        'correo'
+        'correo',
+        'subcategoria_id'
     ];
 
     public function egresos()
     {
         return $this->hasMany(Egreso::class);
+    }
+
+    public function subcategoria()
+    {
+        return $this->belongsTo(Subcategoria::class, 'subcategoria_id');
     }
 }

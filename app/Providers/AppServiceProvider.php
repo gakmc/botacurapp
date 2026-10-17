@@ -35,5 +35,8 @@ class AppServiceProvider extends ServiceProvider
                 ->reiniciarContexto()
                 ->establecerActor(null, Auditoria::ACTOR_SISTEMA, 'cola: ' . class_basename($evento->job->resolveName()));
         });
+        // Inventario: cada venta descuenta insumos según receta
+        \App\DetalleConsumo::observe(\App\Observers\DetalleConsumoObserver::class);
+        \App\DetalleVentaDirecta::observe(\App\Observers\DetalleVentaDirectaObserver::class);
     }
 }

@@ -36,6 +36,12 @@ class BotController extends Controller
     const BOT_SECRET_HEADER = 'X-Bot-Secret';
     const MAX_HISTORY_TURNS = 12;
 
+    /** Imágenes que el sistema adjunta a la respuesta (fotos de ubicaciones). */
+    private $imagenes = [];
+
+    /** true si la ubicación se resolvió automáticamente junto con la disponibilidad. */
+    private $ubicacionAuto = false;
+
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot/ping
     // ─────────────────────────────────────────────────────────────
@@ -103,7 +109,9 @@ class BotController extends Controller
 
         $fechaCarbon = Carbon::parse($fecha);
         $diaSemana   = $fechaCarbon->dayOfWeek; // 0=Dom, 4=Jue, 5=Vie, 6=Sáb
-        $esOperativo = in_array($diaSemana, [0, 4, 5, 6]);
+        // Festivos habilitados en el calendario del panel también operan
+        $esOperativo = in_array($diaSemana, [0, 4, 5, 6])
+            || \App\FechaDisponible::where('fecha', $fecha)->where('habilitada', true)->exists();
 
         if (!$esOperativo) {
             return response()->json([
@@ -279,7 +287,17 @@ class BotController extends Controller
         ]);
 
         $programa   = DB::table('programas')->where('id', $request->id_programa)->first();
-        $valorTotal = ($programa ? (int) $programa->valor_programa : 0) * (int) $request->cantidad_personas;
+        $valorPersona = $programa ? (int) $programa->valor_programa : 0;
+        // Temporada de verano (noviembre a febrero): +$5.000 por persona en programas regulares.
+        // No aplica a uso exclusivo ni a programas de semana (S), cuyo valor de verano aún no está definido.
+        $mesVisita = (int) Carbon::parse($request->fecha_visita)->month;
+        $nombreProg = trim((string) ($programa->nombre_programa ?? ''));
+        if ($programa && in_array($mesVisita, [11, 12, 1, 2], true)
+            && stripos($nombreProg, 'exclusivo') === false
+            && !preg_match('/\\sS$/i', $nombreProg)) {
+            $valorPersona += 5000;
+        }
+        $valorTotal = $valorPersona * (int) $request->cantidad_personas;
         $abono50    = (int) ceil($valorTotal / 2);
 
         Log::info("[Bot] Reserva creada #{$reservaId}");
@@ -543,13 +561,13 @@ class BotController extends Controller
     }
 
     // ─────────────────────────────────────────────────────────────
-    // POST /api/bot/message
-    // Endpoint principal para n8n — Claude maneja la conversación completa
-    // Body: { telefono, mensaje, nombre? }
+    // POST /api/bot-ai/message
+    // Body: { telefono, mensaje, nombre?, simulacion? }
+    // simulacion=true: no crea holds/reservas, no reagenda, no deriva ni alerta
+    // (lo usan la batería de pruebas y el chat de prueba del backoffice).
     // ─────────────────────────────────────────────────────────────
     public function message(Request $request)
     {
-        // Auth
         $secret = config('services.bot.secret');
         if ($secret && $request->header(self::BOT_SECRET_HEADER) !== $secret) {
             return response()->json(['ok' => false, 'error' => 'Unauthorized'], 401);
@@ -561,90 +579,716 @@ class BotController extends Controller
             'nombre'   => 'nullable|string|max:100',
         ]);
 
-        $usuarioId = $this->normalizarTelefono($request->telefono);
-        $mensaje   = trim($request->mensaje);
-        $nombre    = $request->nombre ?? 'Cliente';
+        $simulacion = filter_var($request->input('simulacion', false), FILTER_VALIDATE_BOOLEAN);
+        $usuarioId  = $this->normalizarTelefono($request->telefono);
+        $mensaje    = trim($request->mensaje);
+        $nombre     = $request->nombre ?? 'Cliente';
 
-        // Cargar/crear conversación
-        $conv = $this->obtenerConversacion($usuarioId, $nombre);
-
-        // Historial para Claude
+        $conv      = $this->obtenerConversacion($usuarioId, $nombre);
         $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
 
-        $contenidoParaHistorial = $mensaje;
+        // El chat estuvo en manos del equipo (o derivado) y ahora vuelve al bot: se registra en el
+        // historial del caso y se le indica al bot cómo retomar.
+        $notaRetoma = '';
+        if (!empty($conv->requiere_humano) && (empty($conv->humano_hasta) || Carbon::parse($conv->humano_hasta)->lte(now()))) {
+            $sinResp = !\App\Services\BotCasoService::equipoRespondioTrasDerivar($usuarioId);
+            if (!$simulacion) {
+                \App\Services\BotCasoService::registrar('bot_retoma', $usuarioId, ['sin_respuesta_equipo' => $sinResp]);
+                DB::table('bot_conversaciones')->where('id', $conv->id)->update(['requiere_humano' => 0, 'updated_at' => now()]);
+            }
+            $notaRetoma = $sinResp
+                ? '[Sistema: este chat se derivó al equipo y nadie alcanzó a responder. Discúlpate en una línea por la espera, revisa el HISTORIAL DEL CASO y retoma lo que el cliente necesitaba.]'
+                : '[Sistema: el equipo de Botacura atendió este chat. Lee lo que respondió el equipo (en el historial y en HISTORIAL DEL CASO) y continúa desde ahí: no repitas lo que ya se dijo ni contradigas lo acordado. Si el equipo prometió algo que no puedes verificar en el sistema, usa escalar_humano.]';
+        }
 
-        // Si es el primer mensaje de una conversación nueva, revisar si el número
-        // ya es cliente conocido (evita re-pedir nombre/correo a quien ya reservó antes).
+        $contenidoParaHistorial = $mensaje;
         if (empty($historial)) {
-            // El cliente escribe desde WhatsApp, asi que su telefono de contacto YA es
-            // conocido (es $usuarioId) — antes el PASO 5 del prompt lo preguntaba desde
-            // cero igual, generando una pregunta redundante e irritante.
             $ctxTelefono = "[Sistema: El cliente te escribe desde el WhatsApp {$usuarioId} — "
                 . "ese ES su teléfono de contacto, ya lo tienes. En el paso de teléfono NO lo "
-                . "preguntes desde cero: solo confírmalo brevemente (ej. \"¿Dejamos este mismo "
-                . "WhatsApp como tu teléfono de contacto?\"), salvo que el cliente prefiera dar "
-                . "otro número.]";
-            $clienteConocido = DB::table('clientes')->where('whatsapp_cliente', $usuarioId)->first();
+                . "preguntes desde cero: solo confírmalo brevemente, salvo que el cliente prefiera dar otro número.]";
+            $clienteConocido = $this->buscarClientePorTelefono($usuarioId);
             if ($clienteConocido) {
-                $ctxCliente = "[Sistema: Este número ya es cliente de Botacura — nombre: "
-                    . "{$clienteConocido->nombre_cliente}"
-                    . (!empty($clienteConocido->correo) ? ", correo: {$clienteConocido->correo}" : '')
-                    . ". Salúdalo como cliente que vuelve, usando su nombre. Ya tienes su nombre"
-                    . (!empty($clienteConocido->correo) ? ' y correo' : '')
-                    . " — no se los vuelvas a pedir desde cero, solo confírmaselos brevemente "
-                    . "salvo que él mismo diga que cambiaron. El resto del proceso de reserva "
-                    . "(fecha, programa, personas, políticas, pago) sigue igual — cada visita es "
-                    . "una reserva nueva.]";
+                $correo = (!empty($clienteConocido->correo) && strpos($clienteConocido->correo, '@temporal.') === false) ? $clienteConocido->correo : null;
+                $ctxCliente = "[Sistema: Este número ya es cliente de Botacura — nombre: {$clienteConocido->nombre_cliente}"
+                    . ($correo ? ", correo: {$correo}" : '')
+                    . ". Salúdalo como cliente que vuelve, usando su nombre. No le pidas de nuevo nombre"
+                    . ($correo ? ' ni correo' : '') . "; solo confírmalos brevemente si hace falta.]";
                 $contenidoParaHistorial = $mensaje . "\n\n" . $ctxCliente . "\n\n" . $ctxTelefono;
             } else {
                 $contenidoParaHistorial = $mensaje . "\n\n" . $ctxTelefono;
             }
         }
-
-        $historial[] = ['role' => 'user', 'content' => $contenidoParaHistorial];
-
-        // System prompt con programas y menú dinámicos desde BD
-        $programas    = $this->cargarProgramasBd();
-        $menuOpciones = $this->cargarMenuOpciones();
-        $promptSvc    = new BotPromptService();
-        $systemPrompt = $promptSvc->getSystemPrompt($programas, $menuOpciones);
-
-        // Llamar a Claude
-        $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
-
-        if (!$respuesta) {
-            $msgError = 'Estamos teniendo problemas técnicos. Por favor escríbenos al +56 9 7448 4112 🙏';
-            $historial[] = ['role' => 'assistant', 'content' => $msgError];
-            $this->persistirHistorial($conv->id, $mensaje, $msgError, $historial, []);
-            return response()->json([
-                'ok'     => true,
-                'accion' => 'escalar_humano',
-                'mensaje' => $msgError,
-                'datos'  => ['motivo' => 'error_claude_api'],
-            ]);
+        if ($notaRetoma !== '') {
+            $contenidoParaHistorial .= "\n\n" . $notaRetoma;
+        }
+        // Dias pedidos sin habilitar (14/10/2026): si el cliente pide un dia cerrado de un mes abierto,
+        // se registra y se le indica a la IA que ofrezca anotarlo (aunque no verifique esa fecha).
+        $contenidoParaHistorial .= \App\Services\BotInteresFechasService::notaParaMensaje($usuarioId, $mensaje, $conv, $simulacion);
+        if ($historial && ($historial[count($historial) - 1]['role'] ?? '') === 'user') {
+            // Mensajes que el cliente dejó mientras lo atendía el equipo: se juntan en un solo turno.
+            $historial[count($historial) - 1]['content'] .= "\n\n" . $contenidoParaHistorial;
+        } else {
+            $historial[] = ['role' => 'user', 'content' => $contenidoParaHistorial];
         }
 
-        $accion = $respuesta['accion'] ?? 'responder';
-        $datos  = $respuesta['datos']  ?? [];
+        $programas      = $this->cargarProgramasBd();
+        $menuOpciones   = $this->cargarMenuOpciones();
+        $contexto       = $this->contextoCliente($usuarioId);
+        $systemPrompt   = (new BotPromptService())->getSystemPrompt($programas, $menuOpciones, $contexto['texto']);
 
-        // Procesar acciones especiales
-        if ($accion === 'verificar_disponibilidad') {
-            $respuesta = $this->procesarDisponibilidad($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
-        } elseif ($accion === 'crear_reserva') {
-            $respuesta = $this->procesarCrearReservaClaude($respuesta, $systemPrompt, $historial, $mensaje, $nombre, $usuarioId);
-        } elseif ($accion === 'guardar_seleccion_menu') {
-            $respuesta = $this->procesarGuardarSeleccionMenu($respuesta, $systemPrompt, $historial, $mensaje, $nombre);
+        $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
+        if (!$respuesta) {
+            $msgError = 'Estamos teniendo problemas técnicos. Una persona del equipo te responde por este chat a la brevedad, o si prefieres escríbenos a hola@botacura.cl 🙏';
+            $historial[] = ['role' => 'assistant', 'content' => $msgError];
+            $this->persistirHistorial($conv->id, $mensaje, $msgError, $historial, []);
+            if (!$simulacion) {
+                \App\Services\BotAprendizajeService::evento('error_ia', $usuarioId);
+                $this->escalar($usuarioId, $nombre, 'Error al llamar a la IA', $mensaje);
+            }
+            return response()->json(['ok' => true, 'accion' => 'escalar_humano', 'mensaje' => $msgError, 'datos' => ['motivo' => 'error_claude_api']]);
+        }
+
+        // Acciones encadenadas: el sistema ejecuta y le devuelve el resultado a la IA.
+        $ejecutadas = [];
+        $acciones   = [];
+        for ($i = 0; $i < 4; $i++) {
+            $accion = $respuesta['accion'] ?? 'responder';
+            if (!in_array($accion, ['verificar_disponibilidad', 'cotizar', 'ubicaciones', 'crear_reserva', 'reagendar', 'guardar_seleccion_menu', 'anotar_interes'], true)) {
+                break;
+            }
+            $firma = $accion . ':' . md5(json_encode($respuesta['datos'] ?? []));
+            if (isset($ejecutadas[$firma]) || ($accion === 'crear_reserva' && isset($ejecutadas['crear_reserva']))) {
+                // La IA repitió una acción ya ejecutada: pedirle la respuesta final al cliente.
+                $h = $historial;
+                $h[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+                $h[] = ['role' => 'user', 'content' => '[Sistema: la acción "' . $accion . '" YA se ejecutó y su resultado está arriba. No la repitas. Responde ahora al cliente con accion "responder" usando ese resultado.]'];
+                $final = $this->llamarClaude($systemPrompt, $h, $nombre);
+                if ($final && trim((string) ($final['mensaje'] ?? '')) !== '' && ($final['accion'] ?? '') !== $accion) {
+                    $respuesta = $final;
+                }
+                break;
+            }
+            $ejecutadas[$firma] = true;
+            if ($accion === 'crear_reserva') {
+                $ejecutadas['crear_reserva'] = true;
+            }
+            $contexto['historial'] = $historial;
+            $ctx = $this->ejecutarAccion($accion, $respuesta['datos'] ?? [], $usuarioId, $contexto, $simulacion);
+            if ($ctx === null) {
+                // La IA pidió una acción sin los datos mínimos: su mensaje se escribió sin verificar nada.
+                if (isset($ejecutadas['sin_datos'])) {
+                    break;
+                }
+                $ejecutadas['sin_datos'] = true;
+                $h = $historial;
+                $h[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+                $h[] = ['role' => 'user', 'content' => '[Sistema: la acción "' . $accion . '" no se ejecutó porque faltan datos (la fecha va en "fecha" con formato AAAA-MM-DD). Vuelve a pedir la acción con los datos completos, o pregúntale al cliente lo que falta. No afirmes nada que el sistema no haya verificado.]'];
+                $nueva = $this->llamarClaude($systemPrompt, $h, $nombre);
+                if (!$nueva) {
+                    break;
+                }
+                $respuesta = $nueva;
+                continue;
+            }
+            $acciones[] = $accion;
+            if ($this->ubicacionAuto && !in_array('ubicaciones', $acciones, true)) {
+                $acciones[] = 'ubicaciones';
+            }
+            // El resultado del sistema queda guardado en el historial (memoria del bot).
+            $ultimo = count($historial) - 1;
+            $historial[$ultimo]['content'] .= "\n\n" . $ctx;
+            $nueva = $this->llamarClaude($systemPrompt, $historial, $nombre);
+            if (!$nueva) {
+                break;
+            }
+            $respuesta = $nueva;
+        }
+
+        if (trim((string) ($respuesta['mensaje'] ?? '')) === '') {
+            $h = $historial;
+            $h[] = ['role' => 'user', 'content' => '[Sistema: tu última respuesta no traía mensaje para el cliente. Responde con accion "responder" y un mensaje basado en los resultados del sistema de arriba.]'];
+            $final = $this->llamarClaude($systemPrompt, $h, $nombre);
+            if ($final && trim((string) ($final['mensaje'] ?? '')) !== '') {
+                $respuesta = $final;
+            } else {
+                $respuesta = ['accion' => 'escalar_humano', 'mensaje' => 'Déjame revisarlo con el equipo y te escribimos en breve 🙏', 'datos' => ['motivo' => 'Respuesta vacía de la IA']];
+                \App\Services\BotAprendizajeService::evento('respuesta_vacia', $usuarioId);
+            }
+        }
+
+        // Control de montos: todo "$" del mensaje debe venir del sistema.
+        $noVerificados = $this->montosNoVerificados($respuesta['mensaje'] ?? '', $systemPrompt, $historial);
+        if ($noVerificados) {
+            Log::warning('[Bot] Montos no verificados en respuesta', ['telefono' => $usuarioId, 'montos' => $noVerificados]);
+            \App\Services\BotAprendizajeService::evento('monto_bloqueado', $usuarioId, ['montos' => $noVerificados, 'mensaje' => mb_substr((string) ($respuesta['mensaje'] ?? ''), 0, 500)]);
+            $hist2   = $historial;
+            $hist2[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+            $hist2[] = ['role' => 'user', 'content' => '[Sistema-validador: tu mensaje incluía montos que el sistema no calculó (' . implode(', ', array_map(function ($n) { return '$' . number_format($n, 0, ',', '.'); }, $noVerificados)) . '). No calcules montos tú. Si necesitas un total o abono, usa la acción "cotizar"; si no, responde sin esos montos. Responde de nuevo en el formato JSON.]'];
+            $reintento = $this->llamarClaude($systemPrompt, $hist2, $nombre);
+            if ($reintento && in_array($reintento['accion'] ?? '', ['cotizar'], true) && !isset($ejecutadas['cotizar_reintento'])) {
+                $ctx = $this->ejecutarAccion('cotizar', $reintento['datos'] ?? [], $usuarioId, $contexto, $simulacion);
+                $historial[count($historial) - 1]['content'] .= "\n\n" . $ctx;
+                $reintento = $this->llamarClaude($systemPrompt, $historial, $nombre);
+            }
+            if ($reintento && !$this->montosNoVerificados($reintento['mensaje'] ?? '', $systemPrompt, $historial)) {
+                $respuesta = $reintento;
+            } else {
+                $respuesta = [
+                    'accion'  => 'escalar_humano',
+                    'mensaje' => 'Déjame confirmar el valor exacto con el equipo y te escribimos en breve 🙏',
+                    'datos'   => ['motivo' => 'Monto no verificado por el sistema: ' . implode(', ', $noVerificados)],
+                ];
+            }
+        }
+
+        // Control de fechas y cupos: no se afirman fechas ni disponibilidad que el sistema no verificó.
+        $problemas = $this->fechasYCuposNoVerificados((string) ($respuesta['mensaje'] ?? ''), $historial, $contexto['texto'] ?? '');
+        if ($problemas) {
+            \App\Services\BotAprendizajeService::evento('fecha_no_verificada', $usuarioId, ['problemas' => $problemas, 'mensaje' => mb_substr((string) ($respuesta['mensaje'] ?? ''), 0, 500)]);
+            $h = $historial;
+            $h[] = ['role' => 'assistant', 'content' => json_encode($respuesta, JSON_UNESCAPED_UNICODE)];
+            $h[] = ['role' => 'user', 'content' => '[Sistema-validador: ' . implode(' ', $problemas) . ' Usa solo la fecha que dio el cliente o las que el sistema verificó. Para ofrecer otras fechas, pregunta qué día le acomoda y verifícalo con verificar_disponibilidad; no listes días con cupo sin verificarlos. Responde de nuevo en el formato JSON.]'];
+            $reintento = $this->llamarClaude($systemPrompt, $h, $nombre);
+            if ($reintento && ($reintento['accion'] ?? '') === 'verificar_disponibilidad' && !empty($reintento['datos']['fecha'])) {
+                $ctx = $this->ejecutarAccion('verificar_disponibilidad', $reintento['datos'], $usuarioId, $contexto, $simulacion);
+                if ($ctx) {
+                    $acciones[] = 'verificar_disponibilidad';
+                    $historial[count($historial) - 1]['content'] .= "\n\n" . $ctx;
+                    $reintento = $this->llamarClaude($systemPrompt, $historial, $nombre);
+                }
+            }
+            if ($reintento && trim((string) ($reintento['mensaje'] ?? '')) !== ''
+                && !$this->montosNoVerificados($reintento['mensaje'] ?? '', $systemPrompt, $historial)) {
+                $respuesta = $reintento;
+            }
+        }
+
+        // Menú en PDF cuando el cliente lo pide
+        if (($respuesta['accion'] ?? '') === 'enviar_menu') {
+            $urlMenu = \App\Services\BotMenuService::url();
+            if ($urlMenu && \App\Services\BotMenuService::enviarAlPreguntar()) {
+                $respuesta['adjunto_url']    = $urlMenu;
+                $respuesta['adjunto_nombre'] = \App\Services\BotMenuService::nombreArchivo();
+                $respuesta['adjunto_texto']  = \App\Services\BotMenuService::texto();
+            }
+        }
+
+        if (($respuesta['accion'] ?? '') === 'escalar_humano' && !$simulacion) {
+            $this->escalar($usuarioId, $nombre, (string) ($respuesta['datos']['motivo'] ?? 'Derivado por el bot'), $mensaje);
         }
 
         $historial[] = ['role' => 'assistant', 'content' => $respuesta['mensaje'] ?? ''];
-
         if (count($historial) > self::MAX_HISTORY_TURNS * 2) {
             $historial = array_slice($historial, -(self::MAX_HISTORY_TURNS * 2));
+            while ($historial && ($historial[0]['role'] ?? '') !== 'user') {
+                array_shift($historial);
+            }
         }
 
-        $this->persistirHistorial($conv->id, $mensaje, $respuesta['mensaje'] ?? '', $historial, $respuesta['datos'] ?? []);
+        $this->persistirHistorial($conv->id, $mensaje, $respuesta['mensaje'] ?? '', $historial, $simulacion ? [] : ($respuesta['datos'] ?? []));
 
-        return response()->json(array_merge(['ok' => true], $respuesta));
+        return response()->json(array_merge(['ok' => true, 'acciones_ejecutadas' => $acciones, 'imagenes' => $this->imagenes], $respuesta));
+    }
+
+    /**
+     * Ejecuta una acción pedida por la IA y devuelve el texto "[Sistema-...]" con el resultado.
+     */
+    private function ejecutarAccion(string $accion, array $datos, string $usuarioId, array $contexto, bool $simulacion): ?string
+    {
+        try {
+            if ($accion === 'cotizar') {
+                $cot = \App\Services\BotTarifasService::cotizar($datos);
+                // La ubicación va en la misma cotización, para que el resumen siempre la muestre.
+                if (!empty($cot['ok']) && !empty($datos['programa_id']) && !empty($datos['fecha']) && !empty($datos['personas'])) {
+                    try {
+                        $pu = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['ubicacion_preferida'] ?? ($datos['preferencia'] ?? null));
+                        if (!empty($pu['requiere_eleccion'])) {
+                            $cot['ubicacion_pendiente'] = 'Falta que el cliente elija terraza o reposera. Si ya lo eligió, vuelve a cotizar con ubicacion_preferida; si no, pregúntale antes del resumen.';
+                        } elseif (!empty($pu['ok']) && !empty($pu['texto_cliente'])) {
+                            $cot['ubicacion_texto'] = $pu['texto_cliente'];
+                        }
+                    } catch (\Throwable $e) {
+                        Log::warning('[Bot] Ubicación en cotización: ' . $e->getMessage());
+                    }
+                }
+                if (!$cot['ok'] && !$simulacion) {
+                    \App\Services\BotAprendizajeService::evento('regla_rechazo', $usuarioId, ['codigos' => array_column($cot['errores'], 'codigo'), 'datos' => $datos]);
+                }
+                return '[Sistema-cotizacion: ' . json_encode($cot, JSON_UNESCAPED_UNICODE) . ' — usa EXACTAMENTE estos montos (campos *_formato). Si "ok" es false, explica el motivo de "errores" al cliente y no ofrezcas reservar ese caso.]';
+            }
+
+            if ($accion === 'ubicaciones') {
+                if (empty($datos['programa_id']) || empty($datos['fecha']) || empty($datos['personas'])) {
+                    return '[Sistema-ubicaciones: {"ok":false,"motivo":"Faltan programa_id, fecha o personas."}]';
+                }
+                $plan = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['preferencia'] ?? null);
+                $fotos = [];
+                $tipos = $plan['requiere_eleccion'] ? ['terraza', 'reposera'] : ($plan['tipo_foto'] ? [$plan['tipo_foto']] : []);
+                foreach ($tipos as $t) {
+                    $url = \App\Services\BotUbicacionesService::fotoUrl($t);
+                    if ($url) {
+                        $this->imagenes[] = ['url' => $url, 'texto' => \App\Services\BotUbicacionesService::fotoTexto($t)];
+                        $fotos[] = $t;
+                    }
+                }
+                unset($plan['reasignar'], $plan['asignacion']);
+                $plan['fotos_enviadas'] = $fotos;
+                return '[Sistema-ubicaciones: ' . json_encode($plan, JSON_UNESCAPED_UNICODE) . ' — Si requiere_eleccion es true, pregunta qué prefieren (terraza o reposera)'
+                    . ($fotos ? '; el sistema ya envió las fotos, menciónalo brevemente' : '; no hay fotos cargadas, describe ambas opciones en una línea')
+                    . '. Si es false y ok es true, cuéntale en una línea dónde estarán (texto_cliente). Si ok es false, usa escalar_humano. NUNCA nombres una estación o terraza específica salvo que texto_cliente lo diga.]';
+            }
+
+            if ($accion === 'verificar_disponibilidad') {
+                if (empty($datos['fecha'])) {
+                    return null;
+                }
+                $cot = \App\Services\BotTarifasService::cotizar([
+                    'programa_id' => $datos['programa_id'] ?? null,
+                    'fecha'       => $datos['fecha'],
+                    'personas'    => $datos['personas'] ?? 1,
+                ]);
+                $conPrograma = !empty($datos['programa_id']);
+                $codigos = ['grupo_grande', 'agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida', 'sin_cupo_masajes'];
+                if ($conPrograma) {
+                    // Con programa elegido también aplican sus reglas (programas S, mínimo de personas, programa no disponible).
+                    $codigos = array_merge($codigos, ['programa_no_disponible', 'minimo_personas', 'semana_solo_lunes_viernes', 'semana_feriado', 'semana_fuera_de_temporada']);
+                }
+                $reglas = array_values(array_filter($cot['errores'], function ($e) use ($codigos) {
+                    return in_array($e['codigo'], $codigos, true);
+                }));
+                if ($reglas) {
+                    return '[Sistema-disponibilidad: ' . json_encode(['disponible' => false, 'motivos' => $reglas], JSON_UNESCAPED_UNICODE) . ' — explica el motivo y ofrece una alternativa válida (otra fecha o el programa regular equivalente).]' . $this->consultaDiaCerrado($reglas, $datos, $usuarioId, $contexto, $simulacion);
+                }
+                $query = ['fecha' => $datos['fecha'], 'personas' => $datos['personas'] ?? 1];
+                if ($conPrograma) {
+                    $query['programa_id'] = $datos['programa_id'];
+                }
+                $res = $this->disponibilidad(new Request($query));
+                $ctx = '[Sistema-disponibilidad: ' . $res->getContent() . ']';
+                // Orden: con disponibilidad confirmada, el sistema resuelve la ubicación de inmediato.
+                $disp = json_decode($res->getContent(), true) ?: [];
+                if ($conPrograma && !empty($datos['personas']) && !empty($disp['disponible'])) {
+                    $ub = $this->ejecutarAccion('ubicaciones', [
+                        'programa_id' => $datos['programa_id'], 'fecha' => $datos['fecha'], 'personas' => $datos['personas'],
+                        'preferencia' => $datos['preferencia'] ?? null,
+                    ], $usuarioId, $contexto, $simulacion);
+                    if ($ub && strpos($ub, '"categoria":null') === false) {
+                        $ctx .= "\n\n" . $ub . ' Resuelve la ubicación ahora (antes de pedir los datos personales).';
+                        $this->ubicacionAuto = true;
+                    }
+                }
+                return $ctx;
+            }
+
+            if ($accion === 'crear_reserva') {
+                foreach (['nombre', 'email', 'programa_id', 'fecha', 'personas'] as $campo) {
+                    if (empty($datos[$campo])) {
+                        return '[Sistema-reserva: {"ok":false,"error":"faltan_datos","motivo":"Falta ' . $campo . '"}]';
+                    }
+                }
+                $cot = \App\Services\BotTarifasService::cotizar($datos);
+                if (!$cot['ok']) {
+                    return '[Sistema-reserva: ' . json_encode(['ok' => false, 'errores' => $cot['errores']], JSON_UNESCAPED_UNICODE) . ']';
+                }
+                // Orden obligatorio: antes de reservar debe existir una cotización con los MISMOS datos
+                // (programa, fecha, personas, extras y medio de pago), mostrada al cliente en el resumen.
+                if (!$this->hayCotizacionIgual($contexto['historial'] ?? [], $cot)) {
+                    return '[Sistema-reserva: {"ok":false,"error":"falta_confirmacion","motivo":"Todavía no se puede reservar: muestra el resumen con los montos de la cotización (programa, fecha, personas, extras y medio de pago) y pide al cliente que confirme. Recién cuando responda que sí, usa crear_reserva."}]';
+                }
+                // Evitar duplicados: si ya hay un cupo apartado o una reserva recién creada con los mismos datos, se reutiliza.
+                $previa = $this->reservaPrevia($usuarioId, $datos);
+                if ($previa) {
+                    return '[Sistema-reserva: ' . json_encode($previa, JSON_UNESCAPED_UNICODE) . ' — ya existía: repite las mismas instrucciones de pago, no digas que se creó otra.]';
+                }
+                $planUb = \App\Services\BotUbicacionesService::plan((string) $datos['fecha'], (int) $datos['programa_id'], (int) $datos['personas'], $datos['ubicacion_preferida'] ?? null);
+                if ($planUb['categoria'] && !$planUb['ok']) {
+                    return '[Sistema-reserva: ' . json_encode(['ok' => false, 'error' => 'ubicacion_no_disponible', 'motivo' => $planUb['motivo']], JSON_UNESCAPED_UNICODE) . ']';
+                }
+                if ($planUb['requiere_eleccion']) {
+                    return '[Sistema-reserva: {"ok":false,"error":"falta_ubicacion","motivo":"Antes de reservar pregunta si prefieren terraza o reposera (acción ubicaciones) y envía ubicacion_preferida."}]';
+                }
+                if ($simulacion) {
+                    $esTransf = \App\Services\BotTarifasService::esTransferencia($datos['tipo_pago'] ?? '');
+                    return '[Sistema-reserva (SIMULACIÓN, no se creó nada): ' . json_encode(array_merge($cot, [
+                        'ok' => true, 'es_hold' => $esTransf, 'reserva_id' => $esTransf ? null : 0,
+                        'valor_total_formato' => $cot['total_formato'], 'abono_50_formato' => $cot['pago_ahora_formato'],
+                        'diferencia_formato' => $cot['saldo_formato'], 'hold_minutos' => 30,
+                        'webpay_url' => $esTransf ? null : 'https://webpay.simulacion/xxxx',
+                        'ubicacion_texto' => $planUb['texto_cliente'],
+                    ]), JSON_UNESCAPED_UNICODE) . ']';
+                }
+                $payload = [
+                    'nombre'        => $datos['nombre'],
+                    'telefono'      => $this->telefonoReserva($datos['telefono'] ?? null, $usuarioId),
+                    'email'         => $datos['email'],
+                    'programa_id'   => $datos['programa_id'],
+                    'fecha'         => $datos['fecha'],
+                    'personas'      => $datos['personas'],
+                    'masajes_extra' => $datos['masajes_extra'] ?? 0,
+                    'desayuno_once' => $datos['desayuno_once'] ?? 0,
+                    'desayuno_tipo' => $datos['desayuno_tipo'] ?? null,
+                    'observacion'   => $datos['observacion'] ?? null,
+                    'tipo_pago'     => $datos['tipo_pago'] ?? null,
+                    'ubicacion_preferida' => in_array($datos['ubicacion_preferida'] ?? null, ['terraza', 'reposera'], true) ? $datos['ubicacion_preferida'] : null,
+                ];
+                $client = new GuzzleClient(['timeout' => 20, 'http_errors' => false]);
+                $res = $client->post(url('/api/bot-ai/reserva'), [
+                    'headers' => [self::BOT_SECRET_HEADER => config('services.bot.secret'), 'X-Bot-Token' => env('BOT_API_TOKEN'), 'content-type' => 'application/json', 'accept' => 'application/json'],
+                    'json'    => $payload,
+                ]);
+                $rj = json_decode((string) $res->getBody(), true) ?: [];
+                if (!empty($rj['ok'])) {
+                    \App\Services\BotAprendizajeService::evento(!empty($rj['es_hold']) ? 'hold_creado' : 'reserva_creada', $usuarioId, ['reserva_id' => $rj['reserva_id'] ?? null, 'programa_id' => $datos['programa_id'], 'personas' => $datos['personas']]);
+                } else {
+                    \App\Services\BotAprendizajeService::evento('reserva_fallida', $usuarioId, ['error' => $rj['error'] ?? ('http ' . $res->getStatusCode()), 'motivo' => $rj['motivo'] ?? ($rj['message'] ?? null)]);
+                }
+                return '[Sistema-reserva: ' . json_encode($rj, JSON_UNESCAPED_UNICODE) . ']';
+            }
+
+            if ($accion === 'reagendar') {
+                $id = (int) ($datos['reserva_id'] ?? 0);
+                $nueva = (string) ($datos['nueva_fecha'] ?? '');
+                if (!$id || !in_array($id, $contexto['reserva_ids'], true)) {
+                    return '[Sistema-reagendar: {"ok":false,"error":"reserva_no_encontrada","mensaje":"Esa reserva no está asociada a este WhatsApp. Pide al cliente el número de reserva o deriva a una persona."}]';
+                }
+                $reserva = DB::table('reservas')->where('id', $id)->first();
+                $cot = \App\Services\BotTarifasService::cotizar([
+                    'programa_id' => $reserva->id_programa, 'fecha' => $nueva, 'personas' => $reserva->cantidad_personas,
+                ]);
+                $reglas = array_values(array_filter($cot['errores'], function ($e) {
+                    return in_array($e['codigo'], ['agenda_no_abierta', 'fecha_pasada', 'fecha_no_habilitada', 'fecha_invalida'], true);
+                }));
+                if ($reglas) {
+                    return '[Sistema-reagendar: ' . json_encode(['ok' => false, 'errores' => $reglas], JSON_UNESCAPED_UNICODE) . ']';
+                }
+                $check = $this->validarReagendamiento($reserva, $nueva);
+                if (!$check['ok'] || $simulacion) {
+                    return '[Sistema-reagendar' . ($simulacion ? ' (SIMULACIÓN)' : '') . ': ' . json_encode($check, JSON_UNESCAPED_UNICODE) . ']';
+                }
+                $res = $this->reprogramarReserva(new Request(['nueva_fecha' => $nueva]), $id);
+                return '[Sistema-reagendar: ' . $res->getContent() . ']';
+            }
+
+            if ($accion === 'anotar_interes') {
+                // Dias pedidos sin habilitar (14/10/2026): el cliente acepto que le avisemos si se habilita el dia.
+                if (empty($datos['fecha'])) {
+                    return null;
+                }
+                if ($simulacion) {
+                    return '[Sistema-interes (SIMULACIÓN): {"ok":true} — confírmale en una línea que quedó anotado y que le avisaremos por este chat si se habilita ese día. No prometas que se abrirá.]';
+                }
+                $r = \App\Services\BotInteresFechasService::anotar($usuarioId, $datos, $contexto['nombre'] ?? null);
+                return '[Sistema-interes: ' . json_encode($r, JSON_UNESCAPED_UNICODE) . ' — si ok es true, confírmale en una línea que quedó anotado y que le avisaremos por este chat si se habilita ese día (no prometas que se abrirá). Si ok es false, sigue lo que dice el mensaje.]';
+            }
+
+            if ($accion === 'guardar_seleccion_menu') {
+                if (empty($datos['reserva_id']) || $simulacion) {
+                    return $simulacion ? '[Sistema-menu (SIMULACIÓN): {"ok":true}]' : null;
+                }
+                $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+                $res = $client->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
+                    'headers' => [self::BOT_SECRET_HEADER => config('services.bot.secret'), 'X-Bot-Token' => env('BOT_API_TOKEN'), 'content-type' => 'application/json'],
+                    'json'    => array_filter([
+                        'selecciones'   => $datos['selecciones'] ?? [],
+                        'desayuno_once' => in_array($datos['desayuno_once'] ?? null, ['desayuno', 'once'], true) ? $datos['desayuno_once'] : null,
+                    ], function ($v) { return $v !== null; }),
+                ]);
+                return '[Sistema-menu: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
+            }
+        } catch (\Throwable $e) {
+            Log::error('[Bot] Error ejecutando acción ' . $accion . ': ' . $e->getMessage());
+            return '[Sistema-error: no se pudo completar "' . $accion . '". No inventes el resultado: dile al cliente que lo revisará el equipo y usa escalar_humano.]';
+        }
+        return null;
+    }
+
+    /** Cupo apartado vigente o reserva del bot de las últimas 2 horas con la misma fecha y programa. */
+    private function reservaPrevia(string $tel, array $datos): ?array
+    {
+        try {
+            $tels = array_unique([$tel, substr($tel, -9)]);
+            $h = DB::table('reserva_holds')->whereIn('telefono', $tels)->where('fecha', $datos['fecha'])
+                ->where('programa_id', (int) $datos['programa_id'])->whereIn('estado', ['activo', 'pendiente'])
+                ->where('expira_en', '>', now())->orderBy('id', 'desc')->first();
+            if ($h) {
+                return [
+                    'ok' => true, 'es_hold' => true, 'ya_existia' => true, 'reserva_id' => null, 'personas' => (int) $h->personas,
+                    'valor_total_formato' => '$' . number_format((int) $h->valor_total, 0, ',', '.'),
+                    'abono_50_formato'    => '$' . number_format((int) $h->abono_50, 0, ',', '.'),
+                    'diferencia_formato'  => '$' . number_format((int) $h->diferencia, 0, ',', '.'),
+                    'hold_minutos'        => max(1, now()->diffInMinutes(\Carbon\Carbon::parse($h->expira_en))),
+                    'datos_bancarios'     => config('botacura_pago.datos_bancarios_transferencia'),
+                ];
+            }
+            $r = DB::table('reservas as r')->join('clientes as c', 'c.id', '=', 'r.cliente_id')
+                ->leftJoin('ventas as v', 'v.id_reserva', '=', 'r.id')
+                ->whereIn('c.whatsapp_cliente', array_unique([$tel, substr($tel, -9), '56' . substr($tel, -9)]))
+                ->whereDate('r.fecha_visita', $datos['fecha'])->where('r.id_programa', (int) $datos['programa_id'])
+                ->where('r.fuente', 'bot_whatsapp')->where('r.created_at', '>', now()->subHours(2))
+                ->orderBy('r.id', 'desc')->first(['r.id', 'v.abono_programa', 'v.diferencia_programa', 'v.webpay_url']);
+            if ($r) {
+                $total = (int) $r->abono_programa + (int) $r->diferencia_programa;
+                return [
+                    'ok' => true, 'es_hold' => false, 'ya_existia' => true, 'reserva_id' => (int) $r->id,
+                    'valor_total_formato' => '$' . number_format($total, 0, ',', '.'),
+                    'abono_50_formato'    => '$' . number_format((int) $r->abono_programa, 0, ',', '.'),
+                    'diferencia_formato'  => '$' . number_format((int) $r->diferencia_programa, 0, ',', '.'),
+                    'webpay_url'          => $r->webpay_url,
+                ];
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[Bot] Error buscando reserva previa: ' . $e->getMessage());
+        }
+        return null;
+    }
+
+    /** ¿Hay en el historial una cotización exitosa con los mismos datos que la reserva? */
+    private function hayCotizacionIgual(array $historial, array $cot): bool
+    {
+        $claves = ['programa_id', 'fecha', 'personas', 'masajes_extra', 'desayuno_once', 'total', 'pago_ahora'];
+        // Solo cuentan cotizaciones de turnos anteriores: el cliente tuvo que ver el resumen y responder.
+        array_pop($historial);
+        foreach ($historial as $h) {
+            $c = is_string($h['content'] ?? null) ? $h['content'] : '';
+            if (strpos($c, '[Sistema-cotizacion: ') === false) {
+                continue;
+            }
+            if (!preg_match_all('/\[Sistema-cotizacion: (\{.*?\}) — usa EXACTAMENTE/su', $c, $m)) {
+                continue;
+            }
+            foreach ($m[1] as $json) {
+                $prev = json_decode($json, true);
+                if (!is_array($prev) || empty($prev['ok'])) {
+                    continue;
+                }
+                $igual = true;
+                foreach ($claves as $k) {
+                    if ((string) ($prev[$k] ?? '') !== (string) ($cot[$k] ?? '')) {
+                        $igual = false;
+                        break;
+                    }
+                }
+                if ($igual) {
+                    return true;
+                }
+            }
+        }
+        return false;
+    }
+
+    /** Mismas reglas que reprogramarReserva(), sin escribir nada. */
+    private function validarReagendamiento($reserva, string $nuevaFecha): array
+    {
+        if ($reserva->estado === 'cancelada') {
+            return ['ok' => false, 'error' => 'cancelada', 'mensaje' => 'La reserva está cancelada.'];
+        }
+        if ($nuevaFecha === (string) $reserva->fecha_visita) {
+            return ['ok' => false, 'error' => 'misma_fecha', 'mensaje' => 'La nueva fecha es igual a la actual.'];
+        }
+        if (DB::table('reagendamientos')->where('id_reserva', $reserva->id)->exists()) {
+            return ['ok' => false, 'error' => 'limite_reprogramacion', 'mensaje' => 'Esta reserva ya fue reagendada una vez; no se permite una segunda.'];
+        }
+        $programa = DB::table('programas')->where('id', $reserva->id_programa)->first();
+        if (($programa && isset($programa->permite_reprogramacion) && !$programa->permite_reprogramacion)
+            || in_array((int) $reserva->id_programa, \App\Services\BotTarifasService::idsProgramasSemana(), true)) {
+            return ['ok' => false, 'error' => 'programa_no_modificable', 'mensaje' => 'Este programa no admite cambios de fecha según las políticas.'];
+        }
+        $original = Carbon::parse($reserva->fecha_visita, 'America/Santiago');
+        if (Carbon::now('America/Santiago')->greaterThanOrEqualTo($original->copy()->subDays(3)->setTime(10, 0, 0))) {
+            return ['ok' => false, 'error' => 'fuera_de_plazo', 'mensaje' => 'Fuera de plazo: se debía pedir hasta el ' . $original->copy()->subDays(3)->locale('es')->isoFormat('dddd D [de] MMMM') . ' a las 10:00.'];
+        }
+        if (Carbon::parse($nuevaFecha, 'America/Santiago')->greaterThan($original->copy()->addDays(45))) {
+            return ['ok' => false, 'error' => 'fuera_de_ventana', 'mensaje' => 'La nueva fecha debe estar dentro de los 45 días corridos siguientes a la fecha original (hasta el ' . $original->copy()->addDays(45)->locale('es')->isoFormat('D [de] MMMM') . ').'];
+        }
+        $chequeo = json_decode(app(DisponibilidadController::class)->check(new Request([
+            'fecha' => $nuevaFecha, 'programa_id' => $reserva->id_programa, 'personas' => $reserva->cantidad_personas,
+        ]))->getContent(), true);
+        if (!($chequeo['disponible'] ?? false)) {
+            return ['ok' => false, 'error' => 'sin_cupo', 'mensaje' => $chequeo['motivo_no_disponible'] ?? 'No hay cupo para la nueva fecha.'];
+        }
+        return ['ok' => true, 'mensaje' => 'Se puede reagendar a ' . $nuevaFecha . '.'];
+    }
+
+    /** ¿La reserva incluye desayuno u once? (por el programa o como extra) */
+    private function incluyeDesayunoOnce($r): bool
+    {
+        try {
+            $porPrograma = DB::table('programa_servicio as ps')
+                ->join('servicios as s', 's.id', '=', 'ps.id_servicio')
+                ->where('ps.id_programa', $r->id_programa)
+                ->where(function ($q) {
+                    $q->where('s.nombre_servicio', 'like', '%desayuno%')->orWhere('s.nombre_servicio', 'like', '%once%');
+                })->exists();
+            if ($porPrograma) {
+                return true;
+            }
+            return DB::table('menus')->where('id_reserva', $r->id)->whereIn('tipo_servicio', ['desayuno', 'once'])->exists();
+        } catch (\Throwable $e) {
+            return false;
+        }
+    }
+
+    private function eleccionDesayunoOnce(int $reservaId): string
+    {
+        try {
+            $tipos = DB::table('reserva_desayuno_once')->where('id_reserva', $reservaId)->pluck('tipo')->unique()->values()->all();
+            if (count($tipos) >= 2) {
+                return 'tiene desayuno y once (3 comidas): no preguntar';
+            }
+            $t = $tipos[0] ?? DB::table('menus')->where('id_reserva', $reservaId)->whereIn('tipo_servicio', ['desayuno', 'once'])->value('tipo_servicio');
+        } catch (\Throwable $e) {
+            $t = null;
+        }
+        if ($t === null) {
+            $obs = (string) DB::table('reservas')->where('id', $reservaId)->value('observacion');
+            if (stripos($obs, 'Desayuno y once (3 comidas)') !== false) {
+                return 'tiene desayuno y once (3 comidas): no preguntar';
+            }
+        }
+        return $t ? 'elección registrada: ' . $t : 'elección sin registrar (preguntar al grupo: desayuno u once)';
+    }
+
+    private function buscarClientePorTelefono(string $tel)
+    {
+        $corto = substr($tel, -9);
+        return DB::table('clientes')
+            ->whereIn('whatsapp_cliente', array_unique([$tel, $corto, '+' . $tel, '56' . $corto]))
+            ->orderBy('id', 'desc')
+            ->first();
+    }
+
+    /**
+     * Reservas y holds del cliente (por teléfono) para que el bot responda con datos reales:
+     * fecha, programa, personas, pagos, saldo y si puede reagendar.
+     */
+    private function contextoCliente(string $tel): array
+    {
+        $corto = substr($tel, -9);
+        $ids   = [];
+        $lineas = [];
+        try {
+            $hoy = Carbon::now('America/Santiago');
+            $reservas = DB::table('reservas as r')
+                ->join('clientes as c', 'c.id', '=', 'r.cliente_id')
+                ->leftJoin('programas as p', 'p.id', '=', 'r.id_programa')
+                ->leftJoin('ventas as v', 'v.id_reserva', '=', 'r.id')
+                ->whereIn('c.whatsapp_cliente', array_unique([$tel, $corto, '+' . $tel, '56' . $corto]))
+                ->where('r.fecha_visita', '>=', $hoy->copy()->subDays(30)->toDateString())
+                ->orderBy('r.fecha_visita')
+                ->select('r.id', 'r.fecha_visita', 'r.cantidad_personas', 'r.estado', 'r.id_programa', 'p.nombre_programa', 'r.menu_recibido',
+                    'p.permite_reprogramacion', 'v.abono_programa', 'v.diferencia_programa', 'v.estado_pago', 'v.total_pagar')
+                ->limit(5)
+                ->get();
+            foreach ($reservas as $r) {
+                $ids[] = (int) $r->id;
+                $f = Carbon::parse($r->fecha_visita, 'America/Santiago');
+                $reagendada = DB::table('reagendamientos')->where('id_reserva', $r->id)->exists();
+                $esS = in_array((int) $r->id_programa, \App\Services\BotTarifasService::idsProgramasSemana(), true);
+                $limite = $f->copy()->subDays(3)->setTime(10, 0, 0);
+                if ($r->estado === 'cancelada') {
+                    $reag = 'no (cancelada)';
+                } elseif ($reagendada) {
+                    $reag = 'no (ya fue reagendada una vez)';
+                } elseif ($esS || (isset($r->permite_reprogramacion) && !$r->permite_reprogramacion)) {
+                    $reag = 'no (programa no reagendable)';
+                } elseif ($hoy->greaterThanOrEqualTo($limite)) {
+                    $reag = 'no (fuera de plazo; el plazo vencía el ' . $limite->locale('es')->isoFormat('dddd D [de] MMMM') . ' a las 10:00)';
+                } else {
+                    $reag = 'sí, hasta el ' . $limite->locale('es')->isoFormat('dddd D [de] MMMM') . ' a las 10:00, nueva fecha hasta el ' . $f->copy()->addDays(45)->locale('es')->isoFormat('D [de] MMMM');
+                }
+                $pagado = (int) ($r->abono_programa ?? 0);
+                $saldo  = (int) ($r->diferencia_programa ?? 0);
+                $lineas[] = "- Reserva N°{$r->id}: " . $f->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY')
+                    . ", {$r->nombre_programa}, {$r->cantidad_personas} personas, estado: " . ($r->estado ?: 'sin estado')
+                    . ($r->abono_programa !== null ? ', abono registrado: $' . number_format($pagado, 0, ',', '.') . ' (pago ' . ($r->estado_pago ?: 'sin estado') . ')' : ', sin pago registrado')
+                    . ($r->diferencia_programa !== null ? ', saldo pendiente para el día de la visita: $' . number_format($saldo, 0, ',', '.') : '')
+                    . ". ¿Se puede reagendar?: {$reag}."
+                    . ' Menú: ' . (!empty($r->menu_recibido) && DB::table('menus')->where('id_reserva', $r->id)->whereNotNull('id_producto_fondo')->exists() ? 'ya enviado' : 'pendiente de elegir')
+                    . '; incluye desayuno u once: ' . ($this->incluyeDesayunoOnce($r) ? 'sí — ' . $this->eleccionDesayunoOnce((int) $r->id) : 'no') . '.';
+            }
+            $holds = DB::table('reserva_holds')
+                ->whereIn('telefono', array_unique([$tel, $corto]))
+                ->whereIn('estado', ['activo', 'pendiente'])
+                ->where('expira_en', '>', now())
+                ->orderBy('id', 'desc')->limit(2)->get();
+            foreach ($holds as $h) {
+                $lineas[] = "- Cupo apartado (hold N°{$h->id}) para el {$h->fecha}, {$h->personas} personas: total $" . number_format((int) $h->valor_total, 0, ',', '.')
+                    . ', a transferir $' . number_format((int) $h->abono_50, 0, ',', '.') . '. Vence ' . Carbon::parse($h->expira_en)->format('H:i') . ' hrs. Esperando comprobante.';
+            }
+        } catch (\Throwable $e) {
+            Log::error('[Bot] Error armando contexto del cliente: ' . $e->getMessage());
+            $lineas[] = '- (No se pudo leer el historial de reservas: si el cliente pregunta por una reserva, deriva a una persona.)';
+        }
+        $texto = $lineas
+            ? implode("\n", $lineas)
+            : '- Este WhatsApp no tiene reservas recientes ni futuras en el sistema.';
+        $texto = '- WhatsApp del cliente: +' . $tel . ' (este es SU número de contacto; el +56 9 7448 4112 es de Botacura, nunca lo uses como teléfono del cliente).' . "\n" . $texto;
+        $caso = \App\Services\BotCasoService::resumen($tel);
+        if ($caso !== '') {
+            $texto .= "\n\nHISTORIAL DEL CASO (alertas, derivaciones y lo que respondió el equipo; más antiguo primero):\n" . $caso;
+        }
+        return ['texto' => $texto, 'reserva_ids' => $ids];
+    }
+
+    /** Montos con "$" en el mensaje que no aparecen en el prompt, el contexto ni los resultados del sistema. */
+    private function montosNoVerificados(string $mensaje, string $systemPrompt, array $historial): array
+    {
+        preg_match_all('/\$\s?(\d{1,3}(?:[.\s]\d{3})+|\d+)/u', $mensaje, $m);
+        if (empty($m[1])) {
+            return [];
+        }
+        $fuente = $systemPrompt;
+        foreach ($historial as $h) {
+            $c = is_string($h['content'] ?? null) ? $h['content'] : '';
+            if (strpos($c, '[Sistema') !== false) {
+                $fuente .= "\n" . $c;
+            }
+        }
+        preg_match_all('/\d{1,3}(?:\.\d{3})+|\d+/', $fuente, $f);
+        $permitidos = [];
+        foreach ($f[0] as $n) {
+            $permitidos[(int) str_replace('.', '', $n)] = true;
+        }
+        $malos = [];
+        foreach ($m[1] as $n) {
+            $v = (int) preg_replace('/\D/', '', $n);
+            if ($v > 0 && !isset($permitidos[$v])) {
+                $malos[] = $v;
+            }
+        }
+        return array_values(array_unique($malos));
+    }
+
+    /**
+     * Deriva la conversación a una persona: el bot queda en silencio en ese chat,
+     * se registra en la lista de pendientes y se envía una alerta por correo.
+     */
+    private function escalar(string $tel, string $nombre, string $motivo, string $ultimoMensaje)
+    {
+        \App\Services\BotAprendizajeService::evento('derivado', $tel, ['motivo' => $motivo, 'ultimo_mensaje' => mb_substr($ultimoMensaje, 0, 300)]);
+        try {
+            $horas = \App\Services\BotTarifasService::horasSilencioHumano();
+            DB::table('bot_conversaciones')->where('usuario_id', $tel)->where('activo', 1)->update([
+                'requiere_humano' => 1,
+                'humano_hasta'    => now()->addHours($horas),
+                'updated_at'      => now(),
+            ]);
+            \App\BotMensajePendiente::create([
+                'telefono' => $tel, 'nombre' => $nombre, 'tipo' => 'derivado',
+                'mensaje'  => 'Derivado por el bot (' . $motivo . '). Último mensaje: ' . $ultimoMensaje,
+                'estado'   => 'pendiente',
+            ]);
+            $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+            if ($correo && \Cache::add('bot_derivado_' . $tel, 1, now()->addMinutes(30))) {
+                \Mail::raw("El bot derivó una conversación a una persona.\n\nCliente: {$nombre} (+{$tel})\nMotivo: {$motivo}\nÚltimo mensaje: {$ultimoMensaje}\n\nEl bot no responderá en ese chat por {$horas} horas o hasta que la marques como atendida en " . url('/bot-configuracion') . '.',
+                    function ($m) use ($correo, $nombre) {
+                        $m->to($correo)->subject('Bot WhatsApp: conversación derivada (' . $nombre . ')');
+                    });
+                \App\Services\BotCasoService::registrar('alerta_enviada', $tel, ['canal' => 'correo', 'motivo' => 'derivación: ' . $motivo]);
+            }
+        } catch (\Throwable $e) {
+            Log::error('[Bot] Error al derivar: ' . $e->getMessage());
+        }
     }
 
     // ─────────────────────────────────────────────────────────────
@@ -723,32 +1367,6 @@ class BotController extends Controller
         }
     }
 
-    private function procesarGuardarSeleccionMenu(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
-    {
-        $datos = $respuesta['datos'] ?? [];
-        if (empty($datos['reserva_id'])) {
-            return $respuesta;
-        }
-        try {
-            $secret   = config('services.bot.secret');
-            $botToken = env('BOT_API_TOKEN');
-            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
-            $res    = $client->patch(url('/api/bot-ai/reserva/' . (int) $datos['reserva_id'] . '/menu-seleccion'), [
-                'headers' => [
-                    self::BOT_SECRET_HEADER => $secret,
-                    'X-Bot-Token'           => $botToken,
-                    'content-type'          => 'application/json',
-                ],
-                'json' => ['selecciones' => $datos['selecciones'] ?? []],
-            ]);
-            $ctx = '[Sistema-menu: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
-            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
-            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
-        } catch (\Exception $e) {
-            Log::error('[Bot] Error guardando selección menú: ' . $e->getMessage());
-            return $respuesta;
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────
     // GET /api/bot-ai/menu-opciones
@@ -760,79 +1378,7 @@ class BotController extends Controller
         return response()->json(['ok' => true, 'menu' => $opciones]);
     }
 
-    private function procesarDisponibilidad(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre)
-    {
-        $datos = $respuesta['datos'] ?? [];
-        if (empty($datos['fecha'])) {
-            return $respuesta;
-        }
-        try {
-            $secret   = config('services.bot.secret');
-            $botToken = env('BOT_API_TOKEN');
-            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
-            $query = [
-                'fecha'    => $datos['fecha'],
-                'personas' => $datos['personas'] ?? 1,
-            ];
-            if (!empty($datos['programa_id'])) {
-                $query['programa_id'] = $datos['programa_id'];
-            }
-            $disp   = $client->get(url('/api/bot-ai/disponibilidad'), [
-                'headers' => [
-                    self::BOT_SECRET_HEADER => $secret,
-                    'X-Bot-Token'           => $botToken,
-                ],
-                'query' => $query,
-            ]);
-            $ctx = '[Sistema-disponibilidad: ' . json_encode(json_decode((string) $disp->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
-            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
-            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
-        } catch (\Exception $e) {
-            Log::error('[Bot] Error disponibilidad: ' . $e->getMessage());
-            return $respuesta;
-        }
-    }
 
-    private function procesarCrearReservaClaude(array $respuesta, string $systemPrompt, array $historial, string $msgUsuario, string $nombre, string $usuarioId)
-    {
-        $datos = $respuesta['datos'] ?? [];
-        foreach (['nombre', 'email', 'programa_id', 'fecha', 'personas'] as $campo) {
-            if (empty($datos[$campo])) {
-                return $respuesta;
-            }
-        }
-        try {
-            $secret   = config('services.bot.secret');
-            $botToken = env('BOT_API_TOKEN');
-            $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
-            $res    = $client->post(url('/api/bot-ai/reserva'), [
-                'headers' => [
-                    self::BOT_SECRET_HEADER => $secret,
-                    'X-Bot-Token'           => $botToken,
-                    'content-type'          => 'application/json',
-                ],
-                'json' => [
-                    'nombre'         => $datos['nombre'],
-                    'telefono'       => !empty($datos['telefono']) ? $datos['telefono'] : $usuarioId,
-                    'email'          => $datos['email'],
-                    'programa_id'    => $datos['programa_id'],
-                    'fecha'          => $datos['fecha'],
-                    'personas'       => $datos['personas'],
-                    'masajes_extra'  => $datos['masajes_extra']  ?? 0,
-                    'desayuno_once'  => $datos['desayuno_once']  ?? 0,
-                    'desayuno_tipo'  => $datos['desayuno_tipo']  ?? null,
-                    'observacion'    => $datos['observacion']    ?? null,
-                    'tipo_pago'      => $datos['tipo_pago']      ?? null,
-                ],
-            ]);
-            $ctx = '[Sistema-reserva: ' . json_encode(json_decode((string) $res->getBody(), true), JSON_UNESCAPED_UNICODE) . ']';
-            $historial[] = ['role' => 'user', 'content' => $msgUsuario . "\n\n" . $ctx];
-            return $this->llamarClaude($systemPrompt, $historial, $nombre) ?: $respuesta;
-        } catch (\Exception $e) {
-            Log::error('[Bot] Error creando reserva: ' . $e->getMessage());
-            return $respuesta;
-        }
-    }
 
     // ─────────────────────────────────────────────────────────────
     // INTERNOS — Conversación
@@ -860,6 +1406,90 @@ class BotController extends Controller
             $conv = DB::table('bot_conversaciones')->find($id);
         }
         return $conv;
+    }
+
+    /** Teléfono para la reserva: el WhatsApp del cliente, salvo que él mismo haya dado otro número. */
+    private function telefonoReserva($dato, string $usuarioId): string
+    {
+        $d = preg_replace('/\D/', '', (string) $dato);
+        if ($d === '' || substr($d, -8) === '74484112' || substr($d, -8) === substr($usuarioId, -8)) {
+            return $usuarioId;
+        }
+        return $d;
+    }
+
+    /**
+     * Fechas que el bot menciona y que no vienen del cliente, del equipo ni de un resultado del sistema,
+     * y afirmaciones de cupo sin una verificación de disponibilidad en este turno.
+     */
+    private function fechasYCuposNoVerificados(string $mensaje, array $historial, string $contextoTexto): array
+    {
+        $meses = ['enero' => 1, 'febrero' => 2, 'marzo' => 3, 'abril' => 4, 'mayo' => 5, 'junio' => 6, 'julio' => 7, 'agosto' => 8,
+                  'septiembre' => 9, 'setiembre' => 9, 'octubre' => 10, 'noviembre' => 11, 'diciembre' => 12];
+        $extraer = function (string $t) use ($meses) {
+            $out = [];
+            if (preg_match_all('/\b(\d{1,2})\s+de\s+(' . implode('|', array_keys($meses)) . ')\b/iu', $t, $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    $out[] = (int) $x[1] . '-' . $meses[mb_strtolower($x[2])];
+                }
+            }
+            if (preg_match_all('/\b20\d\d-(\d{2})-(\d{2})\b/', $t, $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    $out[] = (int) $x[2] . '-' . (int) $x[1];
+                }
+            }
+            if (preg_match_all('/\b(\d{1,2})\/(\d{1,2})(?:\/\d{2,4})?\b/', str_replace('24/7', '', $t), $m, PREG_SET_ORDER)) {
+                foreach ($m as $x) {
+                    if ((int) $x[1] >= 1 && (int) $x[1] <= 31 && (int) $x[2] >= 1 && (int) $x[2] <= 12) {
+                        $out[] = (int) $x[1] . '-' . (int) $x[2];
+                    }
+                }
+            }
+            return $out;
+        };
+        $fuente = $contextoTexto;
+        foreach ($historial as $h) {
+            $c = is_string($h['content'] ?? null) ? $h['content'] : '';
+            if (($h['role'] ?? '') === 'user' || strpos($c, '[Equipo Botacura') !== false) {
+                $fuente .= "\n" . $c;
+            }
+        }
+        $permitidas = array_flip($extraer($fuente));
+        // Día de apertura de la agenda (este mes y el próximo) y hoy/mañana.
+        try {
+            $dia = (int) (\App\Services\BotTarifasService::parametros()['param_dia_apertura_agenda'] ?? 0);
+            $hoy = Carbon::now('America/Santiago');
+            foreach ([$hoy, $hoy->copy()->addMonthNoOverflow()] as $f) {
+                if ($dia) {
+                    $permitidas[$dia . '-' . $f->month] = true;
+                }
+            }
+            $permitidas[$hoy->day . '-' . $hoy->month] = true;
+            $permitidas[$hoy->copy()->addDay()->day . '-' . $hoy->copy()->addDay()->month] = true;
+        } catch (\Throwable $e) {
+        }
+        $problemas = [];
+        $nuevas = array_values(array_unique(array_filter($extraer($mensaje), function ($k) use ($permitidas) {
+            return !isset($permitidas[$k]);
+        })));
+        if ($nuevas) {
+            $problemas[] = 'Tu mensaje menciona fechas que nadie pidió ni el sistema verificó (' . implode(', ', array_map(function ($k) {
+                list($d, $m) = explode('-', $k);
+                return $d . '/' . $m;
+            }, $nuevas)) . ').';
+        }
+        $ultimoUser = '';
+        for ($i = count($historial) - 1; $i >= 0; $i--) {
+            if (($historial[$i]['role'] ?? '') === 'user') {
+                $ultimoUser = (string) $historial[$i]['content'];
+                break;
+            }
+        }
+        $verificoCupo = strpos($ultimoUser, '"disponible":true') !== false || strpos($ultimoUser, '[Sistema-reserva') !== false;
+        if (!$verificoCupo && preg_match('/\b(tenemos|hay|quedan|con)\s+(cupos?|disponibilidad)\b|\best[aá]\s+disponible\b/iu', $mensaje)) {
+            $problemas[] = 'Tu mensaje afirma que hay cupo o disponibilidad, pero en este turno el sistema no verificó disponibilidad.';
+        }
+        return $problemas;
     }
 
     private function persistirHistorial(int $convId, string $msgUsuario, string $msgBot, array $historial, array $datos)
@@ -901,8 +1531,9 @@ class BotController extends Controller
             // incluye_masajes / incluye_almuerzos ya no son columnas físicas:
             // se derivan en vivo desde la relación programa_servicio -> servicios
             // (ver Programa::getIncluyeMasajesAttribute / getIncluyeAlmuerzosAttribute).
-            $programas = Programa::where('estado', 'activo')
-                ->where('solo_plataforma', 0)
+            $ids = \App\Services\BotTarifasService::idsProgramasBot();
+            $semana = \App\Services\BotTarifasService::idsProgramasSemana();
+            $programas = Programa::whereIn('id', $ids ?: [0])
                 ->with('servicios')
                 ->orderBy('valor_programa')
                 ->get();
@@ -922,6 +1553,8 @@ class BotController extends Controller
                     'servicios'         => $programa->servicios->sortBy('nombre_servicio')->pluck('nombre_servicio')->values()->all(),
                     'incluye_masajes'   => (bool) $programa->incluye_masajes,
                     'incluye_almuerzos' => (bool) $programa->incluye_almuerzos,
+                    'es_semana'         => in_array((int) $programa->id, $semana, true),
+                    'permite_reprogramacion' => (bool) ($programa->permite_reprogramacion ?? true),
                 ];
             }
             return $resultado;
@@ -982,6 +1615,31 @@ class BotController extends Controller
     // ─────────────────────────────────────────────────────────────
     // HELPERS
     // ─────────────────────────────────────────────────────────────
+
+    /**
+     * Dias pedidos sin habilitar (14/10/2026): si la fecha consultada no esta habilitada (lunes a miercoles
+     * o dia cerrado de un mes abierto), registra la consulta y le indica a la IA que ofrezca anotarlo.
+     */
+    private function consultaDiaCerrado(array $reglas, array $datos, string $usuarioId, array $contexto, bool $simulacion): string
+    {
+        $codigos = array_column($reglas, 'codigo');
+        if (!in_array('fecha_no_habilitada', $codigos, true)
+            || array_intersect($codigos, ['fecha_pasada', 'agenda_no_abierta', 'fecha_invalida'])) {
+            return '';
+        }
+        try {
+            $fecha = \Carbon\Carbon::parse((string) ($datos['fecha'] ?? ''))->toDateString();
+        } catch (\Throwable $e) {
+            return '';
+        }
+        if (!$simulacion) {
+            \App\Services\BotInteresFechasService::registrarConsulta($usuarioId, $fecha, $datos, $contexto['nombre'] ?? null);
+        }
+        return "\n[Sistema-interes: ese día no abrimos, pero llevamos registro de quienes lo piden por si lo habilitamos. "
+            . 'En tu respuesta, además de ofrecer otra fecha, pregúntale si quiere que lo anotemos para avisarle por este chat si habilitamos el ' . $fecha . '. '
+            . 'Solo si responde que sí, usa la acción "anotar_interes" con datos {"fecha":"' . $fecha . '","personas":<número o null>,"programa_id":<id o null>}. '
+            . 'No prometas que se abrirá ni lo anotes sin su permiso.]';
+    }
 
     private function normalizarTelefono(string $telefono)
     {

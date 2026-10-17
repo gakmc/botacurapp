@@ -12,7 +12,11 @@ class InformeController extends Controller
 {
     public function index()
     {
-        $fecha = Carbon::now();
+        // Mes seleccionado (?mes=AAAA-MM); por defecto el mes actual
+        $mes = request('mes');
+        $fecha = ($mes && preg_match('/^\d{4}-\d{2}$/', $mes))
+            ? Carbon::createFromFormat('Y-m-d', $mes . '-01')
+            : Carbon::now();
 
         $programasMasContratados = Reserva::select('id_programa', DB::raw('COUNT(*) as total'))
             ->whereMonth('fecha_visita', $fecha->month)
@@ -83,12 +87,12 @@ class InformeController extends Controller
             ->sortByDesc('total')
             ->values();
 
-        return view('themes.backoffice.pages.informe.index', compact('programasMasContratados', 'bebestiblesMasConsumidos'));
+        return view('themes.backoffice.pages.informe.index', compact('programasMasContratados', 'bebestiblesMasConsumidos', 'fecha'));
     }
 
     public function bebestiblesMensuales()
     {
-        $anio = Carbon::now()->year;
+        $anio = (int) request('anio', Carbon::now()->year);
 
         // Consumos mensuales
         $consumo = DetalleConsumo::selectRaw('MONTH(reservas.fecha_visita) as mes, SUM(cantidad_producto) as total')
@@ -147,7 +151,7 @@ class InformeController extends Controller
 
     public function programasMensuales()
     {
-        $anio = Carbon::now()->year;
+        $anio = (int) request('anio', Carbon::now()->year);
 
         $programas = Reserva::selectRaw('MONTH(fecha_visita) as mes, COUNT(*) as total')
             ->whereYear('fecha_visita', $anio)

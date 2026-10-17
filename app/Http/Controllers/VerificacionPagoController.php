@@ -170,7 +170,7 @@ class VerificacionPagoController extends Controller
                     . "Si no recibimos la selección a tiempo, se asignará el horario disponible sin posibilidad de modificación.\n"
                     . "Quedamos atentas 🙏";
                 $this->enviarMensajeWhatsApp($cliente->whatsapp_cliente, $mensajeMenu);
-                $this->enviarDocumentoWhatsApp($cliente->whatsapp_cliente, url('/docs/menu-otono-2026.pdf'), 'Menu-Otono-2026.pdf');
+                $this->enviarDocumentoWhatsApp($cliente->whatsapp_cliente, (\App\Services\BotMenuService::url() ?: url('/docs/menu-otono-2026.pdf')), \App\Services\BotMenuService::nombreArchivo());
 
                 // Informacion practica de la visita (que traer, direccion, hora de llegada),
                 // mismo texto probado que usa el equipo manualmente.

@@ -19,10 +19,29 @@ use Carbon\Carbon;
  * Devengado = corresponde al trabajo hecho ese mes, sin importar cuándo
  * se hizo la transferencia bancaria (eso sería base caja, que es lo que
  * medía antes sueldos_pagados.fecha_pago).
+ *
+ * Propinas: las paga el cliente aparte (no entran a los ingresos de la app)
+ * y se reparten al equipo. Para la utilidad se excluyen con $conPropinas =
+ * false, porque son plata del cliente que solo pasa por Botacura.
  */
 class SueldoDevengadoService
 {
-    public function totalMes($anio, $mes)
+    public function totalMes($anio, $mes, $conPropinas = true)
+    {
+        $total = 0;
+        foreach ($this->detalleMes($anio, $mes) as $d) {
+            $total += $d['base'] + $d['bono'] + ($conPropinas ? $d['propinas'] : 0);
+        }
+        return (int) $total;
+    }
+
+    /**
+     * Devengado del mes por funcionario.
+     *
+     * @return array [user_id => ['nombre', 'masoterapeuta', 'boletea', 'base', 'propinas', 'bono']]
+     *               base = sueldo (o BTE neto si boletea, o comisión si es masoterapeuta)
+     */
+    public function detalleMes($anio, $mes)
     {
         $sueldos = Sueldo::with('user')
             ->whereMonth('dia_trabajado', $mes)
@@ -31,7 +50,7 @@ class SueldoDevengadoService
             ->get();
 
         if ($sueldos->isEmpty()) {
-            return 0;
+            return [];
         }
 
         $honorariosPorRut = HonorarioBte::anio($anio)
@@ -39,7 +58,8 @@ class SueldoDevengadoService
             ->get()
             ->groupBy('rut_emisor');
 
-        $semanas = [];
+        $semanas  = [];
+        $usuarios = [];
 
         foreach ($sueldos as $sueldo) {
             if (! $sueldo->user) {
@@ -57,6 +77,7 @@ class SueldoDevengadoService
                 : (stripos((string) $roles, 'Masoterapeuta') !== false);
 
             $userId = $sueldo->user->id;
+            $usuarios[$userId] = ['nombre' => $sueldo->user->name, 'masoterapeuta' => $esMaso, 'boletea' => (bool) $sueldo->user->boletea];
 
             if (! isset($semanas[$rangoKey])) {
                 $semanas[$rangoKey] = [];
@@ -104,17 +125,22 @@ class SueldoDevengadoService
             }
         }
 
-        $total = 0;
+        $detalle = [];
         foreach ($semanas as $usuariosSemana) {
-            foreach ($usuariosSemana as $datos) {
+            foreach ($usuariosSemana as $userId => $datos) {
                 $netoBase = ($datos['boletea'] && $datos['bte_bruto'] > 0)
                     ? $datos['bte_neto']
                     : $datos['sueldos'];
 
-                $total += $netoBase + $datos['propinas'] + $datos['bono'];
+                if (! isset($detalle[$userId])) {
+                    $detalle[$userId] = $usuarios[$userId] + ['base' => 0, 'propinas' => 0, 'bono' => 0];
+                }
+                $detalle[$userId]['base']     += $netoBase;
+                $detalle[$userId]['propinas'] += $datos['propinas'];
+                $detalle[$userId]['bono']     += $datos['bono'];
             }
         }
 
-        return (int) $total;
+        return $detalle;
     }
 }

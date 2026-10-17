@@ -647,7 +647,7 @@ class VentaController extends Controller
     public function index_cierre()
     {
         // Asignacion de dias Hoy y Mañana
-        $hoy    = Carbon::today();
+        $hoy = Carbon::now('America/Santiago')->format('Y-m-d');
         
         // Filtrar las reservas que tienen visitas y cuya fecha de visita es hoy o mañana
         $reservas = Reserva::with('visitas', 'cliente', 'programa', 'user', 'venta.consumo.detallesConsumos.producto', 'venta.consumo.detalleServiciosExtra.servicio')

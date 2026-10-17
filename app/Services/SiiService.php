@@ -57,20 +57,25 @@ class SiiService
         $documentos = [];
         $errores    = [];
 
-        foreach ($tiposImportar as $tipo) {
-            try {
-                $resp = $this->postRcv(
-                    "/rcv/compras/detalle/{$rutPath}/{$periodo}/{$tipo}/REGISTRO"
-                );
-                $data = $resp['data'] ?? [];
-                foreach ($data as $doc) {
-                    $documentos[] = $this->normalizarDocumento($doc, $tipo);
+        // La API devuelve TODOS los documentos del periodo sin importar el tipo
+        // pedido en la ruta (comprobado 2026-10-10: 33/34/46/56/61 traen los mismos
+        // documentos). Se consulta una sola vez y el tipo real se toma del campo
+        // 'dte' de cada documento. Antes las notas de credito entraban como
+        // facturas positivas y se pagaban 5 consultas por periodo.
+        try {
+            $tipoRuta = $tiposImportar[0] ?? 33;
+            $resp = $this->postRcv(
+                "/rcv/compras/detalle/{$rutPath}/{$periodo}/{$tipoRuta}/REGISTRO"
+            );
+            foreach ($resp['data'] ?? [] as $doc) {
+                $dte = (int) ($doc['dte'] ?? 0);
+                if (! in_array($dte, $tiposImportar)) {
+                    continue;
                 }
-            } catch (\Throwable $e) {
-                // Si un tipo no tiene registros, la API puede devolver 404 o array vacío.
-                // Continuamos con los demás tipos.
-                $errores[] = "tipo {$tipo}: " . $e->getMessage();
+                $documentos[] = $this->normalizarDocumento($doc, $dte);
             }
+        } catch (\Throwable $e) {
+            $errores[] = $e->getMessage();
         }
 
         $ok = empty($errores) || count($documentos) > 0;
@@ -245,9 +250,90 @@ class SiiService
     // PRIVADO: normalizar documento V2 → formato interno
     // ─────────────────────────────────────────────────────────────────────────
 
+    // ─────────────────────────────────────────────────────────────────────────
+    // PÚBLICO: Portal MIPYME — documentos recibidos (con detalle de productos)
+    // Autentica con la persona autorizada (config sii.mipyme_rut / mipyme_clave).
+    // ─────────────────────────────────────────────────────────────────────────
+
+    public function mipymeConfigurado()
+    {
+        return config('sii.mipyme_rut') && config('sii.mipyme_clave') && $this->token && $this->rut;
+    }
+
+    /**
+     * XML del DTE recibido (string) o excepción. Cuesta créditos de API Gateway:
+     * llamar solo para documentos que aún no se han leído.
+     */
+    public function xmlRecibido($rutEmisor, $dte, $folio, $fechaEmision = null)
+    {
+        $url = rtrim($this->baseUrl, '/') . "/mipyme/recibidos/xml/{$this->rut}/{$rutEmisor}/{$dte}/{$folio}"
+            . ($fechaEmision ? '?fecha_emision=' . $fechaEmision : '');
+        $client = new Client([
+            'timeout' => max($this->timeout, 60), 'verify' => false, 'http_errors' => false,
+            'headers' => ['Authorization' => 'Token ' . $this->token, 'Content-Type' => 'application/json'],
+        ]);
+        \Illuminate\Support\Facades\Log::info('SII API request', ['url' => $url]);
+        $res = $client->post($url, ['json' => ['auth' => ['pass' => [
+            'rut' => config('sii.mipyme_rut'), 'clave' => config('sii.mipyme_clave'),
+        ]]]]);
+        $body = (string) $res->getBody();
+        if ($res->getStatusCode() !== 200) {
+            $j = json_decode($body, true);
+            throw new \Exception('MIPYME ' . $res->getStatusCode() . ': ' . ($j['detail'] ?? substr($body, 0, 200)));
+        }
+        return $body;
+    }
+
+    /**
+     * Líneas de detalle de un XML de DTE: [['nombre', 'cantidad', 'unidad', 'precio', 'monto', 'codigo'], ...]
+     */
+    public static function detalleXml($xmlString)
+    {
+        $xml = @simplexml_load_string($xmlString);
+        if (! $xml) return [];
+        $xml->registerXPathNamespace('s', 'http://www.sii.cl/SiiDte');
+        $det = $xml->xpath('//s:Documento/s:Detalle') ?: ($xml->xpath('//Documento/Detalle') ?: []);
+        $out = [];
+        foreach ($det as $d) {
+            $out[] = [
+                'nombre'   => trim((string) $d->NmbItem),
+                'cantidad' => (float) $d->QtyItem,
+                'unidad'   => trim((string) $d->UnmdItem),
+                'precio'   => (float) $d->PrcItem,
+                'monto'    => (float) $d->MontoItem,
+                'codigo'   => trim((string) ($d->CdgItem->VlrCodigo ?? '')),
+            ];
+        }
+        return $out;
+    }
+
+    /**
+     * ¿Ya existe en egresos este documento del RCV? Compara folio + RUT del
+     * emisor + tipo (nota de credito = total negativo). Distintos proveedores
+     * pueden repetir numero de folio; antes se comparaba solo el folio y el
+     * segundo documento se perdia.
+     */
+    public static function egresoExiste($folio, $rut = null, $tipo = 33)
+    {
+        $q = \App\Egreso::where('fuente', 'sii')->where('numero_documento', (string) $folio);
+        $q->where('total', in_array((int) $tipo, [60, 61], true) ? '<' : '>=', 0);
+        if ($rut) {
+            $rut = strtoupper(str_replace(['.', ' '], '', $rut));
+            $q->where(function ($w) use ($rut) {
+                $w->whereHas('proveedor', function ($p) use ($rut) {
+                    $p->whereRaw("UPPER(REPLACE(REPLACE(rut, '.', ''), ' ', '')) = ?", [$rut]);
+                })->orWhere('observaciones', 'like', '%RUT: ' . $rut . '%');
+            });
+        }
+        return $q->exists();
+    }
+
     private function normalizarDocumento($doc, $tipoNum)
     {
         $tipoNombre = config('sii.tipos_importar')[$tipoNum] ?? 'Desconocido';
+
+        // Notas de credito (60/61) restan: se guardan con monto negativo.
+        $signoDoc = in_array((int) $tipoNum, [60, 61], true) ? -1 : 1;
 
         return [
             'tipo_documento'  => $tipoNum,
@@ -256,9 +342,9 @@ class SiiService
             'fecha_documento' => $doc['fecha']                   ?? null,
             'rut_emisor'      => $doc['rut']                     ?? null,
             'razon_social'    => $doc['razon_social']            ?? null,
-            'monto_neto'      => (int) ($doc['neto']             ?? 0),
-            'monto_iva'       => (int) ($doc['iva']              ?? 0),
-            'monto_total'     => (int) ($doc['total']            ?? 0),
+            'monto_neto'      => $signoDoc * abs((int) ($doc['neto'] ?? 0)),
+            'monto_iva'       => $signoDoc * abs((int) ($doc['iva'] ?? 0)),
+            'monto_total'     => $signoDoc * abs((int) ($doc['total'] ?? 0)),
             'estado_acuse'    => $doc['fecha_acuse']             ?? null,
         ];
     }

@@ -8,7 +8,10 @@ class InventarioMovimiento extends Model
 {
     protected $table = 'inventario_movimientos';
 
+    protected $casts = ['fecha' => 'datetime'];
+
     protected $fillable = [
+        'fecha',
         'tipo',
         'origen',
         'referencia_id',

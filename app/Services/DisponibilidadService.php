@@ -61,6 +61,9 @@ class DisponibilidadService
 
         $usadosReservas = (int) DB::table('reservas')
             ->whereRaw('DATE(fecha_visita) = ?', [$fecha])
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '<>', 'cancelada');
+            })
             ->selectRaw('COALESCE(SUM(CEIL(cantidad_personas / 5)), 0) as slots')
             ->value('slots');
 
@@ -73,6 +76,21 @@ class DisponibilidadService
             ->value('slots');
 
         $usados = $usadosReservas + $usadosOrdenes;
+
+        // Uso exclusivo: un evento exclusivo agendado bloquea el día completo
+        $idsExclusivo = DB::table('programas')->where('nombre_programa', 'like', '%exclusivo%')->pluck('id');
+        $exclusivo = DB::table('reservas')
+            ->whereRaw('DATE(fecha_visita) = ?', [$fecha])
+            ->where(function ($q) {
+                $q->whereNull('estado')->orWhere('estado', '<>', 'cancelada');
+            })
+            ->where(function ($q) use ($idsExclusivo) {
+                $q->whereIn('id_programa', $idsExclusivo)->orWhere('cantidad_personas', '>=', 40);
+            })
+            ->exists();
+        if ($exclusivo) {
+            $usados = $max;
+        }
         $nuevos = $personasNuevas > 0 ? (int) ceil($personasNuevas / 5) : 0;
 
         return [
@@ -81,6 +99,7 @@ class DisponibilidadService
             'slots_nuevos' => $nuevos,
             'disponibles'  => max(0, $max - $usados),
             'ok'           => ($usados + $nuevos) <= $max,
+            'exclusivo'    => $exclusivo,
         ];
     }
 
@@ -174,6 +193,21 @@ class DisponibilidadService
         }
 
         return $restantes <= 0;
+    }
+
+    public function capacidadLibre(string $fecha): array
+    {
+        $libres     = $this->ubicacionesLibresConCapacidad($fecha);
+        $pendientes = $this->personasPendientesPorCategoria($fecha);
+        $suma = function (array $subTipos) use ($libres) {
+            return (int) $libres->whereIn('sub_tipo', $subTipos)->sum('capacidad_max');
+        };
+
+        return [
+            'estacion' => max(0, $suma(self::SUB_TIPOS_ESTACION) - $pendientes['estacion']),
+            'terraza'  => max(0, $suma(['terraza']) - $pendientes['wellness']),
+            'reposera' => $suma(['reposera']),
+        ];
     }
 
     public function disponible(string $fecha, ?string $espacioTipo, int $personas = 1): array

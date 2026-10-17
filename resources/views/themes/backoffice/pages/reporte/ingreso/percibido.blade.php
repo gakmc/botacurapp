@@ -92,6 +92,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
             ->merge(collect($consumos)->pluck('yearweek'))
             ->merge(collect($servicios)->pluck('yearweek'))
             ->merge(collect($ventasDirectas)->pluck('yearweek'))
+->merge(collect($giftCardsVendidas)->pluck('yearweek'))
             ->unique()->sort();
     @endphp
 
@@ -109,7 +110,8 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                 ->merge($consumos)
                 ->merge($servicios)
                 ->merge($ventasDirectas)
-                ->where('yearweek', $week)
+->merge($giftCardsVendidas)
+->where('yearweek', $week)
                 ->pluck('fecha')
                 ->map(function($f) {
                     return \Carbon\Carbon::parse($f)->toDateString(); // <-- aquí
@@ -137,6 +139,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                     <th>Diferencias</th>
                     <th>Consumos y ventas directas</th>
                     <th>Servicios</th>
+<th>Gift Cards</th>
                 </tr>
             </thead>
             <tbody>
@@ -149,7 +152,8 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                                 + (optional($diferencias->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($consumos->firstWhere('fecha', $fecha))->total ?? 0)
                                 + (optional($ventasDirectas->firstWhere('fecha', $fecha))->total ?? 0)
-                                + (optional($servicios->firstWhere('fecha', $fecha))->total ?? 0);
+                                + (optional($servicios->firstWhere('fecha', $fecha))->total ?? 0)
++ (optional($giftCardsVendidas->firstWhere('fecha', $fecha))->total ?? 0);
 
 
                 @endphp
@@ -159,6 +163,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                         <td>${{ number_format(optional($diferencias->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($consumos->firstWhere('fecha', $fecha))->total + optional($ventasDirectas->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
                         <td>${{ number_format(optional($servicios->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
+<td>${{ number_format(optional($giftCardsVendidas->firstWhere('fecha', $fecha))->total ?? 0, 0, '', '.') }}</td>
 
                     </tr>
                 @endforeach
@@ -168,7 +173,7 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
             </tbody>
             <tfoot>
                 <tr>
-                    <td colspan="4"></td>
+                    <td colspan="5"></td>
 
                     <td><strong>Total Semana: ${{ number_format($ingresosData, 0, ',', '.') }}</strong></td>
                 </tr>
@@ -293,47 +298,37 @@ Resumen {{ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat
                             </table>
                         </div>
 
-                        {{-- Resumen del día --}}
-                        <div class="col s12 m3">
-                            <h5><strong>Resumen del día</strong></h5>
-                            <table class="striped bordered">
-                                <thead>
-                                    <tr>
-                                        <th class="white-text" style="background-color: #039B7B;">Total Día</th>
-                                        <th class="white-text" style="background-color: #039B7B;"></th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    <tr>
-                                        <td>Total Entradas</td>
-                                        
-                                        <td>${{ number_format($tiposTransacciones->sum("total_abonos") + $diferenciasAcumuladas, 0, '', '.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Total Abonos</td>
-                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos"),0,'','.') }}</strong></td>
-                                    </tr>
-                                    <tr>
-                                        <td>Total Diferencias</td>
-                                        <td>${{ number_format($diferenciasAcumuladas,0,'','.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Total Consumo</td>
-                                        <td>${{ number_format($totalConsumo + $tiposTransacciones->sum("venta_directa"),0,'','.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td>Servicios Extras</td>
-                                        <td>${{ number_format($totalServicios,0,'','.') }}</td>
-                                    </tr>
-                                    <tr>
-                                        <td><strong>Total Día</strong></td>
-                                        <td><strong>${{ number_format($tiposTransacciones->sum("total_abonos") + $diferenciasAcumuladas + $totalConsumo + $totalServicios,0,'','.') }}</strong></td>
-                                    </tr>
-                                </tbody>
-                            </table>
-                        </div>
+                        {{-- Resumen del mes (mismas cifras que la tabla semanal) --}}
+<div class="col s12 m3">
+    <h5><strong>Resumen del mes</strong></h5>
+    <table class="striped bordered">
+        <thead>
+            <tr>
+                <th class="white-text" style="background-color: #039B7B;">Concepto</th>
+                <th class="white-text" style="background-color: #039B7B;">Total</th>
+            </tr>
+        </thead>
+        <tbody>
+            <tr><td>Abonos (incluye abonos extra)</td><td>${{ number_format($resumenMes['abonos'],0,'','.') }}</td></tr>
+            <tr><td>Diferencias</td><td>${{ number_format($resumenMes['diferencias'],0,'','.') }}</td></tr>
+            <tr><td>Consumos y ventas directas</td><td>${{ number_format($resumenMes['consumos'],0,'','.') }}</td></tr>
+            <tr><td>Servicios extra</td><td>${{ number_format($resumenMes['servicios'],0,'','.') }}</td></tr>
+<tr><td>Gift Cards vendidas</td><td>${{ number_format($resumenMes['giftcards'],0,'','.') }}</td></tr>
+            <tr><td><strong>Total del mes</strong></td><td><strong>${{ number_format($resumenMes['total'],0,'','.') }}</strong></td></tr>
+            <tr><td>+ Propinas (del equipo, se cobran con la cuenta)</td><td>${{ number_format($resumenMes['propinas'],0,'','.') }}</td></tr>
+            <tr><td>&minus; Gift Cards vendidas (sin medio de pago)</td><td>${{ number_format($resumenMes['giftcards'],0,'','.') }}</td></tr>
+            <tr><td>Deberia estar en medios de pago</td><td>${{ number_format($resumenMes['esperado'],0,'','.') }}</td></tr>
+            <tr><td>Pagos registrados por medio de pago</td><td>${{ number_format($resumenMes['pagos'],0,'','.') }}</td></tr>
+            @php $descuadre = $resumenMes['pagos'] - $resumenMes['esperado']; @endphp
+            <tr>
+                <td><strong>Descuadre</strong></td>
+                <td class="{{ abs($descuadre) > 1000 ? 'orange-text' : 'green-text' }}"><strong>{{ $descuadre < 0 ? '-' : '' }}${{ number_format(abs($descuadre),0,'','.') }}</strong></td>
+            </tr>
+        </tbody>
+    </table>
+</div>
 
-                        {{-- Poro Poro --}}
+{{-- Poro Poro --}}
                         <div class="col s12 m3">
                             <h5><strong>Ventas Poro Poro del día</strong></h5>
                             <table class="striped bordered">

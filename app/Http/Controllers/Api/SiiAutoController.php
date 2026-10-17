@@ -79,9 +79,7 @@ class SiiAutoController extends Controller
         try {
             foreach ($resultado['data'] as $doc) {
                 // Evitar duplicados
-                $existe = Egreso::where('fuente', 'sii')
-                    ->where('numero_documento', $doc['folio'])
-                    ->exists();
+                $existe = \App\Services\SiiService::egresoExiste($doc['folio'], $doc['rut_emisor'] ?? null, $doc['tipo_documento'] ?? 33);
 
                 if ($existe) {
                     $omitidos++;
@@ -244,7 +242,9 @@ class SiiAutoController extends Controller
 
     private function resolverTipoDocumento(int $tipo)
     {
-        $row = DB::table('tipo_documentos')->where('codigo', $tipo)->first();
+        $nombre = [33 => 'Factura', 34 => 'Factura', 39 => 'Boleta', 60 => 'Nota de Credito', 61 => 'Nota de Credito'][$tipo] ?? null;
+        if (!$nombre) return null;
+        $row = \App\TipoDocumento::where('nombre', 'like', '%' . $nombre . '%')->first();
         return $row ? $row->id : null;
     }
 }

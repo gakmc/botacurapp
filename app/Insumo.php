@@ -31,6 +31,10 @@ class Insumo extends Model
         'stock_critico',
         'id_unidad_medida',
         'id_sector',
+        'id_proveedor',
+        'ubicacion',
+        'stock_objetivo',
+        'presentacion',
     ];
 
     public function productos()
@@ -38,6 +42,12 @@ class Insumo extends Model
         return $this->belongsToMany(Producto::class, 'insumo_producto', 'id_producto', 'id_insumo')
             ->withPivot('cantidad_insumo_usar', 'id_unidad_medida', 'total_costo_producto', 'utilidad_producto')
             ->withTimestamps();
+    }
+
+    /** Proveedor habitual: sección de la lista de compras. */
+    public function proveedor()
+    {
+        return $this->belongsTo(Proveedor::class, 'id_proveedor');
     }
 
     public function sector()

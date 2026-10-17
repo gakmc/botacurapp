@@ -195,12 +195,12 @@ class ReservaController extends Controller
 
         $mobileView = $request->query('mobileview', '');
 
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
         
         // ====== Query principal según alternativa ======
         if ($alternativeView) {
-            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now('America/Santiago')->format('Y-m-d'))
                 ->with(['cliente', 'visitas.ubicacion', 'masajes', 'programa', 'venta'])
                 ->select('reservas.*')
                 ->selectSub(
@@ -304,12 +304,12 @@ class ReservaController extends Controller
         $alternativeView = $request->query('alternative', false);
         $alternativeView = $alternativeView == 1 ? true : false;
         $mobileView = $request->query('mobileview', '');
-        $fechaActual     = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
     
     
         if ($alternativeView) {
 
-            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now('America/Santiago')->format('Y-m-d'))
             ->with([
                 'cliente',
                 'visitas.ubicacion',
@@ -488,12 +488,12 @@ class ReservaController extends Controller
         $alternativeView = $request->query('alternative', false);
         $alternativeView = $alternativeView == 1 ? true : false;
         $mobileView = $request->query('mobileview', '');
-        $fechaActual     = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
     
         
         if ($alternativeView) {
 
-            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now()->startOfDay())
+            $reservasQuery = Reserva::where('fecha_visita', '>=', Carbon::now('America/Santiago')->format('Y-m-d'))
             ->with([
                 'cliente',
                 'visitas.ubicacion',

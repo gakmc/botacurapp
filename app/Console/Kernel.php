@@ -26,6 +26,16 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        $schedule->command('bot:aprender')->dailyAt('23:40');
+        // Inventario: corrige descuentos de ventas que no dispararon observer
+        $schedule->command('inventario:conciliar')->hourly()->withoutOverlapping(30);
+        // Detalle (productos) de las facturas recibidas, una hora después de la sync SII
+        $schedule->call(function () {
+            \Illuminate\Support\Facades\Artisan::call('sii:importar-detalle-compras', [
+                'desde' => now()->subDays(45)->toDateString(), 'hasta' => now()->toDateString(),
+            ]);
+        })->name('sii-detalle-compras')->mondays()->at('11:00')->timezone('America/Santiago')->withoutOverlapping(120);
+
         $schedule->command('cerrar:sueldos --programado')
                 ->sundays()
                 ->at('21:00')
@@ -45,31 +55,38 @@ class Kernel extends ConsoleKernel
         $schedule->command('reservaholds:expirar')
                 ->everyFiveMinutes();
 
-        // ── Sincronización SII, domingos, terminando antes del cierre de
-        //    sueldos de las 21:00. Orden importa: compras y honorarios
-        //    primero, F29 al final porque depende de ambos.
+        // -- Sincronizacion SII: UNA sola ejecucion, lunes 10:00 (hora de Chile).
+        // Corre en orden compras -> honorarios -> F29 (el F29 depende de los
+        // otros dos). Los comandos trabajan sobre un mes; el primer lunes de
+        // cada mes (dia <= 7) se procesa tambien el mes anterior, para no perder
+        // los documentos de sus ultimos dias. Cambio pedido por Sebastian el
+        // 10/10/2026 (antes: domingos 19:45/20:00/20:15).
+        $schedule->call(function () {
+            $hoy = now();
+            $periodos = [];
+            if ($hoy->day <= 7) {
+                $ant = $hoy->copy()->subMonthNoOverflow();
+                $periodos[] = [$ant->year, $ant->month];
+            }
+            $periodos[] = [$hoy->year, $hoy->month];
 
-        // 1) Compras (RCV) → egresos. Tenía docblock diciendo "domingos 21:10"
-        //    pero nunca había quedado agendado de verdad.
-        $schedule->command('sii:importar-semana --programado')
-                ->sundays()
-                ->at('19:45')
-                ->timezone('America/Santiago');
-
-        // 2) BHE del mes en curso. --forzar es necesario: el comando no
-        //    re-consulta un período que ya tiene registros, así que sin
-        //    --forzar nunca vería boletas nuevas emitidas después de la
-        //    primera sincronización del mes.
-        $schedule->command('honorarios:sync --mes=' . now()->month . ' --forzar --programado')
-                ->sundays()
-                ->at('20:00')
-                ->timezone('America/Santiago');
-
-        // 3) Resumen F29 (ventas SII + compras + honorarios ya sincronizados).
-        $schedule->command('sii:sincronizar-f29 --programado')
-                ->sundays()
-                ->at('20:15')
-                ->timezone('America/Santiago');
+            foreach ($periodos as list($anio, $mes)) {
+                $pasos = [
+                    ['sii:importar-semana', ['--anio' => $anio, '--mes' => $mes, '--programado' => true]],
+                    ['honorarios:sync', ['anio' => $anio, '--mes' => $mes, '--forzar' => true, '--programado' => true]],
+                    ['sii:sincronizar-f29', ['--anio' => $anio, '--mes' => $mes, '--programado' => true]],
+                ];
+                foreach ($pasos as list($comando, $args)) {
+                    try {
+                        \Illuminate\Support\Facades\Artisan::call($comando, $args);
+                    } catch (\Throwable $e) {
+                        \Illuminate\Support\Facades\Log::error("Sync SII semanal: {$comando} {$anio}-{$mes} fallo: " . $e->getMessage());
+                    }
+                }
+            }
+        })->name('sii-sync-semanal')
+          ->mondays()->at('10:00')->timezone('America/Santiago')
+          ->withoutOverlapping(120);
 
         // ── Auditoría: retención según config/auditoria.php. Solo opera sobre las
         //    tablas de auditoría (nunca datos del negocio).

@@ -54,3 +54,19 @@ dbexport.php
 db_export.php
 public/unificar_usuario.php
 public/dbexport.php
+# Respaldos y copias temporales (14/10/2026)
+*.bak
+*.bak.*
+.env.*
+!.env.example
+public/rev-*/
+public/uploads/
+resolve_conflicts.py
+*.bak_*
+*.bak-*
+/,
+/[0-9][0-9]_*.sh
+/diagnostico_*.sh
+/deploy_fix_*.sh
+/fix_logos.py
+/storage/*.php

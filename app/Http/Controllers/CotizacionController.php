@@ -85,6 +85,7 @@ class CotizacionController extends Controller
                 'validez_dias' => $request->validez_dias,
                 'correo' => $request->correo,
                 'observaciones' => $request->observaciones,
+                'iva_incluido' => true,
             ]);
 
 

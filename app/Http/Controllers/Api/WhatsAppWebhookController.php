@@ -79,6 +79,37 @@ class WhatsAppWebhookController extends Controller
             // por este mismo número (fallback al fijo de .env si no viene).
             $this->phoneNumberId = $value['metadata']['phone_number_id'] ?? null;
 
+        // ── Enrutamiento a Home Assistant ───────────────────────────────
+        // Los mensajes que llegan al número dedicado a HA no pasan por el
+        // bot de reservas: se reenvían tal cual a Home Assistant.
+        // Número compartido (opcional): si HA_TELEFONOS tiene teléfonos (separados por coma), solo los
+        // mensajes de esos teléfonos van a HA; el resto de los clientes los atiende el bot de reservas.
+        // Si HA_TELEFONOS está vacío, todo lo que llega al número de HA va a HA (comportamiento anterior).
+        $haPhoneNumberId = env('HA_PHONE_NUMBER_ID');
+        if ($haPhoneNumberId && $this->phoneNumberId === $haPhoneNumberId) {
+            $haTels = array_filter(array_map(function ($t) {
+                return substr(preg_replace('/\D/', '', $t), -9);
+            }, explode(',', (string) env('HA_TELEFONOS', ''))));
+            $esDeHa = true;
+            if ($haTels) {
+                if (!empty($value['messages'])) {
+                    $esDeHa = in_array(substr(preg_replace('/\D/', '', (string) ($value['messages'][0]['from'] ?? '')), -9), $haTels, true);
+                } elseif (!empty($value['message_echoes'])) {
+                    $esDeHa = in_array(substr(preg_replace('/\D/', '', (string) ($value['message_echoes'][0]['to'] ?? '')), -9), $haTels, true);
+                }
+            }
+            if ($esDeHa) {
+                $this->reenviarAHomeAssistant($value);
+                return response()->json(['ok' => true]);
+            }
+        }
+
+            // ── Respuestas del equipo desde la app WhatsApp Business (coexistencia) ──
+            if (!empty($value['message_echoes'])) {
+                $this->registrarEcosEquipo($value['message_echoes']);
+                return response()->json(['ok' => true]);
+            }
+
             $messages = $value['messages'] ?? [];
             if (empty($messages)) {
                 return response()->json(['ok' => true]);
@@ -88,6 +119,51 @@ class WhatsAppWebhookController extends Controller
             $tipo     = $msg['type'] ?? '';
             $telefono = $msg['from'] ?? '';
             $nombre   = $value['contacts'][0]['profile']['name'] ?? 'Cliente';
+
+            // Frase clave del equipo para empezar la conversacion de cero (13/10/2026)
+            if ($tipo === 'text' && $this->esReinicioDelEquipo($telefono, $msg['text']['body'] ?? '')) {
+                $this->reiniciarConversacion($telefono);
+                return response()->json(['ok' => true]);
+            }
+
+            // --- Bot desactivado, o chat atendido por una persona / derivado: guardar pendiente + alerta, sin responder ---
+            $convHumano = DB::table('bot_conversaciones')
+                ->where('usuario_id', preg_replace('/\D/', '', $telefono))
+                ->where('activo', 1)
+                ->whereNotNull('humano_hasta')
+                ->where('humano_hasta', '>', now())
+                ->exists();
+            if ($convHumano || \App\BotSeccionTexto::where('clave', 'bot_activo')->value('contenido') === '0') {
+                if (($msg['type'] ?? '') !== 'sticker') {
+                    $textoPend = ($msg['type'] ?? '') === 'text'
+                        ? ($msg['text']['body'] ?? '')
+                        : '[' . ($msg['type'] ?? 'mensaje') . '] (revisar en WhatsApp)';
+                    try {
+                        \App\BotMensajePendiente::create([
+                            'telefono'        => $telefono,
+                            'nombre'          => $nombre,
+                            'phone_number_id' => $this->phoneNumberId,
+                            'tipo'            => $msg['type'] ?? 'text',
+                            'mensaje'         => $textoPend,
+                            'estado'          => 'pendiente',
+                        ]);
+                        \App\Services\BotCasoService::registrar('mensaje_en_espera', $telefono, ['texto' => $textoPend, 'motivo' => $convHumano ? 'equipo_atendiendo' : 'bot_apagado']);
+                        if ($convHumano) {
+                            // Queda en la conversación para que el bot lo tenga cuando retome.
+                            $this->agregarClienteAlHistorial($telefono, $textoPend);
+                        }
+                        if (!$convHumano) {
+                            // Con el chat en manos del equipo no se manda correo: el mensaje queda en
+                            // pendientes y se marca solo como atendido cuando el equipo responde.
+                            $this->alertarBotApagado($telefono, $nombre, $textoPend);
+                        }
+                    } catch (\Throwable $e) {
+                        \Log::error('Bot apagado: no se pudo guardar pendiente', ['error' => $e->getMessage()]);
+                    }
+                }
+                return response()->json(['status' => 'ok'], 200);
+            }
+
 
             Log::info("[WhatsApp] Mensaje tipo={$tipo} de {$telefono}");
 
@@ -145,12 +221,19 @@ class WhatsAppWebhookController extends Controller
             $botData = json_decode($botBody, true) ?? [];
             $mensaje = $botData['mensaje'] ?? null;
 
+            // Fotos (ej. ubicaciones) antes del texto, para que la pregunta quede al final.
+            foreach (array_slice($botData['imagenes'] ?? [], 0, 4) as $img) {
+                if (!empty($img['url'])) {
+                    $this->enviarImagen($telefono, $img['url'], $img['texto'] ?? '');
+                }
+            }
+
             if ($mensaje) {
                 $this->enviarMensaje($telefono, $mensaje);
             }
 
             if (!empty($botData['adjunto_url'])) {
-                $this->enviarDocumento($telefono, $botData['adjunto_url'], $botData['adjunto_nombre'] ?? 'menu.pdf');
+                $this->enviarDocumento($telefono, $botData['adjunto_url'], $botData['adjunto_nombre'] ?? 'menu.pdf', $botData['adjunto_texto'] ?? '');
             }
 
         } catch (\Exception $e) {
@@ -251,6 +334,24 @@ class WhatsAppWebhookController extends Controller
                     . "imagen como un comprobante válido ni la asocies a ninguna reserva.]";
             }
 
+            // Revisar el comprobante ANTES de crear la reserva (13/10/2026)
+            $datosComprobante = $this->extraerDatosComprobante($rutaTemp);
+            $revision = $datosComprobante === null
+                ? ['rechazo' => [], 'duda' => ['no se pudo leer el comprobante automaticamente']]
+                : $this->clasificarComprobante($datosComprobante, (int) $holdPendiente->abono_50,
+                    \Carbon\Carbon::parse($holdPendiente->created_at)->subMinutes(30));
+            if ($revision['rechazo']) {
+                $this->guardarImagenComprobante($rutaTemp, 'rechazado_hold_' . $holdPendiente->id);
+                if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+                return $this->respuestaComprobanteRechazado($telefono, $revision['rechazo'], 'hold_' . $holdPendiente->id,
+                    'El cupo temporal sigue apartado hasta las ' . \Carbon\Carbon::parse($holdPendiente->expira_en)->format('H:i') . ' hrs.');
+            }
+            if ($revision['duda']) {
+                $archivo = $this->guardarImagenComprobante($rutaTemp, 'revision_hold_' . $holdPendiente->id);
+                if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+                return $this->comprobanteARevision($telefono, $holdPendiente, $archivo, $datosComprobante ?? [], $revision['duda']);
+            }
+
             $conversion = app(\App\Http\Controllers\Api\BotReservaController::class)->convertirHoldEnReserva($holdPendiente);
 
             if (!($conversion['ok'] ?? false)) {
@@ -269,7 +370,7 @@ class WhatsAppWebhookController extends Controller
                 'diferencia_programa' => $conversion['diferencia'],
             ];
 
-            $resultadoHold = $this->guardarComprobante($rutaTemp, $ventaPendienteHold);
+            $resultadoHold = $this->guardarComprobante($rutaTemp, $ventaPendienteHold, $datosComprobante);
             if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
 
             if ($resultadoHold['ok']) {
@@ -314,7 +415,20 @@ class WhatsAppWebhookController extends Controller
         // los datos extraidos son solo lectura automatica de referencia.
         $ventaPendiente = $this->buscarVentaPendiente($telefono);
         if ($ventaPendiente) {
-            $resultado = $this->guardarComprobante($rutaTemp, $ventaPendiente);
+            $datosComprobante = $this->extraerDatosComprobante($rutaTemp);
+            $dudas = ['no se pudo leer el comprobante automaticamente'];
+            if ($datosComprobante !== null) {
+                $minimo = array_filter([(int) $ventaPendiente->abono_programa, (int) $ventaPendiente->diferencia_programa]);
+                $revision = $this->clasificarComprobante($datosComprobante, $minimo ? min($minimo) : 0, now()->subHours(3));
+                if ($revision['rechazo']) {
+                    $this->guardarImagenComprobante($rutaTemp, 'rechazado_venta_' . $ventaPendiente->venta_id);
+                    if (file_exists($rutaTemp)) { @unlink($rutaTemp); }
+                    return $this->respuestaComprobanteRechazado($telefono, $revision['rechazo'], 'venta_' . $ventaPendiente->venta_id,
+                        'La reserva N°' . $ventaPendiente->reserva_id . ' sigue pendiente de pago.');
+                }
+                $dudas = $revision['duda'];
+            }
+            $resultado = $this->guardarComprobante($rutaTemp, $ventaPendiente, $datosComprobante, $dudas);
             if (file_exists($rutaTemp)) {
                 @unlink($rutaTemp);
             }
@@ -407,14 +521,14 @@ class WhatsAppWebhookController extends Controller
             ->first();
     }
 
-    private function guardarComprobante(string $rutaTemp, $ventaPendiente): array
+    private function guardarComprobante(string $rutaTemp, $ventaPendiente, ?array $datosPrevios = null, array $alertasPrevias = []): array
     {
         $ventaId = $ventaPendiente->venta_id;
         try {
             $nombreArchivo = 'venta_' . $ventaId . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.jpg';
             Storage::disk('comprobante_transferencia')->put($nombreArchivo, file_get_contents($rutaTemp));
 
-            $datos = $this->extraerDatosComprobante($rutaTemp) ?? [];
+            $datos = $datosPrevios ?? ($this->extraerDatosComprobante($rutaTemp) ?? []);
 
             $esComprobante      = $datos['es_comprobante'] ?? true;
             $monto              = ($esComprobante !== false && isset($datos['monto']) && is_numeric($datos['monto'])) ? (int) $datos['monto'] : null;
@@ -430,7 +544,7 @@ class WhatsAppWebhookController extends Controller
             $total        = $abonoTeorico + (int) ($ventaPendiente->diferencia_programa ?? 0);
 
             $tipoDetectado = 'no_detectado';
-            $alertas = [];
+            $alertas = $alertasPrevias;
 
             if ($monto !== null) {
                 if ($total > 0 && $monto >= $total * 0.97) {
@@ -504,6 +618,164 @@ class WhatsAppWebhookController extends Controller
             Log::error('[WhatsApp] Error guardando comprobante: ' . $e->getMessage(), ['venta_id' => $ventaId]);
             return ['ok' => false];
         }
+    }
+
+    /**
+     * Clasifica un comprobante: 'rechazo' = claramente no sirve; 'duda' = lo revisa una persona.
+     * Sin motivos en ninguna lista = se acepta y sigue el flujo normal (revision manual del pago).
+     */
+    private function clasificarComprobante(array $datos, int $minimo, $desde): array
+    {
+        if (($datos['es_comprobante'] ?? true) === false) {
+            return ['rechazo' => ['la imagen no parece un comprobante de transferencia'], 'duda' => []];
+        }
+        $rechazo = [];
+        $duda = [];
+        $banco = config('botacura_pago.datos_bancarios_transferencia', []);
+        $alfa = function ($v) { return ltrim(strtoupper(preg_replace('/[^0-9K]/i', '', (string) $v)), '0'); };
+        $digitos = function ($v) { return ltrim(preg_replace('/\D/', '', (string) $v), '0'); };
+        $texto = function ($v) { return strtoupper(preg_replace('/[^A-Z0-9]/i', '', (string) $v)); };
+
+        // Destinatario
+        $rut = $datos['destinatario_rut'] ?? null;
+        $nombre = $datos['destinatario_nombre'] ?? null;
+        $cuentaBotacura = $digitos($banco['numero_cuenta'] ?? '');
+        $cuentaLeida = $digitos($datos['destinatario_cuenta'] ?? null);
+        $rutMal = $rut && $alfa($banco['rut'] ?? '') !== '' && $alfa($rut) !== $alfa($banco['rut'] ?? '');
+        // Cuentas enmascaradas (****3128): basta que calcen los ultimos digitos leidos
+        $cuentaMal = strlen($cuentaLeida) >= 4 && $cuentaBotacura !== ''
+            && substr($cuentaBotacura, -strlen($cuentaLeida)) !== $cuentaLeida
+            && substr($cuentaLeida, -strlen($cuentaBotacura)) !== $cuentaBotacura;
+        $nombreMal = $nombre && strpos($texto($nombre), 'BOTACUR') === false
+            && ($texto($banco['titular'] ?? '') === '' || strpos($texto($nombre), $texto($banco['titular'] ?? '')) === false);
+        if ($rutMal || $cuentaMal || $nombreMal) {
+            $rechazo[] = 'la transferencia no fue hecha a la cuenta de Botacura' . ($nombre ? ' (destinatario: ' . mb_substr($nombre, 0, 60) . ')' : '');
+        } elseif (!$rut && $cuentaLeida === '' && !$nombre) {
+            $duda[] = 'no se ve a quien se hizo la transferencia (nombre, RUT o cuenta de destino)';
+        }
+
+        // Monto
+        $monto = (isset($datos['monto']) && is_numeric($datos['monto'])) ? (int) $datos['monto'] : null;
+        if ($monto === null) {
+            $duda[] = 'no se lee el monto transferido';
+        } elseif ($minimo > 0 && $monto < $minimo * 0.97) {
+            $rechazo[] = 'el monto transferido ($' . number_format($monto, 0, ',', '.') . ') es menor al abono que corresponde ($'
+                . number_format($minimo, 0, ',', '.') . ')';
+        }
+
+        // Fecha y hora: deben calzar con la conversacion (desde que se pidio el pago hasta ahora)
+        $fecha = (!empty($datos['fecha']) && preg_match('/^\d{4}-\d{2}-\d{2}$/', $datos['fecha'])) ? $datos['fecha'] : null;
+        $hora = (!empty($datos['hora']) && preg_match('/^(\d{1,2}):(\d{2})/', $datos['hora'], $h)) ? sprintf('%02d:%02d', $h[1], $h[2]) : null;
+        $desdeTxt = $desde->copy()->timezone('America/Santiago')->format('d/m H:i');
+        if ($fecha === null) {
+            $duda[] = 'no se lee la fecha de la transferencia';
+        } elseif ($hora === null) {
+            $duda[] = 'no se lee la hora de la transferencia';
+            $hoy = now()->timezone('America/Santiago')->toDateString();
+            if ($fecha < $desde->copy()->timezone('America/Santiago')->toDateString() || $fecha > $hoy) {
+                $duda[] = 'la fecha del comprobante (' . date('d/m/Y', strtotime($fecha)) . ') no coincide con la conversacion';
+            }
+        } else {
+            try {
+                $momento = \Carbon\Carbon::parse($fecha . ' ' . $hora, 'America/Santiago');
+                if ($momento->lt($desde) || $momento->gt(now()->addMinutes(10))) {
+                    $duda[] = 'la fecha y hora del comprobante (' . $momento->format('d/m H:i') . ') no coinciden con la conversacion (desde '
+                        . $desdeTxt . ' hasta la recepcion)';
+                }
+            } catch (\Exception $e) {
+                $duda[] = 'no se entiende la fecha u hora del comprobante';
+            }
+        }
+
+        // N. de operacion repetido
+        $op = trim((string) ($datos['numero_operacion'] ?? ''));
+        if (strlen(preg_replace('/\W/', '', $op)) >= 4) {
+            $usada = DB::table('ventas')->where('comprobante_numero_operacion', $op)->value('id_reserva');
+            if ($usada) {
+                $duda[] = 'el N° de operacion ' . $op . ' ya se uso en la reserva N°' . $usada;
+            }
+        }
+
+        return ['rechazo' => $rechazo, 'duda' => $duda];
+    }
+
+    private function guardarImagenComprobante(string $rutaTemp, string $prefijo): ?string
+    {
+        try {
+            $nombre = $prefijo . '_' . now()->format('Ymd_His') . '_' . uniqid() . '.jpg';
+            Storage::disk('comprobante_transferencia')->put($nombre, file_get_contents($rutaTemp));
+            return $nombre;
+        } catch (\Throwable $e) {
+            Log::warning('[WhatsApp] No se pudo guardar la imagen del comprobante: ' . $e->getMessage());
+            return null;
+        }
+    }
+
+    /** Comprobante con dudas: queda para que el equipo lo apruebe en Finanzas > Reservas del dia. */
+    private function comprobanteARevision(string $telefono, $hold, ?string $archivo, array $datos, array $dudas): string
+    {
+        try {
+            DB::table('comprobantes_revision')->insert([
+                'hold_id' => $hold->id, 'telefono' => preg_replace('/\D/', '', $telefono),
+                'phone_number_id' => $this->phoneNumberId, 'archivo' => $archivo,
+                'datos_json' => json_encode($datos, JSON_UNESCAPED_UNICODE), 'motivos' => implode(' | ', $dudas),
+                'estado' => 'pendiente', 'created_at' => now(), 'updated_at' => now(),
+            ]);
+            // El cupo queda apartado mientras el equipo revisa
+            DB::table('reserva_holds')->where('id', $hold->id)->update(['expira_en' => now()->addHours(24), 'updated_at' => now()]);
+            \App\Services\BotCasoService::registrar('comprobante_en_revision', $telefono, ['motivos' => implode('; ', $dudas)]);
+        } catch (\Throwable $e) {
+            Log::error('[WhatsApp] No se pudo dejar el comprobante en revision: ' . $e->getMessage());
+        }
+        Log::info('[WhatsApp] Comprobante en revision humana', ['hold_id' => $hold->id, 'dudas' => $dudas]);
+        $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+        if ($correo) {
+            try {
+                \Mail::raw("Un comprobante quedo esperando revision antes de crear la reserva.\n\nCliente: {$hold->nombre} (+{$telefono})\n"
+                    . "Motivos: " . implode('; ', $dudas) . "\n\nApruebalo o rechazalo en " . url('/finanzas/reservas-del-dia'),
+                    function ($m) use ($correo, $hold) { $m->to($correo)->subject('Bot: comprobante por revisar de ' . $hold->nombre); });
+            } catch (\Throwable $e) {
+            }
+        }
+
+        return "[Sistema-comprobante-en-revision: Se recibio el comprobante, pero hay datos que una persona del equipo debe comprobar. "
+            . "Todavia NO se creo la reserva. El cupo queda apartado mientras se revisa. Dile al cliente con amabilidad, en 1 a 2 lineas, "
+            . "que recibimos su comprobante y que una persona del equipo lo revisara y le confirmara la reserva por este mismo chat a la "
+            . "brevedad. Si quiere, puede mandar una captura mas clara o completa. NO le digas que la reserva esta confirmada ni le "
+            . "cuentes los motivos internos de la revision.]";
+    }
+
+    private function respuestaComprobanteRechazado(string $telefono, array $motivos, string $clave, string $estado): string
+    {
+        $k = 'comprobante_rechazos_' . $clave;
+        \Cache::add($k, 0, now()->addDays(2));
+        $intento = (int) \Cache::increment($k);
+        $lista = implode('; ', $motivos);
+        Log::info('[WhatsApp] Comprobante rechazado', ['telefono' => $telefono, 'clave' => $clave, 'intento' => $intento, 'motivos' => $motivos]);
+        try {
+            \App\Services\BotCasoService::registrar('comprobante_rechazado', $telefono, ['motivos' => $lista, 'intento' => $intento]);
+        } catch (\Throwable $e) {
+        }
+        $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+        if ($correo) {
+            try {
+                \Mail::raw("El bot NO acepto un comprobante (intento {$intento}).\n\nCliente: +{$telefono}\nMotivos: {$lista}\n{$estado}",
+                    function ($m) use ($correo, $telefono) { $m->to($correo)->subject('Bot: comprobante rechazado de +' . $telefono); });
+            } catch (\Throwable $e) {
+            }
+        }
+        $b = config('botacura_pago.datos_bancarios_transferencia', []);
+        $datosBanco = trim(($b['titular'] ?? '') . ', RUT ' . ($b['rut'] ?? '') . ', ' . ($b['banco'] ?? '') . ', '
+            . ($b['tipo_cuenta'] ?? '') . ' N° ' . ($b['numero_cuenta'] ?? '') . ', correo ' . ($b['correo_comprobante'] ?? ''));
+
+        return "[Sistema-comprobante-rechazado: El comprobante NO se acepto y NO se creo ni se confirmo ninguna reserva. "
+            . "Motivos: {$lista}. {$estado} Explicale al cliente con amabilidad, en 2 a 3 lineas, que el comprobante no calza "
+            . "y por que (puedes decirle los motivos), recuerdale los datos para transferir ({$datosBanco}) y pidele que envie "
+            . "el comprobante correcto, completo y legible. NO digas que la reserva quedo creada, confirmada ni en revision."
+            . ($intento >= 2
+                ? " Es el intento N°{$intento}: ademas dile que una persona del equipo lo revisara por este mismo chat y deriva a humano."
+                : '')
+            . "]";
     }
 
     private function extraerDatosComprobante(string $rutaLocal): ?array
@@ -603,6 +875,49 @@ class WhatsAppWebhookController extends Controller
         } catch (\Exception $e) {
             Log::error('[Vision] Error extrayendo datos comprobante: ' . $e->getMessage());
             return null;
+        }
+    }
+
+    /** "#reiniciar" (o BOT_FRASE_REINICIO) enviado desde un numero del equipo (BOT_TELEFONOS_EQUIPO). */
+    private function esReinicioDelEquipo(string $telefono, string $texto): bool
+    {
+        $frase = mb_strtolower(trim((string) env('BOT_FRASE_REINICIO', '#reiniciar')));
+        if ($frase === '' || mb_strtolower(trim($texto)) !== $frase) {
+            return false;
+        }
+        $equipo = array_filter(array_map(function ($t) {
+            return substr(preg_replace('/\D/', '', $t), -9);
+        }, explode(',', (string) env('BOT_TELEFONOS_EQUIPO', '56961910398,56940014282'))));
+        return in_array(substr(preg_replace('/\D/', '', $telefono), -9), $equipo, true);
+    }
+
+    /** Deja al numero como cliente nuevo para el bot. Lo anterior queda archivado (no se borra). */
+    private function reiniciarConversacion(string $telefono)
+    {
+        $tel = preg_replace('/\D/', '', $telefono);
+        $corto = substr($tel, -9);
+        $variantes = array_values(array_unique([$tel, $corto, '56' . $corto]));
+        $res = ['conversaciones' => 0, 'cupos' => 0, 'comprobantes' => 0];
+        try {
+            $res['conversaciones'] = DB::table('bot_conversaciones')->whereIn('usuario_id', $variantes)->where('activo', 1)
+                ->update(array_merge(['activo' => 0, 'updated_at' => now()],
+                    \Schema::hasColumn('bot_conversaciones', 'motivo_cierre') ? ['motivo_cierre' => 'Reiniciada con frase clave del equipo'] : []));
+            $res['cupos'] = DB::table('reserva_holds')->whereIn('telefono', $variantes)->where('estado', 'activo')
+                ->update(['estado' => 'cancelado', 'updated_at' => now()]);
+            if (\Schema::hasTable('comprobantes_revision')) {
+                $res['comprobantes'] = DB::table('comprobantes_revision')->whereIn('telefono', $variantes)->where('estado', 'pendiente')
+                    ->update(['estado' => 'cancelado', 'nota' => 'Conversacion reiniciada', 'updated_at' => now()]);
+            }
+            \App\BotMensajePendiente::whereIn('telefono', $variantes)->where('estado', 'pendiente')
+                ->update(['estado' => 'atendido', 'updated_at' => now()]);
+            \App\Services\BotCasoService::registrar('conversacion_reiniciada', $tel, $res);
+            Log::info('[WhatsApp] Conversacion reiniciada con frase clave', ['telefono' => $tel] + $res);
+            $this->enviarMensaje($telefono, "Conversación reiniciada. El bot empieza de cero"
+                . ($res['cupos'] ? " (se cancelaron {$res['cupos']} cupo(s) apartado(s))" : '')
+                . ". Lo anterior quedó archivado. Escribe tu primer mensaje como cliente nuevo.");
+        } catch (\Throwable $e) {
+            Log::error('[WhatsApp] No se pudo reiniciar la conversacion: ' . $e->getMessage());
+            $this->enviarMensaje($telefono, 'No se pudo reiniciar la conversación: ' . mb_substr($e->getMessage(), 0, 150));
         }
     }
 
@@ -773,6 +1088,124 @@ class WhatsAppWebhookController extends Controller
     // HELPERS — envío de mensajes
     // ─────────────────────────────────────────────────────────────────────────
 
+    /**
+     * Mensajes que el equipo envió desde la app WhatsApp Business (webhook smb_message_echoes):
+     * quedan en el historial del bot como "[Equipo Botacura respondió]", el bot se silencia en ese
+     * chat por las horas configuradas y los pendientes de ese cliente se marcan como atendidos.
+     */
+    private function registrarEcosEquipo(array $ecos)
+    {
+        foreach ($ecos as $eco) {
+            try {
+                $para = preg_replace('/\D/', '', (string) ($eco['to'] ?? ''));
+                if ($para === '') {
+                    continue;
+                }
+                $tipo  = $eco['type'] ?? 'text';
+                $texto = $tipo === 'text' ? trim((string) ($eco['text']['body'] ?? '')) : '[' . $tipo . ' enviado por el equipo]';
+                if ($texto === '') {
+                    continue;
+                }
+                $conv = DB::table('bot_conversaciones')->where('usuario_id', $para)->where('activo', 1)->orderBy('id', 'desc')->first();
+                if (!$conv) {
+                    $id = DB::table('bot_conversaciones')->insertGetId([
+                        'usuario_id' => $para, 'canal' => 'whatsapp', 'paso' => 0, 'activo' => 1,
+                        'historial_json' => '[]', 'created_at' => now(), 'updated_at' => now(),
+                    ]);
+                    $conv = DB::table('bot_conversaciones')->find($id);
+                }
+                $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
+                $linea = '[Equipo Botacura respondió]: ' . $texto;
+                $ultimo = end($historial);
+                if ($ultimo && ($ultimo['role'] ?? '') === 'assistant') {
+                    if (strpos((string) $ultimo['content'], $texto) !== false) {
+                        continue; // eco de algo que ya está en el historial
+                    }
+                    $historial[count($historial) - 1]['content'] .= "\n\n" . $linea;
+                } else {
+                    if (empty($historial)) {
+                        $historial[] = ['role' => 'user', 'content' => '[Sistema: conversación atendida por el equipo de Botacura desde la app de WhatsApp.]'];
+                    }
+                    $historial[] = ['role' => 'assistant', 'content' => $linea];
+                }
+                $horas = \App\Services\BotTarifasService::horasSilencioHumano();
+                DB::table('bot_conversaciones')->where('id', $conv->id)->update([
+                    'historial_json'  => json_encode(array_slice($historial, -24), JSON_UNESCAPED_UNICODE),
+                    'requiere_humano' => 1,
+                    'humano_hasta'    => now()->addHours($horas),
+                    'updated_at'      => now(),
+                ]);
+                \App\BotMensajePendiente::where('telefono', $para)->where('estado', 'pendiente')
+                    ->update(['estado' => 'atendido', 'updated_at' => now()]);
+                Log::info('[WhatsApp] Respuesta del equipo registrada', ['telefono' => $para]);
+                \App\Services\BotCasoService::registrar('respuesta_equipo', $para, ['texto' => mb_substr($texto, 0, 500)]);
+            } catch (\Throwable $e) {
+                Log::error('[WhatsApp] Error registrando eco del equipo: ' . $e->getMessage());
+            }
+        }
+    }
+
+    /** Mensaje del cliente mientras lo atiende el equipo: queda como turno del cliente en el historial del bot. */
+    private function agregarClienteAlHistorial(string $telefono, string $texto)
+    {
+        try {
+            $tel  = preg_replace('/\D/', '', $telefono);
+            $conv = DB::table('bot_conversaciones')->where('usuario_id', $tel)->where('activo', 1)->orderBy('id', 'desc')->first();
+            if (!$conv) {
+                return;
+            }
+            $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
+            $linea = '[Cliente, mientras lo atendía el equipo]: ' . $texto;
+            $n = count($historial);
+            if ($n && ($historial[$n - 1]['role'] ?? '') === 'user') {
+                $historial[$n - 1]['content'] .= "\n" . $linea;
+            } else {
+                $historial[] = ['role' => 'user', 'content' => $linea];
+            }
+            $historial = array_slice($historial, -24);
+            while ($historial && ($historial[0]['role'] ?? '') !== 'user') {
+                array_shift($historial);
+            }
+            DB::table('bot_conversaciones')->where('id', $conv->id)->update([
+                'historial_json' => json_encode($historial, JSON_UNESCAPED_UNICODE), 'updated_at' => now(),
+            ]);
+        } catch (\Throwable $e) {
+            Log::warning('[WhatsApp] No se pudo agregar el mensaje al historial: ' . $e->getMessage());
+        }
+    }
+
+    private function alertarBotApagado(string $telefono, string $nombre, string $texto)
+    {
+        // Máximo una alerta cada 30 minutos por cliente
+        if (!\Cache::add('bot_apagado_alerta_' . $telefono, 1, now()->addMinutes(30))) {
+            return;
+        }
+        $cuerpo = "El bot de WhatsApp está DESACTIVADO y llegó un mensaje sin responder.\n\n"
+            . "Cliente: {$nombre} (+{$telefono})\n"
+            . "Mensaje: {$texto}\n\n"
+            . "Responde desde WhatsApp o reactiva el bot en " . url('/bot-configuracion') . " y usa 'Responder seleccionadas'.";
+        $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+        if ($correo) {
+            try {
+                \Mail::raw($cuerpo, function ($m) use ($correo, $nombre) {
+                    $m->to($correo)->subject('Bot WhatsApp apagado: mensaje de ' . $nombre);
+                });
+                \App\Services\BotCasoService::registrar('alerta_enviada', $telefono, ['canal' => 'correo', 'motivo' => 'bot apagado']);
+            } catch (\Throwable $e) {
+                \Log::error('Alerta bot apagado (correo) falló', ['error' => $e->getMessage()]);
+            }
+        }
+        $fono = \App\BotSeccionTexto::where('clave', 'alerta_telefono')->value('contenido');
+        if ($fono) {
+            try {
+                $this->enviarMensaje($fono, $cuerpo);
+                \App\Services\BotCasoService::registrar('alerta_enviada', $telefono, ['canal' => 'WhatsApp al equipo', 'motivo' => 'bot apagado']);
+            } catch (\Throwable $e) {
+                \Log::error('Alerta bot apagado (WhatsApp) falló', ['error' => $e->getMessage()]);
+            }
+        }
+    }
+
     private function enviarMensaje(string $telefono, string $texto)
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
@@ -804,7 +1237,31 @@ class WhatsAppWebhookController extends Controller
         }
     }
 
-    private function enviarDocumento(string $telefono, string $url, string $nombre)
+    private function enviarImagen(string $telefono, string $url, string $texto = '')
+    {
+        $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
+        $token   = env('META_WHATSAPP_TOKEN');
+        $version = env('META_API_VERSION', 'v19.0');
+        try {
+            $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
+            $res = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
+                'headers' => ['Authorization' => 'Bearer ' . $token, 'Content-Type' => 'application/json'],
+                'json'    => [
+                    'messaging_product' => 'whatsapp',
+                    'to'                => $telefono,
+                    'type'              => 'image',
+                    'image'             => array_filter(['link' => $url, 'caption' => mb_substr($texto, 0, 1000)]),
+                ],
+            ]);
+            if ($res->getStatusCode() >= 300) {
+                Log::error('[WhatsApp] Error enviando imagen', ['status' => $res->getStatusCode(), 'body' => substr((string) $res->getBody(), 0, 300)]);
+            }
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp] Excepción enviando imagen: ' . $e->getMessage());
+        }
+    }
+
+    private function enviarDocumento(string $telefono, string $url, string $nombre, string $texto = '')
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
@@ -821,11 +1278,37 @@ class WhatsAppWebhookController extends Controller
                     'messaging_product' => 'whatsapp',
                     'to'                => $telefono,
                     'type'              => 'document',
-                    'document'          => ['link' => $url, 'filename' => $nombre],
+                    'document'          => array_filter(['link' => $url, 'filename' => $nombre, 'caption' => mb_substr($texto, 0, 1000)]),
                 ],
             ]);
         } catch (\Exception $e) {
             Log::error('[WhatsApp] Excepción enviando documento: ' . $e->getMessage());
         }
     }
+
+
+    // ─────────────────────────────────────────────────────────────────────────
+    // Reenvío a Home Assistant (número dedicado)
+    // ─────────────────────────────────────────────────────────────────────────
+
+    private function reenviarAHomeAssistant(array $value)
+    {
+        $haWebhookUrl = env('HA_WEBHOOK_URL');
+
+        if (!$haWebhookUrl) {
+            Log::warning('[WhatsApp→HA] HA_WEBHOOK_URL no configurado, mensaje descartado');
+            return;
+        }
+
+        try {
+            $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
+            $res = $client->post($haWebhookUrl, [
+                'json' => $value,
+            ]);
+            Log::info('[WhatsApp→HA] Reenviado a Home Assistant', ['status' => $res->getStatusCode()]);
+        } catch (\Exception $e) {
+            Log::error('[WhatsApp→HA] Error reenviando a Home Assistant: ' . $e->getMessage());
+        }
+    }
+
 }

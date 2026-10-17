@@ -31,7 +31,7 @@ class MasajeController extends Controller
     public function index()
     {
         // Asignación de la fecha actual
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
 
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)
@@ -191,7 +191,7 @@ class MasajeController extends Controller
     public function indexFuncionando()
     {
         // Asignación de la fecha actual
-        $fechaActual = Carbon::now()->startOfDay();
+        $fechaActual = Carbon::now('America/Santiago')->format('Y-m-d');
 
 
         $reservas = Reserva::where('fecha_visita', '>=', $fechaActual)

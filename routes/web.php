@@ -359,6 +359,21 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/{venta}/rechazar',   'VerificacionPagoController@rechazar')->name('rechazar');
     });
 
+    // Configuracion del bot de WhatsApp -- perfil de vendedor, info del recinto y guion
+    Route::prefix('bot-configuracion')->name('bot-configuracion.')->group(function () {
+        Route::get('/', 'BotConfiguracionController@index')->name('index');
+        Route::post('/secciones', 'BotConfiguracionController@updateSecciones')->name('secciones.update');
+        Route::post('/menu', 'BotConfiguracionController@updateMenu')->name('menu.update');
+        Route::post('/aprendizajes/analizar', 'BotConfiguracionController@analizarAprendizajes')->name('aprendizajes.analizar');
+        Route::post('/aprendizajes/nuevo', 'BotConfiguracionController@nuevoAprendizaje')->name('aprendizajes.nuevo');
+        Route::post('/aprendizajes/{id}', 'BotConfiguracionController@accionAprendizaje')->name('aprendizajes.accion');
+        Route::get('/aprendizajes/conversacion/{id}', 'BotConfiguracionController@conversacionAprendizaje')->name('aprendizajes.conversacion');
+        Route::post('/fotos', 'BotConfiguracionController@updateFotos')->name('fotos.update');
+        Route::post('/estado', 'BotConfiguracionController@updateEstado')->name('estado.update');
+        Route::post('/pendientes/procesar', 'BotConfiguracionController@procesarPendientes')->name('pendientes.procesar');
+        Route::post('/pasos', 'BotConfiguracionController@updatePasos')->name('pasos.update');
+    });
+
     Route::resource('estado_recepcion', 'EstadoRecepcionController');
     Route::resource('giftcards', 'GiftCardController');
     Route::resource('insumo', 'InsumoController');
@@ -370,6 +385,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::resource('producto', 'ProductoController');
     Route::resource('programa', 'ProgramaController');
     Route::resource('proveedor', 'ProveedorController');
+    Route::post('proveedor/{id}/subcategoria', 'ProveedorController@updateSubcategoria')->name('proveedor.subcategoria');
     Route::resource('rango-sueldos', 'RangoSueldoRoleController');
     Route::resource('reserva.reagendamientos', 'ReagendamientoController');
     Route::resource('reserva.venta', 'VentaController');
@@ -589,6 +605,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::match(['put', 'patch'], 'reserva/{reserva}/masaje_update', 'ReservaController@masaje_update')->name('reserva.masaje_update');
 
     Route::get('reserva/{reserva}/desayuno_once', 'ReservaController@desayunoOnce')->name('reserva.desayuno_once');
+    Route::post('reserva/{reserva}/desayuno_once/rapido', 'ReservaDesayunoOnceRapidoController@guardar')->name('reserva.desayuno_once.rapido');
+    Route::post('reserva/{reserva}/desayuno_once/confirmar', 'ReservaDesayunoOnceRapidoController@confirmar')->name('reserva.desayuno_once.confirmar');
     Route::match(['put', 'patch'], 'reserva/{reserva}/desayuno_once_update', 'ReservaController@desayunoOnceUpdate')->name('reserva.desayuno_once_update');
 
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
@@ -655,6 +673,15 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
 
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
+    Route::get('bot-conversaciones', 'BotConversacionesController@index')->name('bot-conversaciones.index');
+    Route::post('bot-conversaciones/interes/avisar', 'BotConversacionesController@avisarInteres')->name('bot-conversaciones.interes.avisar');
+    Route::post('bot-conversaciones/interes/{id}/estado', 'BotConversacionesController@estadoInteres')->name('bot-conversaciones.interes.estado');
+
+    Route::get('finanzas/reservas-del-dia', 'ReservasDelDiaController@index')->name('finanzas.reservas_dia');
+    Route::get('finanzas/reservas-del-dia/comprobante/{id}', 'ReservasDelDiaController@comprobante')->name('finanzas.reservas_dia.comprobante');
+    Route::post('finanzas/reservas-del-dia/comprobante/{id}/aprobar', 'ReservasDelDiaController@aprobar')->name('finanzas.reservas_dia.aprobar');
+    Route::post('finanzas/reservas-del-dia/comprobante/{id}/rechazar', 'ReservasDelDiaController@rechazar')->name('finanzas.reservas_dia.rechazar');
+
     Route::get('finanzas/ingresos/comparar', 'ReporteFinancieroController@comparar')->name('finanzas.comparar');
 
     Route::get('finanzas/egresos', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.acumulado');
@@ -688,3 +715,7 @@ Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.w
 
 // Route::prefix('admin')->middleware('auth')->group(function () {
 // });
+
+// Conectar el WhatsApp de Bot-Acura a la API (coexistencia con la app WhatsApp Business)
+Route::get('bot-configuracion/whatsapp-conectar', 'WhatsAppConectarController@index')->name('whatsapp.conectar');
+Route::post('bot-configuracion/whatsapp-conectar/finalizar', 'WhatsAppConectarController@finalizar')->name('whatsapp.conectar.finalizar');

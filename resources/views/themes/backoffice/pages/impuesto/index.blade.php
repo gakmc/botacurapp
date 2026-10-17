@@ -35,7 +35,7 @@
                 F29 Estimado — {{ ucfirst($nombreMes) }}
             </h5>
             <p class="grey-text" style="margin:0;font-size:.85rem">
-                F29 = IVA (Débito - Crédito) + PPM (0.25% x ventas SII) + Retenciones BTE.
+                F29 = IVA (Débito - Crédito) + PPM (0.125% x ventas SII sin IVA) + Retenciones BTE.
                 @if($resumen && $resumen->ultima_sincronizacion)
                     <span>Última sync: {{ $resumen->ultima_sincronizacion->format('d/m/Y H:i') }}</span>
                 @endif
@@ -87,12 +87,12 @@
         {{-- Ventas SII (base PPM) --}}
         <div class="col s6 m3">
             <div class="card-panel" style="padding:14px 12px;margin:4px 0;border-left:4px solid #039B7B">
-                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">Ventas SII</span>
+                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">Ventas SII sin IVA</span>
                 <span style="font-size:1.3rem;font-weight:700;color:#039B7B">
-                    ${{ number_format($ventasTotal, 0, ',', '.') }}
+                    ${{ number_format($basePpm, 0, ',', '.') }}
                 </span>
                 <span class="grey-text" style="font-size:.75rem;display:block">
-                    {{ $ventasCant }} doc(s) · base PPM
+                    {{ $ventasCant }} doc(s) · base PPM · con IVA ${{ number_format($ventasTotal, 0, ',', '.') }}
                     @if(!$resumen)<br><small class="orange-text">Sin sincronizar</small>@endif
                 </span>
             </div>
@@ -101,7 +101,7 @@
         {{-- PPM --}}
         <div class="col s6 m3">
             <div class="card-panel" style="padding:14px 12px;margin:4px 0;border-left:4px solid #1565C0">
-                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">PPM (0.25%)</span>
+                <span class="grey-text" style="font-size:.72rem;display:block;text-transform:uppercase;letter-spacing:.5px">PPM (0.125%)</span>
                 <span style="font-size:1.3rem;font-weight:700;color:#1565C0">
                     ${{ number_format($ppm, 0, ',', '.') }}
                 </span>
@@ -150,27 +150,12 @@
                     <table style="width:100%;font-size:.9rem">
                         <tbody>
                             <tr style="border-bottom:1px solid #f0f0f0">
-                                <td class="grey-text" style="padding:6px 0">Ventas exentas / netas SII</td>
+                                <td class="grey-text" style="padding:6px 0">Ventas SII netas / exentas</td>
                                 <td style="text-align:right">
-                                    @if($ventasExento > 0)
-                                        ${{ number_format($ventasExento, 0, ',', '.') }}
-                                    @elseif($ventasTotal > 0)
-                                        ${{ number_format($ventasTotal, 0, ',', '.') }}
+                                    @if($resumen)
+                                        ${{ number_format($ventasNeto, 0, ',', '.') }} / ${{ number_format($ventasExento, 0, ',', '.') }}
                                     @else
                                         <span class="grey-text">Sin datos</span>
-                                    @endif
-                                </td>
-                            </tr>
-                            <tr style="border-bottom:1px solid #f0f0f0">
-                                <td class="grey-text" style="padding:6px 0">
-                                    IVA Crédito Fiscal (compras SII)
-                                </td>
-                                <td style="text-align:right;color:#388E3C">
-                                    @if($creditoFiscal > 0)
-                                        ${{ number_format($creditoFiscal, 0, ',', '.') }}
-                                        <small class="grey-text">(remanente)</small>
-                                    @else
-                                        <span class="grey-text">—</span>
                                     @endif
                                 </td>
                             </tr>
@@ -186,21 +171,51 @@
                                     @endif
                                 </td>
                             </tr>
-                            <tr style="border-bottom:1px solid #f0f0f0;background:#fafafa">
-                                <td style="padding:6px 0">
-                                    <strong>Código 089</strong> — IVA a pagar (Débito - Crédito)
+                            <tr style="border-bottom:1px solid #f0f0f0">
+                                <td class="grey-text" style="padding:6px 0">
+                                    − IVA Crédito Fiscal (compras SII)
                                 </td>
-                                <td style="text-align:right;font-weight:700">
-                                    @if($ivaAPagar > 0)
-                                        <span style="color:#B71C1C">${{ number_format($ivaAPagar, 0, ',', '.') }}</span>
+                                <td style="text-align:right;color:#388E3C">
+                                    @if($ivaCredito > 0)
+                                        ${{ number_format($ivaCredito, 0, ',', '.') }}
                                     @else
-                                        <span style="color:#2E7D32;font-size:.85rem">Remanente a favor ${{ number_format($ivaRemanente, 0, ',', '.') }}</span>
+                                        <span class="grey-text">—</span>
                                     @endif
                                 </td>
                             </tr>
                             <tr style="border-bottom:1px solid #f0f0f0">
+                                <td class="grey-text" style="padding:6px 0">
+                                    − <strong>Código 504</strong> — Remanente mes anterior (reajustado UTM)
+                                </td>
+                                <td style="text-align:right;color:#388E3C">
+                                    @if($f29Iva && $remanenteAnterior !== null)
+                                        ${{ number_format($remanenteAnterior, 0, ',', '.') }}
+                                    @else
+                                        <span class="orange-text" style="font-size:.8rem">Desconocido</span>
+                                    @endif
+                                </td>
+                            </tr>
+                            <tr style="border-bottom:1px solid #f0f0f0;background:#fafafa">
                                 <td style="padding:6px 0">
-                                    <strong>Línea 563</strong> — PPM (0.25%)
+                                    <strong>Código 089</strong> — IVA a pagar
+                                </td>
+                                <td style="text-align:right;font-weight:700">
+                                    <span style="color:{{ $ivaAPagar > 0 ? '#B71C1C' : '#555' }}">${{ number_format($ivaAPagar, 0, ',', '.') }}</span>
+                                </td>
+                            </tr>
+                            @if($ivaRemanente > 0)
+                            <tr style="border-bottom:1px solid #f0f0f0">
+                                <td class="grey-text" style="padding:6px 0">
+                                    <strong>Código 077</strong> — Remanente para el mes siguiente
+                                </td>
+                                <td style="text-align:right;color:#2E7D32;font-weight:600">
+                                    ${{ number_format($ivaRemanente, 0, ',', '.') }}
+                                </td>
+                            </tr>
+                            @endif
+                            <tr style="border-bottom:1px solid #f0f0f0">
+                                <td style="padding:6px 0">
+                                    <strong>Código 062</strong> — PPM (0.125% × base cód. 563)
                                 </td>
                                 <td style="text-align:right;color:#1565C0;font-weight:700">
                                     ${{ number_format($ppm, 0, ',', '.') }}
@@ -226,8 +241,26 @@
                     </table>
 
                     <p class="grey-text" style="font-size:.75rem;margin:10px 0 0">
-                        * IVA a pagar = Débito Fiscal (ventas SII) - Crédito Fiscal (compras SII). Si es negativo, queda como remanente a favor para el próximo período.
+                        * IVA a pagar = Débito − Crédito − Remanente del mes anterior reajustado por UTM. Si es negativo, queda como remanente para el período siguiente.
+                        @if($f29Iva && $f29Iva['utm'])
+                            UTM {{ $mesesNombres[$mes] ?? $mes }}: ${{ number_format($f29Iva['utm'], 0, ',', '.') }}.
+                        @endif
                     </p>
+                    @if($f29Iva && $f29Iva['remanente_inicial_supuesto'])
+                    <p class="orange-text text-darken-2" style="font-size:.75rem;margin:4px 0 0">
+                        El remanente con que partió la cadena ({{ config('sii.remanente_inicial_periodo') }}) se asumió en $0. Ingresa el código 077 del F29 anterior en SII_REMANENTE_INICIAL del .env para que sea exacto.
+                    </p>
+                    @endif
+                    @if($f29Iva && $f29Iva['cadena_incompleta'])
+                    <p class="orange-text text-darken-2" style="font-size:.75rem;margin:4px 0 0">
+                        Hay un mes anterior sin sincronizar: el remanente arrastrado es desconocido y no se descontó. Sincroniza los meses pendientes.
+                    </p>
+                    @endif
+                    @if($f29Iva && $f29Iva['sin_utm'])
+                    <p class="orange-text text-darken-2" style="font-size:.75rem;margin:4px 0 0">
+                        No se pudo obtener la UTM: el remanente se arrastró sin reajuste.
+                    </p>
+                    @endif
                 </div>
             </div>
         </div>
@@ -245,7 +278,7 @@
                     <table style="width:100%;font-size:.9rem">
                         <tbody>
                             <tr style="border-bottom:1px solid #f0f0f0">
-                                <td class="grey-text" style="padding:6px 0">Ventas promedio mensual</td>
+                                <td class="grey-text" style="padding:6px 0">Ventas promedio mensual (sin IVA)</td>
                                 <td style="text-align:right">${{ number_format($proyeccion['promedio_ventas'], 0, ',', '.') }}</td>
                             </tr>
                             <tr style="border-bottom:1px solid #f0f0f0">
@@ -352,8 +385,9 @@
             <thead>
                 <tr style="background:#eceff1">
                     <th>Mes</th>
-                    <th class="right-align">Ventas SII</th>
-                    <th class="right-align">PPM (0.25%)</th>
+                    <th class="right-align">Ventas SII sin IVA</th>
+                    <th class="right-align">IVA a pagar</th>
+                    <th class="right-align">PPM (0.125%)</th>
                     <th class="right-align">Retenc. BTE</th>
                     <th class="right-align">Total F29</th>
                     <th class="center-align">Estado</th>
@@ -362,6 +396,7 @@
             <tbody>
                 @php
                     $totalAnualVentas = 0;
+                    $totalAnualIva    = 0;
                     $totalAnualPpm    = 0;
                     $totalAnualRet    = 0;
                     $totalAnualF29    = 0;
@@ -376,11 +411,12 @@
                         </a>
                     </td>
                     @if($datos === null)
-                    <td class="right-align grey-text" colspan="4">—</td>
+                    <td class="right-align grey-text" colspan="5">—</td>
                     <td class="center-align grey-text" style="font-size:.75rem">Futuro</td>
                     @else
                     @php
                         $totalAnualVentas += $datos['ventas'];
+                        $totalAnualIva    += $datos['iva'];
                         $totalAnualPpm    += $datos['ppm'];
                         $totalAnualRet    += $datos['retenciones'];
                         $totalAnualF29    += $datos['total'];
@@ -390,6 +426,15 @@
                             ${{ number_format($datos['ventas'], 0, ',', '.') }}
                         @else
                             <span class="orange-text text-darken-1" style="font-size:.75rem">Sin sync</span>
+                        @endif
+                    </td>
+                    <td class="right-align">
+                        ${{ number_format($datos['iva'], 0, ',', '.') }}
+                        @if($datos['remanente'] > 0)
+                            <br><small class="green-text text-darken-1">rem. ${{ number_format($datos['remanente'], 0, ',', '.') }}</small>
+                        @endif
+                        @if($datos['aviso'])
+                            <span class="orange-text" title="Remanente anterior desconocido o sin reajuste UTM">*</span>
                         @endif
                     </td>
                     <td class="right-align blue-text text-darken-2">
@@ -430,6 +475,7 @@
                 <tr style="background:#f0faf7;font-weight:700">
                     <td>TOTAL {{ $anio }}</td>
                     <td class="right-align">${{ number_format($totalAnualVentas, 0, ',', '.') }}</td>
+                    <td class="right-align">${{ number_format($totalAnualIva, 0, ',', '.') }}</td>
                     <td class="right-align blue-text text-darken-2">${{ number_format($totalAnualPpm, 0, ',', '.') }}</td>
                     <td class="right-align orange-text text-darken-2">${{ number_format($totalAnualRet, 0, ',', '.') }}</td>
                     <td class="right-align red-text text-darken-2">${{ number_format($totalAnualF29, 0, ',', '.') }}</td>
