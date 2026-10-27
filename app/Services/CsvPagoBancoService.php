@@ -69,7 +69,7 @@ class CsvPagoBancoService
             // "Sueldo " (7) + "DD/MM" (5) + "-" (1) + "DD/MM" (5) = 18, siempre entra.
             $concepto = "Sueldo {$inicio}-{$fin}";
             $mensaje  = 'Pago de remuneracion Botacura';
-            $email1   = $user->correo_personal ?: '';
+            [$email1, $email2] = $this->correosAviso($user->correo_personal);
 
             $filas[] = implode(';', [
                 $cuentaOrigen['tipo'],
@@ -83,7 +83,7 @@ class CsvPagoBancoService
                 $concepto,
                 $mensaje,
                 $email1,
-                '',
+                $email2,
                 '',
             ]);
         }
@@ -92,6 +92,31 @@ class CsvPagoBancoService
             'csv'      => implode("\n", $filas),
             'omitidos' => $omitidos,
         ];
+    }
+
+    /**
+     * Email 1 = correo del trabajador; Email 2 = correo de control de Botacura
+     * (config bancos.email_control), para que el aviso de cada transferencia
+     * llegue a esa casilla y Remuneraciones marque la semana como pagada.
+     * Si el trabajador no tiene correo, el de control queda en Email 1.
+     * Si ambos son el mismo, va una sola vez.
+     *
+     * @return array [email1, email2]
+     */
+    private function correosAviso(?string $correoTrabajador): array
+    {
+        $trabajador = trim((string) $correoTrabajador);
+        $control    = trim((string) config('bancos.email_control', 'botacura.info@gmail.com'));
+
+        if ($trabajador === '') {
+            return [$control, ''];
+        }
+
+        if ($control === '' || strcasecmp($trabajador, $control) === 0) {
+            return [$trabajador, ''];
+        }
+
+        return [$trabajador, $control];
     }
 
     /**
