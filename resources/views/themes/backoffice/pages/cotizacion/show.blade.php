@@ -153,23 +153,28 @@
 
                                 </tbody>
                                 
+                                @php
+    $sumaItems = $sumaTotal;
+    if ($cotizacion->iva_incluido) { $netoV = (int) round($sumaItems / 1.19); $ivaV = $sumaItems - $netoV; $totalV = $sumaItems; }
+    else { $netoV = $sumaItems; $ivaV = (int) round($sumaItems * 0.19); $totalV = $netoV + $ivaV; }
+@endphp
                                 <tr>
                                     <td></td>
                                     <td></td>
                                     <td class="right-align"><strong>SUBTOTAL</strong></td>
-                                    <td>${{number_format($sumaTotal,0,'','.')}}</td>
+                                    <td>${{number_format($netoV,0,'','.')}}</td>
                                 </tr>
                                 <tr>
                                     <td></td>
                                     <td></td>
                                     <td class="right-align"><strong>IVA (19%)</strong></td>
-                                    <td>${{number_format($iva,0,'','.')}}</td>
+                                    <td>${{number_format($ivaV,0,'','.')}}</td>
                                 </tr>
                                 <tr>
                                     <td></td>
                                     <td></td>
                                     <td class="right-align"><strong>TOTAL</strong></td>
-                                    <td>${{number_format($sumaTotal+$iva,0,'','.')}}</td>
+                                    <td>${{number_format($totalV,0,'','.')}}</td>
                                 </tr>
                             </table>
 

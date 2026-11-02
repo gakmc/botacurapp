@@ -580,11 +580,15 @@ class BotController extends Controller
         ]);
 
         $simulacion = filter_var($request->input('simulacion', false), FILTER_VALIDATE_BOOLEAN);
-        $usuarioId  = $this->normalizarTelefono($request->telefono);
+        $canalBot   = $request->input('canal') === 'instagram' ? 'instagram' : 'whatsapp';
+        $usuarioId  = $canalBot === 'instagram' ? 'ig' . preg_replace('/\D/', '', $request->telefono) : $this->normalizarTelefono($request->telefono);
         $mensaje    = trim($request->mensaje);
         $nombre     = $request->nombre ?? 'Cliente';
 
         $conv      = $this->obtenerConversacion($usuarioId, $nombre);
+        if ($canalBot === 'instagram' && ($conv->canal ?? '') !== 'instagram') {
+            DB::table('bot_conversaciones')->where('id', $conv->id)->update(['canal' => 'instagram']);
+        }
         $historial = json_decode($conv->historial_json ?? '[]', true) ?: [];
 
         // El chat estuvo en manos del equipo (o derivado) y ahora vuelve al bot: se registra en el
@@ -606,6 +610,9 @@ class BotController extends Controller
             $ctxTelefono = "[Sistema: El cliente te escribe desde el WhatsApp {$usuarioId} — "
                 . "ese ES su teléfono de contacto, ya lo tienes. En el paso de teléfono NO lo "
                 . "preguntes desde cero: solo confírmalo brevemente, salvo que el cliente prefiera dar otro número.]";
+            if ($canalBot === 'instagram') {
+                $ctxTelefono = '[Sistema: El cliente te escribe por Instagram (mensaje directo): no tienes su teléfono. Sigue la sección CANAL DE ESTA CONVERSACIÓN.]';
+            }
             $clienteConocido = $this->buscarClientePorTelefono($usuarioId);
             if ($clienteConocido) {
                 $correo = (!empty($clienteConocido->correo) && strpos($clienteConocido->correo, '@temporal.') === false) ? $clienteConocido->correo : null;
@@ -634,7 +641,7 @@ class BotController extends Controller
         $programas      = $this->cargarProgramasBd();
         $menuOpciones   = $this->cargarMenuOpciones();
         $contexto       = $this->contextoCliente($usuarioId);
-        $systemPrompt   = (new BotPromptService())->getSystemPrompt($programas, $menuOpciones, $contexto['texto']);
+        $systemPrompt   = (new BotPromptService())->getSystemPrompt($programas, $menuOpciones, $contexto['texto'], isset($canalBot) ? $canalBot : 'whatsapp');
 
         $respuesta = $this->llamarClaude($systemPrompt, $historial, $nombre);
         if (!$respuesta) {
@@ -653,6 +660,10 @@ class BotController extends Controller
         $acciones   = [];
         for ($i = 0; $i < 4; $i++) {
             $accion = $respuesta['accion'] ?? 'responder';
+            if ($canalBot === 'instagram' && in_array($accion, ['crear_reserva', 'reagendar', 'guardar_seleccion_menu'], true)) {
+                $respuesta = ['accion' => 'responder', 'datos' => [], 'mensaje' => 'Para dejar tu reserva lista seguimos por WhatsApp, ahí te confirmamos y recibimos el abono: https://wa.me/56974484112 😊'];
+                break;
+            }
             if (!in_array($accion, ['verificar_disponibilidad', 'cotizar', 'ubicaciones', 'crear_reserva', 'reagendar', 'guardar_seleccion_menu', 'anotar_interes'], true)) {
                 break;
             }
@@ -770,6 +781,15 @@ class BotController extends Controller
                 $respuesta['adjunto_url']    = $urlMenu;
                 $respuesta['adjunto_nombre'] = \App\Services\BotMenuService::nombreArchivo();
                 $respuesta['adjunto_texto']  = \App\Services\BotMenuService::texto();
+            }
+        }
+
+        // Afiches de programas: se envían como imagen antes del texto
+        if (($respuesta['accion'] ?? '') === 'enviar_afiches') {
+            foreach (\App\Services\BotAfichesService::imagenes($respuesta['datos']['afiche'] ?? null) as $img) {
+                if (count($this->imagenes) < 4) {
+                    $this->imagenes[] = $img;
+                }
             }
         }
 

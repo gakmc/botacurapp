@@ -70,7 +70,7 @@
 
                   <input id="cantidad_personas" type="number"
                     class="form-control @error('cantidad_personas') is-invalid @enderror" name="cantidad_personas"
-                    value="{{$reserva->cantidad_personas ?? old('cantidad_personas', '')}}" required>
+                    value="{{ $personasPrincipal ?? $reserva->cantidad_personas ?? old('cantidad_personas', '') }}" required>
                   @error('cantidad_personas')
                   <span class="invalid-feedback" role="alert">
                     <strong style="color:red">{{ $message }}</strong>
@@ -84,6 +84,8 @@
 
 
               </div>
+              @include('themes.backoffice.pages.reserva.includes.programas_extra', ['programasExtra' => $programasExtra ?? collect()])
+
 
 
               @php
@@ -302,7 +304,7 @@ $('#abono_programa').on('change', function(){
 
 function calcularValorTotal(){
 
-  var total = Math.round(valorPrograma * cantidadPersonas) - abono - abonosExtra;
+  var total = Math.round(valorPrograma * cantidadPersonas) + (window.montoProgramasExtra ? window.montoProgramasExtra() : 0) - abono - abonosExtra;
   $('#total_pagar').val(total);
 }
 

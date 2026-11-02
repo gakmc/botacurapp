@@ -96,6 +96,15 @@ class DesayunoOnceService
 
     public static function incluye($reserva): bool
     {
+        if ($reserva instanceof \App\Reserva) {
+            foreach ($reserva->serviciosNombres() as $n) {
+                $n = mb_strtolower($n);
+                if (strpos($n, 'desayuno') !== false || strpos($n, 'once') !== false) {
+                    return true;
+                }
+            }
+            return false;
+        }
         $p = $reserva->programa ?? null;
         return $p && $p->servicios->contains(function ($s) {
             $n = mb_strtolower($s->nombre_servicio);

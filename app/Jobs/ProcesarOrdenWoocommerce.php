@@ -86,6 +86,9 @@ class ProcesarOrdenWoocommerce implements ShouldQueue
                 // 5) Crear venta con datos reales de Transbank
                 $venta = $this->crearVenta($reserva, $campos);
 
+                // 5b) Agendar: fuente web, ubicación y visita (igual que una reserva del bot)
+                $this->agendar($reserva, $programa, $campos);
+
                 // 6) Actualizar log como procesado OK
                 $wcOrder->update([
                     'procesado'             => 'ok',
@@ -271,7 +274,7 @@ class ProcesarOrdenWoocommerce implements ShouldQueue
             'cantidad_personas' => $campos['cantidad_personas'],
             'fecha_visita'      => $campos['fecha_visita'],
             'user_id'           => config('woocommerce.system_user_id', 1),
-            'cantidad_masajes'  => $programa->incluye_masajes
+            'cantidad_masajes'  => \App\Services\BotTarifasService::incluyeMasaje((int) $programa->id)
                                     ? $campos['cantidad_personas']
                                     : null,
             'observacion'       => $this->construirObservacion($campos),
@@ -418,5 +421,39 @@ class ProcesarOrdenWoocommerce implements ShouldQueue
         }
 
         return $numero;
+    }
+
+    /** Deja la compra web agendada como las del bot: fuente, ubicación y visita; avisa si el día no cumple la regla de grupos. */
+    private function agendar(Reserva $reserva, Programa $programa, array $campos)
+    {
+        try {
+            \Illuminate\Support\Facades\DB::table('reservas')->where('id', $reserva->id)->update(['fuente' => 'woocommerce']);
+        } catch (\Throwable $e) {
+        }
+        $fecha = (string) $campos['fecha_visita'];
+        $personas = (int) $campos['cantidad_personas'];
+        try {
+            $plan = \App\Services\BotUbicacionesService::plan($fecha, (int) $programa->id, $personas, null, (int) $reserva->id);
+            $req = \App\Http\Requests\Visita\StoreRequest::create('/reserva/' . $reserva->id . '/visitas', 'POST', \App\Services\BotUbicacionesService::payloadVisita($plan));
+            $req->setContainer(app());
+            $req->setRedirector(app(\Illuminate\Routing\Redirector::class));
+            $req->validateResolved();
+            app(\App\Http\Controllers\VisitaController::class)->store($req, $reserva);
+            \App\Services\BotUbicacionesService::registrar((int) $reserva->id, $plan);
+        } catch (\Throwable $e) {
+            Log::warning("[WC-Webhook] Reserva #{$reserva->id} creada sin ubicación/visita automática: " . $e->getMessage());
+        }
+        try {
+            $c = \Carbon\Carbon::parse($fecha);
+            $hab = \App\FechaDisponible::where('fecha', $c->toDateString())->where('habilitada', true)->exists();
+            $grupoOk = \App\Services\BotTarifasService::personasDelDia($c->toDateString()) >= \App\Services\BotTarifasService::parametros()['param_min_personas_lun_jue']
+                || \App\Services\BotTarifasService::permiteReservaChica($c, $personas);
+            if (!$hab || !$grupoOk) {
+                $nota = !$hab ? 'el día no está habilitado' : 'es lunes a miércoles y el día aún no tiene un grupo de 10+';
+                \Illuminate\Support\Facades\DB::table('reservas')->where('id', $reserva->id)->update(['observacion' => trim(($reserva->observacion ?? '') . "\n⚠️ Compra web: {$nota}. Revisar con el cliente.")]);
+                Log::warning("[WC-Webhook] Reserva #{$reserva->id}: {$nota}");
+            }
+        } catch (\Throwable $e) {
+        }
     }
 }

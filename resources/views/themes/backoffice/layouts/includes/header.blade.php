@@ -6,7 +6,7 @@
                 <ul class="left">
                     <li>
                         <h1 class="logo-wrapper">
-                            <a class="brand-logo darken-1" href="index.html">
+                            <a class="brand-logo darken-1" href="{{ route('backoffice.admin.menu') }}">
                                 <img alt="botacura logo" src="/images/logo/icono.png" >
                                 <span class="logo-text hide-on-med-and-down">BotacurApp</span>
                             </a>

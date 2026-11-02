@@ -50,7 +50,7 @@
                             <tr>
                                 <td>
                                         <strong>Nombre: </strong><strong style="color:#FF4081;">
-                                            {{ $reserva->cliente->nombre_cliente}}
+                                            @include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $reserva]){{ $reserva->cliente->nombre_cliente}}
                                         </strong>
                                         <p><strong>Programa: </strong>{{ $reserva->programa->nombre_programa }}</p>
                                         <p><strong>Asistentes: </strong>{{ $reserva->cantidad_personas }} personas</p>

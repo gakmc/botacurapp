@@ -1,513 +1,212 @@
+{{--
+    Menú lateral (oct 2026): secciones plegables, íconos Material Symbols, mismo control de roles que antes.
+    Cada opción se muestra solo si existe su ruta y el usuario tiene el rol. El menú anterior quedó en
+    left-sidebar.blade.php.bak.<fecha> en el servidor.
+--}}
+@php
+    $u = Auth::user();
+    $rol = function () use ($u) {
+        foreach (func_get_args() as $r) {
+            if ($u->has_role(config('app.' . $r . '_role'))) {
+                return true;
+            }
+        }
+        return false;
+    };
+    $fin = class_exists(\App\Http\Controllers\FinanzasCorreoController::class)
+        && \App\Http\Controllers\FinanzasCorreoController::puedeVer();
+    $esGarzonOAnfitriona = $rol('garzon', 'anfitriona');
+    $ticketsPendientes = $u->usaTickets() ? array_sum(\App\Ticket::contadoresPara($u)) : 0;
+    $staff = $u->has_any_role([config('app.garzon_role'), config('app.anfitriona_role'), config('app.barman_role'), config('app.cocina_role'), config('app.jefe_local_role')]);
+
+    // [texto, ícono, ruta, parámetros, visible, patrón de ruta activa, id del texto, contador]
+    $grupos = [
+        // Inicio: un solo botón directo al panel
+        ['Inicio', 'space_dashboard', [
+            ['Inicio', 'space_dashboard', $rol('admin', 'anfitriona', 'jefe_local') ? 'backoffice.admin.show' : 'backoffice.admin.menu', [], true, 'backoffice.admin.*'],
+        ], 'directo'],
+        ['Día a día', 'today', [
+            ['Reservas del día', 'fact_check', 'backoffice.finanzas.reservas_dia', [], $rol('admin'), 'backoffice.finanzas.reservas_dia*'],
+            ['Cruce de correos', 'mark_email_read', 'backoffice.finanzas.correos.index', [], $fin, 'backoffice.finanzas.correos.index'],
+            ['Bot de WhatsApp', 'smart_toy', 'backoffice.bot-configuracion.index', [], $rol('admin'), 'backoffice.bot-configuracion.*'],
+            ['Tickets', 'assignment', 'backoffice.tickets.index', [], $u->usaTickets(), 'backoffice.tickets.*', null, $ticketsPendientes],
+        ]],
+        ['Reservas', 'event', [
+            ['Registro del día', 'today', $esGarzonOAnfitriona ? 'backoffice.reservas.registro' : 'backoffice.reservas.registros',
+                $esGarzonOAnfitriona ? ['fecha' => now()->format('d-m-Y')] : [], $rol('admin', 'anfitriona', 'jefe_local', 'garzon'), 'backoffice.reservas.registro*'],
+            ['Horarios', 'calendar_month', 'backoffice.reserva.index', [], $rol('admin', 'anfitriona', 'jefe_local'), 'backoffice.reserva.index'],
+            ['Disponibilidad de fechas', 'event_available', 'backoffice.calendario', [], $rol('admin', 'anfitriona', 'jefe_local'), 'backoffice.calendario*'],
+            ['Ventas botacura.cl', 'shopping_cart', 'backoffice.compras.botacura', [], $rol('admin', 'jefe_local'), 'backoffice.compras.botacura'],
+            ['Clientes', 'group', 'backoffice.cliente.index', [], $rol('admin', 'jefe_local'), 'backoffice.cliente.*'],
+            ['Cotizaciones', 'request_quote', 'backoffice.cotizacion.index', [], $rol('admin', 'jefe_local'), 'backoffice.cotizacion.*'],
+            ['Gift cards', 'redeem', 'backoffice.giftcards.index', [], $rol('admin', 'jefe_local'), 'backoffice.giftcards.*'],
+        ]],
+        ['Operación', 'room_service', [
+            ['Gestión de consumo', 'receipt', 'backoffice.reserva.venta.cierre', [], $rol('garzon', 'anfitriona', 'admin', 'jefe_local'), 'backoffice.reserva.venta.cierre'],
+            ['Cocina · menús', 'restaurant', 'backoffice.menu.index', [], $rol('cocina', 'garzon', 'admin', 'jefe_local'), 'backoffice.menu.*'],
+            ['Barra · bebidas', 'local_bar', 'backoffice.barman.index', [], $rol('barman', 'admin', 'jefe_local'), 'backoffice.barman.index'],
+            ['Bebidas pedidas', 'local_bar', 'backoffice.barman.bebidas', [], $rol('garzon'), 'backoffice.barman.bebidas', 'bebidasGarzon'],
+            ['Masajes', 'spa', 'backoffice.masaje.index', [], $rol('admin', 'masoterapeuta', 'jefe_local'), 'backoffice.masaje.*'],
+            ['Venta directa', 'point_of_sale', 'backoffice.venta_directa.index', [], $rol('admin', 'anfitriona', 'garzon', 'jefe_local'), 'backoffice.venta_directa.*'],
+            ['Poro Poro', 'local_florist', 'backoffice.ventas_poroporo.index', [], $rol('admin', 'anfitriona', 'garzon', 'jefe_local'), 'backoffice.ventas_poroporo.*'],
+        ]],
+        ['Catálogo', 'menu_book', [
+            ['Programas', 'hot_tub', 'backoffice.programa.index', [], $rol('admin', 'jefe_local'), 'backoffice.programa.*'],
+            ['Servicios', 'category', 'backoffice.servicio.index', [], $rol('admin', 'jefe_local'), 'backoffice.servicio.*'],
+            ['Complementos', 'add_circle', 'backoffice.complemento.index', [], $rol('admin', 'jefe_local'), 'backoffice.complemento.*'],
+            ['Productos', 'inventory_2', 'backoffice.producto.index', [], $rol('admin', 'cocina', 'jefe_local'), 'backoffice.producto.*'],
+        ]],
+        ['Inventario', 'warehouse', [
+            ['Stock', 'inventory', 'backoffice.inventario.index', [], $rol('admin', 'cocina', 'jefe_local'), 'backoffice.inventario.*'],
+            ['Insumos', 'grocery', 'backoffice.insumo.index', [], $rol('admin', 'cocina', 'jefe_local'), 'backoffice.insumo.*'],
+        ]],
+        ['Finanzas', 'account_balance_wallet', [
+            ['Ingresos diarios', 'payments', 'backoffice.admin.ingresos', [], $rol('admin'), 'backoffice.admin.ingresos*'],
+            ['Egresos del mes', 'insights', 'backoffice.egreso.mes', [now()->year, now()->month], $fin, 'backoffice.egreso.*'],
+            ['Por pagar', 'receipt_long', 'backoffice.finanzas.deudas.index', [], $fin, 'backoffice.finanzas.deudas.*'],
+            ['Clasificar', 'rule', 'backoffice.finanzas.clasificar.index', [], $fin, 'backoffice.finanzas.clasificar.*'],
+            ['Movimientos', 'swap_vert', 'backoffice.finanzas.correos.movimientos', [], $fin, 'backoffice.finanzas.correos.movimientos'],
+            ['Utilidad', 'trending_up', 'backoffice.finanzas.utilidad', [], $rol('admin'), 'backoffice.finanzas.utilidad'],
+            ['Resumen anual', 'calendar_view_month', 'backoffice.finanzas.resumen.anual', [], $rol('admin'), 'backoffice.finanzas.resumen.*'],
+            ['F29 estimado', 'calculate', 'backoffice.impuesto.index', [], $rol('admin'), 'backoffice.impuesto.*'],
+            ['Informes', 'bar_chart', 'backoffice.informes.index', [], $rol('admin'), 'backoffice.informes.*'],
+        ]],
+        ['Equipo', 'badge', [
+            ['Turnos', 'schedule', 'backoffice.asignacion.index', [], $rol('admin', 'jefe_local'), 'backoffice.asignacion.*'],
+            ['Turnos sugeridos', 'groups', 'backoffice.equipo.turnos', [], $rol('admin', 'jefe_local'), 'backoffice.equipo.*'],
+            ['Asistencia', 'how_to_reg', 'backoffice.asistencia.index', [], $rol('admin', 'jefe_local'), 'backoffice.asistencia.*'],
+            ['Remuneraciones', 'request_page', 'backoffice.sueldos.index', [], $rol('admin'), 'backoffice.sueldos.*'],
+            ['Mis pagos', 'account_balance_wallet', 'backoffice.sueldo.view', [$u], $staff && !$rol('admin'), 'backoffice.sueldo.view'],
+            ['Mis pagos', 'account_balance_wallet', 'backoffice.sueldo.view_maso', [$u], $rol('masoterapeuta') && !$rol('admin'), 'backoffice.sueldo.view_maso'],
+            ['Datos bancarios', 'account_balance', 'backoffice.datos-bancarios.index', [], $rol('admin', 'jefe_local'), 'backoffice.datos-bancarios.*'],
+        ]],
+        ['Sistema', 'settings', [
+            ['Usuarios', 'manage_accounts', 'backoffice.user.index', [], $rol('admin', 'jefe_local'), 'backoffice.user.*'],
+            ['Roles', 'admin_panel_settings', 'backoffice.role.index', [], $rol('admin', 'jefe_local'), 'backoffice.role.*'],
+            ['Permisos', 'key', 'backoffice.permission.index', [], $rol('admin', 'jefe_local'), 'backoffice.permission.*'],
+            ['Auditoría', 'policy', 'backoffice.auditoria.index', [], $u->can('ver-auditoria'), 'backoffice.auditoria.*'],
+        ]],
+    ];
+
+    // Solo lo visible y con ruta existente; marca la opción activa
+    $menu = [];
+    $totalItems = 0;
+    foreach ($grupos as $g) {
+        $items = [];
+        $abierto = false;
+        foreach ($g[2] as $it) {
+            if (!$it[4] || !Route::has($it[2])) {
+                continue;
+            }
+            $activo = request()->routeIs($it[5]);
+            $abierto = $abierto || $activo;
+            $items[] = ['t' => $it[0], 'i' => $it[1], 'href' => route($it[2], $it[3]), 'activo' => $activo, 'id' => $it[6] ?? null, 'contador' => $it[7] ?? 0];
+        }
+        if ($items) {
+            $menu[] = ['t' => $g[0], 'i' => $g[1], 'items' => $items, 'abierto' => $abierto, 'directo' => ($g[3] ?? null) === 'directo'];
+            $totalItems += count($items);
+        }
+    }
+    $todoAbierto = $totalItems <= 9; // con pocas opciones (garzón, cocina…) todo queda a la vista
+    $iniciales = collect(explode(' ', trim($u->name)))->filter()->take(2)->map(function ($p) { return mb_strtoupper(mb_substr($p, 0, 1)); })->implode('');
+@endphp
 <aside id="left-sidebar-nav">
-    <ul class="side-nav fixed leftside-navigation" id="slide-out">
-        <li class="user-details cyan darken-2">
-            <div class="row">
-                <div class="col col s4 m4 l4">
-                    <img alt="" class="circle responsive-img valign profile-image cyan"
-                        src="/images/avatar/avatar-7.png" />
-                </div>
-                <div class="col col s8 m8 l8">
-                    <ul class="dropdown-content" id="profile-dropdown-nav">
-                        <li>
-                            <a class="grey-text text-darken-1" href="#">
-                                <i class="material-icons">face</i>
-                                Perfil
-                            </a>
-                        </li>
-                        @if (Auth::user()->has_any_role([config('app.garzon_role') , config('app.anfitriona_role') , config('app.barman_role'), config('app.cocina_role'), config('app.jefe_local_role')]))     
-                        <li>
-                            <a class="grey-text text-darken-1" href="{{route('backoffice.sueldo.view', Auth::user())}}">
-                                <i class="material-icons">account_balance_wallet</i>
-                                Pagos
-                            </a>
-                        </li>
-                        @endif
-                        @if (Auth::user()->has_any_role([config('app.masoterapeuta_role')]))     
-                        <li>
-                            <a class="grey-text text-darken-1" href="{{route('backoffice.sueldo.view_maso', Auth::user())}}">
-                                <i class="material-icons">account_balance_wallet</i>
-                                Pagos
-                            </a>
-                        </li>
-                        @endif
-                        <li>
-                            <a class="grey-text text-darken-1" href="#">
-                                <i class="material-icons">settings</i>
-                                Ajustes
-                            </a>
-                        </li>
-                        <li>
-                            <a class="grey-text text-darken-1" href="#">
-                                <i class="material-icons">live_help</i>
-                                Ayuda
-                            </a>
-                        </li>
-                        <li class="divider"></li>
-                        <li>
-                            <a class="grey-text text-darken-1" href="{{ route('logout') }}" onclick="event.preventDefault();
-                            document.getElementById('logout-form').submit();">
-                                      <i class="material-icons">keyboard_tab</i>
-                                      {{ __('Logout') }}
-                                  </a>
-                        </li>
-                    </ul>
-                    <a class="btn-flat dropdown-button waves-effect waves-light white-text profile-btn dropdown-trigger"
-                        data-activates="profile-dropdown-nav"  href="#">
-                        {{Auth::user()->name}}
-                        <i class="mdi-navigation-arrow-drop-down right"></i>
-                    </a>
-                    <p class="user-roal">{{Auth::user()->list_roles()}}</p>
-                </div>
-            </div>
+    <ul class="side-nav fixed leftside-navigation bx-nav" id="slide-out">
+        <li class="bx-buscar">
+            <label>
+                <span class="ms" aria-hidden="true">search</span>
+                <input type="search" id="bx-filtro" placeholder="Buscar en el menú" aria-label="Buscar en el menú" autocomplete="off">
+            </label>
         </li>
-        <li class="no-padding">
-            <ul class="collapsible" data-collapsible="accordion">
-                <li class="bold hide-on-med-and-up">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.admin.menu') }}">
-                        <i class="material-icons">
-                            apps
-                        </i>
-                        <span class="nav-text">
-                            Panel del Usuario
-                        </span>
-                    </a>
-                </li>
-
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.admin.show') }}">
-                        <i class="material-icons">
-                            pie_chart_outlined
-                        </i>
-                        <span class="nav-text">
-                            Panel de administración
-                        </span>
-                    </a>
-                </li>
-
-                @endif
-
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    
-
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.cliente.index') }}">
-                        <i class="material-icons">
-                            airport_shuttle
-                        </i>
-                        <span class="nav-text">
-                            Clientes
-                        </span>
-                    </a>
-                </li>
-
-                {{-- <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reservas.registros') }}">
-                        <i class="material-icons">
-                            assignment_ind
-                        </i>
-                        <span class="nav-text">
-                            Reservas
-                        </span>
-                    </a>
-                </li> --}}
-
-                @endif
-                
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')) || Auth::user()->has_role(config('app.garzon_role')))
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ 
-                        Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) 
-                        ? route ('backoffice.reservas.registro',["fecha" => now()->format('d-m-Y')]) 
-                        : route ('backoffice.reservas.registros') }}">
-                        <i class="material-icons">
-                            assignment_ind
-                        </i>
-                        <span class="nav-text">
-                            Reservas
-                        </span>
-                    </a>
-                </li>
-                @endif
-
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reserva.index') }}">
-                        <i class="material-icons">
-                            assignment
-                        </i>
-                        <span class="nav-text">
-                            Horarios
-                        </span>
-                    </a>
-                </li>
-
-                @endif
-
-                @if(Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.reserva.venta.cierre') }}">
-                            <i class="material-icons">
-                                local_drink
-                            </i>
-                            <span class="nav-text">
-                                Gestion Consumo
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.programa.index') }}">
-                            <i class="material-icons">
-                                style
-                            </i>
-                            <span class="nav-text">
-                                Programas
-                            </span>
-                        </a>
-                    </li>
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.servicio.index') }}">
-                            <i class="material-icons">
-                                room_service
-                            </i>
-                            <span class="nav-text">
-                                Servicios
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.jefe_local_role'))) 
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.insumo.index') }}">
-                            <i class="material-icons">
-                                store
-                            </i>
-                            <span class="nav-text">
-                                Insumos
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.inventario.index') }}">
-                            <i class="material-icons">
-                                kitchen
-                            </i>
-                            <span class="nav-text">
-                                Inventario
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.producto.index') }}">
-                            <i class="material-icons">
-                                shopping_basket
-                            </i>
-                            <span class="nav-text">
-                                Productos
-                            </span>
-                        </a>
-                    </li>
-                @endif
-
-
-                @if (Auth::user()->has_role(config('app.cocina_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.menu.index') }}">
-                            <i class="material-icons">
-                                restaurant
-                            </i>
-                            <span class="nav-text">
-                                Menús
-                            </span>
-                        </a>
-                    </li>
-                @endif
-
-                @if (Auth::user()->has_role(config('app.barman_role')) || Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.index') }}">
-                            <i class="material-icons">
-                                local_bar
-                            </i>
-                            <span class="nav-text">
-                                Bebidas
-                            </span>
-                        </a>
-                    </li>
-                @endif
-
-                @if (Auth::user()->has_role(config('app.garzon_role')))
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.barman.bebidas') }}">
-                            <i class="material-icons">
-                                local_bar
-                            </i>
-                            <span id="bebidasGarzon" class="nav-text">
-                                Bebidas 
-                            </span>
-                        </a>
-                    </li>
-                @endif
-
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.masoterapeuta_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.masaje.index') }}">
-                            <i class="material-icons">
-                                airline_seat_flat
-                            </i>
-                            <span class="nav-text">
-                                Masajes
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-                
-                @if(Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.anfitriona_role')) || Auth::user()->has_role(config('app.garzon_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.venta_directa.index') }}">
-                            <i class="material-icons">
-                                local_mall
-                            </i>
-                            <span class="nav-text">
-                                Venta Directa
-                            </span>
-                        </a>
-                    </li>
-
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.ventas_poroporo.index') }}">
-                            <i class="material-icons">
-                                local_florist
-                            </i>
-                            <span class="nav-text">
-                                Poro Poro
-                            </span>
-                        </a>
-                    </li>
-
-
-
-                @endif
-
-                @if (Auth::user()->has_role(config('app.admin_role')))
-                
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.informes.index') }}">
-                        <i class="material-icons">
-                            assessment
-                        </i>
-                        <span class="nav-text">
-                            Informes
-                        </span>
-                    </a>
-                </li>
-
-
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route ('backoffice.bot-configuracion.index') }}">
-                        <i class="material-icons">
-                            android
-                        </i>
-                        <span class="nav-text">
-                            Configuracion del Bot
-                        </span>
-                    </a>
-                </li>
-                @endif
-                
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.user.index') }}">
-                            <i class="material-icons">
-                                people
-                            </i>
-                            <span class="nav-text">
-                                Usuarios del Sistema
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.role.index') }}">
-                            <i class="material-icons">
-                                perm_identity
-                            </i>
-                            <span class="nav-text">
-                                Roles del Sistema
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.permission.index') }}">
-                            <i class="material-icons">
-                                vpn_key
-                            </i>
-                            <span class="nav-text">
-                                Permisos del Sistema
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.datos-bancarios.index') }}">
-                            <i class="material-icons">
-                                account_balance
-                            </i>
-                            <span class="nav-text">
-                                Datos Bancarios
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.asignacion.index') }}">
-                            <i class="material-icons">
-                                person_add
-                            </i>
-                            <span class="nav-text">
-                                Asignacion de turno
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-
-
-                @if (Auth::user()->has_role(config('app.admin_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.egreso.index') }}">
-                            <i class="material-icons">
-                                show_chart
-                            </i>
-                            <span class="nav-text">
-                                Egresos
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.impuesto.index') }}">
-                            <i class="material-icons">account_balance</i>
-                            <span class="nav-text">F29 Estimado</span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.finanzas.utilidad') }}">
-                            <i class="material-icons">show_chart</i>
-                            <span class="nav-text">Utilidad</span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route('backoffice.finanzas.reservas_dia') }}">
-                            <i class="material-icons">event_available</i>
-                            <span class="nav-text">Reservas del día</span>
-                        </a>
-                    </li>
-
-                @endif
-
-                @if (Auth::user()->has_role(config('app.admin_role')) || Auth::user()->has_role(config('app.jefe_local_role')))
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.complemento.index') }}">
-                            <i class="material-icons">
-                                data_usage
-                            </i>
-                            <span class="nav-text">
-                                Complementos
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.cotizacion.index') }}">
-                            <i class="material-icons">
-                                local_atm
-                            </i>
-                            <span class="nav-text">
-                                Cotizaciones
-                            </span>
-                        </a>
-                    </li>
-
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.giftcards.index') }}">
-                            <i class="material-icons">
-                                redeem
-                            </i>
-                            <span class="nav-text">
-                                Gift Cards
-                            </span>
-                        </a>
-                    </li>
-
-                @endif
-
-                @if (Auth::user()->usaTickets())
-                @php $ticketsPendientes = array_sum(\App\Ticket::contadoresPara(Auth::user())); @endphp
-                <li class="bold">
-                    <a class="waves-effect waves-cyan" href="{{ route('backoffice.tickets.index') }}">
-                        <i class="material-icons">
-                            assignment
-                        </i>
-                        <span class="nav-text">
-                            Tickets
-                        </span>
-                        @if ($ticketsPendientes > 0)
-                            <span class="new badge red" data-badge-caption="">{{ $ticketsPendientes }}</span>
-                        @endif
-                    </a>
-                </li>
-                @endif
-
-                @can('ver-auditoria')
-                    <li class="bold">
-                        <a class="waves-effect waves-cyan" href="{{ route ('backoffice.auditoria.index') }}">
-                            <i class="material-icons">
-                                history
-                            </i>
-                            <span class="nav-text">
-                                Auditoría
-                            </span>
-                        </a>
-                    </li>
-                @endcan
-
-
-
-            </ul>
+        @foreach($menu as $g)
+            @if($g['directo'])
+            <li class="bx-grupo">
+                <a href="{{ $g['items'][0]['href'] }}" class="bx-directo {{ $g['items'][0]['activo'] ? 'activo' : '' }}" @if($g['items'][0]['activo']) aria-current="page" @endif>
+                    <span class="ms" aria-hidden="true">{{ $g['i'] }}</span>
+                    <span class="bx-grupo-t">{{ $g['t'] }}</span>
+                </a>
+            </li>
+            @continue
+            @endif
+            <li class="bx-grupo">
+                <details {{ ($g['abierto'] || $todoAbierto) ? 'open' : '' }}>
+                    <summary>
+                        <span class="ms" aria-hidden="true">{{ $g['i'] }}</span>
+                        <span class="bx-grupo-t">{{ $g['t'] }}</span>
+                        <span class="ms bx-chev" aria-hidden="true">expand_more</span>
+                    </summary>
+                    <ul>
+                        @foreach($g['items'] as $it)
+                            <li>
+                                <a href="{{ $it['href'] }}" class="bx-item {{ $it['activo'] ? 'activo' : '' }}" @if($it['activo']) aria-current="page" @endif>
+                                    <span class="ms" aria-hidden="true">{{ $it['i'] }}</span>
+                                    <span class="bx-item-t" @if($it['id']) id="{{ $it['id'] }}" @endif>{{ $it['t'] }}@if($it['contador'] > 0)<span class="new badge" data-badge-caption="">{{ $it['contador'] }}</span>@endif</span>
+                                </a>
+                            </li>
+                        @endforeach
+                    </ul>
+                </details>
+            </li>
+        @endforeach
+        <li class="bx-pie">
+            <span class="bx-avatar" aria-hidden="true">{{ $iniciales }}</span>
+            <span class="bx-pie-t">{{ $u->name }}<br><small>{{ $u->list_roles() }}</small></span>
+            <a href="{{ route('logout') }}" class="bx-salir" aria-label="Cerrar sesión" title="Cerrar sesión"
+               onclick="event.preventDefault(); document.getElementById('logout-form').submit();"><span class="ms" aria-hidden="true">logout</span></a>
         </li>
     </ul>
 
-    <a class="sidebar-collapse sidenav-trigger btn-floating btn-medium waves-effect waves-light hide-on-large-only"
-        data-activates="slide-out" data-target="slide-out" href="#">
+    <a class="sidebar-collapse sidenav-trigger btn-floating btn-medium waves-effect waves-light hide-on-large-only bx-abrir"
+        data-activates="slide-out" data-target="slide-out" href="#" aria-label="Abrir menú">
         <i class="material-icons">menu</i>
     </a>
-
 
     <form id="logout-form" action="{{ route('logout') }}" method="POST" style="display: none;">
         @csrf
     </form>
 </aside>
+<script>
+    // Calendarios en el celular: vista de lista, alto automático y barra simple (vale para todos los FullCalendar)
+    document.addEventListener('DOMContentLoaded', function () {
+        if (!window.FullCalendar || !FullCalendar.Calendar || FullCalendar.Calendar.__bx) { return; }
+        var Orig = FullCalendar.Calendar;
+        var Nuevo = function (el, opts) {
+            opts = opts || {};
+            if (window.innerWidth < 700) {
+                opts = Object.assign({}, opts);
+                var conLista = (opts.plugins || []).some(function (p) { return p === 'list' || (p && p.name === 'list'); });
+                var vista = opts.defaultView || opts.initialView || 'dayGridMonth';
+                if (conLista && vista === 'dayGridMonth') { opts.defaultView = 'listMonth'; }
+                opts.height = 'auto';
+                if (opts.header) {
+                    opts.header = { left: 'prev,next', center: 'title', right: conLista ? 'listMonth,dayGridMonth' : 'today' };
+                }
+                opts.buttonText = Object.assign({ listMonth: 'Lista', dayGridMonth: 'Mes', today: 'Hoy' }, opts.buttonText || {}, { listMonth: 'Lista' });
+            }
+            return new Orig(el, opts);
+        };
+        Nuevo.prototype = Orig.prototype;
+        Nuevo.__bx = true;
+        FullCalendar.Calendar = Nuevo;
+    });
+
+    // Filtro del menú: muestra solo las opciones que coinciden y abre su sección
+    (function () {
+        var f = document.getElementById('bx-filtro');
+        if (!f) { return; }
+        var norm = function (s) { return (s || '').toLowerCase().normalize('NFD').replace(/[̀-ͯ]/g, ''); };
+        f.addEventListener('input', function () {
+            var q = norm(f.value.trim());
+            document.querySelectorAll('#slide-out .bx-grupo').forEach(function (g) {
+                var d = g.querySelector('details'), hay = 0;
+                g.querySelectorAll('.bx-item').forEach(function (a) {
+                    var ok = !q || norm(a.textContent).indexOf(q) >= 0 || norm(g.querySelector('.bx-grupo-t').textContent).indexOf(q) >= 0;
+                    a.parentNode.style.display = ok ? '' : 'none';
+                    hay += ok ? 1 : 0;
+                });
+                g.style.display = hay ? '' : 'none';
+                if (q) { d.open = hay > 0; }
+            });
+        });
+    })();
+</script>

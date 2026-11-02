@@ -267,6 +267,10 @@ Auth::routes(['verify' => true]);
 Route::get('sesion/estado', 'SesionController@estado')->name('sesion.estado');
 
 Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
+    require base_path('routes/finanzas.php'); // Finanzas: correos bancarios
+    require base_path('routes/equipo.php'); // Equipo: turnos sugeridos
+    require base_path('routes/poroporo_productos.php'); // Poro Poro: productos editables
+
     // Route::get('role', 'RoleController@index')->name('role.index');
     // Route::get('home','AdminController@show')->name('admin.show');
 
@@ -385,6 +389,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         Route::post('/aprendizajes/{id}', 'BotConfiguracionController@accionAprendizaje')->name('aprendizajes.accion');
         Route::get('/aprendizajes/conversacion/{id}', 'BotConfiguracionController@conversacionAprendizaje')->name('aprendizajes.conversacion');
         Route::post('/fotos', 'BotConfiguracionController@updateFotos')->name('fotos.update');
+        Route::post('/afiches', 'BotAfichesController@update')->name('afiches.update');
         Route::post('/estado', 'BotConfiguracionController@updateEstado')->name('estado.update');
         Route::post('/pendientes/procesar', 'BotConfiguracionController@procesarPendientes')->name('pendientes.procesar');
         Route::post('/pasos', 'BotConfiguracionController@updatePasos')->name('pasos.update');
@@ -487,6 +492,9 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Cocina (Menús)
     Route::get('/cocina', 'MenuController@index')->name('cocina.index');
     Route::get('/cocina/dia', 'MenuController@dia')->name('cocina.dia'); // JSON
+    Route::post('/cocina/postres', 'PostreDiaController@store')->name('cocina.postres.store');
+    Route::put('/cocina/postres/{id}', 'PostreDiaController@update')->name('cocina.postres.update');
+    Route::delete('/cocina/postres/{id}', 'PostreDiaController@destroy')->name('cocina.postres.destroy');
 
     Route::get('reserva/{reserva}/edit', 'ReservaController@edit')->name('reserva.edit');
 
@@ -591,6 +599,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('venta/cierre_ventas', 'VentaController@index_cierre')->name('reserva.venta.cierre');
 
     Route::get('reserva/{reserva}/venta/{ventum}/cerrar', 'VentaController@cerrar')->name('reserva.venta.cerrar');
+    Route::post('venta/{venta}/diferencia', 'VentaDiferenciaController@update')->name('venta.diferencia.update');
     Route::match(['put', 'patch'], 'reserva/{reserva}/venta/{ventum}/cerrarventa', 'VentaController@cerrarventa')->name('reserva.venta.cerrarventa');
 
     // Route::get('reserva/{reserva}/diferencia', 'ReservaController@showDiferenciaImage')->name('reserva.diferencia.imagen');
@@ -626,6 +635,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::match(['put', 'patch'], 'reserva/{reserva}/desayuno_once_update', 'ReservaController@desayunoOnceUpdate')->name('reserva.desayuno_once_update');
 
     Route::post('/masajes/asignar_multiples', 'MasajeController@asignar_multiples')->name('masaje.asignar_multiples');
+    Route::match(['put', 'patch'], 'masajes/{masaje}/admin', 'MasajeController@adminUpdate')->name('masaje.admin_update');
 
     Route::get('masajes/valores', 'MasajeController@index_valor')->name('masajes.valores');
     Route::get('masajes/valores/create', 'MasajeController@valor_masaje_create')->name('masajes.valores.create');
@@ -674,7 +684,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Rutas Delete para eliminar detalle de consumo
     Route::delete('/consumo/detalle/{tipo}/{id}', 'ConsumoController@destroyDetalle')->name('consumo.detalle.destroy');
 
-    Route::get('/egreso/{anio}/{mes}', 'EgresoController@index_mes')->name('egreso.mes');
+    Route::get('/egreso/{anio}/{mes}/anterior', 'EgresoController@index_mes')->name('egreso.mes.anterior');
+    Route::get('/egreso/{anio}/{mes}', 'EgresosPanelController@mes')->name('egreso.mes');
 
     Route::post('/egreso/pago_fijo', 'EgresoController@pago_fijo')->name('egreso.pago_fijo');
 
@@ -690,6 +701,8 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('finanzas/ingresos', 'ReporteFinancieroController@ingresosPercibidos')->name('finanzas.ingresos_percibidos');
 
     Route::get('bot-conversaciones', 'BotConversacionesController@index')->name('bot-conversaciones.index');
+    Route::post('bot-conversaciones/instagram-bot', 'BotInstagramController@cambiar')->name('bot-conversaciones.instagram_bot');
+    Route::post('bot-conversaciones/chat-bot', 'BotChatPausaController@cambiar')->name('bot-conversaciones.chat_bot');
     Route::post('bot-conversaciones/interes/avisar', 'BotConversacionesController@avisarInteres')->name('bot-conversaciones.interes.avisar');
     Route::post('bot-conversaciones/interes/{id}/estado', 'BotConversacionesController@estadoInteres')->name('bot-conversaciones.interes.estado');
 
@@ -704,6 +717,7 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     Route::get('finanzas/egresos/{anio}/{mes}', 'ReporteFinancieroController@acumuladoEgresos')->name('finanzas.egresos.mes');
 
     Route::get('giftcards/{gc}/enviarpdf', 'GiftCardController@enviarpdf')->name('giftcards.enviar');
+    Route::get('giftcards/{gc}/pdf', 'GiftCardController@verpdf')->name('giftcards.verpdf');
     Route::get('giftcards/{gc}/reservar', 'GiftCardController@byPassReserva')->name('giftcards.reservar');
 
     Route::get('informes', 'InformeController@index')->name('informes.index');
@@ -735,3 +749,7 @@ Route::get('/pago/webpay/retorno', 'PagoController@retornoWebpay')->name('pago.w
 // Conectar el WhatsApp de Bot-Acura a la API (coexistencia con la app WhatsApp Business)
 Route::get('bot-configuracion/whatsapp-conectar', 'WhatsAppConectarController@index')->name('whatsapp.conectar');
 Route::post('bot-configuracion/whatsapp-conectar/finalizar', 'WhatsAppConectarController@finalizar')->name('whatsapp.conectar.finalizar');
+
+// Política de privacidad pública (Meta)
+Route::view('privacidad', 'privacidad')->name('privacidad');
+Route::redirect('privacy-policy', '/privacidad');

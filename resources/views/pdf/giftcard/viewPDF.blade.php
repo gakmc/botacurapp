@@ -1,168 +1,95 @@
+@php
+    // Diseño "Valle" (oct 2026). wkhtmltopdf usa un WebKit antiguo: sin flex ni grid, todo con posiciones y tablas.
+    $f = function ($p) { return 'file:///' . ltrim(str_replace('\\', '/', public_path($p)), '/'); };
+    $acento = '#037A61';
+    $conDuracion = ['masaje', 'tinaja', 'sauna'];
+    $personas = (int) ($gc->cantidad_personas ?? 0);
+    $zoom = isset($zoom) ? (float) $zoom : 1.0; // 1.3 cuando el wkhtmltopdf del servidor achica la página
+@endphp
 <!DOCTYPE html>
-<html>
-
+<html lang="es">
 <head>
-    <meta charset="UTF-8">
-    <title>Entrega de Gift Card</title>
+<meta charset="UTF-8">
+<title>Gift Card Botacura</title>
+<style>
+    @font-face { font-family: 'GCSerif'; src: url("{{ $f('assents/fonts/giftcard/fraunces-400.ttf') }}") format('truetype'); }
+    @font-face { font-family: 'GCSerifBold'; src: url("{{ $f('assents/fonts/giftcard/fraunces-600.ttf') }}") format('truetype'); }
+    @font-face { font-family: 'GCSans'; src: url("{{ $f('assents/fonts/giftcard/manrope-400.ttf') }}") format('truetype'); }
+    @font-face { font-family: 'GCSansMedium'; src: url("{{ $f('assents/fonts/giftcard/manrope-500.ttf') }}") format('truetype'); }
+    @font-face { font-family: 'GCSansBold'; src: url("{{ $f('assents/fonts/giftcard/manrope-700.ttf') }}") format('truetype'); }
 
-    <style>
-        @font-face {
-            font-family: 'Pacifico';
-            src: url("file:///{{ str_replace('\\','/', public_path('assents/fonts/pacifico/Pacifico-Regular.ttf')) }}") format('truetype');
-            font-weight: normal;
-            font-style: normal;
-        }
+    html, body { margin: 0; padding: 0; background: #F4EFE4; }
+    body { font-family: 'GCSans', Arial, sans-serif; color: #1D2A25; }
+    .hoja { position: relative; width: 1123px; height: 793px; overflow: hidden; background: #F4EFE4; }
 
-        body {
-            font-family: "Roboto", sans-serif;
-            font-size: 15px;
-            margin: 0;
-            padding: 0;
-        }
+    .foto { position: absolute; left: 0; top: 0; width: 470px; height: 793px; }
+    .foto img.fondo { position: absolute; left: 0; top: 0; width: 470px; height: 793px; }
+    .logo { position: absolute; top: 44px; left: 130px; width: 210px; }
+    .programa { position: absolute; left: 48px; right: 48px; bottom: 46px; color: #F4EFE4; }
+    .programa .etq { font-family: 'GCSansBold', Arial, sans-serif; font-size: 12px; letter-spacing: 3px; text-transform: uppercase; color: #E6E0D2; }
+    .programa .nombre { font-family: 'GCSerifBold', Georgia, serif; font-size: 30px; line-height: 1.15; margin: 6px 0 14px; }
+    .programa .serv { font-size: 15px; line-height: 1.75; }
 
-        h5 {
-            font-size: 25px;
-            color: #039B7B;
-            margin: 0;
-        }
+    .lado { position: absolute; left: 470px; top: 0; width: 525px; height: 737px; padding: 56px 64px 0 64px; }
+    .eyebrow { font-family: 'GCSansBold', Arial, sans-serif; font-size: 13px; letter-spacing: 4px; text-transform: uppercase; color: {{ $acento }}; }
+    h1 { font-family: 'GCSerif', Georgia, serif; font-weight: normal; font-size: 76px; line-height: 1; margin: 14px 0 0; }
+    .pill { position: absolute; top: 60px; right: 64px; border: 1.5px solid {{ $acento }}; color: {{ $acento }}; border-radius: 30px; padding: 7px 18px; font-family: 'GCSansBold', Arial, sans-serif; font-size: 14px; white-space: nowrap; }
+    .linea { height: 1px; background: #CFC6B4; margin: 36px 0 30px; }
+    table.datos { width: 100%; border-collapse: collapse; table-layout: fixed; }
+    table.datos td { width: 50%; vertical-align: top; padding: 0 16px 26px 0; }
+    .etq { font-family: 'GCSansMedium', Arial, sans-serif; font-size: 12px; letter-spacing: 2.5px; text-transform: uppercase; color: #5E6A64; }
+    .nombre-gc { font-family: 'GCSerif', Georgia, serif; font-size: 28px; line-height: 1.15; margin-top: 6px; }
+    .dato { font-family: 'GCSansMedium', Arial, sans-serif; font-size: 20px; margin-top: 6px; }
 
-        /* Contenedor principal */
-        .container {
-            text-align: center;
-            padding: 1rem;
-        }
-
-        /* Tarjeta */
-        .card {
-            max-width: 900px;
-            width: 100%;
-            background-color: #363636; 
-            border-radius: 15px;
-            overflow: hidden;
-            box-shadow: 0 4px 6px rgba(0, 0, 0, 0.2);
-            font-size: 14px;
-            display: inline-block; /* para centrar la tarjeta */
-            text-align: left; /* contenido alineado a la izquierda */
-        }
-
-        /* Columnas simuladas (inline-block) */
-        .left-side,
-        .right-side {
-            display: inline-block;
-            width: 49%;
-            vertical-align: top;
-            box-sizing: border-box;
-        }
-
-        /* Columna izquierda */
-        .left-side {
-            padding: 20px;
-            background: linear-gradient(rgba(0, 0, 0, 0.7), rgba(0, 0, 0, 0.7)),
-            url("file:///{{ str_replace('\\','/', public_path('images/gc/fondo-botacura.jpeg')) }}") center/cover no-repeat;
-            color: #e0f2f1
-        }
-
-        .left-side ul {
-            list-style: none;
-            padding-left: 0;
-            margin-top: 10px;
-            text-align: left;
-        }
-
-        .left-side h6 {
-            font-size: 23px;
-            margin: 10px 0;
-            text-align: center;
-        }
-
-        /* Columna derecha */
-        .right-side {
-            padding: 20px;
-            background-color: #e0f2f1;
-        }
-
-        .right-side h6 {
-            font-size: 18px;
-            margin: 0px;
-        }
-
-        .gift-title {
-            font-family: 'Pacifico', cursive;
-            color: #00695c;
-            font-size: 25px;
-            margin-bottom: 10px;
-        }
-
-        .whatsapp {
-            margin-top: 40px;
-        }
-
-        .code {
-            text-align: center;
-            margin-top: 20px;
-        }
-
-        .code h5 {
-            color: #039B7B;
-            font-size: 20px;
-            margin-bottom: 5px;
-        }
-
-        img.barcode {
-            margin-top: 5px;
-            max-width: 100%;
-        }
-
-        li{
-            list-style: none;
-        }
-    </style>
+    .codigo { position: absolute; left: 64px; right: 64px; bottom: 70px; background: #FFFFFF; border-radius: 14px; padding: 20px 28px; }
+    .codigo table { width: 100%; border-collapse: collapse; }
+    .codigo .valor { font-family: 'GCSerifBold', Georgia, serif; font-size: 36px; letter-spacing: 5px; color: {{ $acento }}; margin-top: 4px; }
+    .codigo img { height: 60px; width: 220px; }
+    .nota { position: absolute; left: 64px; right: 64px; bottom: 40px; font-size: 12px; color: #5E6A64; }
+</style>
 </head>
-
 <body>
-
-<div class="container">
-    <div class="card">
-        <!-- Lado izquierdo -->
-        <div class="left-side">
-            <h5>BOTACURA <br>
-                <small style="font-size: 16px;">Cajón del Maipo</small>
-            </h5>
-            <h6>{{ $programa->nombre_programa }}</h6>
-
-            <ul>
-                @php
-                    $lista = ['masaje','tinaja','sauna'];
-                @endphp
+<div class="hoja" @if ($zoom != 1.0) style="zoom: {{ $zoom }};" @endif>
+    <div class="foto">
+        <img class="fondo" src="{{ $f('images/gc/giftcard-foto.jpg') }}" alt="">
+        <img class="logo" src="{{ $f('images/gc/logo-crema.png') }}" alt="Botacura · Cajón del Maipo">
+        <div class="programa">
+            <div class="etq">Programa</div>
+            <div class="nombre">{{ $programa->nombre_programa }}</div>
+            <div class="serv">
                 @foreach ($programa->servicios as $servicio)
-                    <li>{{ $servicio->nombre_servicio }}
-                        @if (in_array(strtolower($servicio->nombre_servicio), $lista))
-                            - ({{ $servicio->duracion }} mins)
-                        @endif
-                        @if (strtolower($servicio->nombre_servicio) == 'piscina')
-                                                    (agua fría)
-                        @endif
-                    </li>
+                    <div>{{ $servicio->nombre_servicio }}@if (in_array(strtolower($servicio->nombre_servicio), $conDuracion) && $servicio->duracion) · {{ $servicio->duracion }} min @endif @if (strtolower($servicio->nombre_servicio) == 'piscina') (agua fría) @endif</div>
                 @endforeach
-            </ul>
-        </div>
-
-        <!-- Lado derecho -->
-        <div class="right-side">
-            <h5 class="gift-title">Gift Card &#127873;</h5>
-            <p><strong>De:</strong> {{ $gc->de }}</p>
-            <p><strong>Para:</strong> {{ $gc->para }}</p>
-            <p><strong>Válido hasta:</strong> {{ $gc->valido }}</p>
-            <p class="whatsapp">Programa tu horario al WhatsApp:</p>
-            <h6><strong>+56 9 7448 4112</strong></h6>
-
-            <div class="code">
-                <h5>Código: {{ $gc->codigo }}</h5>
-                <img class="barcode" src="data:image/png;base64,{{ $barcode }}" alt="Código de barras">
             </div>
         </div>
     </div>
-</div>
 
+    <div class="lado">
+        <div class="eyebrow">Un regalo para desconectarse</div>
+        <h1>Gift Card</h1>
+        @if ($personas > 0)
+            <div class="pill">{{ $personas }} {{ $personas === 1 ? 'persona' : 'personas' }}</div>
+        @endif
+        <div class="linea"></div>
+        <table class="datos">
+            <tr>
+                <td><div class="etq">Para</div><div class="nombre-gc">{{ $gc->para }}</div></td>
+                <td><div class="etq">De</div><div class="nombre-gc">{{ $gc->de }}</div></td>
+            </tr>
+            <tr>
+                <td><div class="etq">Válida hasta</div><div class="dato">{{ $gc->valido }}</div></td>
+                <td><div class="etq">Agenda por WhatsApp</div><div class="dato">+56 9 7448 4112</div></td>
+            </tr>
+        </table>
+
+        <div class="codigo">
+            <table><tr>
+                <td style="vertical-align: middle;"><div class="etq">Código</div><div class="valor">{{ $gc->codigo }}</div></td>
+                <td style="vertical-align: middle; text-align: right;"><img src="data:image/png;base64,{{ $barcode }}" alt="Código de barras"></td>
+            </tr></table>
+        </div>
+        <div class="nota">Presenta este código al reservar. Válida para una visita, no canjeable por dinero.</div>
+    </div>
+</div>
 </body>
 </html>

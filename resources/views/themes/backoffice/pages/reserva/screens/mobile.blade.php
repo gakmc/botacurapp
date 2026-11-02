@@ -131,7 +131,7 @@
                                         {{ isset($ubicacion[$horario ?? 0]) ? $ubicacion[$horario ?? 0] : 'No Disponible' }}
                                     </td>
                                     <td>
-                                        {{ (isset($ubicacion)) ? $reserva->programa->nombre_programa : 'No Registra' }}
+                                        {{ (isset($ubicacion)) ? $reserva->programas_texto : 'No Registra' }}
                                     </td>
                                     <td>
                                         <i class='material-icons right {{ $color }}-text'>fiber_manual_record</i>
@@ -225,9 +225,9 @@
                                     </td>
                                     {{-- <td>
                                         <strong>Nombre: </strong><strong style="color:#FF4081;">
-                                            {{ $reserva->cliente->nombre_cliente }}
+                                            @include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $reserva]){{ $reserva->cliente->nombre_cliente }}
                                         </strong>
-                                        <p><strong>Programa: </strong>{{ $reserva->programa->nombre_programa }}</p>
+                                        <p><strong>Programa: </strong>{{ $reserva->programas_texto }}</p>
                                         <p><strong>Asistentes: </strong>{{ $reserva->cantidad_personas }} personas</p>
 
                                         @if (is_null($reserva->observacion))

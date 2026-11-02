@@ -121,22 +121,20 @@
                                 </div>
                             </div>
 
+                            <div class="row">
+                                <div class="input-field col s12 m6 l3">
+                                    <input id="fecha_compra" type="date" name="fecha_compra" value="{{ old('fecha_compra', now()->toDateString()) }}">
+                                    <label for="fecha_compra" class="active">Fecha de compra:</label>
+                                    <span class="helper-text">Vence 45 días después de la compra.</span>
+                                </div>
+                            </div>
+
                             @if($fechaManual)
                             <div class="row">
                                 <div class="input-field col s12 m6 l3">
                                     <input id="fecha_uso" type="text" name="fecha_uso" value="{{old('fecha_uso')}}">
                                     <label for="fecha_uso">Fecha de uso:</label>
                                     @error('fecha_uso')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong style="color:red">{{ $message }}</strong>
-                                        </span>
-                                    @enderror
-                                </div>
-
-                                <div class="input-field col s12 m6 l3">
-                                    <input id="validez_hasta" type="text" name="validez_hasta" value="{{old('validez_hasta')}}">
-                                    <label for="validez_hasta">Válido hasta:</label>
-                                    @error('validez_hasta')
                                         <span class="invalid-feedback" role="alert">
                                             <strong style="color:red">{{ $message }}</strong>
                                         </span>
@@ -201,8 +199,6 @@
         });
 
         @if($fechaManual)
-        // validez_hasta sigue a fecha_uso hasta que el usuario la edite manualmente
-        let validezTocadaManualmente = false;
 
         const pickerFechaUso = $('#fecha_uso').pickadate({
             format: 'dd-mm-yyyy',
@@ -217,32 +213,6 @@
             close: 'Cerrar',
             firstDay: 1,
         }).pickadate('picker');
-
-        const pickerValidezHasta = $('#validez_hasta').pickadate({
-            format: 'dd-mm-yyyy',
-            formatSubmit: 'yyyy-mm-dd',
-            hiddenName: true,
-            monthsFull: ['Enero','Febrero','Marzo','Abril','Mayo','Junio','Julio','Agosto','Septiembre','Octubre','Noviembre','Diciembre'],
-            monthsShort: ['Ene','Feb','Mar','Abr','May','Jun','Jul','Ago','Sep','Oct','Nov','Dic'],
-            weekdaysFull: ['Domingo','Lunes','Martes','Miércoles','Jueves','Viernes','Sábado'],
-            weekdaysShort: ['Do','Lu','Ma','Mi','Ju','Vi','Sá'],
-            today: 'Hoy',
-            clear: 'Limpiar',
-            close: 'Cerrar',
-            firstDay: 1,
-        }).pickadate('picker');
-
-        pickerFechaUso.on('set', function (context) {
-            if (context.select && !validezTocadaManualmente) {
-                pickerValidezHasta.set('select', pickerFechaUso.get('select'), { muted: true });
-            }
-        });
-
-        pickerValidezHasta.on('set', function (context) {
-            if (context.select) {
-                validezTocadaManualmente = true;
-            }
-        });
         @endif
     });
 

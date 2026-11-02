@@ -314,7 +314,25 @@ class SueldoController extends Controller
             return json_decode($item, true);
         }, $request->sueldos_seleccionados);
 
+        // Semanas ya pagadas en Remuneraciones no vuelven a salir en el CSV
+        $yaPagados = [];
+        if (class_exists(\App\Finanzas\SueldoCsv::class)) {
+            $seleccionados = array_values(array_filter($seleccionados, function ($s) use (&$yaPagados) {
+                if (\App\Finanzas\SueldoCsv::pagada((int) $s['user_id'], $s['inicio'], $s['fin'])) {
+                    $yaPagados[] = optional(User::find($s['user_id']))->name ?: 'usuario ' . $s['user_id'];
+                    return false;
+                }
+                return true;
+            }));
+        }
+        if (empty($seleccionados)) {
+            return back()->with('error', 'No hay nada que exportar: ' . ($yaPagados ? 'todo lo seleccionado ya está pagado.' : 'no hay sueldos.'));
+        }
+
         $resultado = $csvService->generar($seleccionados);
+        foreach ($yaPagados as $n) {
+            $resultado['omitidos'][] = ['user' => (object) ['name' => $n], 'motivo' => 'ya pagado'];
+        }
 
         if (!empty($resultado['omitidos'])) {
             $nombres = array_map(function ($o) {
@@ -327,6 +345,10 @@ class SueldoController extends Controller
 
         if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
             return back()->with('error', 'No se pudo generar el CSV: ningún seleccionado tiene datos bancarios completos.');
+        }
+
+        if (!empty($resultado['lineas']) && class_exists(\App\Finanzas\SueldoCsv::class)) {
+            \App\Finanzas\SueldoCsv::registrar($resultado['lineas']);
         }
 
         $nombreArchivo = 'pago_sueldos_' . now()->format('Y-m-d_His') . '.csv';
@@ -441,7 +463,25 @@ class SueldoController extends Controller
             return back()->with('error', 'No hay sueldos para exportar en esta semana.');
         }
 
+        // Semanas ya pagadas en Remuneraciones no vuelven a salir en el CSV
+        $yaPagados = [];
+        if (class_exists(\App\Finanzas\SueldoCsv::class)) {
+            $seleccionados = array_values(array_filter($seleccionados, function ($s) use (&$yaPagados) {
+                if (\App\Finanzas\SueldoCsv::pagada((int) $s['user_id'], $s['inicio'], $s['fin'])) {
+                    $yaPagados[] = optional(User::find($s['user_id']))->name ?: 'usuario ' . $s['user_id'];
+                    return false;
+                }
+                return true;
+            }));
+        }
+        if (empty($seleccionados)) {
+            return back()->with('error', 'No hay nada que exportar: ' . ($yaPagados ? 'todo lo seleccionado ya está pagado.' : 'no hay sueldos.'));
+        }
+
         $resultado = $csvService->generar($seleccionados);
+        foreach ($yaPagados as $n) {
+            $resultado['omitidos'][] = ['user' => (object) ['name' => $n], 'motivo' => 'ya pagado'];
+        }
 
         if (!empty($resultado['omitidos'])) {
             $nombres = array_map(function ($o) {
@@ -454,6 +494,10 @@ class SueldoController extends Controller
 
         if (empty(trim($resultado['csv'])) || substr_count($resultado['csv'], "\n") === 0) {
             return back()->with('error', 'No se pudo generar el CSV: nadie con datos bancarios completos en esta semana.');
+        }
+
+        if (!empty($resultado['lineas']) && class_exists(\App\Finanzas\SueldoCsv::class)) {
+            \App\Finanzas\SueldoCsv::registrar($resultado['lineas']);
         }
 
         $nombreArchivo = 'pago_sueldos_' . $inicio->format('Y-m-d') . '_al_' . $fin->format('Y-m-d') . '.csv';

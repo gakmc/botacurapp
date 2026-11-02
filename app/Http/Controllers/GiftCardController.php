@@ -20,14 +20,43 @@ class GiftCardController extends Controller
      */
     public function index(Request $request)
     {
-        // $giftcards = GiftCard::all();
+        // Vista con fechas de compra y vencimiento, filtros y resumen (15/10/2026)
+        $ver = $request->input('ver', $request->input('usadas') === '1' ? 'usadas' : 'sin_usar');
+        if (! in_array($ver, ['sin_usar', 'por_vencer', 'vencidas', 'usadas', 'todas'], true)) {
+            $ver = 'sin_usar';
+        }
+        $mostrarUsadas = $ver === 'usadas';
 
-        $mostrarUsadas = $request->input('usadas') === '1';
+        $todas = GiftCard::with(['programa', 'venta.reserva'])->get();
+        $sinUsar = $todas->where('usada', false);
+        $resumen = [
+            'vigentes'       => $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes >= 0; })->count(),
+            'por_vencer'     => $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes >= 0 && $g->dias_restantes <= 7; })->count(),
+            'vencidas'       => $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes < 0; })->count(),
+            'usadas'         => $todas->where('usada', true)->count(),
+            'monto_vigente'  => (int) $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes >= 0; })->sum('monto'),
+            'personas_vigente' => (int) $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes >= 0; })->sum('cantidad_personas'),
+        ];
 
-        $giftcards = GiftCard::where('usada', $mostrarUsadas)->get();
+        switch ($ver) {
+            case 'usadas':
+                $giftcards = $todas->where('usada', true)->sortByDesc(function ($g) { return $g->fecha_uso ?: $g->updated_at; });
+                break;
+            case 'vencidas':
+                $giftcards = $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes < 0; })->sortByDesc('dias_restantes');
+                break;
+            case 'por_vencer':
+                $giftcards = $sinUsar->filter(function ($g) { return $g->dias_restantes !== null && $g->dias_restantes >= 0 && $g->dias_restantes <= 7; })->sortBy('dias_restantes');
+                break;
+            case 'todas':
+                $giftcards = $todas->sortByDesc(function ($g) { return optional($g->fecha_compra_real)->timestamp; });
+                break;
+            default:
+                $giftcards = $sinUsar->filter(function ($g) { return $g->dias_restantes === null || $g->dias_restantes >= 0; })->sortBy('dias_restantes');
+        }
+        $giftcards = $giftcards->values();
 
-        // dd($giftcards);
-        return view('themes.backoffice.pages.giftcard.index', compact('giftcards', 'mostrarUsadas'));
+        return view('themes.backoffice.pages.giftcard.index', compact('giftcards', 'mostrarUsadas', 'ver', 'resumen'));
     }
 
     /**
@@ -84,9 +113,10 @@ class GiftCardController extends Controller
         $codigo = GiftCard::generarCodigoUnicoGiftCard();
 
         $fechaUso     = $fechaManual ? $request->fecha_uso : null;
-        $validezHasta = $fechaManual
-            ? ($request->validez_hasta ?: $request->fecha_uso)
-            : Carbon::now()->addDays(45)->toDateString();
+        // Vigencia: 45 dias desde la fecha de compra (15/10/2026)
+        $request->validate(['fecha_compra' => 'nullable|date']);
+        $fechaCompra  = $request->filled('fecha_compra') ? Carbon::parse($request->fecha_compra)->toDateString() : Carbon::today()->toDateString();
+        $validezHasta = GiftCard::venceDesde($fechaCompra);
 
         $gc = GiftCard::create([
             'codigo'            => $codigo,
@@ -96,6 +126,7 @@ class GiftCardController extends Controller
             'id_programa'       => $request->id_programa,
             'id_venta'          => null,
             'validez_hasta'     => $validezHasta,
+            'fecha_compra'      => $fechaCompra,
             'de'                => $request->de,
             'para'              => $request->para,
             'correo'            => $request->correo,
@@ -178,7 +209,8 @@ class GiftCardController extends Controller
             'fecha_uso'         => $request->filled('fecha_uso') ? $request->fecha_uso : $gc->fecha_uso,
             'id_programa'       => $request->id_programa,
             'id_venta'          => $gc->id_venta,
-            'validez_hasta'     => $request->filled('validez_hasta') ? $request->validez_hasta : $gc->validez_hasta,
+            'fecha_compra'      => $fechaCompraUpd = ($request->filled('fecha_compra') ? Carbon::parse($request->fecha_compra)->toDateString() : optional($gc->fecha_compra_real)->toDateString()),
+            'validez_hasta'     => $fechaCompraUpd ? GiftCard::venceDesde($fechaCompraUpd) : $gc->validez_hasta,
             'de'                => $request->de,
             'para'              => $request->para,
             'correo'            => $request->correo,
@@ -205,24 +237,51 @@ class GiftCardController extends Controller
         return redirect()->route('backoffice.giftcards.index')->with('success', 'Gift Card eliminada exitosamente.');
     }
 
-    public function enviarpdf($id)
+    /**
+     * wkhtmltopdf sin "patched qt" ignora disable-smart-shrinking y achica la página a ~77 %:
+     * se compensa con zoom para que el diseño llene la hoja completa.
+     */
+    private static function zoomPdf(): float
     {
-        $gc = GiftCard::with('programa.servicios')->findOrFail($id);
+        static $zoom = null;
+        if ($zoom === null) {
+            $bin = config('snappy.pdf.binary');
+            $ver = function_exists('exec') ? @exec(escapeshellarg($bin) . ' --version 2>&1') : '';
+            $zoom = (stripos((string) $ver, 'patched qt') !== false) ? 1.0 : 1.3;
+        }
+        return $zoom;
+    }
 
+    /** PDF de la gift card (diseño "Valle", A4 apaisado sin márgenes). */
+    private function pdfDe(GiftCard $gc)
+    {
         $generator = new BarcodeGeneratorPNG();
-        $barcode   = base64_encode($generator->getBarcode($gc->codigo, $generator::TYPE_CODE_128));
+        $barcode   = base64_encode($generator->getBarcode($gc->codigo, $generator::TYPE_CODE_128, 2, 60));
 
-        $pdfData = sPDF::loadView('pdf.giftcard.viewPDF', [
+        return sPDF::loadView('pdf.giftcard.viewPDF', [
             'gc'       => $gc,
             'programa' => $gc->programa,
             'barcode'  => $barcode,
+            'zoom'     => self::zoomPdf(),
         ])->setOption('enable-local-file-access', true)
             ->setOption('disable-smart-shrinking', true)
+            ->setOption('margin-top', 0)->setOption('margin-bottom', 0)
+            ->setOption('margin-left', 0)->setOption('margin-right', 0)
             ->setPaper('a4')
-            ->setOrientation('landscape')
-            ->output();
+            ->setOrientation('landscape');
+    }
 
-        // return $pdfData->inline('GiftCard-'.$gc->id.'.pdf');
+    /** Ver el PDF en el navegador antes de enviarlo. */
+    public function verpdf($id)
+    {
+        $gc = GiftCard::with('programa.servicios')->findOrFail($id);
+        return $this->pdfDe($gc)->inline('GiftCard-' . $gc->codigo . '.pdf');
+    }
+
+    public function enviarpdf($id)
+    {
+        $gc = GiftCard::with('programa.servicios')->findOrFail($id);
+        $pdfData = $this->pdfDe($gc)->output();
 
         Mail::to($gc->correo)
             ->queue(new GiftCardMailable($gc, $pdfData));

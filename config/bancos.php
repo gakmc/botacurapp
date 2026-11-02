@@ -67,4 +67,10 @@ return [
         'numero' => '36072963894',
     ],
 
+    // Correo de control que va en cada fila del CSV de pago de sueldos
+    // (Email 2, o Email 1 si el trabajador no tiene correo). El banco le
+    // envía el aviso de cada transferencia y la app lo usa para marcar la
+    // semana como "Pagado" en Remuneraciones.
+    'email_control' => env('BANCO_EMAIL_CONTROL', 'botacura.info@gmail.com'),
+
 ];

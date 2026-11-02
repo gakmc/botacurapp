@@ -133,6 +133,9 @@ class WhatsAppWebhookController extends Controller
                 ->whereNotNull('humano_hasta')
                 ->where('humano_hasta', '>', now())
                 ->exists();
+            $convPausado = \Illuminate\Support\Facades\Schema::hasTable('bot_chats_pausados')
+                && DB::table('bot_chats_pausados')->where('telefono', preg_replace('/\D/', '', $telefono))->exists();
+            $convHumano = $convHumano || $convPausado;
             if ($convHumano || \App\BotSeccionTexto::where('clave', 'bot_activo')->value('contenido') === '0') {
                 if (($msg['type'] ?? '') !== 'sticker') {
                     $textoPend = ($msg['type'] ?? '') === 'text'
@@ -1023,7 +1026,7 @@ class WhatsAppWebhookController extends Controller
     private function descargarMedia(string $mediaId, string $extension): ?string
     {
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
 
         try {
             $client = new GuzzleClient(['timeout' => 30, 'http_errors' => false]);
@@ -1210,7 +1213,7 @@ class WhatsAppWebhookController extends Controller
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
 
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
@@ -1241,7 +1244,7 @@ class WhatsAppWebhookController extends Controller
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
         try {
             $client = new GuzzleClient(['timeout' => 15, 'http_errors' => false]);
             $res = $client->post("https://graph.facebook.com/{$version}/{$phoneId}/messages", [
@@ -1265,7 +1268,7 @@ class WhatsAppWebhookController extends Controller
     {
         $phoneId = $this->phoneNumberId ?: env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
 
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);

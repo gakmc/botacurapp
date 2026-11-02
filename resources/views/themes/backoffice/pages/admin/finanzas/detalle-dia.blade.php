@@ -77,7 +77,7 @@
                                             @if($isGiftCard)
                                                 <span class="blue-text">GiftCard</span>
                                             @else
-                                                {{ $venta->reserva->programa->nombre_programa }}
+                                                {{ $venta->reserva->programas_texto }}
                                             @endif
                                         </td>
 

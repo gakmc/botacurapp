@@ -26,7 +26,20 @@ class Kernel extends ConsoleKernel
      */
     protected function schedule(Schedule $schedule)
     {
+        // Resumen de la semana (reservas, programas y equipo) el día antes del primer día con reservas
+        $schedule->command('equipo:resumen-semana --enviar')->dailyAt('14:55')->timezone('America/Santiago');
+        // Turnos sugeridos del día siguiente: aviso por WhatsApp a las 15:00
+        $schedule->command('equipo:turnos-manana --enviar')->dailyAt('15:00')->timezone('America/Santiago');
+        // F29 del mes anterior a Por pagar (después de la sincronización del SII)
+        $schedule->command('finanzas:f29-deudas --aplicar')->dailyAt('11:15')->timezone('America/Santiago');
+        // Finanzas: avisos de transferencias, pagos y cuentas desde el correo (19/10/2026)
+        $schedule->command('finanzas:leer-correos')->everyFiveMinutes()->withoutOverlapping(10);
+
         $schedule->command('bot:aprender')->dailyAt('23:40');
+        // Reporte del dia siguiente con turno sugerido (17/10/2026)
+        $schedule->command('botacura:reporte-manana')
+                ->dailyAt(config('turnos.hora_reporte', '15:00'))
+                ->timezone('America/Santiago');
         // Inventario: corrige descuentos de ventas que no dispararon observer
         $schedule->command('inventario:conciliar')->hourly()->withoutOverlapping(30);
         // Detalle (productos) de las facturas recibidas, una hora después de la sync SII

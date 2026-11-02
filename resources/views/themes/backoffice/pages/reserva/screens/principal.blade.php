@@ -44,9 +44,9 @@
                                     @endif
                                     <td>
                                         <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                            <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
+                                            @include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $reserva])<strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
                                             {{$visita->ubicacion->nombre ?? 'No registra'}} -
-                                            {{ $reserva->programa->nombre_programa }} -
+                                            {{ $reserva->programas_texto }} -
                                             {{ $reserva->cantidad_personas }} personas -
                                             @if (is_null($reserva->observacion))
                                             Sin Observaciones
@@ -93,7 +93,7 @@
                                         'fin'         => $v->hora_fin_sauna,
                                         'cliente'     => $r->cliente->nombre_cliente,
                                         'ubicacion'   => optional($v->ubicacion)->nombre ?? 'No registra',
-                                        'programa'    => $r->programa->nombre_programa,
+                                        'programa'    => $r->programas_texto,
                                         'personas'    => $r->cantidad_personas,
                                         'observacion' => $r->observacion,
                                         'trago'       => $v->trago_cortesia,
@@ -189,9 +189,9 @@
                                     
                                     <td>
                                         <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                            <strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
+                                            @include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $reserva])<strong>{{ addslashes($reserva->cliente->nombre_cliente) }} -</strong>
                                             {{$visita->ubicacion->nombre ?? 'No registra'}} -
-                                            {{ $reserva->programa->nombre_programa }} -
+                                            {{ $reserva->programas_texto }} -
                                             {{ $reserva->cantidad_personas }} personas -
                                             @if (is_null($reserva->observacion))
                                             Sin Observaciones
@@ -238,7 +238,7 @@
                                         'fin'         => $v->hora_fin_tinaja,
                                         'cliente'     => $r->cliente->nombre_cliente,
                                         'ubicacion'   => optional($v->ubicacion)->nombre ?? 'No registra',
-                                        'programa'    => $r->programa->nombre_programa,
+                                        'programa'    => $r->programas_texto,
                                         'personas'    => $r->cantidad_personas,
                                         'observacion' => $r->observacion,
                                         'trago'       => $v->trago_cortesia,
@@ -336,7 +336,7 @@
                                     'lugar'       => null,
                                     'tipo'        => null,
                                     'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
-                                    'programa'    => $r->programa->nombre_programa,
+                                    'programa'    => $r->programas_texto,
                                     'personas'    => [],
                                     'observacion' => $r->observacion,
                                     'trago'       => optional($ultimaVisita)->trago_cortesia,
@@ -369,7 +369,7 @@
                                         'lugar'       => optional($m->lugarMasaje)->nombre ?? 'No Registra lugar',
                                         'tipo'        => $m->tipo_masaje ?? 'No Registra tipo masaje',
                                         'ubicacion'   => optional(optional($ultimaVisita)->ubicacion)->nombre ?? 'No registra',
-                                        'programa'    => $r->programa->nombre_programa,
+                                        'programa'    => $r->programas_texto,
                                         'personas'    => [],
                                         'observacion' => $r->observacion,
                                         'trago'       => optional($ultimaVisita)->trago_cortesia,

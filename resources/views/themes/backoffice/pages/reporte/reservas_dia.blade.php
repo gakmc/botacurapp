@@ -67,6 +67,7 @@
                             Fecha: {{ $c->datos['fecha'] ?? '—' }} {{ $c->datos['hora'] ?? '' }}<br>
                             A: {{ $c->datos['destinatario_nombre'] ?? '—' }} {{ $c->datos['destinatario_cuenta'] ?? '' }}<br>
                             Desde: {{ $c->datos['nombre_origen'] ?? '—' }} · Op. {{ $c->datos['numero_operacion'] ?? '—' }}
+                            @include('themes.backoffice.pages.finanzas_correos._badge', ['b' => $c->banco ?? null])
                         </td>
                         <td class="orange-text text-darken-3" style="font-size:.8rem">{{ $c->motivos }}</td>
                         <td>
@@ -148,7 +149,7 @@
                                         {{ $r->id }}
                                     @endif
                                 </td>
-                                <td>{{ $r->nombre_cliente }}</td>
+                                <td>@include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $r]){{ $r->nombre_cliente }}</td>
                                 <td>{{ $r->nombre_programa ?? '—' }}</td>
                                 <td class="center-align">{{ $r->cantidad_personas }}</td>
                                 <td>{{ $r->fecha_visita ? \Carbon\Carbon::parse($r->fecha_visita)->format('d/m/Y') : '—' }}</td>
@@ -166,6 +167,7 @@
                                         <i class="material-icons orange-text tooltipped" style="font-size:1rem;vertical-align:middle;cursor:help"
                                            title="{{ $r->comprobante_alerta }}" data-position="left" data-tooltip="{{ $r->comprobante_alerta }}">warning</i>
                                     @endif
+                                    @include('themes.backoffice.pages.finanzas_correos._badge', ['b' => $r->banco ?? null])
                                 </td>
                                 <td class="right-align">{{ $f($r->total_pagar ?? $r->diferencia_programa) }}</td>
                                 <td class="grey-text">{{ strpos((string) $r->fuente, 'bot') === 0 ? 'Bot WhatsApp' : ($r->usuario ?? ($r->fuente ?: '—')) }}</td>
@@ -185,6 +187,8 @@
                         </tfoot>
                     </table>
                     @endif
+
+                    @include('themes.backoffice.pages.finanzas_correos._dia', ['bancoDia' => $bancoDia ?? collect()])
 
                     @if($abonosExtra->isNotEmpty())
                     <p style="font-weight:700;margin:20px 0 8px;color:#00695C">Abonos extra registrados este día</p>

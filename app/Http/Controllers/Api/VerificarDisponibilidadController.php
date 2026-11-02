@@ -43,6 +43,12 @@ class VerificarDisponibilidadController extends Controller
             ]);
         }
 
+        // Lunes a miércoles: solo grupos de 10+, o si el día ya tiene un grupo reservado
+        if (!\App\Services\BotTarifasService::permiteReservaChica(\Carbon\Carbon::parse($fecha), $cantidad)) {
+            return response()->json(['disponible' => false, 'solo_grupos' => true,
+                'razon' => 'Para esa fecha no nos quedan cupos para tu reserva. Elige otra fecha (de jueves a domingo tenemos más disponibilidad) o escríbenos por WhatsApp al +56 9 7448 4112.']);
+        }
+
         if ($wcProductId) {
             $programa = DB::table('programas')
                 ->where('wc_product_id', $wcProductId)

@@ -35,7 +35,20 @@ h1{font-size:1.35rem;margin:0 0 6px}p{color:var(--mu);margin:6px 0 14px}ol{paddi
 </div></div>
 <script>
 (function () {
-  var datos = {}, res = document.getElementById('res');
+  var datos = {}, res = document.getElementById('res'), enviado = false, enviadoConIds = false;
+  function enviar(code) {
+    enviado = true; if (datos.phone_number_id) enviadoConIds = true;
+    var b = document.getElementById('go');
+    fetch(@json(route('whatsapp.conectar.finalizar')), {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
+      body: JSON.stringify({ pagina: location.origin + location.pathname, code: code, waba_id: datos.waba_id || null, phone_number_id: datos.phone_number_id || null, evento: datos.evento || null })
+    }).then(function (x) { return x.json(); }).then(function (j) {
+      (j.pasos || []).forEach(function (p) { linea(p[0], p[1], p[2]); });
+      if (j.phone_number_id) linea('Identificador del número: ' + j.phone_number_id + ' — úsalo para activar el bot', true);
+      b.disabled = false;
+    }).catch(function (err) { linea('Error al terminar la conexión', false, String(err)); b.disabled = false; });
+  }
   function linea(txt, ok, det) {
     var d = document.createElement('div'); d.className = 'paso';
     d.innerHTML = '<b class="' + (ok ? 'okc' : 'badc') + '">' + (ok ? '✓' : '✗') + '</b><div><span></span><br><small></small></div>';
@@ -45,12 +58,15 @@ h1{font-size:1.35rem;margin:0 0 6px}p{color:var(--mu);margin:6px 0 14px}ol{paddi
   window.addEventListener('message', function (e) {
     if (!/facebook\.com$/.test(new URL(e.origin).hostname)) return;
     try {
-      var m = JSON.parse(e.data);
+      var m = typeof e.data === 'string' ? JSON.parse(e.data) : e.data;
+      try { console.log('[Meta]', JSON.stringify(m)); } catch (z) {}
+      if (m && m.type && m.type !== 'WA_EMBEDDED_SIGNUP' && /WA_|EMBEDDED|SIGNUP/i.test(m.type)) linea('Aviso de Meta: ' + m.type + ' ' + (m.event || ''), false, JSON.stringify(m.data || {}).slice(0, 300));
       if (m.type === 'WA_EMBEDDED_SIGNUP') {
         if (m.event === 'CANCEL') { linea('Proceso cancelado en el paso: ' + ((m.data && m.data.current_step) || '?'), false); return; }
         if (m.event === 'ERROR') { linea('Meta informó un error', false, (m.data && m.data.error_message) || ''); return; }
         datos = m.data || {}; datos.evento = m.event;
         linea('Meta informó: ' + m.event, /^FINISH/.test(m.event), 'cuenta ' + (datos.waba_id || '?') + ' · número ' + (datos.phone_number_id || '?'));
+        if (enviado && !enviadoConIds && datos.phone_number_id) enviar(null); // el aviso llegó después de cerrar la ventana
       }
     } catch (x) {}
   });
@@ -61,19 +77,9 @@ h1{font-size:1.35rem;margin:0 0 6px}p{color:var(--mu);margin:6px 0 14px}ol{paddi
     var b = this; b.disabled = true; res.innerHTML = '';
     FB.login(function (r) {
       if (!r.authResponse || !r.authResponse.code) { linea('No se completó el inicio de sesión', false, JSON.stringify(r || {})); b.disabled = false; return; }
-      if (!datos.evento) linea('Meta no informó el resultado del registro (puede que no se haya terminado)', false);
+      if (!datos.evento) linea('Esperando el resultado del registro de Meta…', false);
       var code = r.authResponse.code;
-      setTimeout(function () { // dar tiempo a que llegue el evento con waba_id y phone_number_id
-        fetch(@json(route('whatsapp.conectar.finalizar')), {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json', 'Accept': 'application/json', 'X-CSRF-TOKEN': document.querySelector('meta[name=csrf-token]').content },
-          body: JSON.stringify({ pagina: location.origin + location.pathname, code: code, waba_id: datos.waba_id || null, phone_number_id: datos.phone_number_id || null, evento: datos.evento || null })
-        }).then(function (x) { return x.json(); }).then(function (j) {
-          (j.pasos || []).forEach(function (p) { linea(p[0], p[1], p[2]); });
-          if (j.phone_number_id) linea('Identificador del número: ' + j.phone_number_id + ' — guárdalo en META_PHONE_NUMBER_ID', true);
-          b.disabled = false;
-        }).catch(function (err) { linea('Error al terminar la conexión', false, String(err)); b.disabled = false; });
-      }, 1200);
+      setTimeout(function () { enviar(code); }, 2500); // dar tiempo a que llegue el evento con waba_id y phone_number_id
     }, {
       config_id: @json($configId),
       response_type: 'code',

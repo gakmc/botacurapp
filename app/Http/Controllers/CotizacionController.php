@@ -29,7 +29,7 @@ class CotizacionController extends Controller
     {
         $tiposProductos = ['Aguas','Bebidas', 'Bebidas Calientes','Cervezas','Cócteles','Jugos Naturales','Spritz','Mocktails','Vinos','Sandwich y Pasteleria'];
 
-        $programas = Programa::all();
+        $programas = Programa::activos()->orderBy('nombre_programa')->get(); // solo planes activos
         $productos = Producto::activos()->whereHas('tipoProducto', function($query) use ($tiposProductos){
             $query->whereIn('nombre', $tiposProductos);
         })->get();
@@ -85,7 +85,7 @@ class CotizacionController extends Controller
                 'validez_dias' => $request->validez_dias,
                 'correo' => $request->correo,
                 'observaciones' => $request->observaciones,
-                'iva_incluido' => true,
+                'iva_incluido' => (bool) $request->input('iva_incluido', false),
             ]);
 
 
@@ -201,6 +201,7 @@ class CotizacionController extends Controller
                 'validez_dias' => $request->validez_dias,
                 'correo' => $request->correo,
                 'observaciones' => $request->observaciones,
+                'iva_incluido' => (bool) $request->input('iva_incluido', false),
             ]);
 
             // Los ítems se reemplazan en bloque: un solo registro "antes → después"

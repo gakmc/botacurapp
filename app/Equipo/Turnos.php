@@ -1,0 +1,365 @@
+<?php
+
+namespace App\Equipo;
+
+use Carbon\Carbon;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Schema;
+
+/**
+ * Turnos sugeridos: cuántas personas de atención hacen falta según los clientes reservados del día,
+ * quiénes pueden ese día (área, días, prioridad, reparto parejo en la semana), si hay que llamar al
+ * copero y quiénes tienen turno fijo. El aviso sale el día anterior a las 15:00.
+ */
+class Turnos
+{
+    const AREAS = ['atencion' => 'Frente (atención)', 'cocina' => 'Cocina', 'aseo' => 'Aseo', 'apoyo' => 'Apoyo a llamado', 'fijo' => 'Turno fijo', 'no' => 'No entra en turnos'];
+    const DIAS = [1 => 'Lu', 2 => 'Ma', 3 => 'Mi', 4 => 'Ju', 5 => 'Vi', 6 => 'Sá', 7 => 'Do'];
+    const ROLES_ASIGNACION = ['anfitriona', 'barman', 'cocina', 'garzon', 'jefe local'];
+
+    public static function hay(): bool
+    {
+        return Schema::hasTable('equipo_config') && Schema::hasTable('turno_propuestas');
+    }
+
+    public static function parametrosDefault(): array
+    {
+        return [
+            'tramos'                => ['Equipo por tramo de clientes (desde: frente, cocina, aseo; separados por ;)', '6:2,1,1; 13:3,2,1; 25:3,3,1; 37:4,3,1; 49:5,3,2'],
+            'minimo_abrir'          => ['Clientes mínimos para que el día no pierda (equipo mínimo)', '7'],
+            'rentable_desde'        => ['Clientes desde los que el día es rentable (cubre también los fijos)', '20'],
+            'umbral_copero'         => ['Llamar copero o ayudante de cocina desde (clientes)', '50'],
+            'telefonos_aviso'       => ['WhatsApp que reciben el aviso (separados por coma)', '56961910398'],
+            'avisar_trabajadores'   => ['Avisar también a cada trabajador (sí/no)', 'no'],
+        ];
+    }
+
+    public static function parametros(): array
+    {
+        $out = [];
+        foreach (self::parametrosDefault() as $k => $d) {
+            $out[$k] = $d[1];
+        }
+        if (Schema::hasTable('equipo_parametros')) {
+            foreach (DB::table('equipo_parametros')->get() as $p) {
+                if ($p->valor !== null && $p->valor !== '') {
+                    $out[$p->clave] = $p->valor;
+                }
+            }
+        }
+        return $out;
+    }
+
+    /** Tramo que corresponde a la cantidad de clientes: ['desde', 'frente', 'cocina', 'aseo']. */
+    public static function tramo(int $clientes): array
+    {
+        $t = ['desde' => 0, 'frente' => 2, 'cocina' => 1, 'aseo' => 1];
+        foreach (array_filter(array_map('trim', explode(';', self::parametros()['tramos']))) as $f) {
+            if (preg_match('/^(\d+)\s*:\s*(\d+)\s*,\s*(\d+)\s*,\s*(\d+)$/', $f, $m) && $clientes >= (int) $m[1] && (int) $m[1] >= $t['desde']) {
+                $t = ['desde' => (int) $m[1], 'frente' => (int) $m[2], 'cocina' => (int) $m[3], 'aseo' => (int) $m[4]];
+            }
+        }
+        return $t;
+    }
+
+    /** Personas del equipo con su configuración (las que no tienen fila quedan según su rol). */
+    public function equipo()
+    {
+        $cfg = DB::table('equipo_config')->get()->keyBy('user_id');
+        $users = DB::table('users')->where('activo', true)->orderBy('name')->get(['id', 'name']);
+        $roles = DB::table('role_user')->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->get(['role_user.user_id', 'roles.name'])->groupBy('user_id');
+        $lista = $users->map(function ($u) use ($cfg, $roles) {
+            $rs = isset($roles[$u->id]) ? $roles[$u->id]->pluck('name')->map(function ($r) { return mb_strtolower($r); })->all() : [];
+            $c = $cfg[$u->id] ?? null;
+            $u->roles = $rs;
+            $u->area = $c ? $c->area : (in_array('cocina', $rs, true) ? 'cocina' : (array_intersect($rs, ['anfitriona', 'barman', 'garzon', 'jefe local']) ? 'atencion' : 'no'));
+            $u->dias = array_map('intval', array_filter(explode(',', $c ? $c->dias : '4,5,6,7')));
+            $u->prioridad = $c ? (int) $c->prioridad : 5;
+            $u->telefono = $c->telefono ?? null;
+            $u->configurado = (bool) $c;
+            $u->corto = self::corto($u->name);
+            return $u;
+        });
+        // Nombres cortos repetidos (dos Paula): se agrega la inicial del apellido
+        $rep = $lista->countBy('corto');
+        return $lista->map(function ($u) use ($rep) {
+            if (($rep[$u->corto] ?? 0) > 1) {
+                $p = preg_split('/\s+/', trim($u->name));
+                $u->corto .= isset($p[1]) ? ' ' . mb_substr($p[count(explode(' ', $u->corto))] ?? $p[1], 0, 1) . '.' : '';
+            }
+            return $u;
+        });
+    }
+
+    public static function corto(string $nombre): string
+    {
+        $p = preg_split('/\s+/', trim($nombre));
+        return count($p) > 1 && mb_strlen($p[0]) <= 4 ? $p[0] . ' ' . $p[1] : $p[0];
+    }
+
+    /** Clientes, reservas y masajes del día (sin canceladas, no-show ni pendientes de pago). */
+    public function demanda(string $fecha): array
+    {
+        $q = DB::table('reservas')->whereDate('fecha_visita', $fecha);
+        if (Schema::hasColumn('reservas', 'estado')) {
+            $q->where(function ($w) {
+                $w->whereNull('estado')->orWhereNotIn('estado', ['cancelada', 'no_show', 'pendiente_pago']);
+            });
+        }
+        $r = $q->selectRaw('COUNT(*) n, COALESCE(SUM(cantidad_personas),0) p, COALESCE(SUM(cantidad_masajes),0) m'
+            . (Schema::hasColumn('reservas', 'cantidad_masajes_extra') ? ', COALESCE(SUM(cantidad_masajes_extra),0) mx' : ', 0 mx'))->first();
+        $habil = Schema::hasTable('fecha_disponibles')
+            ? DB::table('fecha_disponibles')->whereDate('fecha', $fecha)->where('habilitada', true)->exists() : null;
+        return ['personas' => (int) $r->p, 'reservas' => (int) $r->n, 'masajes' => (int) $r->m + (int) $r->mx, 'habilitada' => $habil];
+    }
+
+    public function proponer(string $fecha): array
+    {
+        $p = self::parametros();
+        $c = Carbon::parse($fecha);
+        $dow = $c->dayOfWeekIso;
+        $d = $this->demanda($fecha);
+        $equipo = $this->equipo();
+        $disp = function ($area) use ($equipo, $dow) {
+            return $equipo->filter(function ($u) use ($area, $dow) { return $u->area === $area && in_array($dow, $u->dias, true); });
+        };
+
+        // Reparto parejo: quien lleva menos días asignados en la semana entra primero (a igual prioridad)
+        $semana = DB::table('asignacion_user')->join('asignaciones', 'asignaciones.id', '=', 'asignacion_user.asignacion_id')
+            ->whereBetween('asignaciones.fecha', [$c->copy()->startOfWeek()->toDateString(), $c->copy()->endOfWeek()->toDateString()])
+            ->where('asignaciones.fecha', '<>', $fecha)
+            ->groupBy('asignacion_user.user_id')->selectRaw('asignacion_user.user_id, COUNT(*) n')->pluck('n', 'user_id');
+
+        $tr = $d['personas'] > 0 ? self::tramo($d['personas']) : ['desde' => 0, 'frente' => 0, 'cocina' => 0, 'aseo' => 0];
+        $orden = function ($u) use ($semana) { return sprintf('%02d-%02d-%s', $u->prioridad, $semana[$u->id] ?? 0, $u->name); };
+        $necesarios = $tr['frente'];
+        $candidatos = $disp('atencion')->sortBy($orden)->values();
+        $atencion = $candidatos->take($necesarios)->values();
+        $falta = max(0, $necesarios - $candidatos->count());
+        $candCocina = $disp('cocina')->sortBy($orden)->values();
+        $cocina = $candCocina->take($tr['cocina'])->values();
+        $faltaCocina = max(0, $tr['cocina'] - $candCocina->count());
+        $aseo = $disp('aseo')->sortBy($orden)->take($tr['aseo'])->values();
+        $faltaAseo = max(0, $tr['aseo'] - $aseo->count());
+        $copero = $d['personas'] >= (int) $p['umbral_copero'];
+        $apoyo = $copero ? $disp('apoyo')->sortBy('prioridad')->take(1)->values() : collect();
+        $fijos = $disp('fijo')->values();
+
+        $nombres = function ($c) { return $c->map(function ($u) { return ['id' => $u->id, 'nombre' => $u->name, 'corto' => $u->corto, 'telefono' => $u->telefono]; })->all(); };
+        return [
+            'fecha' => $fecha, 'dia' => $c->locale('es')->isoFormat('dddd D [de] MMMM'), 'dow' => $dow] + $d + [
+            'necesarios' => $necesarios, 'falta' => $falta, 'tramo' => $tr, 'falta_cocina' => $faltaCocina, 'falta_aseo' => $faltaAseo,
+            'aseo' => $nombres($aseo), 'bajo_minimo' => $d['personas'] > 0 && $d['personas'] < (int) $p['minimo_abrir'],
+            'rentable' => $d['personas'] >= (int) $p['rentable_desde'],
+            'atencion' => $nombres($atencion), 'quedan_libres' => $nombres($candidatos->slice($necesarios)),
+            'cocina' => $nombres($cocina), 'copero' => $copero, 'apoyo' => $nombres($apoyo), 'fijos' => $nombres($fijos),
+        ];
+    }
+
+    /** Una sola línea (los parámetros de plantilla de WhatsApp no aceptan saltos de línea). */
+    public function mensaje(array $x): string
+    {
+        $n = function ($l) { return implode(', ', array_column($l, 'corto')); };
+        $cuando = $x['fecha'] === now('America/Santiago')->addDay()->toDateString() ? 'mañana ' : 'el ';
+        if (!$x['personas']) {
+            return ucfirst($cuando) . "{$x['dia']}: sin reservas" . ($x['fijos'] ? '. Turnos fijos: ' . $n($x['fijos']) : '') . '.';
+        }
+        $t = "Turnos para {$cuando}{$x['dia']}: {$x['personas']} clientes en {$x['reservas']} reservas"
+            . ($x['masajes'] ? ", {$x['masajes']} masajes" : '') . '. '
+            . (!empty($x['bajo_minimo']) ? 'Bajo el mínimo de ' . self::parametros()['minimo_abrir'] . ' clientes: día a pérdida. ' : '')
+            . 'Frente (' . count($x['atencion']) . '): ' . ($x['atencion'] ? $n($x['atencion']) : 'nadie disponible')
+            . ($x['falta'] ? " · faltan {$x['falta']}" : '') . '. ';
+        if ($x['cocina']) {
+            $t .= 'Cocina: ' . $n($x['cocina']) . (!empty($x['falta_cocina']) ? " · faltan {$x['falta_cocina']}" : '')
+                . ($x['copero'] ? ' + ' . ($x['apoyo'] ? $n($x['apoyo']) . ' de apoyo' : 'llamar copero') : '') . '. ';
+        } elseif ($x['copero']) {
+            $t .= 'Llamar copero o ayudante de cocina. ';
+        }
+        if (!empty($x['aseo']) || !empty($x['falta_aseo'])) {
+            $t .= 'Aseo: ' . ($x['aseo'] ? $n($x['aseo']) : '') . (!empty($x['falta_aseo']) ? ($x['aseo'] ? ' · ' : '') . "falta {$x['falta_aseo']}" : '') . '. ';
+        }
+        if ($x['fijos']) {
+            $t .= 'Fijos: ' . $n($x['fijos']) . '. ';
+        }
+        $t = str_replace('..', '.', $t);
+        return trim($t . 'Revisar y aceptar: ' . rtrim(config('app.url'), '/') . '/equipo/turnos');
+    }
+
+    public function guardar(array $x): object
+    {
+        $msg = $this->mensaje($x);
+        $prev = DB::table('turno_propuestas')->where('fecha', $x['fecha'])->first();
+        $fila = ['personas' => $x['personas'], 'reservas' => $x['reservas'], 'propuesta' => json_encode($x, JSON_UNESCAPED_UNICODE),
+                 'mensaje' => $msg, 'updated_at' => now()];
+        if ($prev) {
+            DB::table('turno_propuestas')->where('id', $prev->id)->update($fila);
+        } else {
+            DB::table('turno_propuestas')->insert($fila + ['fecha' => $x['fecha'], 'created_at' => now()]);
+        }
+        return DB::table('turno_propuestas')->where('fecha', $x['fecha'])->first();
+    }
+
+    /** Pasa la propuesta a Asignación de equipo (la misma que usa Turnos y Remuneraciones). */
+    public function aceptar(string $fecha, ?int $userId = null): int
+    {
+        $prop = DB::table('turno_propuestas')->where('fecha', $fecha)->first();
+        $x = $prop ? json_decode($prop->propuesta, true) : $this->proponer($fecha);
+        $ids = array_merge(array_column($x['atencion'], 'id'), array_column($x['cocina'], 'id'), array_column($x['apoyo'], 'id'), array_column($x['aseo'] ?? [], 'id'));
+        $validos = DB::table('role_user')->join('roles', 'roles.id', '=', 'role_user.role_id')
+            ->whereIn('role_user.user_id', $ids ?: [0])->get(['role_user.user_id', 'roles.name'])
+            ->filter(function ($r) { return in_array(mb_strtolower($r->name), self::ROLES_ASIGNACION, true); })
+            ->pluck('user_id')->unique()->values()->all();
+        $a = \App\Asignacion::where('fecha', $fecha)->first() ?: \App\Asignacion::create(['fecha' => $fecha]);
+        $a->users()->sync($validos);
+        DB::table('turno_propuestas')->where('fecha', $fecha)->update(['aceptada_at' => now(), 'aceptada_por' => $userId, 'updated_at' => now()]);
+        return count($validos);
+    }
+
+    /**
+     * WhatsApp desde el número de avisos (el de Home Assistant). Con plantilla aprobada (EQUIPO_PLANTILLA, un
+     * parámetro de texto) llega siempre; sin plantilla, solo si la persona escribió a ese número en las últimas 24 h.
+     */
+    public static function enviarWhatsApp(string $tel, string $texto): string
+    {
+        $tel = preg_replace('/\D/', '', $tel);
+        $phoneId = env('EQUIPO_PHONE_NUMBER_ID') ?: (env('HA_PHONE_NUMBER_ID') ?: env('META_PHONE_NUMBER_ID'));
+        $token = env('META_WHATSAPP_TOKEN');
+        $ver = env('META_API_VERSION', 'v26.0');
+        if (!$phoneId || !$token || !$tel) {
+            return 'sin configuración de WhatsApp';
+        }
+        $texto = mb_substr(preg_replace('/\s+/u', ' ', $texto), 0, 1000);
+        $post = function (array $cuerpo) use ($phoneId, $token, $ver) {
+            $cl = new \GuzzleHttp\Client(['timeout' => 15, 'http_errors' => false]);
+            $r = $cl->post("https://graph.facebook.com/{$ver}/{$phoneId}/messages", [
+                'headers' => ['Authorization' => 'Bearer ' . $token], 'json' => $cuerpo + ['messaging_product' => 'whatsapp'],
+            ]);
+            return [$r->getStatusCode(), (string) $r->getBody()];
+        };
+        try {
+            $plantilla = env('EQUIPO_PLANTILLA');
+            if ($plantilla) {
+                [$st, $b] = $post(['to' => $tel, 'type' => 'template', 'template' => ['name' => $plantilla,
+                    'language' => ['code' => env('EQUIPO_PLANTILLA_IDIOMA', 'es')],
+                    'components' => [['type' => 'body', 'parameters' => [['type' => 'text', 'text' => $texto]]]]]]);
+                if ($st < 300) {
+                    return 'ok (plantilla)';
+                }
+                Log::warning('[Turnos] Plantilla rechazada', ['status' => $st, 'body' => mb_substr($b, 0, 400)]);
+            }
+            [$st, $b] = $post(['to' => $tel, 'type' => 'text', 'text' => ['body' => $texto]]);
+            return $st < 300 ? 'ok (texto)' : 'error ' . $st . ': ' . mb_substr(json_decode($b, true)['error']['message'] ?? $b, 0, 140);
+        } catch (\Throwable $e) {
+            return 'error: ' . mb_substr($e->getMessage(), 0, 140);
+        }
+    }
+
+    // ───────────────────────── Resumen semanal ─────────────────────────
+
+    /** Programas reservados del día: [['programa','reservas','personas']]. */
+    public function programasDia(string $fecha): array
+    {
+        $q = DB::table('reservas as r')->leftJoin('programas as p', 'p.id', '=', 'r.id_programa')->whereDate('r.fecha_visita', $fecha);
+        if (Schema::hasColumn('reservas', 'estado')) {
+            $q->where(function ($w) {
+                $w->whereNull('r.estado')->orWhereNotIn('r.estado', ['cancelada', 'no_show', 'pendiente_pago']);
+            });
+        }
+        return $q->groupBy('p.nombre_programa')->orderByRaw('SUM(r.cantidad_personas) DESC')
+            ->selectRaw("COALESCE(p.nombre_programa, 'Sin programa') programa, COUNT(*) reservas, COALESCE(SUM(r.cantidad_personas),0) personas")
+            ->get()->map(function ($r) { return (array) $r; })->all();
+    }
+
+    /** ¿$fecha es el primer día con reservas de su semana (lunes a domingo)? */
+    public function esPrimerDiaDeLaSemana(string $fecha): bool
+    {
+        $c = Carbon::parse($fecha);
+        if (!$this->demanda($fecha)['personas']) {
+            return false;
+        }
+        for ($d = $c->copy()->startOfWeek(); $d->lt($c); $d->addDay()) {
+            if ($this->demanda($d->toDateString())['personas'] > 0) {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    /** Días desde $desde hasta el domingo de esa semana, con propuesta de equipo y programas. */
+    public function semana(string $desde): array
+    {
+        $c = Carbon::parse($desde);
+        $fin = $c->copy()->endOfWeek();
+        $dias = [];
+        for ($d = $c->copy(); $d->lte($fin); $d->addDay()) {
+            $x = $this->proponer($d->toDateString());
+            $x['programas'] = $x['personas'] ? $this->programasDia($x['fecha']) : [];
+            $x['corto_dia'] = self::DIAS[$x['dow']] . ' ' . $d->day;
+            $dias[] = $x;
+        }
+        return $dias;
+    }
+
+    /** Mensajes de una línea para los administradores: resumen + un mensaje por día con reservas. */
+    public function mensajesSemana(array $dias): array
+    {
+        $n = function ($l) { return implode(', ', array_column($l, 'corto')); };
+        $con = array_values(array_filter($dias, function ($x) { return $x['personas'] > 0; }));
+        $tot = array_sum(array_column($dias, 'personas'));
+        $res = array_sum(array_column($dias, 'reservas'));
+        $primero = $dias[0];
+        $ultimo = end($dias);
+        $out = [];
+        $out[] = 'Resumen semana ' . Carbon::parse($primero['fecha'])->locale('es')->isoFormat('D [de] MMM') . ' al '
+            . Carbon::parse($ultimo['fecha'])->locale('es')->isoFormat('D [de] MMM') . ": {$tot} clientes en {$res} reservas. "
+            . implode(' · ', array_map(function ($x) { return $x['corto_dia'] . ': ' . ($x['personas'] ?: '–'); }, $dias)) . '.';
+        foreach ($con as $x) {
+            $prog = implode(', ', array_map(function ($p) { return $p['programa'] . ' ' . $p['personas'] . ($p['reservas'] > 1 ? " ({$p['reservas']} res.)" : ''); }, $x['programas']));
+            $t = ucfirst($x['dia']) . ": {$x['personas']} clientes, {$x['reservas']} reservas" . ($x['masajes'] ? ", {$x['masajes']} masajes" : '') . ". {$prog}. "
+                . (!empty($x['bajo_minimo']) ? 'Bajo el mínimo para abrir. ' : '')
+                . 'Equipo: frente ' . ($x['atencion'] ? $n($x['atencion']) : 'nadie') . ($x['falta'] ? " (faltan {$x['falta']})" : '')
+                . ($x['cocina'] ? '; cocina ' . $n($x['cocina']) : '') . (!empty($x['falta_cocina']) ? " (faltan {$x['falta_cocina']})" : '')
+                . ($x['copero'] ? '; llamar copero' : '')
+                . (!empty($x['aseo']) ? '; aseo ' . $n($x['aseo']) : '')
+                . ($x['fijos'] ? '; fijos ' . $n($x['fijos']) : '') . '.';
+            $out[] = $t;
+        }
+        $out[] = 'Revisa y acepta los turnos en ' . rtrim(config('app.url'), '/') . '/equipo/turnos y luego usa "Avisar turnos al equipo" para que a cada uno le llegue su semana.';
+        return $out;
+    }
+
+    /** Turnos de cada persona en los días dados: lo asignado (aceptado) o, si no hay, lo propuesto. */
+    public function turnosPorPersona(array $dias): array
+    {
+        $equipo = $this->equipo()->keyBy('id');
+        $out = [];
+        foreach ($dias as $x) {
+            if (!$x['personas']) {
+                continue;
+            }
+            $asig = DB::table('asignaciones')->join('asignacion_user', 'asignacion_user.asignacion_id', '=', 'asignaciones.id')
+                ->where('asignaciones.fecha', $x['fecha'])->pluck('asignacion_user.user_id')->all();
+            $ids = $asig ?: array_merge(array_column($x['atencion'], 'id'), array_column($x['cocina'], 'id'),
+                array_column($x['apoyo'], 'id'), array_column($x['aseo'] ?? [], 'id'), array_column($x['fijos'], 'id'));
+            foreach (array_unique($ids) as $id) {
+                $u = $equipo[$id] ?? null;
+                if (!$u) {
+                    continue;
+                }
+                $out[$id] = $out[$id] ?? ['nombre' => $u->name, 'corto' => $u->corto, 'telefono' => $u->telefono, 'dias' => [], 'propuesto' => false];
+                $out[$id]['dias'][] = Carbon::parse($x['fecha'])->locale('es')->isoFormat('dddd D');
+                $out[$id]['propuesto'] = $out[$id]['propuesto'] || !$asig;
+            }
+        }
+        return $out;
+    }
+
+    public static function mensajeTrabajador(array $p): string
+    {
+        $d = $p['dias'];
+        $lista = count($d) > 1 ? implode(', ', array_slice($d, 0, -1)) . ' y ' . end($d) : $d[0];
+        return "Hola {$p['corto']}, tus turnos en Botacura esta semana: {$lista}, de 9:30 a 19:30. Si no puedes algún día, avísale a Sebastián lo antes posible.";
+    }
+}

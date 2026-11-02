@@ -32,7 +32,7 @@
         
         
         $('.dropdown-settings').dropdown({
-            hover: false, // Deshabilita el hover para que funcione en dispositivos móviles
+            hover: false, belowOrigin: true, // Deshabilita el hover para que funcione en dispositivos móviles
             constrainWidth: false, // Ajusta el ancho al contenido
             coverTrigger: false, // Muestra el dropdown fuera del botón
             alignment: 'left', // Opcional: Alinea el dropdown a la izquierda

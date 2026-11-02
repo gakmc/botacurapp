@@ -225,7 +225,7 @@
               <ul id="projects-collection" class="collection z-depth-1">
                 <li class="collection-item avatar">
                   <i class="material-icons cyan circle">card_travel</i>
-                  <h6 class="collection-header m-0">Programa {{$reserva->programa->nombre_programa}}</h6>
+                  <h6 class="collection-header m-0">Programa {{$reserva->programas_texto}}</h6>
                   <p>Servicios incluidos</p>
                 </li>
                 @foreach ($reserva->programa->servicios as $servicio)

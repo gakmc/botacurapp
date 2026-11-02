@@ -123,7 +123,7 @@ class BotConfiguracionController extends Controller
 
         foreach ($request->input('contenido') as $clave => $texto) {
             BotSeccionTexto::where('clave', $clave)->update([
-                'contenido' => $texto,
+                'contenido' => (string) ($texto ?? ''), // campo vacio = texto vacio
                 'updated_by' => auth()->id(),
             ]);
         }
@@ -442,7 +442,7 @@ class BotConfiguracionController extends Controller
     private function enviarWhatsApp(string $telefono, string $texto, ?string $phoneNumberId): bool
     {
         $pnid    = $phoneNumberId ?: env('META_PHONE_NUMBER_ID');
-        $version = env('META_API_VERSION', 'v21.0');
+        $version = env('META_API_VERSION', 'v26.0');
         $token   = env('META_WHATSAPP_TOKEN');
         if (!$pnid || !$token) {
             Log::error('[Bot pendientes] Falta phone_number_id o token de Meta');

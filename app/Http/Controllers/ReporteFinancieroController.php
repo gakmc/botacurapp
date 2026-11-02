@@ -450,7 +450,7 @@ class ReporteFinancieroController extends Controller
             })
             ->get()
             ->map(function ($programa) use ($mes, $anio) {
-                $cuenta = Reserva::where('id_programa', $programa->id)
+                $cuenta = Reserva::conPrograma($programa->id)
                     ->whereMonth('created_at', $mes)
                     ->whereYear('created_at', $anio)
                     ->count();

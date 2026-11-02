@@ -92,7 +92,7 @@
                             <td>
                                 <span class="dp-acc">
                                     <a class="dp-mini" target="_blank" style="color:#128c7e"
-                                       href="https://wa.me/{{ $p->telefono }}?text={{ rawurlencode(\App\Services\BotInteresFechasService::textoAviso($p->nombre, $d->fecha)) }}">WhatsApp</a>
+                                       href="{{ (!empty($p->correo) && strpos($p->telefono, 'm') === 0) ? 'mailto:' . $p->correo . '?subject=' . rawurlencode('Botacura: habilitamos el día que consultaste') . '&body=' . rawurlencode(\App\Services\BotInteresFechasService::textoAviso($p->nombre, $d->fecha)) : 'https://wa.me/' . $p->telefono . '?text=' . rawurlencode(\App\Services\BotInteresFechasService::textoAviso($p->nombre, $d->fecha)) }}">{{ (!empty($p->correo) && strpos($p->telefono, 'm') === 0) ? 'Correo' : 'WhatsApp' }}</a>
                                     @if ($p->estado !== 'avisado')
                                         <form method="POST" action="{{ route('backoffice.bot-conversaciones.interes.estado', $p->id) }}">@csrf<input type="hidden" name="estado" value="avisado"><button class="dp-mini" type="submit">Marcar avisado</button></form>
                                     @endif
@@ -120,24 +120,70 @@
                style="height:38px;border:1px solid #d0d0d0;border-radius:10px;padding:0 12px;min-width:240px">
     </div>
 
+    @php $pausados = \Illuminate\Support\Facades\Schema::hasTable('bot_chats_pausados') ? \Illuminate\Support\Facades\DB::table('bot_chats_pausados')->orderByDesc('created_at')->get()->keyBy('telefono') : collect(); @endphp
+    @if(session('success'))<div class="apr-box" style="border-color:#c8e6d6;background:#eef7f2;color:#1b5e45">{{ session('success') }}</div>@endif
+    @if(session('error'))<div class="apr-box" style="border-color:#f1dfba;background:#fff8ec;color:#6b4a10">{{ session('error') }}</div>@endif
+    <div class="apr-box" style="display:flex;flex-wrap:wrap;gap:10px;align-items:center;justify-content:space-between">
+        <div><strong>Bot por conversación</strong><br><small style="color:#64748b">Apagado en {{ $pausados->count() }} chat(s). En un chat apagado el bot no responde y los mensajes quedan en espera para el equipo; el resto de WhatsApp sigue igual.</small>
+            @if($pausados->count())<br><small style="color:#64748b">@foreach($pausados as $pz)+{{ $pz->telefono }}{{ $pz->nombre ? ' (' . $pz->nombre . ')' : '' }}@if(!$loop->last) · @endif @endforeach</small>@endif</div>
+        <form method="POST" action="{{ route('backoffice.bot-conversaciones.chat_bot') }}" style="display:flex;gap:8px;align-items:center">@csrf
+            <input type="hidden" name="accion" value="apagar">
+            <input type="text" name="telefono" placeholder="+56 9 …" inputmode="tel" required style="height:36px;border:1px solid #d0d0d0;border-radius:10px;padding:0 10px;width:150px;margin:0">
+            <button class="apr-bot-btn off">Apagar bot en este número</button>
+        </form>
+    </div>
+    <style>
+        .apr-bot-btn { border:1px solid #cbd5e1; background:#fff; border-radius:999px; padding:5px 12px; font-size:.8rem; cursor:pointer; white-space:nowrap; }
+        .apr-bot-btn.on { border-color:#0e5f49; background:#0e5f49; color:#fff; }
+        .apr-bot-btn.off { border-color:#a33a12; color:#a33a12; }
+        .apr-bot-est { display:inline-block; font-size:.72rem; font-weight:700; padding:2px 8px; border-radius:999px; margin-bottom:4px; }
+        .apr-bot-est.si { background:#eaf4ef; color:#0e5f49; } .apr-bot-est.no { background:#fdecea; color:#a33a12; }
+    </style>
+        {{-- WhatsApp e Instagram en la misma lista --}}
+    @php $igActivo = class_exists(\App\Http\Controllers\Api\InstagramWebhookController::class) && \App\Http\Controllers\Api\InstagramWebhookController::botActivo(); @endphp
+    <div class="apr-box" style="display:flex;flex-wrap:wrap;gap:12px;align-items:center;justify-content:space-between">
+        <div style="display:flex;gap:6px;flex-wrap:wrap" role="group" aria-label="Filtrar por canal">
+            <button type="button" class="apr-bot-btn on" data-filtro-canal="">Todos</button>
+            <button type="button" class="apr-bot-btn" data-filtro-canal="whatsapp">WhatsApp</button>
+            <button type="button" class="apr-bot-btn" data-filtro-canal="instagram">Instagram</button>
+        </div>
+        <form method="POST" action="{{ route('backoffice.bot-conversaciones.instagram_bot') }}" style="display:flex;gap:8px;align-items:center;margin:0">@csrf
+            <span>Bot en Instagram: <strong style="color:{{ $igActivo ? '#0e5f49' : '#a33a12' }}">{{ $igActivo ? 'Encendido' : 'Apagado' }}</strong></span>
+            <input type="hidden" name="accion" value="{{ $igActivo ? 'apagar' : 'encender' }}">
+            <button class="apr-bot-btn {{ $igActivo ? 'off' : 'on' }}" onclick="return confirm('{{ $igActivo ? '¿Apagar el bot en Instagram? Los mensajes quedarán en espera para el equipo.' : '¿Encender el bot en Instagram? Responderá los mensajes directos que lleguen desde ahora.' }}')">{{ $igActivo ? 'Apagar' : 'Encender' }}</button>
+        </form>
+    </div>
+    <style>
+        .apr-canal { display:inline-block; font-size:.68rem; font-weight:700; padding:1px 7px; border-radius:999px; margin-right:4px; }
+        .apr-canal.wa { background:#e7f6ee; color:#0e6b45; } .apr-canal.ig { background:#fbe9f1; color:#9b1b52; }
+        .apr-bot-btn { border:1px solid #cbd5e1; background:#fff; border-radius:999px; padding:5px 12px; font-size:.8rem; cursor:pointer; white-space:nowrap; }
+        .apr-bot-btn.on { border-color:#0e5f49; background:#0e5f49; color:#fff; } .apr-bot-btn.off { border-color:#a33a12; color:#a33a12; }
+    </style>
     <div class="apr-box" style="overflow-x:auto;">
         <table class="apr-tabla">
-            <thead><tr><th>Fecha</th><th>Cliente</th><th>Llegó a</th><th>Estado</th><th>Mensajes</th><th></th></tr></thead>
+            <thead><tr><th>Fecha</th><th>Cliente</th><th>Llegó a</th><th>Estado</th><th>Mensajes</th><th>Bot</th><th></th></tr></thead>
             <tbody>
             @forelse ($conversaciones as $c)
-                <tr data-buscar="{{ mb_strtolower($c->nombre . ' ' . $c->telefono) }}">
+                <tr data-buscar="{{ mb_strtolower($c->nombre . ' ' . $c->telefono . ' ' . ($c->canal ?? 'whatsapp')) }}" data-canal="{{ $c->canal ?? 'whatsapp' }}">
                     <td>{{ $c->fecha->locale('es')->isoFormat('D MMM HH:mm') }}</td>
-                    <td>{{ $c->nombre }}<br><small style="color:#94a3b8;">+{{ $c->telefono }}</small></td>
+                    <td>@if(($c->canal ?? 'whatsapp') === 'instagram')<span class="apr-canal ig">Instagram</span>@else<span class="apr-canal wa">WhatsApp</span>@endif {{ $c->nombre }}<br><small style="color:#94a3b8;">@if(($c->canal ?? 'whatsapp') === 'instagram') Mensaje directo @else +{{ $c->telefono }} @endif</small></td>
                     <td><span class="apr-badge e{{ $c->etapa_num }}">{{ $c->etapa }}</span></td>
                     <td>
                         @if ($c->derivada)<span class="apr-badge de">Equipo</span>@endif
                         @if ($c->abandonada)<span class="apr-badge ab">Se cortó</span>@endif
                     </td>
                     <td>{{ $c->turnos }}</td>
-                    <td><span class="apr-link" data-conv="{{ $c->id }}" data-tel="{{ $c->telefono }}">Ver</span></td>
+                    <td>@php $telC = preg_replace('/\D/', '', (string) $c->telefono); $apag = $pausados->has($telC); @endphp
+                        <span class="apr-bot-est {{ $apag ? 'no' : 'si' }}">{{ $apag ? 'Apagado' : 'Activo' }}</span><br>
+                        <form method="POST" action="{{ route('backoffice.bot-conversaciones.chat_bot') }}" style="display:inline">@csrf
+                            <input type="hidden" name="telefono" value="{{ $telC }}"><input type="hidden" name="nombre" value="{{ $c->nombre }}">
+                            <input type="hidden" name="accion" value="{{ $apag ? 'encender' : 'apagar' }}">
+                            <button class="apr-bot-btn {{ $apag ? 'on' : 'off' }}">{{ $apag ? 'Encender' : 'Apagar' }}</button>
+                        </form></td>
+                    <td><span class="apr-link" data-conv="{{ $c->id }}" data-tel="{{ $c->telefono }}" data-canal="{{ $c->canal ?? 'whatsapp' }}">Ver</span></td>
                 </tr>
             @empty
-                <tr><td colspan="6" style="color:#64748b">No hay conversaciones en el período.</td></tr>
+                <tr><td colspan="7" style="color:#64748b">No hay conversaciones en el período.</td></tr>
             @endforelse
             </tbody>
         </table>
@@ -170,6 +216,16 @@
         });
     });
 
+
+    document.querySelectorAll('[data-filtro-canal]').forEach(function (b) {
+        b.addEventListener('click', function () {
+            document.querySelectorAll('[data-filtro-canal]').forEach(function (x) { x.classList.toggle('on', x === b); });
+            var c = b.dataset.filtroCanal;
+            document.querySelectorAll('tr[data-buscar]').forEach(function (tr) {
+                tr.style.display = !c || (tr.dataset.canal || 'whatsapp') === c ? '' : 'none';
+            });
+        });
+    });
     var modal = document.getElementById('aprModal'), chat = document.getElementById('aprChat');
     var urlBase = @json(route('backoffice.bot-configuracion.aprendizajes.conversacion', 0));
     function esc(s) { var d = document.createElement('div'); d.textContent = s; return d.innerHTML; }
@@ -177,7 +233,9 @@
         var el = e.target.closest('[data-conv]');
         if (!el) return;
         chat.innerHTML = '<p style="color:#64748b">Cargando…</p>';
-        document.getElementById('aprModalWa').href = 'https://wa.me/' + (el.dataset.tel || '');
+        var esIg = el.dataset.canal === 'instagram', lk = document.getElementById('aprModalWa');
+        lk.href = esIg ? 'https://www.instagram.com/direct/inbox/' : 'https://wa.me/' + (el.dataset.tel || '');
+        lk.textContent = esIg ? 'Instagram' : 'WhatsApp'; lk.style.color = esIg ? '#9b1b52' : '#128c7e';
         modal.classList.add('open');
         fetch(urlBase.replace(/0$/, el.dataset.conv), { headers: { 'Accept': 'application/json' } })
             .then(function (r) { return r.json(); })

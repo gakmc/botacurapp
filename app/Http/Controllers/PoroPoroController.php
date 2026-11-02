@@ -8,6 +8,15 @@ use RealRashid\SweetAlert\Facades\Alert;
 
 class PoroPoroController extends Controller
 {
+    public function __construct()
+    {
+        // Solo administradores crean, editan o eliminan productos
+        $this->middleware(function ($request, $next) {
+            if (!$request->user() || !$request->user()->has_role(config('app.admin_role'))) { abort(403, 'Solo administradores'); }
+            return $next($request);
+        })->except(['index']);
+    }
+
     /**
      * Display a listing of the resource.
      *

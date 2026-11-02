@@ -14,7 +14,7 @@ use Illuminate\Support\Facades\Log;
  */
 class WhatsAppConectarController extends Controller
 {
-    const VER = 'v25.0';
+    const VER = 'v26.0';
 
     public function __construct()
     {
@@ -35,7 +35,7 @@ class WhatsAppConectarController extends Controller
 
     public function finalizar(Request $request)
     {
-        $request->validate(['pagina' => 'nullable|string', 'code' => 'required|string', 'waba_id' => 'nullable|string', 'phone_number_id' => 'nullable|string', 'evento' => 'nullable|string']);
+        $request->validate(['pagina' => 'nullable|string', 'code' => 'nullable|string', 'waba_id' => 'nullable|string', 'phone_number_id' => 'nullable|string', 'evento' => 'nullable|string']);
         $pasos = [];
         $http  = new GuzzleClient(['timeout' => 30, 'http_errors' => false]);
         $g     = 'https://graph.facebook.com/' . self::VER . '/';
@@ -43,7 +43,7 @@ class WhatsAppConectarController extends Controller
         // 1) Canjear el código (dura 30 s) por el token del negocio
         // Meta valida el redirect_uri del diálogo: se prueba sin él, con la página actual y con la raíz del sitio.
         $r = [];
-        foreach ([null, (string) $request->input('pagina'), url('/') . '/', ''] as $redir) {
+        foreach ($request->code ? [null, (string) $request->input('pagina'), url('/') . '/', ''] : [] as $redir) {
             $q = ['client_id' => env('META_APP_ID'), 'client_secret' => env('META_APP_SECRET'), 'code' => $request->code];
             if ($redir !== null) {
                 $q['redirect_uri'] = $redir;

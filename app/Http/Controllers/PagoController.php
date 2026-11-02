@@ -227,7 +227,7 @@ class PagoController extends Controller
     {
         $phoneId = env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
 
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);
@@ -259,7 +259,7 @@ class PagoController extends Controller
     {
         $phoneId = env('META_PHONE_NUMBER_ID');
         $token   = env('META_WHATSAPP_TOKEN');
-        $version = env('META_API_VERSION', 'v19.0');
+        $version = env('META_API_VERSION', 'v26.0');
 
         try {
             $client = new GuzzleClient(['timeout' => 10, 'http_errors' => false]);

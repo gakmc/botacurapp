@@ -872,7 +872,7 @@ class AdminController extends Controller
             DB::raw('SUM(ventas.abono_programa) as abono'),
             DB::raw('SUM(ventas.diferencia_programa) as diferencia'),
             DB::raw('SUM(ventas.total_pagar) as pendiente'),
-            DB::raw('SUM(programas.valor_programa * reservas.cantidad_personas) as total_pagar')
+            DB::raw('SUM(COALESCE((SELECT SUM(rp.valor_unitario * rp.cantidad_personas) FROM reserva_programas rp WHERE rp.id_reserva = reservas.id), programas.valor_programa * reservas.cantidad_personas)) as total_pagar')
         )
             ->join('reservas', 'ventas.id_reserva', '=', 'reservas.id')
             ->join('programas', 'reservas.id_programa', '=', 'programas.id')
@@ -994,8 +994,11 @@ class AdminController extends Controller
         $programas = Programa::with(['reservas' => function ($query) use ($mes, $anio) {
             $query->whereMonth('fecha_visita', $mes)
                 ->whereYear('fecha_visita', $anio);
-        }])->get()->map(function ($programa) {
-            $programa->total_programas = $programa->reservas->count();
+        }])->get()->map(function ($programa) use ($mes, $anio) {
+            $programa->total_programas = Reserva::conPrograma($programa->id)
+                ->whereMonth('fecha_visita', $mes)
+                ->whereYear('fecha_visita', $anio)
+                ->count();
             return $programa;
         });
 
@@ -1090,7 +1093,7 @@ class AdminController extends Controller
         });
 
         $programas = Programa::all()->map(function ($programa) use ($dia, $mes, $anio) {
-            $cuenta = Reserva::where('id_programa', $programa->id)
+            $cuenta = Reserva::conPrograma($programa->id)
                 ->whereDay('fecha_visita', $dia)
                 ->whereMonth('fecha_visita', $mes)
                 ->whereYear('fecha_visita', $anio)
@@ -1250,7 +1253,7 @@ class AdminController extends Controller
             })
             ->get()
             ->map(function ($programa) use ($dia, $mes, $anio) {
-                $cuenta = Reserva::where('id_programa', $programa->id)
+                $cuenta = Reserva::conPrograma($programa->id)
                     ->whereDay('fecha_visita', $dia)
                     ->whereMonth('fecha_visita', $mes)
                     ->whereYear('fecha_visita', $anio)

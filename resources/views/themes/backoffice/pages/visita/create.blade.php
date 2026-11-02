@@ -346,7 +346,7 @@
 
                             <input type="hidden" name="id_ubicacion" id="id_ubicacion_principal">
 
-                            @if(optional($reserva->programa)->espacio_tipo === 'wellness')
+                            @if($reserva->solo_wellness)
                             <div class="row">
                                 <h6><strong>Terraza o Reposera</strong></h6>
                                 <div class="col s12">
@@ -620,7 +620,7 @@ $(document).ready(function () {
   var UBICACIONES = @json($ubicaciones);
   var ASIGNADAS = @json($ubicacionesAsignadas);
   var CANTIDAD_PERSONAS = {{ (int) $reserva->cantidad_personas }};
-  var ES_WELLNESS = {{ optional($reserva->programa)->espacio_tipo === 'wellness' ? 'true' : 'false' }};
+  var ES_WELLNESS = {{ $reserva->solo_wellness ? 'true' : 'false' }};
 
   var $filas = $('#ubicaciones_filas');
   var filaIndex = 0;

@@ -87,7 +87,7 @@ document.addEventListener('DOMContentLoaded', function() {
             @if ($visita->horario_sauna && !in_array($visita->horario_sauna, $saunaHorarios))
             var horaSauna = convertirHora('{{ $visita->horario_sauna }}');
             eventos.push({
-                title: '{{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+                title: '{{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{ $reserva->programas_texto }}',
                 start: formatoFecha + ' {{ $visita->horario_sauna }}',
                 end: formatoFecha + ' {{ $visita->hora_fin_sauna }}',
                 url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
@@ -108,7 +108,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // var horaTinaja = convertirHora('{{ $visita->horario_tinaja }}');
 
             // eventos.push({
-            //     title: 'Tinaja - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+            //     title: 'Tinaja - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{ $reserva->programas_texto }}',
             //     start: formatoFecha + ' ' + horaTinaja,
             //     end: formatoFecha + ' {{ $visita->hora_fin_tinaja }}',
             //     url: '{{ route('backoffice.reserva.show', $reserva->id) }}',
@@ -129,7 +129,7 @@ document.addEventListener('DOMContentLoaded', function() {
             // var horaMasaje = convertirHora('{{ $visita->horario_masaje }}');
 
             // eventos.push({
-            //     title: 'Masaje - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{$reserva->programa->nombre_programa}}',
+            //     title: 'Masaje - {{ addslashes($reserva->cliente->nombre_cliente) }} - {{ $reserva->cantidad_personas }} personas - {{ $reserva->programas_texto }}',
             //     start: formatoFecha + ' ' + horaMasaje,
             //     end: formatoFecha + ' {{ $visita->hora_fin_masaje_extra }}',
             //     url: '{{ route('backoffice.reserva.show', $reserva->id) }}',

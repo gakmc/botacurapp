@@ -141,15 +141,10 @@
                                         </span>
                                     @enderror
                                 </div>
-
                                 <div class="input-field col s12 m6 l3">
-                                    <input id="validez_hasta" type="text" name="validez_hasta" value="{{ old('validez_hasta') ?? ($gc->validez_hasta ? \Carbon\Carbon::parse($gc->validez_hasta)->format('d-m-Y') : '') }}">
-                                    <label for="validez_hasta" class="{{ $gc->validez_hasta ? 'active' : '' }}">Válido hasta:</label>
-                                    @error('validez_hasta')
-                                        <span class="invalid-feedback" role="alert">
-                                            <strong style="color:red">{{ $message }}</strong>
-                                        </span>
-                                    @enderror
+                                    <input id="fecha_compra" type="date" name="fecha_compra" value="{{ old('fecha_compra', optional($gc->fecha_compra_real)->toDateString()) }}">
+                                    <label for="fecha_compra" class="active">Fecha de compra:</label>
+                                    <span class="helper-text">Vence el {{ $gc->valido }} (45 días después de la compra).</span>
                                 </div>
                             </div>
 
@@ -221,7 +216,6 @@
         };
 
         $('#fecha_uso').pickadate(pickadateOpts);
-        $('#validez_hasta').pickadate(pickadateOpts);
     });
 
     function actualizarMonto(valor, personas) {

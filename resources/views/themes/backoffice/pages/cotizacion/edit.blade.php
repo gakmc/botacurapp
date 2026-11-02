@@ -120,6 +120,15 @@
                                         @enderror
                                     </div>
 
+                                    <div class="col s12" style="margin:8px 0 16px">
+                                        <input type="hidden" name="iva_incluido" value="0">
+                                        <label>
+                                            <input type="checkbox" class="filled-in" name="iva_incluido" value="1" {{ old('iva_incluido', $cotizacion->iva_incluido) ? 'checked' : '' }}>
+                                            <span>Los valores ingresados ya incluyen IVA (si no se marca, se suma el 19% al total)</span>
+                                        </label>
+                                    </div>
+
+
 
                                 </div>
 

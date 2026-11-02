@@ -184,9 +184,9 @@ class MenuController extends Controller
 
             foreach ($reserva->desayunoOnce as $item) {
                 if ($item->tipo === 'desayuno') {
-                    $desayunos += (int) ($reserva->cantidad_personas ?? 0);
+                    $desayunos += $reserva->personasDesayunoOnce();
                 } elseif ($item->tipo === 'once') {
-                    $onces += (int) ($reserva->cantidad_personas ?? 0);
+                    $onces += $reserva->personasDesayunoOnce();
                 }
             }
         }
@@ -204,7 +204,7 @@ class MenuController extends Controller
                 'id' => $r->id,
                 'cliente' => $r->cliente ? $r->cliente->nombre_cliente : 'Sin cliente',
                 'cantidad_personas' => $r->cantidad_personas ?? 0,
-                'programa' => $r->programa ? $r->programa->nombre_programa : 'Sin programa',
+                'programa' => $r->programa ? $r->programas_texto : 'Sin programa',
                 'observacion_reserva' => $r->observacion ?? 'Sin Observaciones',
                 'avisado_en_cocina' => $r->avisado_en_cocina,
                 'avisar_url' => route('backoffice.reserva.avisar', $r->id), // (sin backoffice, por tu prefix)
@@ -221,6 +221,8 @@ class MenuController extends Controller
             ];
         })->values();
 
+        $postresDia = \App\Http\Controllers\PostreDiaController::delDia($fechaISO);
+
         return response()->json([
             'fecha' => $fechaDMY,
             'hoy' => now()->format('d-m-Y') === $fechaDMY,
@@ -229,6 +231,9 @@ class MenuController extends Controller
             'acompanamientos' => $acomps,
             'buffet' => $buffet,
             'reservas' => $reservasPayload,
+            'postres' => $postresDia['postres'],
+            'postres_sugeridos' => $postresDia['sugeridos'],
+            'puede_postres' => $postresDia['puede'],
         ]);
     }
     

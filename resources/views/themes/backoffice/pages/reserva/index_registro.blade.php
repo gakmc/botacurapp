@@ -176,9 +176,9 @@
                       foreach ($reservas as $reservaBuffet) {
                           foreach ($reservaBuffet->desayunoOnce as $itemBuffet) {
                               if ($itemBuffet->tipo === 'desayuno') {
-                                  $totalDesayunos += (int) ($reservaBuffet->cantidad_personas ?? 0);
+                                  $totalDesayunos += $reservaBuffet->personasDesayunoOnce();
                               } elseif ($itemBuffet->tipo === 'once') {
-                                  $totalOnces += (int) ($reservaBuffet->cantidad_personas ?? 0);
+                                  $totalOnces += $reservaBuffet->personasDesayunoOnce();
                               }
                           }
                       }
@@ -344,7 +344,7 @@
 
                                         <td>
                                             <a href="{{ route('backoffice.reserva.show', $reserva) }}">
-                                                {{($reserva->venta->tiene_gc) ? '🎁' : ''}} {{$reserva->cliente->nombre_cliente}} 
+                                                @include('themes.backoffice.pages.reserva.includes._bandera_bot', ['r' => $reserva]){{($reserva->venta->tiene_gc) ? '🎁' : ''}} {{$reserva->cliente->nombre_cliente}} 
                                             </a>
                                         </td>
                                         <td>
@@ -359,7 +359,7 @@
                                         </td>
                                         <td>
 
-                                            {{$reserva->programa->nombre_programa}}
+                                            {{$reserva->programas_texto}}
 
                                         </td>
                                         <td>

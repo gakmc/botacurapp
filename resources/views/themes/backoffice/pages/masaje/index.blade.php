@@ -60,6 +60,9 @@
                         <th>Lugar Masajes</th>
                         <th>Estado</th>
                         <th>Asignación</th>
+                        @if (Auth::user()->has_role(config('app.admin_role')))
+                            <th>Acciones</th>
+                        @endif
                     </tr>
                 </thead>
 
@@ -137,6 +140,22 @@
                                         @endif
                                     @endif
                                 </td>
+                                @if (Auth::user()->has_role(config('app.admin_role')))
+                                    <td style="white-space:nowrap">
+                                        <a href="#!" class="btn-floating btn-small blue masaje-editar" title="Editar"
+                                           data-url="{{ route('backoffice.masaje.admin_update', $masaje->id) }}"
+                                           data-horario="{{ $masaje->horario_masaje ? substr($masaje->horario_masaje,0,5) : '' }}"
+                                           data-tipo="{{ $masaje->tipo_masaje }}"
+                                           data-lugar="{{ $masaje->id_lugar_masaje }}"
+                                           data-user="{{ $masaje->user_id }}"
+                                           data-persona="{{ $masaje->persona }}"
+                                           data-extra="{{ $masaje->tiempo_extra ? 1 : 0 }}"
+                                           data-cliente="{{ optional($masaje->reserva->cliente)->nombre_cliente }}"><i class="material-icons">edit</i></a>
+                                        <a href="#!" class="btn-floating btn-small red masaje-borrar" title="Borrar"
+                                           data-url="{{ route('backoffice.masaje.destroy', $masaje->id) }}"
+                                           data-texto="{{ optional($masaje->reserva->cliente)->nombre_cliente }} - Persona {{ $masaje->persona }}{{ $masaje->horario_masaje ? ' - '.substr($masaje->horario_masaje,0,5) : '' }}"><i class="material-icons">delete</i></a>
+                                    </td>
+                                @endif
                             </tr>
                         @endforeach
                     @endforeach
@@ -163,6 +182,10 @@
         </div>
 
     </div>
+
+    @if (Auth::user()->has_role(config('app.admin_role')))
+        @include('themes.backoffice.pages.masaje.includes.admin_editar')
+    @endif
 
     <div class="col s12">
         <div class="card-panel">

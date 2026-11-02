@@ -1,0 +1,49 @@
+<?php
+
+/*
+| Finanzas: lectura de correos bancarios (fase 1) y módulo de egresos (fase 2).
+| Solo los usuarios de FINANZAS_USUARIOS (correos separados por coma) ven estas vistas.
+*/
+return [
+    'usuarios' => array_values(array_filter(array_map(function ($c) {
+        return strtolower(trim($c));
+    }, explode(',', (string) env('FINANZAS_USUARIOS', ''))))),
+
+    // Buzones que se leen. El primero es el de Botacura; el segundo, el personal de Sebastián
+    // (cuentas por pagar y avisos de sus bancos). Cada uno con su contraseña de aplicación.
+    'imap' => [
+        'host'    => env('FIN_IMAP_HOST', 'imap.gmail.com'),
+        'port'    => (int) env('FIN_IMAP_PORT', 993),
+        'dias'    => (int) env('FIN_IMAP_DIAS', 3),
+        'buzones' => array_values(array_filter([
+            ['usuario' => env('FIN_IMAP_USER', 'botacura.info@gmail.com'), 'clave' => env('FIN_IMAP_PASS'),
+             'carpeta' => env('FIN_IMAP_FOLDER', '[Gmail]/All Mail')],
+            ['usuario' => env('FIN_IMAP2_USER'), 'clave' => env('FIN_IMAP2_PASS'),
+             'carpeta' => env('FIN_IMAP2_FOLDER', '[Gmail]/All Mail')],
+        ], function ($b) {
+            return !empty($b['usuario']);
+        })),
+    ],
+
+    // Quién ve los gastos personales (correos separados por coma). Vacío = el primero de FINANZAS_USUARIOS.
+    'personal' => array_values(array_filter(array_map(function ($c) {
+        return strtolower(trim($c));
+    }, explode(',', (string) env('FINANZAS_PERSONAL', ''))))),
+
+    // Avisos que llegan al correo personal pero son de cuentas de otras personas (se guardan como 'ajeno').
+    'titulares_ajenos' => array_values(array_filter(array_map('trim', explode(',', (string) env('FIN_TITULARES_AJENOS', 'jaime emersson'))))),
+
+    'cuentas' => [
+        '36072963894'  => 'BancoEstado Botacura',
+        '000216424012' => 'Banco de Chile Botacura',
+        '216424012'    => 'Banco de Chile Botacura',
+        '002070231203' => 'Banco de Chile Sebastián',
+        '36072581665'  => 'BancoEstado DS Web',
+    ],
+
+    // Cuentas de destino que son de un proveedor aunque la persona sea del equipo (no es sueldo).
+    // Clave: número de cuenta sin ceros a la izquierda.
+    'cuentas_proveedor' => [
+        '23674351' => ['nombre' => 'Café de Francisca Bahamondes (2 kg $72.000, 500 g $18.000)', 'cat' => 'Insumos', 'sub' => 'Café'],
+    ],
+];

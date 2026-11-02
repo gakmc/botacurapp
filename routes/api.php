@@ -184,3 +184,16 @@ Route::prefix('cotizador')->namespace('Api')->middleware('cotizador.token')->gro
 
 // Enlace firmado (sin token) para que el cliente descargue el PDF; vence a los 30 días
 Route::get('cotizador/publico/{id}/pdf', 'Api\CotizadorController@pdfPublico')->name('cotizador.publico')->middleware('signed');
+
+// Consultas por correo de dias no habilitados (n8n). 15/10/2026
+Route::middleware('cotizador.token')->post('cotizador/interes-fechas', '\App\Http\Controllers\InteresFechasCorreoController@store');
+
+// -------------------------------------------------------------------------
+// Instagram — Bot-Acura por mensaje directo
+// GET  /api/instagram/webhook  → verificación
+// POST /api/instagram/webhook  → mensajes entrantes
+// -------------------------------------------------------------------------
+Route::prefix('instagram')->namespace('Api')->middleware('auditoria:omitir')->group(function () {
+    Route::get('webhook',  'InstagramWebhookController@verify')->name('instagram.webhook.verify');
+    Route::post('webhook', 'InstagramWebhookController@handle')->name('instagram.webhook.handle');
+});
