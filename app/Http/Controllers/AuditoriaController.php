@@ -47,6 +47,7 @@ class AuditoriaController extends Controller
         'giftcard'       => [\App\GiftCard::class, 'Gift card'],
         'asignacion'     => [\App\Asignacion::class, 'Asignación de turno'],
         'asistencia'     => [\App\Asistencia::class, 'Asistencia'],
+        'ticket'         => [\App\Ticket::class, 'Ticket'],
     ];
 
     // LISTADO

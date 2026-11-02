@@ -46,6 +46,17 @@
                                 @enderror
 
                             </div>
+                            <div class="col s12" style="margin-bottom:20px;">
+                              <div class="switch">
+                                <label>
+                                  No
+                                  <input type="checkbox" name="recibe_tickets" value="1" {{ old('recibe_tickets') ? 'checked' : '' }}>
+                                  <span class="lever"></span>
+                                  Sí
+                                </label>
+                              </div>
+                              <small class="grey-text">Recibe tickets: el rol puede enviar y recibir tickets entre departamentos.</small>
+                            </div>
                             <div class="row">
                               <div class="input-field col s12">
                                 <button class="btn waves-effect waves-light right" type="submit">Guardar

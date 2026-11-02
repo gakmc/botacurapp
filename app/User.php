@@ -295,6 +295,23 @@ class User extends Authenticatable implements MustVerifyEmail, JWTSubject
         return false;
     }
 
+    /** Roles del usuario habilitados para enviar y recibir tickets (sus departamentos). */
+    public function rolesTickets()
+    {
+        return $this->roles->where('recibe_tickets', true)->values();
+    }
+
+    public function usaTickets()
+    {
+        return $this->rolesTickets()->isNotEmpty() || $this->supervisaTickets();
+    }
+
+    /** Ve todos los tickets, no solo los de sus roles (por ahora, administradores). */
+    public function supervisaTickets()
+    {
+        return $this->has_role(config('app.admin_role'));
+    }
+
     public function has_permission($id)
     {
         foreach ($this->permissions as $permission) {

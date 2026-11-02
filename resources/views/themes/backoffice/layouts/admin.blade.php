@@ -46,6 +46,7 @@
         @include('themes.backoffice.layouts.includes.foot')
         @yield('foot')
         <script src="{{ mix('js/app.js') }}"></script>
+        @include('themes.backoffice.layouts.includes.sesion')
         {{-- <script src="{{ asset('js/app.js') }}"></script> --}}
 
 {{-- <script>console.log('Como?')</script> --}}

@@ -172,28 +172,7 @@ TXT;
     /** Reduce la foto a LADO_MAX px en JPEG (las fotos de celular pesan varios MB). */
     private function imagenLiviana($abs, $mime)
     {
-        $info = @getimagesize($abs);
-        if (! $info || ! function_exists('imagecreatefromstring')) return [file_get_contents($abs), $mime];
-        list($w, $h) = $info;
-        $img = @imagecreatefromstring(file_get_contents($abs));
-        if (! $img) return [file_get_contents($abs), $mime];
-        if (function_exists('exif_read_data') && $mime === 'image/jpeg') {
-            $o = (@exif_read_data($abs)['Orientation'] ?? 1);
-            if ($o == 3) $img = imagerotate($img, 180, 0);
-            if ($o == 6) { $img = imagerotate($img, -90, 0); list($w, $h) = [$h, $w]; }
-            if ($o == 8) { $img = imagerotate($img, 90, 0); list($w, $h) = [$h, $w]; }
-        }
-        $f = min(1, self::LADO_MAX / max($w, $h));
-        if ($f < 1) {
-            $nueva = imagecreatetruecolor((int) ($w * $f), (int) ($h * $f));
-            imagecopyresampled($nueva, $img, 0, 0, 0, 0, (int) ($w * $f), (int) ($h * $f), $w, $h);
-            imagedestroy($img);
-            $img = $nueva;
-        }
-        ob_start();
-        imagejpeg($img, null, 85);
-        imagedestroy($img);
-        return [ob_get_clean(), 'image/jpeg'];
+        return app(ImagenService::class)->reducir($abs, $mime, self::LADO_MAX, 85);
     }
 
     private static function esquema()

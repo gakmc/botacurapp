@@ -28,6 +28,7 @@ class StoreRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255', 'unique:roles'],
             'description' => ['required', 'string'],
+            'recibe_tickets' => ['nullable', 'boolean'],
         ];
     }
 

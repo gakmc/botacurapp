@@ -22,6 +22,7 @@
                     <span class="card-title">Rol de {{$role->name}}</span>
                       <p><strong>Descripción: </strong>{{$role->description}}</p>
                       <p><strong>Slug: </strong>{{$role->slug}}</p>
+                      <p><strong>Recibe tickets: </strong>{{ $role->recibe_tickets ? 'Sí' : 'No' }}</p>
                   </div>
                   <div class="card-action">
                       <a href="{{route('backoffice.role.edit', $role) }}">Editar</a>

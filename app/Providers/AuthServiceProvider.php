@@ -23,6 +23,7 @@ class AuthServiceProvider extends ServiceProvider
         'App\Cliente' =>'App\Policies\ClientePolicy',
         'App\Reserva' =>'App\Policies\ReservaPolicy',
         'App\Sueldo' =>'App\Policies\SueldoPolicy',
+        'App\Ticket' =>'App\Policies\TicketPolicy',
     ];
 
     /**
@@ -41,6 +42,11 @@ class AuthServiceProvider extends ServiceProvider
 
         Gate::define('gestionar-auditoria', function ($user) {
             return $user->es_gestor_auditoria();
+        });
+
+        // Tickets: ver todos los departamentos (checkbox "Solo los de mi rol" en la bandeja)
+        Gate::define('supervisar-tickets', function ($user) {
+            return $user->supervisaTickets();
         });
     }
 }

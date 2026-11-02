@@ -88,6 +88,12 @@ class Kernel extends ConsoleKernel
           ->mondays()->at('10:00')->timezone('America/Santiago')
           ->withoutOverlapping(120);
 
+        // Tickets: recordatorio al origen un día antes y finalización automática
+        // de los solucionados sin confirmar (config app.tickets_dias_autocierre)
+        $schedule->command('tickets:autocerrar --programado')
+                ->hourly()
+                ->withoutOverlapping(30);
+
         // ── Auditoría: retención según config/auditoria.php. Solo opera sobre las
         //    tablas de auditoría (nunca datos del negocio).
         $schedule->command('auditoria:archivar --programado')

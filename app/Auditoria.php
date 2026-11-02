@@ -42,6 +42,8 @@ class Auditoria extends Model
     const EVENTO_APROBO        = 'aprobo';
     const EVENTO_RECHAZO       = 'rechazo';
     const EVENTO_EJECUTO       = 'ejecuto';
+    const EVENTO_ANULO         = 'anulo';
+    const EVENTO_COMENTO       = 'comento';
 
     const ETIQUETAS_EVENTO = [
         self::EVENTO_CREO          => 'Creó',
@@ -58,6 +60,8 @@ class Auditoria extends Model
         self::EVENTO_APROBO        => 'Aprobó',
         self::EVENTO_RECHAZO       => 'Rechazó',
         self::EVENTO_EJECUTO       => 'Ejecutó',
+        self::EVENTO_ANULO         => 'Anuló',
+        self::EVENTO_COMENTO       => 'Comentó',
     ];
 
     /** Columnas comunes a `auditorias` y `auditorias_archivo` (archivado y consultas combinadas). */

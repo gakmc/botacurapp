@@ -33,6 +33,28 @@
                         {{-- SOLO visible en móviles --}}
                         <div class="hide-on-med-and-up">
 
+                            {{-- Opción: Tickets entre departamentos --}}
+                            @if (Auth::user()->usaTickets())
+                            @php $ticketsPendientes = array_sum(\App\Ticket::contadoresPara(Auth::user())); @endphp
+                            <div class="card hoverable">
+                                <div class="card-content center">
+                                    <i class="material-icons large cyan-text text-darken-2">assignment</i>
+                                    <h6 class="grey-text text-darken-3">
+                                        Tickets
+                                        @if ($ticketsPendientes > 0)
+                                            <span class="new badge red" data-badge-caption="{{ $ticketsPendientes === 1 ? 'pendiente' : 'pendientes' }}" style="float:none;">{{ $ticketsPendientes }}</span>
+                                        @endif
+                                    </h6>
+                                </div>
+                                <div class="card-action center">
+                                    <a href="{{ route('backoffice.tickets.index') }}"
+                                        class="btn-flat cyan-text text-darken-2">
+                                        Ver Tickets
+                                    </a>
+                                </div>
+                            </div>
+                            @endif
+
                             {{-- Opción: Ver Sueldos --}}
                             <div class="card hoverable">
                                 <div class="card-content center">

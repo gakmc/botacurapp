@@ -27,6 +27,7 @@ class UpdateRequest extends FormRequest
         return [
             'name' => ['required', 'string', 'max:255' . $this->route('role')->id],
             'description' => ['required', 'string'],
+            'recibe_tickets' => ['nullable', 'boolean'],
                 ];
     }
 

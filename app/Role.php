@@ -18,6 +18,7 @@ class Role extends Model
         'name'        => 'Nombre',
         'slug'        => 'Slug',
         'description' => 'Descripción',
+        'recibe_tickets' => ['Recibe tickets', 'bool'],
     ];
 
     protected function auditoriaDescripcion($evento)
@@ -26,7 +27,11 @@ class Role extends Model
     }
 
     protected $fillable = [
-        'name', 'slug', 'description'
+        'name', 'slug', 'description', 'recibe_tickets'
+    ];
+
+    protected $casts = [
+        'recibe_tickets' => 'boolean',
     ];
 
 
@@ -54,6 +59,7 @@ class Role extends Model
         // Solo los campos del formulario; el slug siempre se calcula (antes uno enviado en el request lo pisaba)
         return self::create($request->only(['name', 'description']) + [
             'slug' => $slug,
+            'recibe_tickets' => $request->boolean('recibe_tickets'),
         ]);
     }
 
@@ -63,12 +69,21 @@ class Role extends Model
         Alert::success('Éxito', 'Rol actualizado')->showConfirmButton();
         return self::update($request->only(['name', 'description']) + [
             'slug' => $slug,
+            'recibe_tickets' => $request->boolean('recibe_tickets'),
         ]);
         
     }
 
 
-    // VALIDACION 
+    // SCOPES
+
+    /** Departamentos que envían y reciben tickets. */
+    public function scopeConTickets($query)
+    {
+        return $query->where('recibe_tickets', true);
+    }
+
+    // VALIDACION
 
 
     // RECUPERACION DE INFORMACIÓN

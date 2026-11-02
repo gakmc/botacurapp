@@ -465,6 +465,23 @@
 
                 @endif
 
+                @if (Auth::user()->usaTickets())
+                @php $ticketsPendientes = array_sum(\App\Ticket::contadoresPara(Auth::user())); @endphp
+                <li class="bold">
+                    <a class="waves-effect waves-cyan" href="{{ route('backoffice.tickets.index') }}">
+                        <i class="material-icons">
+                            assignment
+                        </i>
+                        <span class="nav-text">
+                            Tickets
+                        </span>
+                        @if ($ticketsPendientes > 0)
+                            <span class="new badge red" data-badge-caption="">{{ $ticketsPendientes }}</span>
+                        @endif
+                    </a>
+                </li>
+                @endif
+
                 @can('ver-auditoria')
                     <li class="bold">
                         <a class="waves-effect waves-cyan" href="{{ route ('backoffice.auditoria.index') }}">

@@ -6,6 +6,7 @@ return [
     'anfitriona_role'=>env('ANFITRIONA_ROLE', 'anfitriona'),
     'admin_role' => env('ADMIN_ROLE', 'administrador'),
     'administracion_role'=>env('ADMINISTRACION_ROLE','administracion'),
+    'aseo_role'=>env('ASEO_ROLE','aseo'),
     'barman_role'=>env('BARMAN_ROLE', 'barman'),
     'cajera_role'=>env('CAJERA_ROLE','cajera'),
     'cocina_role'=>env('COCINA_ROLE','cocina'),
@@ -16,6 +17,8 @@ return [
     'mantencion_role'=>env('MANTENCION_ROLE','mantencion'),
     'masoterapeuta_role'=>env('MASO_ROLE', 'masoterapeuta'),
     'visit_role' => env('VISIT_ROLE', 'visitante'),
+    // Tickets entre departamentos: días sin movimiento en Solucionado / En verificación antes de finalizarse solos
+    'tickets_dias_autocierre' => env('TICKETS_DIAS_AUTOCIERRE', 5),
     'laravel_api_key' => env('LARAVEL_API_KEY'),
     // Exigir LARAVEL_API_KEY por ámbito (middleware auth.apikey:{ambito}). Poner en false
     // solo de forma transitoria mientras se configura el cliente externo.

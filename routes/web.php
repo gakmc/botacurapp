@@ -254,7 +254,7 @@ Route::get('error', function () {
 });
 
 Route::get('/', function () {
-    return view('welcome');
+    return redirect()->route('login');
 });
 
 Route::get('home', function () {
@@ -262,6 +262,9 @@ Route::get('home', function () {
 })->middleware('auth');
 
 Auth::routes(['verify' => true]);
+
+// Control de expiración de sesión (sin middleware auth: debe responder también cuando expiró)
+Route::get('sesion/estado', 'SesionController@estado')->name('sesion.estado');
 
 Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
     // Route::get('role', 'RoleController@index')->name('role.index');
@@ -286,6 +289,19 @@ Route::group(['middleware' => ['auth'], 'as' => 'backoffice.'], function () {
         // {id}: el registro puede estar en `auditorias` o en `auditorias_archivo`
         Route::get('{id}', 'AuditoriaController@show')->name('show')
             ->middleware('can:ver-auditoria')->where('id', '[0-9]+');
+    });
+
+    // Tickets entre departamentos (permisos en TicketPolicy)
+    Route::prefix('tickets')->name('tickets.')->middleware('can:viewAny,App\Ticket')->group(function () {
+        Route::get('/', 'TicketController@index')->name('index');
+        Route::get('historial', 'TicketController@historial')->name('historial');
+        Route::get('crear', 'TicketController@create')->name('create');
+        Route::post('/', 'TicketController@store')->name('store');
+        Route::get('{ticket}', 'TicketController@show')->name('show')->where('ticket', '[0-9]+');
+        Route::post('{ticket}/accion', 'TicketController@accion')->name('accion')->where('ticket', '[0-9]+');
+        Route::post('{ticket}/comentario', 'TicketController@comentar')->name('comentar')->where('ticket', '[0-9]+');
+        Route::get('{ticket}/imagen/{imagen}', 'TicketController@imagen')->name('imagen')
+            ->where(['ticket' => '[0-9]+', 'imagen' => '[0-9]+']);
     });
 
 
