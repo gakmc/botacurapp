@@ -91,6 +91,8 @@
 
 
               </div>
+              @include('themes.backoffice.pages.reserva.includes.programas_extra')
+
 
 
               <div class="row">
@@ -313,7 +315,7 @@
 
   function calcularValorTotal(){
 
-    var total = (valorPrograma * cantidadPersonas)-abono;
+    var total = (valorPrograma * cantidadPersonas) + (window.montoProgramasExtra ? window.montoProgramasExtra() : 0) - abono;
     $('#abono_programa').val(formatCLP(abono));
     $('#total_pagar').val(formatCLP(total));
   }

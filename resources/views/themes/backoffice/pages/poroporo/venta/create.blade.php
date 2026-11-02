@@ -25,7 +25,7 @@
                     <div class="row">
                         <!-- Lista de productos -->
                         <div class="col s12 m6">
-                            <h6>Productos disponibles</h6>
+                            <h6 class="pe-ir-editor">Productos disponibles @if(Auth::user()->has_role(config('app.admin_role')))<a href="{{ route('backoffice.poroporo.index') }}" style="font-size:.85rem;margin-left:8px">(crear o cambiar precios)</a>@endif</h6>
                             <div class="collection" id="lista-productos">
                                 @forelse($productos as $producto)
                                     <a href="#!" class="collection-item producto-item"

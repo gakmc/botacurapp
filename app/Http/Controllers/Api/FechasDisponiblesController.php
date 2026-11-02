@@ -135,9 +135,18 @@ class FechasDisponiblesController extends Controller
             ->map(function ($f) { return $f->format('Y-m-d'); })
             ->values();
 
+        // Lunes a miércoles sin grupo: se marcan, y si viene la cantidad (menos de 10) se sacan del calendario
+        $cantidad = (int) $request->query('cantidad', 0);
+        $soloGrupos = $fechas->filter(function ($f) { return !\App\Services\BotTarifasService::permiteReservaChica(\Carbon\Carbon::parse($f), 1); })->values();
+        if ($cantidad > 0) {
+            $fechas = $fechas->filter(function ($f) use ($cantidad) { return \App\Services\BotTarifasService::permiteReservaChica(\Carbon\Carbon::parse($f), $cantidad); })->values();
+        }
+
         return response()->json([
-            'success' => true,
-            'fechas'  => $fechas,
+            'success'     => true,
+            'fechas'      => $fechas,
+            'solo_grupos' => $soloGrupos,
+            'nota_solo_grupos' => '',
         ]);
     }
 

@@ -45,6 +45,17 @@
     <div>
         <h5 class="primario">Información de Reserva</h5>
         <h6 class="left"><span class="primario">Programa:</span> {{$programa}}</h6>
+            @if (!empty($detalleProgramas))
+                <table style="width:100%; font-size:12px; margin:4px 0 8px 0">
+                    @foreach ($detalleProgramas as $dp)
+                        <tr>
+                            <td>{{ $dp['nombre'] }}</td>
+                            <td style="text-align:center">{{ $dp['personas'] }} × ${{ number_format($dp['valor'],0,'','.') }}</td>
+                            <td style="text-align:right">${{ number_format($dp['subtotal'],0,'','.') }}</td>
+                        </tr>
+                    @endforeach
+                </table>
+            @endif
         <h6 class="right "><span class="primario">Observación:</span> {{$observacion}}</h6>
         <h6 class="center"><span class="primario">Cantidad de asistentes:</span> {{$personas}} personas</h6>
     </div>

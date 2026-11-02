@@ -50,6 +50,15 @@ class ReservasDelDiaController extends Controller
             )
             ->get();
 
+        // Correos bancarios: que abonos de estas reservas ya llegaron al banco
+        $finB = Schema::hasTable('fin_correos');
+        $bancoVentas = $finB ? DB::table('fin_correos')->where('tipo', 'abono')
+            ->whereIn('venta_id', $reservas->pluck('venta_id')->filter()->values())
+            ->whereIn('estado', ['calzado', 'revisar'])->orderByDesc('id')->get()->groupBy('venta_id') : collect();
+        foreach ($reservas as $r) {
+            $r->banco = $r->venta_id ? optional($bancoVentas->get($r->venta_id))->first() : null;
+        }
+
         $abonosExtra = Schema::hasTable('abonos_extra') ? DB::table('abonos_extra')
             ->leftJoin('ventas', 'ventas.id', '=', 'abonos_extra.id_venta')
             ->leftJoin('reservas', 'reservas.id', '=', 'ventas.id_reserva')
@@ -109,10 +118,20 @@ class ReservasDelDiaController extends Controller
             ->get()
             ->map(function ($c) {
                 $c->datos = json_decode($c->datos_json ?? '{}', true) ?: [];
+                $c->banco = Schema::hasTable('fin_correos') ? DB::table('fin_correos')->where('comprobante_id', $c->id)->orderByDesc('id')->first() : null;
                 return $c;
             }) : collect();
 
-        return view('themes.backoffice.pages.reporte.reservas_dia', compact('fecha', 'reservas', 'abonosExtra', 'porMedio', 'resumen', 'porRevisar'));
+        $bancoDia = $finB ? DB::table('fin_correos as fc')
+
+            ->leftJoin('ventas as fv', 'fv.id', '=', 'fc.venta_id')
+
+            ->where('fc.tipo', 'abono')->whereDate('fc.fecha', $dia)->where('fc.estado', '<>', 'sospechoso')
+
+            ->orderBy('fc.hora')->select('fc.*', 'fv.id_reserva as reserva_id')->get() : collect();
+
+
+        return view('themes.backoffice.pages.reporte.reservas_dia', compact('fecha', 'reservas', 'abonosExtra', 'porMedio', 'resumen', 'porRevisar', 'bancoDia'));
     }
 
     private function autorizar()
@@ -224,7 +243,7 @@ class ReservasDelDiaController extends Controller
         try {
             $phoneId = $phoneNumberId ?: env('META_PHONE_NUMBER_ID');
             $client = new \GuzzleHttp\Client(['timeout' => 10, 'http_errors' => false]);
-            $res = $client->post('https://graph.facebook.com/' . env('META_API_VERSION', 'v19.0') . '/' . $phoneId . '/messages', [
+            $res = $client->post('https://graph.facebook.com/' . env('META_API_VERSION', 'v26.0') . '/' . $phoneId . '/messages', [
                 'headers' => ['Authorization' => 'Bearer ' . env('META_WHATSAPP_TOKEN'), 'Content-Type' => 'application/json'],
                 'json' => ['messaging_product' => 'whatsapp', 'to' => $telefono, 'type' => 'text', 'text' => ['body' => $texto]],
             ]);

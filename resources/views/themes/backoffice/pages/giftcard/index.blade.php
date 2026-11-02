@@ -14,15 +14,22 @@
 @section('content')
 <div class="section">
     
-    <div class="right-align">
-        @if ($mostrarUsadas)
-        <a href="{{ route('backoffice.giftcards.index') }}" class="btn green darken-1">Ver sin usar</a>
-        @else
-        <a href="{{ route('backoffice.giftcards.index', ['usadas' => 1]) }}" class="btn grey darken-2">Ver usadas</a>
-        @endif
+    @php
+        $filtros = ['sin_usar' => 'Vigentes sin usar', 'por_vencer' => 'Por vencer (7 días)', 'vencidas' => 'Vencidas sin usar', 'usadas' => 'Usadas', 'todas' => 'Todas'];
+    @endphp
+    <div class="row" style="margin-bottom:0">
+        <div class="col s6 m3"><div class="card-panel green lighten-5" style="padding:12px"><strong style="font-size:22px">{{ $resumen['vigentes'] }}</strong><br>Vigentes sin usar<br><small>${{ number_format($resumen['monto_vigente'], 0, ',', '.') }} · {{ $resumen['personas_vigente'] }} personas</small></div></div>
+        <div class="col s6 m3"><div class="card-panel orange lighten-5" style="padding:12px"><strong style="font-size:22px">{{ $resumen['por_vencer'] }}</strong><br>Vencen en 7 días o menos</div></div>
+        <div class="col s6 m3"><div class="card-panel red lighten-5" style="padding:12px"><strong style="font-size:22px">{{ $resumen['vencidas'] }}</strong><br>Vencidas sin usar</div></div>
+        <div class="col s6 m3"><div class="card-panel grey lighten-4" style="padding:12px"><strong style="font-size:22px">{{ $resumen['usadas'] }}</strong><br>Usadas</div></div>
     </div>
-    
-    <p class="caption left-align"><strong>Gift Cards {{ $mostrarUsadas ? 'Usadas' : 'Sin Usar' }}</strong></p>
+    <div style="margin:4px 0 8px 0">
+        @foreach ($filtros as $k => $t)
+            <a href="{{ route('backoffice.giftcards.index', ['ver' => $k]) }}" class="btn-small {{ $ver === $k ? '' : 'btn-flat' }}" style="margin:2px">{{ $t }}</a>
+        @endforeach
+    </div>
+
+    <p class="caption left-align"><strong>Gift Cards: {{ $filtros[$ver] }}</strong> ({{ $giftcards->count() }})</p>
 
     <div class="divider"></div>
     <div id="basic-form" class="section">
@@ -33,30 +40,52 @@
 
 
                         @if ($giftcards->isEmpty())
-                            <h5 class="center">No hay gift cards {{ $mostrarUsadas ? 'usadas' : 'sin usar' }}</h5>
+                            <h5 class="center">No hay gift cards en «{{ $filtros[$ver] }}»</h5>
                         @else
-                            <table class="highlight">
+                            <table class="highlight responsive-table" style="font-size:13px">
                                 <thead>
                                     <tr>
-                                        <th>Solicitada</th>
                                         <th>Código</th>
+                                        <th>De → Para</th>
+                                        <th>Programa</th>
                                         <th>Monto</th>
-                                        <th>Usada</th>
-                                        <th>Valido hasta</th>
+                                        <th>Comprada</th>
+                                        <th>Vence</th>
+                                        <th>Vigencia</th>
+                                        <th>Uso</th>
+                                        <th>Contacto</th>
                                         <th>Acciones</th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     @foreach ($giftcards as $gc)
+                                    @php $reservaGc = optional($gc->venta)->reserva; @endphp
                                     <tr>
-                                        <td>{{ $gc->de }}</td>
-                                        <td>{{ $gc->codigo }}</td>
+                                        <td><strong>{{ $gc->codigo }}</strong></td>
+                                        <td>{{ $gc->de }}<br><span class="grey-text">→ {{ $gc->para }}</span></td>
+                                        <td>{{ optional($gc->programa)->nombre_programa ?? '—' }}<br><span class="grey-text">{{ $gc->cantidad_personas ?: '?' }} persona{{ (int) $gc->cantidad_personas === 1 ? '' : 's' }}</span></td>
                                         <td>${{ number_format($gc->monto, 0, ',', '.') }}</td>
-                                        <td>{{ $gc->usada ? 'Sí' : 'No' }}</td>
+                                        <td>{{ $gc->comprada }}</td>
                                         <td>{{ $gc->valido }}</td>
+                                        <td><span class="badge white-text {{ $gc->vigencia['color'] }}" style="float:none;margin-left:0">{{ $gc->vigencia['texto'] }}</span></td>
                                         <td>
+                                            @if ($gc->usada)
+                                                {{ $gc->fecha_uso ? \Carbon\Carbon::parse($gc->fecha_uso)->format('d-m-Y') : 'Usada' }}
+                                                @if ($reservaGc)
+                                                    <br><a href="{{ route('backoffice.reserva.show', $reservaGc->id) }}">Reserva {{ $reservaGc->id }}</a>
+                                                    <span class="grey-text">· visita {{ $reservaGc->fecha_visita }}</span>
+                                                @endif
+                                            @else
+                                                <span class="grey-text">Sin usar</span>
+                                            @endif
+                                        </td>
+                                        <td>
+                                            @if ($gc->telefono)<a href="https://wa.me/{{ preg_replace('/\D/', '', $gc->telefono) }}" target="_blank">{{ $gc->telefono }}</a>@endif
+                                            @if ($gc->correo)<br><span class="grey-text">{{ $gc->correo }}</span>@endif
+                                        </td>
+                                        <td style="white-space:nowrap">
                                             <a class="btn-small btn-floating blue" href="{{route('backoffice.giftcards.show', $gc)}}"><i class='material-icons'>remove_red_eye</i></a>
-                                            @if(!$mostrarUsadas == 'usadas')
+                                            @if(! $gc->usada)
                                                 <a class="btn-small btn-floating purple" href="{{route('backoffice.giftcards.edit', $gc)}}"><i class='material-icons'>edit</i></a>
 
                                                 <a onclick="enviar_formulario({{$gc->id}})" class="btn-small btn-floating red" href="#"><i class='material-icons'>delete</i></a>

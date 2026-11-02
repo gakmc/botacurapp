@@ -96,12 +96,7 @@ class VisitaController extends Controller
         $cantidadMasajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0);
 
         // Incluye masaje en el programa (acepta "Masaje" o "Masajes")
-        $incluyeMasajePrograma = $reserva->programa
-        && $reserva->programa->servicios
-        && $reserva->programa->servicios->contains(function ($s) {
-            $nombre = mb_strtolower(trim($s->nombre_servicio));
-            return in_array($nombre, ['masaje', 'masajes']);
-        });
+        $incluyeMasajePrograma = $reserva->personasConMasaje() > 0;
 
                             // Regla: nunca ambos a la vez
         $modoMasaje = null; // 'extra' | 'programa' | null
@@ -123,7 +118,7 @@ class VisitaController extends Controller
             $cantidadSlotsMasaje = (int) ceil(((int) $reserva->cantidad_personas) / 2);
         }
 
-        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosDisponibles = $reserva->serviciosNombres();
 
         // Obtenemos la fecha seleccionada del formulario
         // $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
@@ -460,12 +455,7 @@ class VisitaController extends Controller
         $cantidadMasajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0);
 
         // Incluye masaje en el programa (acepta "Masaje" o "Masajes")
-        $incluyeMasajePrograma = $reserva->programa
-        && $reserva->programa->servicios
-        && $reserva->programa->servicios->contains(function ($s) {
-            $nombre = mb_strtolower(trim($s->nombre_servicio));
-            return in_array($nombre, ['masaje', 'masajes']);
-        });
+        $incluyeMasajePrograma = $reserva->personasConMasaje() > 0;
 
         // Regla: nunca ambos a la vez
         $modoMasaje = null; // 'extra' | 'programa' | null
@@ -487,7 +477,7 @@ class VisitaController extends Controller
             $cantidadSlotsMasaje = (int) ceil(((int) $reserva->cantidad_personas) / 2);
         }
 
-        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosDisponibles = $reserva->serviciosNombres();
 
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada = $reserva->fecha_visita;
@@ -669,7 +659,7 @@ class VisitaController extends Controller
         // $programa         = $reserva->programa;
         // $almuerzosExtra   = session()->get('almuerzosExtra');
         // $masajesExtra     = session()->get('masajesExtra');
-        // $almuerzoIncluido = $programa->servicios->pluck('nombre_servicio')->toArray();
+        // $almuerzoIncluido = $reserva->serviciosNombres();
 
         // try {
 
@@ -853,7 +843,21 @@ class VisitaController extends Controller
                 return ! in_array($ubicacion->nombre, $ubicacionesOcupadas);
             });
 
-        $subTipos = $this->subTiposPermitidosParaPrograma(optional($reserva->programa)->espacio_tipo);
+        // Varios programas: se permiten las ubicaciones de todos ellos (terraza y estacion).
+        // Estacion agregada como servicio extra: tambien se habilitan las estaciones. 15/10/2026
+        $subTipos = [];
+        foreach ($reserva->detalleProgramas() as $dp) {
+            $st = $this->subTiposPermitidosParaPrograma(optional($dp->programa)->espacio_tipo);
+            if ($st === null) {
+                $subTipos = null;
+                break;
+            }
+            $subTipos = array_merge($subTipos, $st);
+        }
+        if ($subTipos !== null && $reserva->tieneEstacionExtra()) {
+            $subTipos = array_merge($subTipos, ['estacion_normal', 'estacion_grupal']);
+        }
+        $subTipos = $subTipos === null ? null : array_values(array_unique($subTipos));
         if ($subTipos) {
             $ubicaciones = $ubicaciones->filter(function ($ubicacion) use ($subTipos) {
                 return in_array($ubicacion->sub_tipo, $subTipos);
@@ -1024,7 +1028,7 @@ class VisitaController extends Controller
         session()->get('almuerzosExtra') ? $almuerzosExtra             = session()->get('almuerzosExtra') : $almuerzosExtra             = null;
         session()->get('cantidadMasajesExtra') ? $cantidadMasajesExtra = session()->get('cantidadMasajesExtra') : $cantidadMasajesExtra = null;
 
-        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosDisponibles = $reserva->serviciosNombres();
         // Obtenemos la fecha seleccionada del formulario
         $fechaSeleccionada = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
 
@@ -1178,7 +1182,7 @@ class VisitaController extends Controller
         $almuerzosExtra = session()->get('almuerzosExtra');
         $masajesExtra   = session()->get('masajesExtra');
 
-        $almuerzoIncluido = $programa->servicios->pluck('nombre_servicio')->toArray();
+        $almuerzoIncluido = $reserva->serviciosNombres();
 
         try {
             DB::transaction(function () use ($request, &$reserva, &$visita, &$cliente, $almuerzoIncluido, $almuerzosExtra, $personas, &$menusActuales, &$visitasActuales, &$masajesActuales, $masajesExtra) {
@@ -1461,12 +1465,7 @@ class VisitaController extends Controller
         $cantidadMasajesExtra = (int) ($reserva->cantidad_masajes_extra ?? 0);
 
         // Incluye masaje en el programa (acepta "Masaje" o "Masajes")
-        $incluyeMasajePrograma = $reserva->programa
-        && $reserva->programa->servicios
-        && $reserva->programa->servicios->contains(function ($s) {
-            $nombre = mb_strtolower(trim($s->nombre_servicio));
-            return in_array($nombre, ['masaje', 'masajes']);
-        });
+        $incluyeMasajePrograma = $reserva->personasConMasaje() > 0;
 
                             // Regla: nunca ambos a la vez
         $modoMasaje = null; // 'extra' | 'programa' | null
@@ -1488,7 +1487,7 @@ class VisitaController extends Controller
             $cantidadSlotsMasaje = (int) ceil(((int) $reserva->cantidad_personas) / 2);
         }
 
-        $serviciosDisponibles = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosDisponibles = $reserva->serviciosNombres();
 
         // Obtenemos la fecha seleccionada del formulario
         // $fechaSeleccionada   = \Carbon\Carbon::createFromFormat('d-m-Y', $reserva->fecha_visita)->format('Y-m-d');
@@ -1694,7 +1693,7 @@ class VisitaController extends Controller
         $cliente        = $reserva->cliente;
         $visitaMail     = null;
 
-        $serviciosPrograma = $programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosPrograma = $reserva->serviciosNombres();
 
         $almuerzosExtra = false;
         $ventaId        = optional($reserva->venta)->id;
@@ -1815,7 +1814,7 @@ class VisitaController extends Controller
 
     public function menu(Reserva $reserva, Visita $visita)
     {
-        $servicios = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $servicios = $reserva->serviciosNombres();
         $menus     = $reserva->menus;
 
         $almuerzosExtra = null;
@@ -2181,9 +2180,9 @@ class VisitaController extends Controller
         $almuerzosExtra = (bool) session()->get('almuerzosExtra');
         $masajesExtra   = (bool) session()->get('masajesExtra');
 
-        $serviciosPrograma     = $programa->servicios->pluck('nombre_servicio')->toArray();
+        $serviciosPrograma     = $reserva->serviciosNombres();
         $incluyeAlmuerzo       = in_array('Almuerzo', $serviciosPrograma) || $almuerzosExtra;
-        $incluyeMasajePrograma = $programa->servicios->contains('nombre_servicio', 'Masaje');
+        $incluyeMasajePrograma = $reserva->personasConMasaje() > 0;
         $incluyeMasaje         = $incluyeMasajePrograma || $masajesExtra;
 
         try {
@@ -2347,6 +2346,10 @@ class VisitaController extends Controller
 
     private function reservaIncluyeMasaje(Reserva $reserva): bool
     {
+        if ($reserva->personasConMasaje() > 0) {
+            return true;
+        }
+
         if (! $reserva->relationLoaded('programa')) {
             $reserva->load('programa.servicios');
         }
@@ -2941,7 +2944,7 @@ class VisitaController extends Controller
 
     private function crearDesayunoOnceSiCorresponde($request, Reserva $reserva): void
     {
-        $servicios    = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $servicios    = $reserva->serviciosNombres();
         $incluyeAmbos = in_array('Desayuno y Once', $servicios);
         $incluyeUno   = in_array('Desayuno u Once', $servicios);
 
@@ -2969,7 +2972,7 @@ class VisitaController extends Controller
 
     private function actualizarDesayunoOnceDesdePayload($request, Reserva $reserva): void
     {
-        $servicios    = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $servicios    = $reserva->serviciosNombres();
         $incluyeAmbos = in_array('Desayuno y Once', $servicios);
         $incluyeUno   = in_array('Desayuno u Once', $servicios);
 

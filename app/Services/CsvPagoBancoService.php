@@ -31,6 +31,7 @@ class CsvPagoBancoService
 
         $filas    = [];
         $omitidos = [];
+        $incluidos = [];
 
         // Encabezado, igual al ARCHIVOEJEMPLO.csv provisto por el banco
         $filas[] = 'Tipo de Cuenta Origen; Cuenta Origen; Codigo Banco Destino; Tipo de Cuenta Destino; Cuenta Destino; Rut Beneficiario; Nombre Beneficiario; Monto Transferencia; Concepto; Mensaje a Beneficiario; Email 1;Email 2;Email 3';
@@ -71,6 +72,8 @@ class CsvPagoBancoService
             $mensaje  = 'Pago de remuneracion Botacura';
             [$email1, $email2] = $this->correosAviso($user->correo_personal);
 
+            $incluidos[] = ['user_id' => $user->id, 'inicio' => $item['inicio'], 'fin' => $item['fin'], 'monto' => $monto];
+
             $filas[] = implode(';', [
                 $cuentaOrigen['tipo'],
                 $cuentaOrigen['numero'],
@@ -91,6 +94,7 @@ class CsvPagoBancoService
         return [
             'csv'      => implode("\n", $filas),
             'omitidos' => $omitidos,
+            'lineas'   => $incluidos,
         ];
     }
 

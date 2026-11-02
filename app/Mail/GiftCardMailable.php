@@ -6,7 +6,6 @@ use Illuminate\Bus\Queueable;
 use Illuminate\Contracts\Queue\ShouldQueue;
 use Illuminate\Mail\Mailable;
 use Illuminate\Queue\SerializesModels;
-use Barryvdh\DomPDF\Facade\Pdf;
 
 class GiftCardMailable extends Mailable implements ShouldQueue
 {
@@ -19,7 +18,8 @@ class GiftCardMailable extends Mailable implements ShouldQueue
     public function __construct($gc, $pdfData)
     {
         $this->gc = $gc;
-        $this->pdfData = $pdfData;
+        // La cola guarda el trabajo como JSON: el PDF binario no cabe tal cual (daba error 500 al Enviar).
+        $this->pdfData = base64_encode($pdfData);
     }
 
 
@@ -27,6 +27,6 @@ class GiftCardMailable extends Mailable implements ShouldQueue
     {
         return $this->view('emails.giftcard')
                     ->subject('Botacura Entrega de Gift Card')
-                    ->attachData($this->pdfData, 'GiftCard-'.$this->gc->para.'-'.$this->gc->id.'.pdf');
+                    ->attachData(base64_decode($this->pdfData), 'GiftCard-'.$this->gc->para.'-'.$this->gc->id.'.pdf');
     }
 }

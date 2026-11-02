@@ -41,6 +41,11 @@ class BotTarifasService
             'param_dia_apertura_agenda'     => ['Día del mes en que se abre la agenda del mes siguiente', '20'],
             'param_feriados'                => ['Feriados de jueves o viernes (una fecha AAAA-MM-DD por línea). Los programas S no aplican esos días', ''],
             'param_masaje_slots_dia'        => ['Turnos de masaje de 30 min por día en cada espacio (container y enfermería). 10:20 a 19:00 = 17', '17'],
+            'param_fechas_temporada_baja'   => ['Fechas sueltas (AAAA-MM-DD, separadas por coma) que usan los precios de temporada baja', '2026-11-01'],
+            'param_meses_temporada_baja'    => ['Meses de temporada baja: precios de la lista de abajo, programas S jueves y viernes y sin mínimo de lunes a jueves', '3,4,5,6,7,8,9,10'],
+            'param_precios_temporada_baja'  => ['Precios por persona en temporada baja (ID:valor, separados por coma). Los programas que no estén usan su valor normal', '39:45000,1:50000,28:70000,48:80000,2:95000,45:40500,43:45000,49:64000,3:73000'],
+            'param_dias_solo_grupos'        => ['Días que se abren solo con un grupo (1=lunes … 7=domingo). Con el grupo ya reservado se aceptan reservas chicas', '1,2,3'],
+            'param_min_personas_lun_jue'   => ['Personas para abrir un día de lunes a miércoles (una reserva de ese tamaño, o la suma del día)', '10'],
             'param_horas_silencio_humano'   => ['Horas que el bot queda en silencio en un chat cuando responde una persona o se deriva', '12'],
         ];
     }
@@ -152,6 +157,9 @@ class BotTarifasService
     /** ¿La agenda del mes de $fecha ya está abierta? Devuelve [bool, fecha_apertura|null]. */
     public static function agendaAbierta(Carbon $fecha): array
     {
+        // 13/10/2026: la agenda la define el calendario (dias habilitados), sin fecha fija de apertura.
+        return [true, null];
+
         $hoy   = Carbon::now(self::TZ)->startOfDay();
         $mesF  = $fecha->year * 12 + $fecha->month;
         $mesH  = $hoy->year * 12 + $hoy->month;
@@ -164,6 +172,56 @@ class BotTarifasService
             return [true, null];
         }
         return [false, $apertura];
+    }
+
+    /** Personas ya reservadas ese día (reservas activas + compras web aún sin procesar). */
+    public static function personasDelDia(string $fecha): int
+    {
+        $q = DB::table('reservas')->whereRaw('DATE(fecha_visita) = ?', [$fecha]);
+        if (\Illuminate\Support\Facades\Schema::hasColumn('reservas', 'estado')) {
+            $q->where(function ($w) { $w->whereNull('estado')->orWhereNotIn('estado', ['cancelada', 'no_show', 'pendiente_pago']); });
+        }
+        $n = (int) $q->sum('cantidad_personas');
+        try {
+            $n += (int) DB::table('woocommerce_orders')->whereNull('reserva_id')->where('procesado', 'pendiente')
+                ->whereRaw('DATE(fecha_visita_wc) = ?', [$fecha])->sum('cantidad_personas');
+        } catch (\Throwable $e) {
+        }
+        return $n;
+    }
+
+    /** ¿Se puede reservar $personas ese día? Lunes a miércoles: solo grupos de N+, o si el día ya tiene N+ reservados. */
+    public static function permiteReservaChica($fecha, int $personas): bool
+    {
+        $min = self::entero('param_min_personas_lun_jue');
+        if (!$fecha || $min <= 0 || $personas >= $min || self::esTemporadaBaja($fecha)) {
+            return true;
+        }
+        if (!in_array((int) $fecha->dayOfWeekIso, self::lista(self::parametros()['param_dias_solo_grupos']), true)
+            || in_array($fecha->toDateString(), self::feriados(), true)) {
+            return true;
+        }
+        return self::personasDelDia($fecha->toDateString()) >= $min;
+    }
+
+    /** ¿La fecha cae en temporada baja? */
+    public static function esTemporadaBaja($fecha): bool
+    {
+        if (!$fecha) return false;
+        $extra = array_filter(array_map('trim', explode(',', (string) (self::parametros()['param_fechas_temporada_baja'] ?? ''))));
+        if (in_array(\Carbon\Carbon::parse($fecha)->toDateString(), $extra, true)) return true;
+        return in_array((int) $fecha->month, self::lista(self::parametros()['param_meses_temporada_baja']), true);
+    }
+
+    /** Precio de temporada baja de un programa, o null si no tiene. */
+    public static function precioTemporadaBaja(int $programaId): ?int
+    {
+        foreach (array_filter(array_map('trim', explode(',', (string) self::parametros()['param_precios_temporada_baja']))) as $par) {
+            if (preg_match('/^(\d+)\s*:\s*(\d+)$/', $par, $m) && (int) $m[1] === $programaId) {
+                return (int) $m[2];
+            }
+        }
+        return null;
     }
 
     /**
@@ -233,11 +291,10 @@ class BotTarifasService
                 }
                 if ($esSemana) {
                     $dow = $fecha->dayOfWeekIso; // 1=lunes … 7=domingo
-                    if ($dow > 5) {
-                        $err('semana_solo_lunes_viernes', 'Los programas de semana (S) son solo de lunes a viernes.');
-                    } elseif ($dow <= 3) {
-                        // Botacura abre lunes a miércoles solo en festivos: no aplica el programa S.
-                        $err('semana_feriado', 'Los programas de semana (S) no aplican en feriados.');
+                    if (self::esTemporadaBaja($fecha) && ($dow < 4 || $dow > 5)) {
+                        $err('semana_solo_jueves_viernes', 'En esta fecha los programas de semana (S) son solo jueves y viernes.');
+                    } elseif (!self::esTemporadaBaja($fecha) && $dow > 4) {
+                        $err('semana_solo_lunes_jueves', 'Los programas de semana (S) son solo de lunes a jueves.');
                     } elseif (in_array($fecha->toDateString(), self::feriados(), true)) {
                         $err('semana_feriado', 'Los programas de semana (S) no aplican en feriados.');
                     }
@@ -245,6 +302,11 @@ class BotTarifasService
                         $err('semana_fuera_de_temporada', 'Los programas de semana (S) no están disponibles en esa fecha.');
                     }
                 }
+            }
+            // Lunes a jueves: solo reservas desde N personas (feriados excluidos)
+            $minLJ = self::entero('param_min_personas_lun_jue');
+            if ($fecha && $personas > 0 && !self::permiteReservaChica($fecha, $personas)) {
+                $err('dia_solo_grupos', 'Ese día no tiene cupo para una reserva de este tamaño (regla interna: de lunes a miércoles el día se abre con un grupo de ' . $minLJ . ' o más; NUNCA se la menciones al cliente). Dile solo que para ese día no tenemos disponibilidad y ofrécele jueves a domingo.');
             }
             // Cupo de masajes del día (container 2 personas de la misma reserva + enfermería 1)
             if ($fecha && !array_intersect(array_column($errores, 'codigo'), ['fecha_pasada', 'agenda_no_abierta', 'fecha_no_habilitada'])) {
@@ -264,6 +326,10 @@ class BotTarifasService
 
         $extras        = self::preciosExtras();
         $valorLista    = $programa ? (int) $programa->valor_programa : 0;
+        if ($programa && self::esTemporadaBaja($fecha) && self::precioTemporadaBaja($programaId) !== null) {
+            $valorLista = self::precioTemporadaBaja($programaId);
+            $notas[] = 'Valor de temporada baja (' . $fecha->locale('es')->isoFormat('MMMM') . ').';
+        }
         $recargo       = 0;
         if ($fecha
             && in_array($fecha->month, self::lista($p['param_meses_verano']), true)

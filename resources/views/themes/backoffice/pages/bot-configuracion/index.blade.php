@@ -310,6 +310,7 @@
         <button type="button" class="bc-tab-btn" data-tab="ubicaciones">Ubicaciones</button>
         <button type="button" class="bc-tab-btn" data-tab="aprendizajes">Aprendizajes</button>
         <button type="button" class="bc-tab-btn" data-tab="menu">Menú</button>
+        <button type="button" class="bc-tab-btn" data-tab="afiches">Afiches</button>
     </div>
 
     <form action="{{ route('backoffice.bot-configuracion.secciones.update') }}" method="POST">
@@ -656,6 +657,8 @@
         <p style="color:#64748b;">Los aprendizajes aún no están disponibles (falta correr la migración).</p>
     @endif
     </div>
+
+    @include('themes.backoffice.pages.bot-configuracion.includes._afiches')
 
     {{-- ===== Menú en PDF ===== --}}
     <div class="bc-panel" id="panel-menu">

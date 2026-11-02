@@ -101,6 +101,15 @@
                                         @enderror
                                     </div>
 
+                                    <div class="col s12" style="margin:8px 0 16px">
+                                        <input type="hidden" name="iva_incluido" value="0">
+                                        <label>
+                                            <input type="checkbox" class="filled-in" name="iva_incluido" value="1" {{ old('iva_incluido') ? 'checked' : '' }}>
+                                            <span>Los valores ingresados ya incluyen IVA (si no se marca, se suma el 19% al total)</span>
+                                        </label>
+                                    </div>
+
+
 
                                 </div>
                                 
@@ -119,7 +128,10 @@
                                             </div>
                                         </div>
 
-                                        <h6>Programas disponibles</h6>
+                                        <div class="cotiz-ir-programas" style="display:flex;align-items:center;justify-content:space-between;gap:12px;flex-wrap:wrap;margin-top:16px">
+                                            <h6 style="margin:0">Programas activos ({{ $programas->count() }})</h6>
+                                            <a href="{{ route('backoffice.programa.index') }}" target="_blank" rel="noopener" class="btn-small waves-effect waves-light" style="background:#039B7B"><i class="material-icons left">hot_tub</i>Ir a programas</a>
+                                        </div>
                                         <div class="collection lista-programas" id="">
                                             @forelse($programas as $programa)
                                             <a href="#!" class="collection-item programa-item"

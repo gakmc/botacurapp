@@ -53,4 +53,13 @@ return [
         'key' => env('OPENAI_API_KEY'),
     ],
 
+
+    // Groq (Whisper rápido con capa gratuita) y elección del proveedor de transcripción
+    'groq' => [
+        'key'          => env('GROQ_API_KEY'),
+        'modelo_audio' => env('GROQ_MODELO_AUDIO', 'whisper-large-v3-turbo'),
+    ],
+    'transcripcion' => [
+        'proveedor' => env('TRANSCRIPCION_PROVEEDOR'),
+    ],
 ];

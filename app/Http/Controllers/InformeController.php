@@ -18,14 +18,27 @@ class InformeController extends Controller
             ? Carbon::createFromFormat('Y-m-d', $mes . '-01')
             : Carbon::now();
 
-        $programasMasContratados = Reserva::select('id_programa', DB::raw('COUNT(*) as total'))
-            ->whereMonth('fecha_visita', $fecha->month)
+        // Cuenta cada programa de la reserva, tambien los adicionales (15/10/2026)
+        $idsMes = Reserva::whereMonth('fecha_visita', $fecha->month)
             ->whereYear('fecha_visita', $fecha->year)
-            ->groupBy('id_programa')
-            ->orderByDesc('total')
-            ->with('programa') // Asegúrate de tener la relación definida
-            ->take(10)         // Limita a los 10 programas más contratados
-            ->get();
+            ->pluck('id');
+        $conteo = [];
+        foreach (DB::table('reserva_programas')->whereIn('id_reserva', $idsMes)
+            ->select('id_programa', DB::raw('COUNT(DISTINCT id_reserva) as total'))
+            ->groupBy('id_programa')->get() as $f) {
+            $conteo[$f->id_programa] = ($conteo[$f->id_programa] ?? 0) + (int) $f->total;
+        }
+        foreach (Reserva::whereIn('id', $idsMes)
+            ->whereNotIn('id', DB::table('reserva_programas')->select('id_reserva'))
+            ->select('id_programa', DB::raw('COUNT(*) as total'))
+            ->groupBy('id_programa')->get() as $f) {
+            $conteo[$f->id_programa] = ($conteo[$f->id_programa] ?? 0) + (int) $f->total;
+        }
+        arsort($conteo);
+        $nombres = \App\Programa::whereIn('id', array_keys($conteo))->get()->keyBy('id');
+        $programasMasContratados = collect(array_slice($conteo, 0, 10, true))->map(function ($total, $id) use ($nombres) {
+            return (object) ['id_programa' => $id, 'total' => $total, 'programa' => $nombres[$id] ?? (object) ['nombre_programa' => 'Programa #' . $id]];
+        })->values();
 
         // TOP 10 BEBESTIBLES
         $bebestiblesConsumo = DetalleConsumo::select('id_producto', DB::raw('SUM(cantidad_producto) as total'))

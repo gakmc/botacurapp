@@ -202,6 +202,7 @@ class BotInteresFechasService
                     'consultas'  => $reciente ? $fila->consultas : DB::raw('consultas + 1'),
                     'updated_at' => now(),
                 ]);
+                self::revisarUmbral($fecha);
                 return;
             }
             DB::table(self::TABLA)->insert($extra + [
@@ -213,6 +214,7 @@ class BotInteresFechasService
                 'created_at' => now(),
                 'updated_at' => now(),
             ]);
+            self::revisarUmbral($fecha);
         } catch (\Throwable $e) {
             Log::warning('[BotInteres] No se pudo registrar la consulta: ' . $e->getMessage());
         }
@@ -254,6 +256,7 @@ class BotInteresFechasService
                 'updated_at' => now(),
             ]);
         }
+        self::revisarUmbral($fecha);
         try {
             BotCasoService::registrar('interes_dia_cerrado', $tel, ['fecha' => $fecha] + $extra);
         } catch (\Throwable $e) {
@@ -328,8 +331,77 @@ class BotInteresFechasService
         return $out;
     }
 
+    /**
+     * Si la fecha pasa el umbral de personas, avisa al equipo una sola vez (correo de alertas del bot
+     * y WhatsApp al administrador a traves de Home Assistant, HA_ALERTA_WEBHOOK). 15/10/2026.
+     */
+    public static function revisarUmbral(string $fecha): void
+    {
+        try {
+            $clave = 'interes_umbral_avisado_' . $fecha;
+            if (\Cache::has($clave)) {
+                return;
+            }
+            $filas = DB::table(self::TABLA)->where('fecha', $fecha)->where('estado', '<>', 'descartado')->get();
+            $personas = $filas->sum(function ($r) {
+                return max(1, (int) $r->personas);
+            });
+            if ($personas <= self::umbral()) {
+                return;
+            }
+            \Cache::forever($clave, now()->toDateTimeString());
+            $programas = self::nombresProgramas();
+            $dia = Carbon::parse($fecha)->locale('es')->isoFormat('dddd D [de] MMMM');
+            $anotados = $filas->whereIn('estado', ['interesado', 'avisado'])->count();
+            $corto = 'Dia pedido sin habilitar: ' . $dia . ' ya suma ' . $personas . ' personas en ' . $filas->count()
+                . ' consultas (' . $anotados . ' pidieron aviso). Evalua habilitarlo: Conversaciones del bot > Dias pedidos sin habilitar.';
+            Log::info('[BotInteres] Fecha sobre el umbral', ['fecha' => $fecha, 'personas' => $personas]);
+
+            $correo = \App\BotSeccionTexto::where('clave', 'alerta_correo')->value('contenido');
+            if ($correo) {
+                $lineas = $filas->map(function ($r) use ($programas) {
+                    return '- ' . ($r->nombre ?: 'Sin nombre') . ' (' . (!empty($r->correo) ? $r->correo : '+' . $r->telefono) . '): ' . max(1, (int) $r->personas) . ' persona(s)'
+                        . ($r->programa_id ? ', ' . ($programas[$r->programa_id] ?? 'programa #' . $r->programa_id) : '')
+                        . ', ' . ($r->estado === 'consulta' ? 'solo consulto' : ($r->estado === 'interesado' ? 'pidio aviso' : $r->estado));
+                })->implode("\n");
+                try {
+                    \Mail::raw($corto . "\n\n" . $lineas . "\n\n" . url('/bot-conversaciones'), function ($m) use ($correo, $dia, $personas) {
+                        $m->to($correo)->subject('Botacura: ' . $dia . ' ya suma ' . $personas . ' personas interesadas');
+                    });
+                } catch (\Throwable $e) {
+                    Log::warning('[BotInteres] Aviso por correo no enviado: ' . $e->getMessage());
+                }
+            }
+
+            $url = trim((string) env('HA_ALERTA_WEBHOOK', ''));
+            if ($url !== '') {
+                try {
+                    $ch = curl_init($url);
+                    curl_setopt_array($ch, [
+                        CURLOPT_POST => true,
+                        CURLOPT_RETURNTRANSFER => true,
+                        CURLOPT_TIMEOUT => 10,
+                        CURLOPT_HTTPHEADER => ['Content-Type: application/json'],
+                        CURLOPT_POSTFIELDS => json_encode(['mensaje' => $corto], JSON_UNESCAPED_UNICODE),
+                    ]);
+                    curl_exec($ch);
+                    $code = (int) curl_getinfo($ch, CURLINFO_HTTP_CODE);
+                    curl_close($ch);
+                    if ($code >= 300 || $code === 0) {
+                        Log::warning('[BotInteres] Aviso por WhatsApp (Home Assistant) respondio HTTP ' . $code);
+                    }
+                } catch (\Throwable $e) {
+                    Log::warning('[BotInteres] Aviso por WhatsApp no enviado: ' . $e->getMessage());
+                }
+            }
+        } catch (\Throwable $e) {
+            Log::warning('[BotInteres] revisarUmbral: ' . $e->getMessage());
+        }
+    }
+
     public static function textoAviso(?string $nombre, string $fecha): string
     {
+        $nombre = trim(str_replace('✉', '', (string) $nombre)) ?: null;
         $dia = Carbon::parse($fecha)->locale('es')->isoFormat('dddd D [de] MMMM');
         $hola = $nombre ? 'Hola ' . trim(explode(' ', $nombre)[0]) : 'Hola';
         return $hola . ' 👋 Te escribimos de Botacura: habilitamos el ' . $dia
@@ -353,6 +425,10 @@ class BotInteresFechasService
     /** Envía por la API de WhatsApp (plantilla si está configurada; si no, texto dentro de la ventana de 24 h). */
     private static function enviar(string $tel, ?string $nombre, string $fecha): array
     {
+        if (strpos($tel, 'm') === 0) {
+            $c = DB::table(self::TABLA)->where('telefono', $tel)->value('correo');
+            return ['ok' => false, 'motivo' => 'Consulto por correo: avisar a ' . ($c ?: 'su correo')];
+        }
         $token = env('META_WHATSAPP_TOKEN') ?: config('services.whatsapp.token');
         $pid = env('META_PHONE_NUMBER_ID') ?: config('services.whatsapp.phone_number_id');
         if (!$token || !$pid) {
@@ -382,7 +458,7 @@ class BotInteresFechasService
             return ['ok' => false, 'motivo' => 'Escribió hace más de 24 h: necesita plantilla o aviso manual'];
         }
         try {
-            $v = env('META_GRAPH_VERSION', 'v21.0');
+            $v = env('META_GRAPH_VERSION', 'v26.0');
             $ch = curl_init("https://graph.facebook.com/{$v}/{$pid}/messages");
             curl_setopt_array($ch, [
                 CURLOPT_POST => true,

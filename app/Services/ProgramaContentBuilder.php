@@ -83,8 +83,8 @@ class ProgramaContentBuilder
         $personaLabel = $minPersonas === 1 ? 'persona' : 'personas';
 
         $html  = "<p>";
-        $html .= "<strong>✅Desde {$minPersonas} {$personaLabel}.</strong><br />";
-        $html .= "<strong>⚠️Atendemos de Jueves a Domingo.</strong>";
+        $html .= "<strong>✅Mínimo {$minPersonas} {$personaLabel}.</strong><br />";
+        $html .= "<strong>⚠️Desde noviembre atendemos de lunes a domingo, de 10:00 a 19:00 hrs (de lunes a jueves, 10% de descuento pagando por transferencia).</strong>";
         $html .= "</p>\n";
 
         $html .= "<p><strong>IMPORTANTE!</strong></p>\n";

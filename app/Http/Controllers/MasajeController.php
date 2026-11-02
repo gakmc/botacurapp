@@ -8,6 +8,7 @@ use App\Masaje;
 use App\PrecioTipoMasaje;
 use App\Reserva;
 use App\TipoMasaje;
+use App\User;
 use Carbon\Carbon;
 use Illuminate\Http\Request;
 use Illuminate\Pagination\LengthAwarePaginator;
@@ -181,7 +182,12 @@ class MasajeController extends Controller
             'horasDisponibles' => $horariosDisponiblesMasajes,
             'fechasPaginadas' => $todasLasFechas,
             'contador' => $contador,
-            'lugares' => LugarMasaje::all()
+            'lugares' => LugarMasaje::all(),
+            // Para editar el listado (solo administrador) 15/10/2026
+            'tiposMasajeLista' => TipoMasaje::orderBy('nombre')->pluck('nombre')->unique()->values(),
+            'masoterapeutasLista' => User::whereHas('roles', function ($q) {
+                $q->where('slug', config('app.masoterapeuta_role'))->orWhere('name', config('app.masoterapeuta_role'));
+            })->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -426,7 +432,43 @@ class MasajeController extends Controller
      */
     public function destroy($id)
     {
-        //
+        // Solo administrador: borrar un masaje del listado (15/10/2026)
+        abort_unless(auth()->user() && auth()->user()->has_role(config('app.admin_role')), 403);
+        $masaje = Masaje::with('reserva.cliente')->find($id);
+        if (! $masaje) {
+            return redirect()->back()->with('error', 'Masaje no encontrado');
+        }
+        $quien = optional(optional($masaje->reserva)->cliente)->nombre_cliente;
+        \Log::info('[Masajes] Borrado por administrador', [
+            'masaje' => $masaje->id, 'reserva' => $masaje->id_reserva, 'persona' => $masaje->persona,
+            'horario' => $masaje->horario_masaje, 'user' => auth()->id(),
+        ]);
+        $masaje->delete();
+
+        return redirect()->back()->with('success', 'Masaje eliminado' . ($quien ? ' (' . $quien . ')' : '') . '.');
+    }
+
+    /** Solo administrador: editar horario, tipo, lugar, tiempo extra y masoterapeuta (15/10/2026). */
+    public function adminUpdate(Request $request, Masaje $masaje)
+    {
+        abort_unless(auth()->user() && auth()->user()->has_role(config('app.admin_role')), 403);
+        $data = $request->validate([
+            'horario_masaje'  => ['nullable', 'date_format:H:i'],
+            'tipo_masaje'     => ['nullable', 'string', 'max:100'],
+            'id_lugar_masaje' => ['required', 'exists:lugares_masajes,id'],
+            'user_id'         => ['nullable', 'exists:users,id'],
+            'persona'         => ['required', 'integer', 'min:1', 'max:200'],
+        ]);
+        $masaje->update([
+            'horario_masaje'  => $data['horario_masaje'] ?? null,
+            'tipo_masaje'     => $data['tipo_masaje'] ?? null,
+            'id_lugar_masaje' => (int) $data['id_lugar_masaje'],
+            'user_id'         => $data['user_id'] ?? null,
+            'persona'         => (int) $data['persona'],
+            'tiempo_extra'    => $request->boolean('tiempo_extra'),
+        ]);
+
+        return redirect()->back()->with('success', 'Masaje actualizado.');
     }
 
     public function asignar_multiples(Request $request)

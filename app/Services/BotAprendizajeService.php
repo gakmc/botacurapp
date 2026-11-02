@@ -170,12 +170,13 @@ class BotAprendizajeService
     {
         $convs = self::conversacionesQuery($dias)
             ->orderBy('updated_at', 'desc')->limit($limite)
-            ->select('id', 'usuario_id', 'nombre_cliente', 'historial_json', 'id_reserva', 'requiere_humano', 'updated_at', 'ultimo_mensaje')->get();
+            ->select('id', 'usuario_id', 'nombre_cliente', 'historial_json', 'id_reserva', 'requiere_humano', 'updated_at', 'ultimo_mensaje', 'canal')->get();
         return $convs->map(function ($c) {
             $et = self::etapa($c);
             return (object) [
                 'id'         => $c->id,
                 'telefono'   => $c->usuario_id,
+                'canal'      => $c->canal ?? 'whatsapp',
                 'nombre'     => $c->nombre_cliente ?: 'Cliente',
                 'etapa'      => self::ETAPAS[$et['etapa']],
                 'etapa_num'  => $et['etapa'],

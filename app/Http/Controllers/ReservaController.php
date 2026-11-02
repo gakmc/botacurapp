@@ -19,6 +19,8 @@ use App\Programa;
 use App\Propina;
 use App\Reagendamiento;
 use App\Reserva;
+use App\ReservaPrograma;
+use App\Services\ReservaProgramasService;
 use App\ReservaDesayunoOnce;
 use App\Servicio;
 use App\TipoMasaje;
@@ -766,6 +768,12 @@ class ReservaController extends Controller
                     $reserva->update(['cantidad_masajes' => null]);
                 }
 
+                // Programas adicionales en la misma reserva (15/10/2026)
+                $extrasProgramas = ReservaProgramasService::extrasDesdeRequest($request);
+                if ($extrasProgramas) {
+                    ReservaProgramasService::guardar($reserva, (int) $request->id_programa, (int) $request->cantidad_personas, $extrasProgramas);
+                }
+
 
                 // Crear la venta relacionada con la reserva
                 $venta = Venta::create([
@@ -1095,6 +1103,9 @@ class ReservaController extends Controller
             $cursor->addDay();
         }
 
+        $detalleProg   = $reserva->detalleProgramas();
+        $principalProg = $detalleProg->count() > 1 ? $detalleProg->firstWhere('principal', true) : null;
+
         // dd(!$reserva->programa->servicios->contains('nombre_servicio', 'Masaje') && $visita->horario_masaje);
         return view('themes.backoffice.pages.reserva.edit', [
             'reserva'                => $reserva,
@@ -1105,8 +1116,12 @@ class ReservaController extends Controller
             'visita'                 => $visita,
             'cantidadMasaje'         => $cantidadExtraMasaje,
             'fechasDeshabilitadas'   => $fechasDeshabilitadas,
-            'precioUnitarioOriginal' => $this->precioUnitarioOriginal($reserva, $venta, (int) $reserva->cantidad_personas),
+            'precioUnitarioOriginal' => $principalProg && $principalProg->valor_unitario
+                ? (float) $principalProg->valor_unitario
+                : $this->precioUnitarioOriginal($reserva, $venta, (int) $reserva->cantidad_personas),
             'abonosExtraVenta'       => (int) $venta->abonosExtra()->sum('monto'),
+            'personasPrincipal'      => $principalProg ? (int) $principalProg->personas : (int) $reserva->cantidad_personas,
+            'programasExtra'         => $detalleProg->where('principal', false)->values(),
         ]);
     }
 
@@ -1145,15 +1160,19 @@ class ReservaController extends Controller
             }
         }
 
+        // Programas adicionales (15/10/2026)
+        $extrasNuevos    = ReservaProgramasService::extrasDesdeRequest($request);
+        $extrasCambiaron = $extrasNuevos != ReservaProgramasService::extrasGuardados($reserva);
+
         // Verificar si hubo cambios
-        if (! $changes) {
+        if (! $changes && ! $extrasCambiaron) {
             // Si no hay cambios, redirigir a otra ruta
             return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id])->with('info', 'No se realizaron cambios en la reserva.');
         }
 
         // Si hay cambios, continuar con la lógica normal
         try {
-            DB::transaction(function () use ($request, &$reserva, $originalArray, &$masajesExtra, &$almuerzosExtra) {
+            DB::transaction(function () use ($request, &$reserva, $originalArray, &$masajesExtra, &$almuerzosExtra, $extrasNuevos, $extrasCambiaron) {
 
                 // dd($originalArray['fecha_visita'] ,$request->input('fecha_visita'));
                 if ($originalArray['fecha_visita'] !== $request->input('fecha_visita')) {
@@ -1188,6 +1207,17 @@ class ReservaController extends Controller
                     $reserva->update(['cantidad_masajes' => null]);
                 }
 
+                // Varios programas: guarda el detalle y calcula el monto (15/10/2026)
+                $montoProgramas = null;
+                $teniaVarios    = ReservaPrograma::where('id_reserva', $reserva->id)->exists();
+                if ($extrasNuevos || $teniaVarios) {
+                    $valorPrincipal = null;
+                    if (! $teniaVarios && $reserva->venta && (int) ($originalArray['id_programa'] ?? 0) === (int) $request->id_programa) {
+                        $valorPrincipal = $this->precioUnitarioOriginal($reserva, $reserva->venta, (int) ($originalArray['cantidad_personas'] ?? 0));
+                    }
+                    $montoProgramas = ReservaProgramasService::guardar($reserva, (int) $request->id_programa, (int) $request->cantidad_personas, $extrasNuevos, $valorPrincipal);
+                }
+
                 // Actualizar la venta relacionada con la reserva
                 $venta = $reserva->venta ?? new Venta();
 
@@ -1216,6 +1246,12 @@ class ReservaController extends Controller
                         - (int) $venta->abonosExtra()->sum('monto');
                 }
 
+                if ($montoProgramas !== null && ($totalRecalculado || $extrasCambiaron)) {
+                    $totalPagar = $montoProgramas
+                        - (int) $request->abono_programa
+                        - (int) $venta->abonosExtra()->sum('monto');
+                }
+
                 $venta->fill([
                     'abono_programa'            => $request->abono_programa,
                     'folio_abono'              => $folio_abono ?? $venta->folio_abono,
@@ -1233,6 +1269,9 @@ class ReservaController extends Controller
                     $almuerzosExtra = $request->filled('agregar_almuerzos');
                     $this->manipularAlmuerzosExtra($request, $venta);
                 }
+
+                // Menus y masajes siempre acordes a la cantidad de personas (15/10/2026)
+                ReservaProgramasService::ajustarMenusYMasajes($reserva);
             });
 
             session()->put([
@@ -1242,7 +1281,7 @@ class ReservaController extends Controller
 
             $camposQueAfectanVisita = ['id_programa', 'cantidad_personas', 'fecha_visita', 'cantidad_masajes_extra'];
             $afectaVisita           = count(array_intersect(array_keys($changes), $camposQueAfectanVisita)) > 0
-                || $request->filled('agregar_almuerzos');
+                || $request->filled('agregar_almuerzos') || $extrasCambiaron;
 
             if (! $afectaVisita) {
                 return redirect()->route('backoffice.reserva.show', ['reserva' => $reserva->id])->with('success', 'La reserva fue actualizada exitosamente.');
@@ -1299,7 +1338,7 @@ class ReservaController extends Controller
     {
         $core = ! is_null($visita->id_ubicacion) || ! is_null($visita->horario_sauna);
 
-        $servicios            = $reserva->programa->servicios->pluck('nombre_servicio')->toArray();
+        $servicios            = $reserva->serviciosNombres();
         $requiereDesayunoOnce = in_array('Desayuno y Once', $servicios) || in_array('Desayuno u Once', $servicios);
         $desayunoOnceOk       = ! $requiereDesayunoOnce || $reserva->desayunoOnce()->exists();
 
@@ -1407,7 +1446,8 @@ class ReservaController extends Controller
             'numero'        => $reserva->cliente->whatsapp_cliente,
             'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
             'fecha_visita'  => $reserva->fecha_visita,
-            'programa'      => $reserva->programa->nombre_programa,
+            'programa'      => $reserva->programas_texto,
+            'detalleProgramas' => $reserva->detalleProgramasBoleta(),
             'personas'      => $reserva->cantidad_personas,
             'menus'         => $menus,
             'consumo'      => $consumo,
@@ -1472,7 +1512,8 @@ class ReservaController extends Controller
             'numero'        => $reserva->cliente->whatsapp_cliente,
             'observacion'   => $reserva->observacion ? $reserva->observacion : 'Sin Observaciones',
             'fecha_visita'  => $reserva->fecha_visita,
-            'programa'      => $reserva->programa->nombre_programa,
+            'programa'      => $reserva->programas_texto,
+            'detalleProgramas' => $reserva->detalleProgramasBoleta(),
             'personas'      => $reserva->cantidad_personas,
             'consumo'      => $consumo,
             'venta'         => $reserva->venta,

@@ -165,6 +165,7 @@
               <div class="row">
                 <div class="input-field col s12 m4">
                   <label for="diferencia">Diferencia por Pagar</label>
+                  @if(Auth::user()->is_admin())<a href="{{ route('backoffice.reserva.show', $reserva) }}#editar-diferencia" style="position:absolute;right:12px;top:0;font-size:13px">Corregir diferencia</a>@endif
                   <input id="diferencia" type="text" name="diferencia" class="money-format" value="${{number_format($venta->total_pagar,0,'','.')}}" data-total-pagar="{{$venta->total_pagar}}" readonly>
                 </div>
               </div>

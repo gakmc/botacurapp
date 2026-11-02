@@ -70,7 +70,7 @@
                                 color: #f9f9f9;
                             ">
             <strong>Programa:</strong>
-            {{ $programa->nombre_programa}}
+            {{ isset($reserva) ? $reserva->programas_texto : $programa->nombre_programa }}
         </p>
 
 

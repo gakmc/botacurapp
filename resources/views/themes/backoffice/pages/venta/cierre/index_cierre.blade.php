@@ -34,6 +34,24 @@
 <div class="section">
     <a href="?page=1"><p class="caption"><strong>Reservas de hoy: {{ now()->format('d-m-Y') }}</strong></p></a>
 
+    {{-- Código QR de la carta digital (para mostrarlo al cliente desde la pantalla) --}}
+    <a href="#modalCodigoQR" class="btn waves-effect waves-light green darken-3 modal-trigger" style="margin:4px 0 12px">
+        <svg aria-hidden="true" width="20" height="20" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" style="vertical-align:-4px;margin-right:8px"><rect x="3" y="3" width="7" height="7"></rect><rect x="14" y="3" width="7" height="7"></rect><rect x="3" y="14" width="7" height="7"></rect><path d="M14 14h3v3h-3zM18 18h3v3h-3zM14 20h2M20 14v2"></path></svg>Código QR
+    </a>
+    <div id="modalCodigoQR" class="modal" style="max-width:520px">
+        <div class="modal-content center-align">
+            <h5>Carta Botacura</h5>
+            <p class="grey-text" style="margin-top:0">Escanea con la cámara del celular</p>
+            <img src="{{ asset('images/qr_carta.png') }}?v=1" alt="Código QR de la carta digital de Botacura"
+                 style="width:100%;max-width:380px;height:auto;image-rendering:pixelated;background:#fff;padding:12px">
+            <p style="margin-bottom:0"><a href="https://botacura.ola.click/products?from=qrcode" target="_blank" rel="noopener">botacura.ola.click</a></p>
+        </div>
+        <div class="modal-footer">
+            <a href="{{ asset('images/qr_carta.png') }}" download="QR-carta-Botacura.png" class="btn-flat">Descargar</a>
+            <a href="#!" class="modal-close btn-flat">Cerrar</a>
+        </div>
+    </div>
+
     {{-- <div class="row">
         <div class="col s2 green-text offset-s2">
             <i class='material-icons left'>done_all</i>Registro completo
@@ -254,6 +272,12 @@
         return isNaN(number) ? '$0' : '$' + parseInt(number, 10).toLocaleString('es-CL');
     }
   
+    $(document).on('click', '.dif-editar', function(){
+        var td = $(this).closest('td'); td.find('.dif-ver').hide(); td.find('.dif-form').show().find('input[name=diferencia]').focus().select();
+      });
+      $(document).on('click', '.dif-cancelar', function(){
+        var td = $(this).closest('td'); td.find('.dif-form').hide(); td.find('.dif-ver').show();
+      });
     $(document).ready(function(){
       $('.modal-trigger').on('click', function(){
             // Este handler solo debe actuar sobre el trigger de "Detalles Venta"
@@ -271,6 +295,7 @@
   
             var descuento = $(this).data('descuento');
             var totalPagar = $(this).data('totalpagar');
+            var ventaIdDif = $(this).data('id');
   
             var consumo = $(this).data('consumo');
 
@@ -390,6 +415,9 @@
             var SubTotalPagar = subtotalConsumo+subtotalServicio+totalPagar;
             var TotalPagarCP = Math.trunc(totalConsumo)+subtotalServicio+totalPagar;
   
+            // Columna Diferencia: solo administradores pueden corregir el total a pagar
+            var difEditable = {{ (Auth::user()->is_admin() && Route::has('backoffice.venta.diferencia.update')) ? 'true' : 'false' }};
+            var difUrl = "{{ Route::has('backoffice.venta.diferencia.update') ? route('backoffice.venta.diferencia.update', '__ID__') : '' }}".replace('__ID__', ventaIdDif);
             var tablaResumen = '<table class="highlight responsive-table centered">';
               
               tablaResumen += '<thead><tr><th>Total Consumo</th><th>Total Servicios</th><th>Diferencia</th><th>Total</th></tr></thead>';
@@ -398,7 +426,21 @@
               tablaResumen += '<tr>';
               tablaResumen += '<td>' + formatCLP(Math.trunc(totalConsumo)) + '</td>'; 
               tablaResumen += '<td>' + formatCLP(subtotalServicio) + '</td>'; 
-              tablaResumen += '<td>' + formatCLP(totalPagar) + '</td>'; 
+              if (difEditable) {
+                tablaResumen += '<td>'
+                  + '<span class="dif-ver">' + formatCLP(totalPagar)
+                  + ' <a href="javascript:void(0)" class="dif-editar tooltipped" data-position="bottom" data-tooltip="Editar total a pagar" title="Editar total a pagar"><i class="material-icons tiny" style="vertical-align:middle">edit</i></a></span>'
+                  + '<form class="dif-form" method="POST" action="' + difUrl + '" style="display:none;max-width:220px;margin:0 auto">'
+                  + '<input type="hidden" name="_token" value="{{ csrf_token() }}">'
+                  + '<input type="hidden" name="ir_a_cierre" value="consumo">'
+                  + '<input type="text" name="diferencia" inputmode="numeric" required value="' + totalPagar + '" aria-label="Total a pagar">'
+                  + '<input type="text" name="motivo" maxlength="255" placeholder="Motivo (opcional)" aria-label="Motivo">'
+                  + '<button type="submit" class="btn btn-small">Guardar</button> '
+                  + '<a href="javascript:void(0)" class="dif-cancelar btn-flat btn-small">Cancelar</a>'
+                  + '</form></td>';
+              } else {
+                tablaResumen += '<td>' + formatCLP(totalPagar) + '</td>';
+              } 
               tablaResumen += '<td>' + '<strong> '+formatCLP(TotalPagarCP)+'</strong>' + '</td>'; 
               tablaResumen += '</tr>';
   

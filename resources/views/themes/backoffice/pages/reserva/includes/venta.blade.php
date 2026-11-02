@@ -43,6 +43,13 @@
         <a class="collection-item center-align valign-wrapper left">
             Diferencia: {{(is_null($reserva->venta->diferencia_programa)) ? 'Cierre Pendiente' : '$'.number_format($reserva->venta->diferencia_programa,0,'','.')}}
         </a>
+        @if(Auth::user()->is_admin() && !$reserva->venta->tiene_saldo_a_favor)
+            <a href="javascript:void(0)" class="collection-item center-align valign-wrapper left"
+               onclick="$('#modalEditarDiferencia').modal('open')">
+                <i class="material-icons tooltipped" data-position="bottom" data-tooltip="Editar diferencia">edit</i>
+            </a>
+        @endif
+        @include('themes.backoffice.pages.reserva.includes.modal_editar_diferencia')
 
         <a href="#modalVenta-{{ $reserva->id }}"
             class="collection-item center-align valign-wrapper left modal-trigger" 

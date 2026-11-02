@@ -64,7 +64,20 @@ class WoocommerceWebhookController extends Controller
 
         Log::info("[WC-Webhook] ← Recibido | Orden #{$wcOrderId} | Estado: {$status}");
 
-        if ($status !== 'completed') {
+        // ESTADOS_PAGADOS: Webpay deja el pedido en "processing" (pagado); la transferencia pasa a "completed" al confirmarla.
+        if (in_array($status, ['cancelled', 'refunded', 'failed'], true)) {
+            $prev = WoocommerceOrder::where('wc_order_id', $wcOrderId)->first();
+            if ($prev && $prev->reserva_id) {
+                $upd = ['observacion' => \Illuminate\Support\Facades\DB::raw("CONCAT(COALESCE(observacion,''), '\n⚠️ Pedido web #{$wcOrderId} {$status}: revisar la reserva.')")];
+                if (\Illuminate\Support\Facades\Schema::hasColumn('reservas', 'estado')) {
+                    $upd['estado'] = 'cancelada';
+                }
+                \Illuminate\Support\Facades\DB::table('reservas')->where('id', $prev->reserva_id)->update($upd);
+                Log::warning("[WC-Webhook] Orden #{$wcOrderId} {$status} → reserva #{$prev->reserva_id} marcada cancelada");
+            }
+            return response()->json(['message' => 'Estado registrado: ' . $status], 200);
+        }
+        if (!in_array($status, ['processing', 'completed'], true)) {
             Log::info("[WC-Webhook] Ignorado (estado: {$status})");
             return response()->json(['message' => 'Estado ignorado: ' . $status], 200);
         }

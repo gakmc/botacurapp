@@ -64,7 +64,8 @@ Gift Card solicitada por {{$gc->de}}
                                         <h5 style="font-family: 'Pacifico', cursive; color: #00695c;">Gift Card 🎁</h5>
                                         <p><strong>De:</strong> {{$gc->de}}</p>
                                         <p><strong>Para:</strong> {{$gc->para}}</p>
-                                        <p><strong>Válido hasta:</strong>{{$gc->valido}}</p>
+                                        <p><strong>Comprada el:</strong> {{ $gc->comprada }}</p>
+                                        <p><strong>Válido hasta:</strong> {{$gc->valido}} <span class="badge white-text {{ $gc->vigencia['color'] }}" style="float:none">{{ $gc->vigencia['texto'] }}</span></p>
                                         <p style="margin-top: 40px;">Programa tu horario al WhatsApp:</p>
                                         <h6><strong>+56 9 7448 4112</strong></h6>
 
@@ -85,6 +86,7 @@ Gift Card solicitada por {{$gc->de}}
                         <div class="col s12 m10 offset-m1 l8 offset-l2">
                             <div class="center">
                                 @if ($gc->usada == false)
+                                    <a class="btn grey darken-1" target="_blank" href="{{route('backoffice.giftcards.verpdf',$gc)}}">Ver PDF<i class='material-icons right'>picture_as_pdf</i></a>
                                     <a class="btn blue" href="{{route('backoffice.giftcards.enviar',$gc)}}">Enviar<i class='material-icons right'>share</i></a>
                                     <a class="btn pink" href="{{route('backoffice.giftcards.reservar',$gc)}}">Reservar<i class='material-icons right'>person_add</i></a>
                                 @endif

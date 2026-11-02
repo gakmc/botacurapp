@@ -36,7 +36,7 @@ class BotPromptService
      * @param  array  $menuOpciones  Array con 'entradas', 'fondos', 'acompañamientos' (id+nombre)
      * @return string
      */
-    public function getSystemPrompt(array $programas = [], array $menuOpciones = [], string $contextoCliente = '')
+    public function getSystemPrompt(array $programas = [], array $menuOpciones = [], string $contextoCliente = '', string $canal = 'whatsapp')
     {
         $bloqueProgramas = $this->construirBloqueProgramas($programas);
         $bloqueMenu      = $this->construirBloqueMenu($menuOpciones);
@@ -58,8 +58,8 @@ class BotPromptService
             $fechasReq  = new \Illuminate\Http\Request();
             $fechasResp = app(\App\Http\Controllers\Api\FechasDisponiblesController::class)->index($fechasReq);
             $fechasData = json_decode($fechasResp->getContent(), true);
-            foreach (array_slice($fechasData['fechas'] ?? [], 0, 10) as $f) {
-                $diasOperativosProximos[] = \Carbon\Carbon::parse($f)->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $f;
+            foreach (array_slice($fechasData['fechas'] ?? [], 0, 16) as $f) {
+                $diasOperativosProximos[] = self::etiquetaFecha($f);
             }
         } catch (\Exception $e) {
             \Illuminate\Support\Facades\Log::error('[BotPromptService] Error obteniendo fechas disponibles reales: ' . $e->getMessage());
@@ -94,6 +94,7 @@ class BotPromptService
         $__menuAccion = (\App\Services\BotMenuService::url() && \App\Services\BotMenuService::enviarAlPreguntar())
             ? '"enviar_menu"' . "\n" . '  → El cliente pide ver el menú, la carta o qué se come. datos: {}. El sistema adjunta el PDF del ' . $__menuTitulo . '.' . "\n" . '    En el mensaje di en una línea que se lo envías; no copies el menú completo en el texto.'
             : '"enviar_menu" (desactivado): si piden el menú, comparte la carta online www.botacura.cl/carta.';
+        $__aficheAccion = \App\Services\BotAfichesService::accionPrompt();
         $__aprendizajes = \App\Services\BotAprendizajeService::textoAprobados();
         $__aprendizajes = $__aprendizajes !== ''
             ? "APRENDIZAJES APROBADOS POR EL EQUIPO (aplícalos siempre; si contradicen una política, manda la política):\n" . $__aprendizajes
@@ -101,6 +102,9 @@ class BotPromptService
         if (trim($contextoCliente) === '') {
             $contextoCliente = '- (sin datos)';
         }
+        $bloqueCanal = $canal === 'instagram'
+            ? "═══════════════════════════════════════════════════════\nCANAL DE ESTA CONVERSACIÓN: INSTAGRAM\n═══════════════════════════════════════════════════════\n" . $__reglasCom['regla_solo_instagram']
+            : "═══════════════════════════════════════════════════════\nCANAL DE ESTA CONVERSACIÓN: WHATSAPP\n═══════════════════════════════════════════════════════\n" . $__reglasCom['regla_solo_whatsapp'];
         return <<<PROMPT
 {$perfilVendedor}
 
@@ -128,8 +132,13 @@ PRÓXIMOS DÍAS OPERATIVOS (usa EXACTAMENTE estos nombres de día — no los rec
 Si mencionas cualquiera de estas fechas (para sugerir, confirmar o comparar), usa el nombre de
 día tal como aparece en esta lista. Solo calcula tú mismo el día de la semana si la fecha que
 necesitas mencionar NO aparece en esta lista.
+La temporada (regular o verano) y si aplican los programas S de cada fecha vienen escritos en esta
+lista: úsalos tal cual. Octubre completo es temporada regular; el verano parte el 1 de noviembre.
+Para una fecha que no está en la lista, usa la acción "cotizar"; nunca lo deduzcas tú.
 
 PERSONALIZACIÓN: Una vez que sepas el nombre del cliente, úsalo en las respuestas.
+
+{$bloqueCanal}
 
 ═══════════════════════════════════════════════════════
 CONTEXTO DEL CLIENTE (desde el sistema, se actualiza en cada mensaje)
@@ -222,6 +231,8 @@ PRECIOS DE EXTRAS VIGENTES (desde el sistema; si difieren del texto anterior, ma
 masaje de relajación 30 min {$__precioMasaje} por persona · desayuno u once {$__precioDyo} por persona.
 
 {$__reglasCom['regla_notas']}
+
+{$__reglasCom['regla_almuerzo']}
 
 {$__aprendizajes}
 
@@ -504,6 +515,8 @@ ACCIONES DISPONIBLES:
 
 {$__menuAccion}
 
+{$__aficheAccion}
+
 "reagendar"
   → El cliente pide cambiar la fecha de una reserva que aparece en CONTEXTO DEL CLIENTE.
   → Antes revisa en el contexto si "¿Se puede reagendar?" dice "sí". Si dice "no", explícale el
@@ -609,6 +622,10 @@ REGLAS DEL MENSAJE:
 - Nunca digas que hay cupos o disponibilidad para una fecha que no verificaste con verificar_disponibilidad.
   Si quieres ofrecer otras fechas, pregunta cuál le acomoda y verifícala; no listes días "con cupo" sin consultar.
 - Si das un ejemplo de fecha, que el día de la semana sea correcto (usa la lista de fechas de arriba).
+- NIÑOS EN PROGRAMAS PARA 2 PERSONAS: no se permiten niños, de ninguna edad, en los programas o planes
+  para 2 personas. Esos programas incluyen servicios como masajes y tinajas que los menores no pueden tomar,
+  y llevar un niño complica que el servicio se haga de la mejor forma. Explícalo así, con amabilidad, sin
+  ofrecer excepciones; si el cliente insiste, usa escalar_humano.
 - Tuteo chileno: nunca voseo ("querés", "tenés", "podés"); usa "quieres", "tienes", "puedes".
 - Cuando el sistema indique que la ubicación requiere elección, resuélvela antes de seguir con los datos
   personales: si el cliente responde otra cosa, contesta lo que dijo y vuelve a preguntar la ubicación
@@ -710,7 +727,7 @@ PROMPT;
             });
 
             $lineas[] = "• [{$id}] {$nombre} — {$precio}/persona" . (!empty($p['es_semana'])
-                ? ' (PROGRAMA DE SEMANA: precio ya rebajado; solo lunes a viernes no feriados de marzo a octubre, solo transferencia, no reagendable)'
+                ? ' (PROGRAMA DE SEMANA: precio ya rebajado; solo lunes a jueves que no sean feriado y para reservas de 10+ personas (mira en la lista de fechas si aplica ese día), solo transferencia, no reagendable)'
                 : '') . ((isset($p['permite_reprogramacion']) && !$p['permite_reprogramacion']) ? ' (no reagendable)' : '');
             if ($servicios) {
                 $lineas[] = "  Incluye (real, desde la BD): {$servicios}";
@@ -800,16 +817,49 @@ PROMPT;
         return trim(implode("\n", $lineas));
     }
 
+    /** Temporada y programas S de una fecha, calculados aquí para que el modelo no los deduzca. */
+    public static function etiquetaFecha(string $f): string
+    {
+        $c = \Carbon\Carbon::parse($f, 'America/Santiago');
+        $txt = $c->locale('es')->isoFormat('dddd D [de] MMMM [de] YYYY') . ' -> ' . $f;
+        try {
+            $p = \App\Services\BotTarifasService::parametros();
+            $feriado = in_array($c->toDateString(), \App\Services\BotTarifasService::feriados(), true);
+            $verano = in_array($c->month, \App\Services\BotTarifasService::lista($p['param_meses_verano'] ?? '11,12,1,2'), true);
+            $baja = \App\Services\BotTarifasService::esTemporadaBaja($c);
+            $semana = ($baja ? ($c->dayOfWeekIso >= 4 && $c->dayOfWeekIso <= 5) : $c->dayOfWeekIso <= 4) && !$feriado
+                && in_array($c->month, \App\Services\BotTarifasService::lista($p['param_meses_semana'] ?? '1,2,3,4,5,6,7,8,9,10,11,12'), true);
+            $txt .= ($feriado ? ' · feriado' : '')
+                . ' · ' . ($verano ? 'temporada de verano' : 'temporada regular (precio de lista, sin recargo)')
+                . ' · programas S (10% off): ' . ($semana ? 'SÍ aplican' : 'no aplican')
+                . (!$baja && $c->dayOfWeekIso <= 3 && !$feriado ? (\App\Services\BotTarifasService::permiteReservaChica($c, 1) ? ' · día ya abierto por un grupo: se aceptan reservas de cualquier tamaño' : ' · lunes a miércoles sin grupo aún: solo grupos de 10+ (regla interna, no la menciones; a reservas chicas diles que ese día no hay disponibilidad)') : '') . ($baja ? ' · valores de temporada baja (los da cotizar)' : '');
+        } catch (\Throwable $e) {
+        }
+        return $txt;
+    }
+
     /** Reglas comerciales editables desde Configuración del bot (pestaña "Reglas comerciales"). Texto por defecto si la fila está vacía. */
     public static function reglasDefault(): array
     {
         return [
+            'regla_solo_whatsapp' => 'SOLO WHATSAPP:
+- Ya tienes el teléfono del cliente: es el número desde el que escribe. No lo pidas; solo confírmalo si hace falta.
+- Aquí sí se cotiza, se crea la reserva, se reagenda y se guarda el menú del almuerzo.
+- Aquí se recibe el comprobante del abono: cuando lo envíe, queda en revisión del equipo. Nunca confirmes un pago tú solo.
+- El menú y los documentos se envían como archivo PDF.',
+            'regla_solo_instagram' => 'SOLO INSTAGRAM (mensaje directo):
+- No tienes el teléfono del cliente y no lo pides por aquí.
+- Responde dudas, precios y disponibilidad aquí mismo, en mensajes muy breves (1 a 3 líneas).
+- No crees reservas, no reagendes, no guardes menú ni pidas comprobantes por Instagram. Cuando quiera reservar o pagar, invítalo a seguir por WhatsApp en https://wa.me/56974484112 , donde se confirma la reserva y se envía el abono.
+- Solo lees texto: si manda fotos, audios o un comprobante, pídele que lo escriba, o que mande el comprobante por WhatsApp.
+- El menú y los documentos van como enlace, no como archivo.',
+            'regla_almuerzo' => 'ALMUERZO DE 3 TIEMPOS: el almuerzo de los programas es plato de fondo, ensalada o crema, y postre del día. El postre no se elige.',
             'regla_precio_iva' => 'Todos los valores son POR PERSONA y son el precio final (ya incluyen IVA). No hables de IVA ni de neto; solo si el cliente pide factura o pregunta, aclara que el valor ya incluye IVA.',
             'regla_temporada_verano' => 'TEMPORADA DE VERANO (noviembre a febrero): para visitas entre el 1 de noviembre y el último día de febrero, cada programa regular cuesta $5.000 MÁS por persona que el valor de la lista (por la piscina). De marzo a octubre se usa el valor de la lista. Decide siempre según la FECHA DE LA VISITA, no la fecha de hoy. No aplica a servicios adicionales, masajes ni uso exclusivo.',
             'regla_programas_semana' => 'PROGRAMAS DE SEMANA (los que terminan en "S"): son el mismo programa con 10% de descuento, y su precio en la lista YA incluye ese descuento (nunca lo descuentes de nuevo). Solo para fechas de lunes a viernes habilitadas que no sean feriado, y solo con pago por transferencia. No son reagendables. En temporada de verano se suma el recargo de piscina y el 10% se aplica sobre ese nuevo valor (lo calcula la acción "cotizar"). Si la fecha es fin de semana o feriado, ofrece el programa regular equivalente.',
             'regla_apertura_agenda' => 'APERTURA DE AGENDA (parejas y grupos de menos de 10 personas):
-- La agenda de cada mes se abre el día 20 del mes anterior: noviembre se abre el 20 de octubre y diciembre se abre el 20 de noviembre.
-- Si una pareja o un grupo de menos de 10 personas pregunta por una fecha de un mes cuya agenda aún no se abre (compáralo con la fecha de HOY), NO consultes disponibilidad ni crees la reserva. Dile con amabilidad que esas fechas aún no están habilitadas, que la agenda de ese mes se abre el día 20 del mes anterior (di la fecha exacta) y que le escriba ese día para asegurar su cupo. Si le sirve, ofrécele fechas del mes que ya está abierto.',
+- No hay una fecha fija de apertura: solo se pueden reservar los días habilitados en el calendario (lo verifican las acciones de disponibilidad y cotización).
+- Si una pareja o un grupo de menos de 10 personas pide un día que no está habilitado, NO prometas una fecha de apertura ni hables del día 20. Dile con amabilidad que esa fecha aún no está habilitada y ofrécele los días habilitados más cercanos; si quiere esa fecha igual, que nos vuelva a escribir más adelante.',
             'regla_eventos' => 'EVENTOS, EMPRESAS Y GRUPOS DE 10 O MÁS PERSONAS:
 - Si preguntan por un evento, una actividad de empresa o institución, o un grupo de 10 o más personas, NO cotices por WhatsApp. Pídele amablemente que envíe un correo a hola@botacura.cl solicitando la cotización, indicando: nombre de la empresa u organización, fecha tentativa, cantidad de personas, programa de interés y si necesita factura. Dile que le responderemos por correo con la cotización.',
             'regla_servicios_adicionales' => 'SERVICIOS ADICIONALES (valor extra sobre el programa):
@@ -831,6 +881,9 @@ Los masajes adicionales NO tienen descuento aunque ya tengas programa con masaje
     public static function reglasEtiquetas(): array
     {
         return [
+            'regla_solo_whatsapp' => 'Solo WhatsApp (lo que no comparte con Instagram)',
+            'regla_solo_instagram' => 'Solo Instagram (lo que no comparte con WhatsApp)',
+            'regla_almuerzo' => 'Almuerzo de 3 tiempos',
             'regla_precio_iva' => 'Precios e IVA',
             'regla_temporada_verano' => 'Temporada de verano',
             'regla_programas_semana' => 'Programas de semana (S)',

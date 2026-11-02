@@ -116,7 +116,7 @@
         <p style="font-size:10px;color:#777;text-align:right;">Valores unitarios con IVA incluido.</p>
     @endif
 
-    <br>
+    <div style="page-break-before: always;"></div>
     <div class="terminos">
         <strong style="color: #C97D2F;">TÉRMINOS Y CONDICIONES</strong>
         <ol>
@@ -124,10 +124,12 @@
             <li>Para reservar: abono del 50% por transferencia o pago del 100% con Webpay / link de pago. Los planes Extendidos y las promociones se pagan solo por transferencia. Se acepta un único pago por reserva.</li>
             <li>La reserva queda confirmada cuando Botacura verifica el pago y envía la confirmación. El saldo se paga el día de la visita, antes del ingreso.</li>
             <li>Si necesitas factura, infórmalo al reservar junto con los datos de facturación. Una vez emitida, no se modifica.</li>
-            <li>Se permite una única reprogramación, solicitada con al menos 72 horas hábiles de anticipación, sujeta a disponibilidad y para usar dentro de 45 días corridos. No se realizan devoluciones de dinero.</li>
+            <li>Se permite una única reprogramación, sujeta a disponibilidad y para usar dentro de 45 días corridos. Reservas de hasta 15 personas: solicitarla con al menos 72 horas hábiles de anticipación. <strong>Reservas de grupos de más de 15 personas: no se pueden modificar con 72 horas; los cambios de fecha o de cantidad de personas se solicitan con al menos 10 días de anticipación.</strong> No se realizan devoluciones de dinero.</li>
             <li>No se permite ingresar alimentos ni bebidas externas, alcohol, mascotas, parlantes, pelotas ni flotadores.</li>
+            <li>Atendemos de lunes a domingo, de 10:00 a 19:00 horas, solo con reserva.</li>
+            <li>En noviembre, los programas de lunes a jueves tienen 10% de descuento (pago por transferencia, no reagendables).</li>
         </ol>
-        Políticas completas: www.botacura.cl/privacy-policy/
+        Políticas completas: www.botacura.cl/politicas-y-reservacion/
     </div>
 
 <htmlpagefooter name="footer">

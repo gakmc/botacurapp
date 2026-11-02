@@ -49,6 +49,7 @@ class GiftCard extends Model
         'id_programa', //Se asigna el programa solicitado en la GC
         'id_venta', //Este campo se completara al registrar la reserva
         'validez_hasta',
+        'fecha_compra', // 15/10/2026: vence 45 dias despues
         'de',//✔️
         'para',//✔️
         'correo',//✔️
@@ -76,7 +77,62 @@ class GiftCard extends Model
         return $codigo;
     }
 
+    /** Dias de vigencia desde la compra (15/10/2026). */
+    const DIAS_VIGENCIA = 45;
+
+    public static function venceDesde($fechaCompra): string
+    {
+        return Carbon::parse($fechaCompra)->addDays(self::DIAS_VIGENCIA)->toDateString();
+    }
+
+    /** Fecha de compra: la registrada o, si no hay, el dia en que se creo. */
+    public function getFechaCompraRealAttribute(): ?Carbon
+    {
+        if ($this->fecha_compra) {
+            return Carbon::parse($this->fecha_compra);
+        }
+        return $this->created_at ? Carbon::parse($this->created_at)->startOfDay() : null;
+    }
+
+    /** Vencimiento: validez_hasta o, si no hay, compra + 45 dias. */
+    public function getVenceAttribute(): ?Carbon
+    {
+        if ($this->validez_hasta) {
+            return Carbon::parse($this->validez_hasta);
+        }
+        return $this->fecha_compra_real ? $this->fecha_compra_real->copy()->addDays(self::DIAS_VIGENCIA) : null;
+    }
+
+    public function getCompradaAttribute(){
+        return $this->fecha_compra_real ? $this->fecha_compra_real->format('d-m-Y') : '';
+    }
+
     public function getValidoAttribute(){
-        return Carbon::parse($this->validez_hasta)->format('d-m-Y');
+        return $this->vence ? $this->vence->format('d-m-Y') : '';
+    }
+
+    /** Dias que quedan (negativo = vencida). */
+    public function getDiasRestantesAttribute(): ?int
+    {
+        return $this->vence ? (int) Carbon::today()->diffInDays($this->vence->copy()->startOfDay(), false) : null;
+    }
+
+    /** Texto y color para mostrar la vigencia. */
+    public function getVigenciaAttribute(): array
+    {
+        if ($this->usada) {
+            return ['texto' => 'Usada', 'color' => 'grey'];
+        }
+        $d = $this->dias_restantes;
+        if ($d === null) {
+            return ['texto' => 'Sin fecha', 'color' => 'grey'];
+        }
+        if ($d < 0) {
+            return ['texto' => 'Vencida hace ' . abs($d) . ' día' . (abs($d) === 1 ? '' : 's'), 'color' => 'red'];
+        }
+        if ($d === 0) {
+            return ['texto' => 'Vence hoy', 'color' => 'orange'];
+        }
+        return ['texto' => 'Quedan ' . $d . ' día' . ($d === 1 ? '' : 's'), 'color' => $d <= 7 ? 'orange' : 'green'];
     }
 }

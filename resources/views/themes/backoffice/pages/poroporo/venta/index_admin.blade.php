@@ -19,6 +19,7 @@
     <div class="divider"></div>
     <div id="basic-form" class="section">
         <div class="row">
+            <div class="col s12">@include('themes.backoffice.pages.poroporo.includes._crear_producto')</div>
             <div class="col s12">
                 <div class="card-panel">
                     <h4 class="header2">Ventas mes de <strong>{{ ucfirst(\Carbon\Carbon::create()->month($mes)->locale('es')->isoFormat('MMMM')) }}</strong></h4>
