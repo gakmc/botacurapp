@@ -263,8 +263,30 @@
 @section('foot')
 @include('themes.backoffice.pages.tickets.partials.selector-fotos-recursos')
 @include('themes.backoffice.pages.tickets.partials.confirmar-acciones')
+@include('themes.backoffice.pages.tickets.partials.tiempo-real', ['supervision' => Auth::user()->supervisaTickets()])
 <script>
 (function () {
+    // Tiempo real: si otra persona cambia este ticket, el detalle se recarga solo, salvo
+    // que el usuario esté escribiendo, eligiendo fotos o con una ventana abierta (ahí solo avisa)
+    var ticketId = @json($ticket->id), pendiente = false;
+    function ocupado() {
+        var escrito = Array.prototype.some.call(document.querySelectorAll('textarea'), function (t) { return t.value.trim() !== ''; });
+        return escrito || document.querySelector('.tk-previa') || document.querySelector('.modal.open')
+            || document.querySelector('.swal2-container') || document.querySelector('form button:disabled');
+    }
+    function refrescar(e) {
+        if (document.hidden) { pendiente = true; return; }
+        pendiente = false;
+        // Reenviado: puede que este departamento ya no tenga acceso; mejor que decida el usuario
+        if (e && e.tipo === 'reenviar') return tkAvisarCambio('El ticket fue reenviado a otro departamento');
+        ocupado() ? tkAvisarCambio('Hay cambios en este ticket') : location.reload();
+    }
+    tkAlCambiarTicket(function (e) {
+        if (e && Number(e.ticketId) !== Number(ticketId)) return;
+        refrescar(e);
+    });
+    document.addEventListener('visibilitychange', function () { if (pendiente && !document.hidden) refrescar(null); });
+
     // Modales (Materialize 0.100: plugin de jQuery)
     $('.modal').modal();
     document.querySelectorAll('.tk-abrir-modal').forEach(function (btn) {
