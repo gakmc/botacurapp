@@ -106,6 +106,10 @@ class TicketNotificacionService
                 'title' => $titulo,
                 'body'  => $cuerpo,
                 'url'   => route('backoffice.tickets.show', $ticket),
+            ], [
+                // Un ticket sigue importando horas después: si el celular está en reposo
+                // o sin conexión, el aviso llega cuando vuelva (el barman usa 60 s)
+                'TTL' => 86400,
             ]);
         } catch (Throwable $e) {
             Log::warning('Push de ticket ' . $ticket->codigo . ' no enviado: ' . $e->getMessage());

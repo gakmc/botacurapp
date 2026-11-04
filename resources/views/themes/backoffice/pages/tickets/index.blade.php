@@ -163,9 +163,26 @@
 
 @section('foot')
 @include('themes.backoffice.pages.tickets.partials.confirmar-acciones')
+@include('themes.backoffice.pages.tickets.partials.tiempo-real', ['supervision' => $supervision])
 <script>
 (function () {
     var base = @json(route('backoffice.tickets.index'));
+
+    // Tiempo real: la bandeja se recarga sola (la pestaña elegida queda en la URL).
+    // Si la página está oculta, espera a que vuelva; si el usuario está confirmando
+    // o enviando una acción, solo avisa para no interrumpirlo.
+    var pendiente = false, espera = null;
+    function refrescar() {
+        if (document.hidden) { pendiente = true; return; }
+        pendiente = false;
+        var ocupado = document.querySelector('.swal2-container') || document.querySelector('.tk-form-accion button:disabled');
+        ocupado ? tkAvisarCambio('Hay cambios en tus tickets') : location.reload();
+    }
+    tkAlCambiarTicket(function () {
+        clearTimeout(espera);
+        espera = setTimeout(refrescar, 700); // agrupa varios cambios seguidos
+    });
+    document.addEventListener('visibilitychange', function () { if (pendiente && !document.hidden) refrescar(); });
 
     // Avisos push: activarNotificacionesPush() se define en el layout después de este script
     // (por eso se espera a "load"); el botón aparece solo si el dispositivo no está suscrito

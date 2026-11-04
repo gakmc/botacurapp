@@ -58,6 +58,56 @@
             return Uint8Array.from([...rawData].map(c => c.charCodeAt(0)));
         }
 
+        function enviarSuscripcionPush(ruta, datos) {
+            return fetch(ruta, {
+                method: 'POST',
+                headers: {
+                    'Content-Type': 'application/json',
+                    'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
+                },
+                body: JSON.stringify(datos)
+            });
+        }
+
+        // Suscripción del dispositivo con la clave VAPID actual del servidor. Si el
+        // dispositivo quedó suscrito con una clave anterior (se regeneraron las claves),
+        // los avisos fallarían en silencio: se cancela y se crea una nueva.
+        async function obtenerSuscripcionPush(registration) {
+            const clave = await urlBase64ToUint8Array(document.querySelector('meta[name="vapid-public-key"]').content);
+            let subscription = await registration.pushManager.getSubscription();
+
+            if (subscription) {
+                const actual = subscription.options && subscription.options.applicationServerKey
+                    ? new Uint8Array(subscription.options.applicationServerKey) : null;
+                const distinta = actual && (actual.length !== clave.length || actual.some((b, i) => b !== clave[i]));
+
+                if (distinta) {
+                    const anterior = subscription.endpoint;
+                    await subscription.unsubscribe();
+                    subscription = null;
+                    enviarSuscripcionPush('{{ route('push.unsubscribe') }}', { endpoint: anterior }).catch(() => {});
+                }
+            }
+
+            if (!subscription) {
+                subscription = await registration.pushManager.subscribe({ userVisibleOnly: true, applicationServerKey: clave });
+            }
+
+            return subscription;
+        }
+
+        // Guarda la suscripción en el servidor a nombre del usuario con sesión iniciada
+        function guardarSuscripcionPush(subscription) {
+            return enviarSuscripcionPush('{{ route('push.subscribe') }}', {
+                endpoint: subscription.endpoint,
+                keys: {
+                    p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))),
+                    auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth'))))
+                },
+                encoding: 'aesgcm'
+            });
+        }
+
         async function activarNotificacionesPush() {
             try {
                 const esLocalhost = ['localhost', '127.0.0.1'].includes(location.hostname);
@@ -75,32 +125,8 @@
                 const registration = await navigator.serviceWorker.register('/sw.js');
                 await navigator.serviceWorker.ready;
 
-                let subscription = await registration.pushManager.getSubscription();
-
-                if (!subscription) {
-                    const vapidKey = document.querySelector('meta[name="vapid-public-key"]').content;
-
-                    subscription = await registration.pushManager.subscribe({
-                        userVisibleOnly: true,
-                        applicationServerKey: await urlBase64ToUint8Array(vapidKey)
-                    });
-                }
-
-                const resp = await fetch('{{ route('push.subscribe') }}', {
-                    method: 'POST',
-                    headers: {
-                        'Content-Type': 'application/json',
-                        'X-CSRF-TOKEN': document.querySelector('meta[name="csrf-token"]').content
-                    },
-                    body: JSON.stringify({
-                        endpoint: subscription.endpoint,
-                        keys: {
-                            p256dh: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('p256dh')))),
-                            auth: btoa(String.fromCharCode(...new Uint8Array(subscription.getKey('auth'))))
-                        },
-                        encoding: 'aesgcm'
-                    })
-                });
+                const subscription = await obtenerSuscripcionPush(registration);
+                const resp = await guardarSuscripcionPush(subscription);
 
                 if (!resp.ok) {
                     const texto = await resp.text().catch(() => '');
@@ -115,6 +141,31 @@
                 alert('Error activando notificaciones: ' + (err && err.message ? err.message : err));
             }
         }
+
+        // Sincronización silenciosa: si este dispositivo ya dio permiso, se revisa la clave
+        // y se vuelve a guardar la suscripción a nombre del usuario actual (por si otro
+        // usuario la activó en este mismo dispositivo o el servidor la borró). Se repite
+        // al cambiar de usuario o de suscripción, y como mínimo cada 12 horas.
+        window.addEventListener('load', async function () {
+            try {
+                if (!('serviceWorker' in navigator) || !('PushManager' in window) || Notification.permission !== 'granted') return;
+                const registration = await navigator.serviceWorker.getRegistration('/sw.js');
+                if (!registration) return;
+
+                const subscription = await obtenerSuscripcionPush(registration);
+                const firma = [@json(optional(Auth::user())->id), subscription.endpoint].join('|');
+                let previa = null;
+                try { previa = JSON.parse(localStorage.getItem('push-sync') || 'null'); } catch (e) {}
+                if (previa && previa.firma === firma && Date.now() - previa.hora < 12 * 3600 * 1000) return;
+
+                const resp = await guardarSuscripcionPush(subscription);
+                if (resp.ok) {
+                    try { localStorage.setItem('push-sync', JSON.stringify({ firma: firma, hora: Date.now() })); } catch (e) {}
+                }
+            } catch (err) {
+                console.warn('No se pudo sincronizar la suscripción push:', err);
+            }
+        });
 
     </script>
 

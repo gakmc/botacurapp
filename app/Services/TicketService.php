@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Auditoria;
+use App\Events\Tickets\TicketActualizado;
 use App\Role;
 use App\Ticket;
 use App\TicketEvento;
@@ -10,6 +11,7 @@ use App\TicketImagen;
 use App\User;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Gate;
+use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
 
 /**
@@ -50,6 +52,7 @@ class TicketService
         }
 
         app(TicketNotificacionService::class)->nuevo($ticket, $user);
+        $this->difundir($ticket, 'creado', $user);
 
         return $ticket;
     }
@@ -63,6 +66,7 @@ class TicketService
     public function ejecutarAccion(Ticket $ticket, $accion, User $user = null, $comentario = null, array $extra = [])
     {
         $guardadas = [];
+        $destinoAnterior = $ticket->rol_destino_id;
 
         try {
             $ticket = $this->ejecutarAccionEnTransaccion($ticket, $accion, $user, $comentario, $extra, $guardadas);
@@ -73,6 +77,8 @@ class TicketService
         }
 
         app(TicketNotificacionService::class)->accion($ticket, $accion, $user);
+        // Al reenviar, el departamento anterior también debe sacarlo de su bandeja
+        $this->difundir($ticket, $accion, $user, [$destinoAnterior]);
 
         return $ticket;
     }
@@ -177,6 +183,7 @@ class TicketService
 
         // Con el responsable actual (el modelo recibido puede venir de antes de un cambio)
         app(TicketNotificacionService::class)->comentario($ticket->fresh(), $user);
+        $this->difundir($ticket, 'comentario', $user);
 
         return $evento;
     }
@@ -184,7 +191,7 @@ class TicketService
     /** Otro miembro del destino se hace responsable de un ticket ya recepcionado. */
     public function tomar(Ticket $ticket, User $user)
     {
-        return DB::transaction(function () use ($ticket, $user) {
+        $ticket = DB::transaction(function () use ($ticket, $user) {
             $ticket = Ticket::lockForUpdate()->findOrFail($ticket->id);
             Gate::forUser($user)->authorize('tomar', $ticket);
 
@@ -199,6 +206,23 @@ class TicketService
 
             return $ticket;
         });
+
+        $this->difundir($ticket, 'tomar', $user);
+
+        return $ticket;
+    }
+
+    /**
+     * Aviso en tiempo real a las pantallas abiertas. Como el push, nunca interrumpe
+     * la acción: si el servicio de websockets falla, queda en el log.
+     */
+    protected function difundir(Ticket $ticket, $tipo, User $user = null, array $rolesExtra = [])
+    {
+        try {
+            broadcast(new TicketActualizado($ticket, $tipo, optional($user)->id, $rolesExtra));
+        } catch (\Throwable $e) {
+            Log::warning('Tiempo real del ticket ' . $ticket->codigo . ' no enviado: ' . $e->getMessage());
+        }
     }
 
     /**
